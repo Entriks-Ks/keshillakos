@@ -30,6 +30,9 @@ test('legacy self-selected provider/company roles do not authorize; explicit gra
   const legacy = toPublicUser({ uid: 'legacy', email: 'a@example.com', name: 'A', role: 'provider' })
   assert.deepEqual(legacy.roles, ['user'])
   assert.equal(legacy.role, 'user')
+  const requested = toPublicUser({ uid: 'requested', email: 'r@example.com', name: 'R', role: 'user', roles: ['user'], requestedRole: 'company' })
+  assert.deepEqual(requested.roles, ['user'])
+  assert.equal(requested.role, 'user')
 })
 
 test('user indexes distinguish canonical email from nonunique unverified phone', () => {

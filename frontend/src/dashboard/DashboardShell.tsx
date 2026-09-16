@@ -2,6 +2,7 @@ import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { mediaUrl } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import { getDashboardNav, ROLE_LABELS } from './nav'
+import type { UserRole } from '../api/auth'
 
 export default function DashboardShell() {
   const { user, logout } = useAuth()
@@ -9,7 +10,9 @@ export default function DashboardShell() {
 
   if (!user) return null
 
-  const nav = getDashboardNav(user.role)
+  const section = location.pathname.split('/')[2] as UserRole
+  const activeRole = (user.roles ?? [user.role]).includes(section) ? section : user.role
+  const nav = getDashboardNav(activeRole)
   const active = nav.find((item) =>
     item.end
       ? location.pathname === item.to
@@ -24,7 +27,7 @@ export default function DashboardShell() {
         <Link to="/" className="brand brand-link dash-brand">
           KëshillaKos
         </Link>
-        <p className="dash-role">{ROLE_LABELS[user.role]}</p>
+        <p className="dash-role">{ROLE_LABELS[activeRole]}</p>
 
         <nav className="dash-nav" aria-label="Navigimi i dashboard">
           {nav.map((item) => (
@@ -60,7 +63,7 @@ export default function DashboardShell() {
       <div className="dash-body">
         <header className="dash-topbar">
           <div>
-            <p className="dashboard-kicker">{ROLE_LABELS[user.role]}</p>
+            <p className="dashboard-kicker">{ROLE_LABELS[activeRole]}</p>
             <h1>{pageTitle}</h1>
           </div>
           <button type="button" className="ghost dash-logout-mobile" onClick={logout}>

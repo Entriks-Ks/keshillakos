@@ -15,7 +15,6 @@ import {
   updateProfilePhoto,
   upsertUser,
 } from '../services/userService'
-import { isPublicRole } from '../types/roles'
 
 const router = Router()
 
@@ -90,36 +89,36 @@ function publicUser(user: {
 
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role } = req.body as {
+    const { email, password, firstName, lastName } = req.body as {
       email?: string
       password?: string
-      name?: string
-      role?: string
+      firstName?: string
+      lastName?: string
     }
 
-    if (!email?.trim() || !password || !name?.trim()) {
-      return res.status(400).json({ message: 'Emri, email dhe fjalëkalimi janë të detyrueshme' })
+    if (!email?.trim() || !password || !firstName?.trim() || !lastName?.trim()) {
+      return res.status(400).json({ message: 'Emri, mbiemri, email dhe fjalëkalimi janë të detyrueshme' })
     }
 
     if (password.length < 6) {
       return res.status(400).json({ message: 'Fjalëkalimi duhet të ketë të paktën 6 karaktere' })
     }
 
-    const selectedRole = role ?? 'user'
-    if (!isPublicRole(selectedRole)) {
-      return res.status(400).json({
-        message: 'Roli duhet të jetë user, provider ose company. Admin nuk krijohet nga regjistrimi.',
-      })
+    const givenName = firstName.trim()
+    const familyName = lastName.trim()
+    const name = `${givenName} ${familyName}`
+    if (givenName.length > 80 || familyName.length > 80 || name.length > 160) {
+      return res.status(400).json({ message: 'Emri ose mbiemri është shumë i gjatë' })
     }
 
-    const auth = await firebaseSignUp(email.trim(), password, name.trim())
+    const auth = await firebaseSignUp(email.trim(), password, name)
     const user = await upsertUser({
       uid: auth.localId,
       email: auth.email,
-      name: name.trim(),
-      requestedRole: selectedRole,
-      grantedRoles:
-        selectedRole === 'user' ? ['user'] : (['user', selectedRole] as import('../types/roles').UserRole[]),
+      name,
+      firstName: givenName,
+      lastName: familyName,
+      grantedRoles: ['user'],
       updateName: true,
     })
 
@@ -212,8 +211,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { name, firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent } = req.body as {
-      name?: string
+    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent } = req.body as {
       firstName?: string
       lastName?: string
       phone?: string | null
@@ -225,7 +223,6 @@ router.patch('/me', requireAuth, async (req, res) => {
     }
 
     const user = await updateOwnProfile(req.user!.uid, {
-      name,
       firstName,
       lastName,
       phone,
@@ -236,12 +233,12 @@ router.patch('/me', requireAuth, async (req, res) => {
       marketingConsent,
     })
 
-    if (name?.trim() && name.trim() !== req.user!.name) {
+    if (user.name !== req.user!.name) {
       const header = req.headers.authorization
       const idToken = header?.startsWith('Bearer ') ? header.slice(7).trim() : ''
       if (idToken) {
         try {
-          await firebaseUpdateDisplayName(idToken, name.trim())
+          await firebaseUpdateDisplayName(idToken, user.name)
         } catch {
           // Mongo is source of truth; Firebase displayName sync is best-effort
         }

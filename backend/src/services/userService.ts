@@ -1,17 +1,11 @@
 import { User, type UserDoc } from '../models/User'
 import { isUserRole, type UserRole } from '../types/roles'
 
-export function effectiveRoles(user: Pick<UserDoc, 'role' | 'roles' | 'requestedRole'>): UserRole[] {
-  const granted = (user.roles ?? []).filter(isUserRole)
-  const legacy =
-    user.role && isUserRole(user.role) && user.role !== 'user' ? [user.role] : []
-  // Public registration selects provider/company; treat that as an active marketplace role.
-  const requested =
-    user.requestedRole &&
-    (user.requestedRole === 'provider' || user.requestedRole === 'company')
-      ? [user.requestedRole]
-      : []
-  return [...new Set<UserRole>(['user', ...granted, ...legacy, ...requested])]
+export function effectiveRoles(user: Pick<UserDoc, 'role' | 'roles'>): UserRole[] {
+  const granted = user.roles?.filter(isUserRole)
+  if (granted) return [...new Set<UserRole>(['user', ...granted])]
+  // Existing admin accounts were not available through public registration.
+  return user.role === 'admin' ? ['user', 'admin'] : ['user']
 }
 
 function cleanOptional(value?: string) {
@@ -48,11 +42,7 @@ export function toPublicUser(user: {
   createdAt?: Date
   updatedAt?: Date
 }): UserDoc {
-  const roles = effectiveRoles({
-    role: user.role ?? 'user',
-    roles: user.roles,
-    requestedRole: user.requestedRole,
-  })
+  const roles = effectiveRoles({ role: user.role ?? 'user', roles: user.roles })
   return {
     uid: user.uid,
     email: user.email,
@@ -84,6 +74,8 @@ export async function upsertUser(input: {
   uid: string
   email: string
   name: string
+  firstName?: string
+  lastName?: string
   /** Registration preference, not an authorization grant. */
   requestedRole?: UserRole
   /** Only trusted admin paths may supply granted roles. */
@@ -94,64 +86,39 @@ export async function upsertUser(input: {
   const email = input.email.trim().toLowerCase()
   const name = input.name.trim() || input.email.split('@')[0] || 'User'
 
-  const publicRoles =
-    input.requestedRole === 'provider' || input.requestedRole === 'company'
-      ? (['user', input.requestedRole] as UserRole[])
-      : undefined
-  const grantedRoles = input.grantedRoles ?? publicRoles
-
   const $set: Record<string, unknown> = { email }
-  if (input.updateName) Object.assign($set, { name, ...splitName(name) })
-  if (input.requestedRole) $set.requestedRole = input.requestedRole
+  if (input.updateName) Object.assign($set, {
+    name,
+    firstName: input.firstName ?? splitName(name).firstName,
+    lastName: input.lastName ?? splitName(name).lastName,
+  })
 
   // MongoDB forbids the same path in both $set and $setOnInsert
   const $setOnInsert: Record<string, unknown> = {
     uid: input.uid,
-    role: grantedRoles?.find((role) => role !== 'user') ?? 'user',
-    roles: grantedRoles ?? ['user'],
+    role: input.grantedRoles?.find((role) => role !== 'user') ?? 'user',
+    roles: input.grantedRoles ?? ['user'],
+    requestedRole: input.requestedRole,
   }
-  if (!input.requestedRole) $setOnInsert.requestedRole = undefined
   if (!input.updateName) Object.assign($setOnInsert, { name, ...splitName(name) })
 
-  let user = await User.findOneAndUpdate(
+  const user = await User.findOneAndUpdate(
     { uid: input.uid },
     { $set, $setOnInsert },
     { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true },
   )
 
-  // Heal accounts that requested provider/company but never received the grant.
-  user = (await ensureMarketplaceRoles(user)) ?? user
-
   return toPublicUser(user)
 }
 
-async function ensureMarketplaceRoles(user: UserDoc & { _id?: unknown; save?: () => Promise<unknown> }) {
-  const doc = await User.findOne({ uid: user.uid })
-  if (!doc) return null
-
-  const wanted =
-    doc.requestedRole === 'provider' || doc.requestedRole === 'company'
-      ? doc.requestedRole
-      : doc.role === 'provider' || doc.role === 'company'
-        ? doc.role
-        : null
-
-  if (!wanted) return doc
-
-  const roles = [...new Set<UserRole>(['user', ...(doc.roles ?? []), wanted])]
-  const nextRole = roles.find((role) => role !== 'user') ?? 'user'
-  const changed =
-    doc.role !== nextRole ||
-    roles.length !== (doc.roles?.length ?? 0) ||
-    roles.some((role) => !doc.roles?.includes(role))
-
-  if (!changed) return doc
-
-  doc.roles = roles
-  doc.role = nextRole
-  if (!doc.requestedRole) doc.requestedRole = wanted
-  await doc.save()
-  return doc
+export async function grantCapability(uid: string, role: 'provider' | 'company') {
+  const user = await User.findOneAndUpdate(
+    { uid, accountStatus: 'active' },
+    { $addToSet: { roles: { $each: ['user', role] } } },
+    { new: true, runValidators: true },
+  )
+  if (!user) throw new Error('Llogaria nuk u gjet ose nuk është aktive')
+  return toPublicUser(user)
 }
 
 export async function findUserByUid(uid: string): Promise<UserDoc | null> {
@@ -197,7 +164,6 @@ export async function listUsers(filters?: { role?: UserRole; q?: string }) {
 export async function updateOwnProfile(
   uid: string,
   input: {
-    name?: string
     firstName?: string
     lastName?: string
     phone?: string | null
@@ -211,16 +177,18 @@ export async function updateOwnProfile(
   const existing = await User.findOne({ uid })
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
 
-  if (input.name !== undefined) {
-    const name = input.name.trim()
-    if (!name) throw new Error('Emri është i detyrueshëm')
-    if (name.length > 80) throw new Error('Emri është shumë i gjatë')
-    existing.name = name
-    Object.assign(existing, splitName(name))
+  if (input.firstName !== undefined) {
+    const firstName = input.firstName.trim()
+    if (!firstName || firstName.length > 80) throw new Error('Emri duhet të jetë 1–80 karaktere')
+    existing.firstName = firstName
   }
-  if (input.firstName !== undefined) existing.firstName = cleanOptional(input.firstName)
-  if (input.lastName !== undefined) existing.lastName = cleanOptional(input.lastName)
+  if (input.lastName !== undefined) {
+    const lastName = input.lastName.trim()
+    if (!lastName || lastName.length > 80) throw new Error('Mbiemri duhet të jetë 1–80 karaktere')
+    existing.lastName = lastName
+  }
   if (input.firstName !== undefined || input.lastName !== undefined) {
+    // Retain the legacy display name for existing consumers; the profile API uses separate fields.
     existing.name = [existing.firstName, existing.lastName].filter(Boolean).join(' ')
   }
   if (input.phone !== undefined) existing.phone = cleanOptional(input.phone ?? undefined)

@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { mediaUrl } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import { LANGUAGE_OPTIONS } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
+import ExpertInvitationsPanel from './ExpertInvitationsPanel'
 
 function parseSkills(raw: string) {
   return raw
@@ -13,7 +15,8 @@ function parseSkills(raw: string) {
 
 export default function ProfilePanel() {
   const { user, updateProfile, uploadProfilePhoto } = useAuth()
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [headline, setHeadline] = useState('')
   const [bio, setBio] = useState('')
   const [location, setLocation] = useState('')
@@ -27,7 +30,8 @@ export default function ProfilePanel() {
 
   useEffect(() => {
     if (!user) return
-    setName(user.name || '')
+    setFirstName(user.firstName || '')
+    setLastName(user.lastName || '')
     setHeadline(user.headline || '')
     setBio(user.bio || '')
     setLocation(user.location || '')
@@ -49,7 +53,8 @@ export default function ProfilePanel() {
     setSaving(true)
     try {
       await updateProfile({
-        name,
+        firstName,
+        lastName,
         headline,
         bio,
         location,
@@ -91,6 +96,13 @@ export default function ProfilePanel() {
       <h2>Profili im</h2>
       <p className="muted">Ndrysho emrin, foton, aftësitë dhe informacionet e tjera të profilit.</p>
 
+      <div className="profile-role-options">
+        {!(user.roles ?? [user.role]).includes('provider') ? <Link className="ghost link-btn" to="/dashboard/user/onboarding/expert">Bëhu Ekspert</Link> : <Link className="ghost link-btn" to="/dashboard/provider">Paneli i ekspertit</Link>}
+        {!(user.roles ?? [user.role]).includes('company') ? <Link className="ghost link-btn" to="/dashboard/user/onboarding/company">Krijo Kompani / Agjenci</Link> : <Link className="ghost link-btn" to="/dashboard/company/experts">Paneli i kompanisë</Link>}
+        {user.role !== 'user' ? <Link className="ghost link-btn" to="/dashboard/user">Paneli i përdoruesit</Link> : null}
+      </div>
+      {(user.roles ?? [user.role]).includes('provider') ? <ExpertInvitationsPanel /> : null}
+
       <div className="profile-photo-row">
         <div className="profile-avatar-lg" aria-hidden>
           {preview ? <img src={preview} alt="" /> : <span>{user.name.slice(0, 1)}</span>}
@@ -113,7 +125,11 @@ export default function ProfilePanel() {
       <form onSubmit={onSave} className="service-form">
         <label>
           Emri
-          <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
+          <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required maxLength={80} autoComplete="given-name" />
+        </label>
+        <label>
+          Mbiemri
+          <input value={lastName} onChange={(e) => setLastName(e.target.value)} required maxLength={80} autoComplete="family-name" />
         </label>
         <label>
           Titulli / specialiteti

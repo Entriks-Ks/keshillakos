@@ -31,6 +31,7 @@ type AuthContextValue = {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthUser>
   uploadProfilePhoto: (file: File) => Promise<AuthUser>
+  refreshUser: () => Promise<AuthUser>
   logout: () => void
 }
 
@@ -88,6 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return next
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const next = await fetchMe()
+    setUser(next)
+    return next
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem('token')
     setUser(null)
@@ -102,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       changePassword,
       updateProfile,
       uploadProfilePhoto,
+      refreshUser,
       logout,
     }),
     [
@@ -112,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       changePassword,
       updateProfile,
       uploadProfilePhoto,
+      refreshUser,
       logout,
     ],
   )

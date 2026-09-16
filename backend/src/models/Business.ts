@@ -8,6 +8,7 @@ export type BusinessDoc = {
   logoUrl?: string
   owners: Types.ObjectId[]
   members: Array<{ user: Types.ObjectId; role: 'manager' | 'member' }>
+  invitations: Array<{ user: Types.ObjectId; invitedBy: Types.ObjectId; invitedAt: Date }>
   branches: Array<{ name: string; location: Location }>
   verification: { status: 'unverified' | 'pending' | 'verified' | 'rejected'; reviewedAt?: Date; reviewedBy?: Types.ObjectId }
   status: BusinessStatus
@@ -23,6 +24,14 @@ export const businessSchema = new Schema<BusinessDoc>(
     owners: { type: [{ type: Schema.Types.ObjectId, ref: 'User', required: true }], required: true, validate: [(value: Types.ObjectId[]) => value.length > 0 && new Set(value.map(String)).size === value.length, 'At least one distinct owner is required'] },
     members: {
       type: [{ user: { type: Schema.Types.ObjectId, ref: 'User', required: true }, role: { type: String, enum: ['manager', 'member'], required: true } }],
+      default: [],
+    },
+    invitations: {
+      type: [{
+        user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        invitedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        invitedAt: { type: Date, required: true },
+      }],
       default: [],
     },
     branches: {
@@ -41,6 +50,7 @@ export const businessSchema = new Schema<BusinessDoc>(
 
 businessSchema.index({ owners: 1, status: 1 })
 businessSchema.index({ 'members.user': 1, status: 1 })
+businessSchema.index({ 'invitations.user': 1 })
 businessSchema.index({ status: 1, publicName: 1 })
 
 businessSchema.pre('validate', function () {

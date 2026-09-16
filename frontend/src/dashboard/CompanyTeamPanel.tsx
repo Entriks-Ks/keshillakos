@@ -1,0 +1,69 @@
+import { useEffect, useState, type FormEvent } from 'react'
+import { fetchBusinessTeam, fetchMyBusinesses, inviteExpert, removeExpert, type BusinessSummary, type BusinessTeam } from '../api/onboarding'
+import { useAuth } from '../auth/AuthContext'
+import { getErrorMessage } from '../utils/errors'
+
+export default function CompanyTeamPanel() {
+  const { user } = useAuth()
+  const [businesses, setBusinesses] = useState<BusinessSummary[]>([])
+  const [selected, setSelected] = useState('')
+  const [team, setTeam] = useState<BusinessTeam | null>(null)
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!(user?.roles ?? []).includes('company')) return
+    fetchMyBusinesses().then((items) => {
+      setBusinesses(items)
+      setSelected((current) => current || items[0]?._id || '')
+    }).catch((err) => setError(getErrorMessage(err)))
+  }, [user?.roles])
+
+  useEffect(() => {
+    if (!selected) return
+    fetchBusinessTeam(selected).then(setTeam).catch((err) => setError(getErrorMessage(err)))
+  }, [selected])
+
+  async function invite(event: FormEvent) {
+    event.preventDefault()
+    if (!selected) return
+    setError('')
+    setSaving(true)
+    try {
+      setTeam(await inviteExpert(selected, email))
+      setEmail('')
+    } catch (err) { setError(getErrorMessage(err)) }
+    finally { setSaving(false) }
+  }
+
+  async function remove(userId: string) {
+    setError('')
+    try { setTeam(await removeExpert(selected, userId)) }
+    catch (err) { setError(getErrorMessage(err)) }
+  }
+
+  if (!(user?.roles ?? []).includes('company')) return null
+  return <section className="provider-section">
+    <h2>Ekipi i kompanisë</h2>
+    <p className="muted">Fto ekspertë të regjistruar me email. Ata bashkohen vetëm pasi ta pranojnë ftesën.</p>
+    {businesses.length > 1 ? <label>Kompania <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+      {businesses.map((business) => <option key={business._id} value={business._id}>{business.publicName}</option>)}
+    </select></label> : null}
+    {team ? <p><strong>{team.business.publicName}</strong></p> : null}
+    <form className="service-form" onSubmit={invite}>
+      <label className="full">Email i ekspertit<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+      {error ? <p className="error full">{error}</p> : null}
+      <button type="submit" className="full" disabled={saving || !selected}>{saving ? 'Duke ftuar...' : 'Fto ekspertin'}</button>
+    </form>
+    {team ? <div className="services-list">
+      <h3>Anëtarët</h3>
+      <ul>{team.members.map((member) => <li key={member.id}>
+        <strong>{member.name}</strong><span>{member.email}</span>
+        <button type="button" className="ghost" onClick={() => remove(member.id)}>Hiq nga ekipi</button>
+      </li>)}</ul>
+      <h3>Ftesat në pritje</h3>
+      <ul>{team.invitations.map((invite) => <li key={invite.id}><strong>{invite.name}</strong><span>{invite.email}</span></li>)}</ul>
+    </div> : null}
+  </section>
+}

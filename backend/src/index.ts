@@ -17,6 +17,7 @@ import ratingRoutes from './routes/rating.routes'
 import requestRoutes from './routes/request.routes'
 import providerRoutes from './routes/provider.routes'
 import appointmentRoutes from './routes/appointment.routes'
+import onboardingRoutes from './routes/onboarding.routes'
 import serviceRoutes from './routes/service.routes'
 import serviceOfferRoutes from './routes/serviceOffer.routes'
 import chatRoutes from './routes/chat.routes'
@@ -38,6 +39,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/auth', authRoutes)
+app.use('/api/onboarding', onboardingRoutes)
 app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/availability', availabilityRoutes)
 app.use('/api/domains', domainRoutes)

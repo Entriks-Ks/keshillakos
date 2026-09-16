@@ -24,6 +24,7 @@ import {
   UserRateProvidersPanel,
 } from './dashboard/panels'
 import DashboardRedirect from './pages/DashboardRedirect'
+import { CompanyOnboardingPage, ExpertOnboardingPage } from './dashboard/OnboardingPages'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -55,6 +56,8 @@ export default function App() {
               <Route path="messages" element={<MessagesPage />} />
               <Route path="ratings" element={<UserRateProvidersPanel />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="onboarding/expert" element={<ExpertOnboardingPage />} />
+              <Route path="onboarding/company" element={<CompanyOnboardingPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

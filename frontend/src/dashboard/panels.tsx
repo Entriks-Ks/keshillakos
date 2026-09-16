@@ -13,6 +13,7 @@ import {
   type ServiceItem,
 } from '../api/services'
 import RateProvider from '../components/RateProvider'
+import CompanyTeamPanel from './CompanyTeamPanel'
 import {
   AUDIENCE_OPTIONS,
   DELIVERY_MODES,
@@ -680,6 +681,8 @@ export function CompanyExpertsPanel() {
   }
 
   return (
+    <>
+    <CompanyTeamPanel />
     <section className="provider-section">
       <h2>Shto ekspert të kompanisë</h2>
       <p className="muted">Ekspertët shfaqen me kategorinë dhe verifikimin përkatës.</p>
@@ -817,6 +820,7 @@ export function CompanyExpertsPanel() {
         </ul>
       </div>
     </section>
+    </>
   )
 }
 
