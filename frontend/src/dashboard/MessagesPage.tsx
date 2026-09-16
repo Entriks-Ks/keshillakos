@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Send } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, MessageCircle, Search, Send } from 'lucide-react'
 import { Button } from '@heroui/react'
 import {
   fetchConversations,
@@ -18,6 +18,14 @@ function formatTime(iso?: string) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
+  const now = new Date()
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (sameDay) {
+    return d.toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit' })
+  }
   return d.toLocaleString('sq-AL', {
     day: '2-digit',
     month: 'short',
@@ -34,6 +42,7 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
+  const [listQuery, setListQuery] = useState('')
   const [loadingList, setLoadingList] = useState(true)
   const [loadingThread, setLoadingThread] = useState(false)
   const [sending, setSending] = useState(false)
@@ -41,6 +50,7 @@ export default function MessagesPage() {
   const [peerTyping, setPeerTyping] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const typingTimeout = useRef<number | null>(null)
+  const didAutoSelect = useRef(false)
 
   const socket = useChatSocket(Boolean(user))
 
@@ -48,6 +58,18 @@ export default function MessagesPage() {
     () => conversations.find((c) => c.id === activeId) || null,
     [conversations, activeId],
   )
+
+  const filteredConversations = useMemo(() => {
+    const q = listQuery.trim().toLowerCase()
+    if (!q) return conversations
+    return conversations.filter((c) => {
+      const haystack = [c.peer.name, c.peer.roleLabel, c.serviceTitle, c.lastMessagePreview]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [conversations, listQuery])
 
   useEffect(() => {
     let cancelled = false
@@ -66,6 +88,15 @@ export default function MessagesPage() {
       cancelled = true
     }
   }, [])
+
+  // With few conversations, open the first one automatically so the screen isn't empty.
+  useEffect(() => {
+    if (didAutoSelect.current || loadingList || activeId || conversations.length === 0) return
+    if (conversations.length <= 5) {
+      didAutoSelect.current = true
+      setSearchParams({ c: conversations[0].id }, { replace: true })
+    }
+  }, [loadingList, activeId, conversations, setSearchParams])
 
   useEffect(() => {
     if (!activeId || !socket.connected) return
@@ -222,30 +253,66 @@ export default function MessagesPage() {
     }, 1200)
   }
 
+  const peerPhoto = mediaUrl(active?.peer.profilePhoto)
+
   return (
-    <div className="chat-page">
+    <div className={`chat-page${activeId ? ' has-active' : ''}`}>
       <header className="chat-page-head">
         <div>
           <h1>Mesazhet</h1>
           <p className="muted">
-            Chat real-time me ofruesit e shërbimeve
-            {socket.connected ? ' · i lidhur' : ' · duke u lidhur...'}
+            {conversations.length === 0
+              ? 'Nis një bisedë nga oferta ose profili i ofruesit.'
+              : `${conversations.length} ${conversations.length === 1 ? 'bisedë' : 'biseda'} aktive`}
           </p>
         </div>
+        <span className={`chat-conn${socket.connected ? ' is-online' : ''}`}>
+          <span className="chat-conn-dot" aria-hidden />
+          {socket.connected ? 'Online' : 'Duke u lidhur'}
+        </span>
       </header>
 
       {error ? <p className="error">{error}</p> : null}
 
       <div className="chat-layout">
         <aside className="chat-list">
-          {loadingList ? <p className="muted">Duke u ngarkuar...</p> : null}
+          <div className="chat-list-top">
+            <div className="chat-list-title">
+              <strong>Bisedat</strong>
+              <span>{conversations.length}</span>
+            </div>
+            {conversations.length > 1 ? (
+              <label className="chat-list-search">
+                <Search size={15} aria-hidden />
+                <input
+                  value={listQuery}
+                  onChange={(e) => setListQuery(e.target.value)}
+                  placeholder="Kërko person..."
+                  aria-label="Kërko bisedë"
+                />
+              </label>
+            ) : null}
+          </div>
+
+          {loadingList ? <p className="muted chat-pad">Duke u ngarkuar...</p> : null}
+
           {!loadingList && conversations.length === 0 ? (
-            <p className="muted">
-              Nuk ke ende biseda. Hap një shërbim dhe kliko “Dërgo mesazh”.
-            </p>
+            <div className="chat-list-empty">
+              <MessageCircle size={22} aria-hidden />
+              <p>Ende pa biseda</p>
+              <span>Hap një ofertë dhe kliko “Dërgo mesazh”.</span>
+              <Link to="/ofertat" className="chat-empty-link">
+                Shiko ofertat
+              </Link>
+            </div>
           ) : null}
-          <ul>
-            {conversations.map((c) => {
+
+          {!loadingList && conversations.length > 0 && filteredConversations.length === 0 ? (
+            <p className="muted chat-pad">Asnjë rezultat për “{listQuery}”.</p>
+          ) : null}
+
+          <ul className="chat-people">
+            {filteredConversations.map((c) => {
               const photo = mediaUrl(c.peer.profilePhoto)
               return (
                 <li key={c.id}>
@@ -258,13 +325,14 @@ export default function MessagesPage() {
                       {photo ? <img src={photo} alt="" /> : <span>{c.peer.name.slice(0, 1)}</span>}
                     </div>
                     <div className="chat-list-meta">
-                      <strong>
-                        {c.peer.name}
-                        {c.unread > 0 ? <span className="chat-unread">{c.unread}</span> : null}
-                      </strong>
+                      <div className="chat-list-row">
+                        <strong>{c.peer.name}</strong>
+                        {c.lastMessageAt ? <time>{formatTime(c.lastMessageAt)}</time> : null}
+                      </div>
                       <span>{c.serviceTitle || c.peer.roleLabel || 'Bisedë'}</span>
                       <em>{c.lastMessagePreview || 'Nis bisedën'}</em>
                     </div>
+                    {c.unread > 0 ? <span className="chat-unread">{c.unread}</span> : null}
                   </button>
                 </li>
               )
@@ -275,31 +343,54 @@ export default function MessagesPage() {
         <section className="chat-thread">
           {!activeId ? (
             <div className="chat-empty">
-              <h2>Zgjidh një bisedë</h2>
-              <p className="muted">Ose nis një të re nga faqja e shërbimit / profilit të ofruesit.</p>
+              <span className="chat-empty-icon" aria-hidden>
+                <MessageCircle size={24} />
+              </span>
+              <h2>Zgjidh një person</h2>
+              <p className="muted">Zgjidh një bisedë majtas për të vazhduar chat-in.</p>
             </div>
           ) : (
             <>
               <div className="chat-thread-head">
+                <button
+                  type="button"
+                  className="chat-back"
+                  onClick={() => selectConversation('')}
+                  aria-label="Kthehu te lista"
+                >
+                  <ArrowLeft size={18} />
+                </button>
                 <div className="profile-avatar-md" aria-hidden>
-                  {mediaUrl(active?.peer.profilePhoto) ? (
-                    <img src={mediaUrl(active?.peer.profilePhoto)} alt="" />
+                  {peerPhoto ? (
+                    <img src={peerPhoto} alt="" />
                   ) : (
                     <span>{(active?.peer.name || '?').slice(0, 1)}</span>
                   )}
                 </div>
-                <div>
+                <div className="chat-thread-meta">
                   <strong>{active?.peer.name || 'Bisedë'}</strong>
-                  <span className="muted">
+                  <span>
                     {active?.serviceTitle
                       ? `Për: ${active.serviceTitle}`
                       : active?.peer.roleLabel || 'Chat'}
                   </span>
                 </div>
+                {active?.peer.uid ? (
+                  <Link to={`/providers/${active.peer.uid}`} className="chat-profile-link">
+                    Profili
+                  </Link>
+                ) : null}
               </div>
 
               <div className="chat-messages">
                 {loadingThread ? <p className="muted">Duke ngarkuar mesazhet...</p> : null}
+                {!loadingThread && messages.length === 0 ? (
+                  <div className="chat-thread-empty">
+                    <p>
+                      Nis bisedën me <strong>{active?.peer.name}</strong>.
+                    </p>
+                  </div>
+                ) : null}
                 {messages.map((m) => {
                   const mine = m.senderUid === user?.uid
                   return (
@@ -317,7 +408,7 @@ export default function MessagesPage() {
                 <input
                   value={draft}
                   onChange={(e) => onDraftChange(e.target.value)}
-                  placeholder="Shkruaj mesazhin..."
+                  placeholder={`Mesazh për ${active?.peer.name || 'ta'}...`}
                   maxLength={4000}
                   disabled={sending}
                 />
