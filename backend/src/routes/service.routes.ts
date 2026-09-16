@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
   createService,
+  getActiveServiceById,
   listActiveServices,
   listServicesByProvider,
 } from '../services/serviceService'
@@ -27,6 +28,20 @@ router.get('/mine', requireAuth, requireRole('provider', 'admin'), async (req, r
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan shërbimet',
+    })
+  }
+})
+
+router.get('/:id', async (req, res) => {
+  try {
+    const service = await getActiveServiceById(req.params.id)
+    if (!service) {
+      return res.status(404).json({ message: 'Shërbimi nuk u gjet' })
+    }
+    return res.json({ service })
+  } catch (err) {
+    return res.status(500).json({
+      message: err instanceof Error ? err.message : 'Nuk u ngarkua shërbimi',
     })
   }
 })

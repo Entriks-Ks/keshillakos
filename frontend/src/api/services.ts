@@ -77,3 +77,8 @@ export async function fetchActiveServices() {
   const { data } = await api.get<{ services: ServiceItem[] }>('/api/services')
   return data.services
 }
+
+export async function fetchService(id: string) {
+  const { data } = await api.get<{ service: ServiceItem }>(`/api/services/${id}`)
+  return data.service
+}

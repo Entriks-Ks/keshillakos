@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import {
   COACHING_DISCLAIMER,
   FINANCE_REGULATORY_NOTICE,
@@ -163,6 +164,19 @@ export async function listServicesByProvider(providerUid: string) {
 
 export async function listActiveServices() {
   const services = await Service.find({ active: true }).sort({ createdAt: -1 }).limit(50)
+  return withProviders(services)
+}
+
+export async function getActiveServiceById(id: string) {
+  if (!mongoose.isValidObjectId(id)) return null
+  const service = await Service.findOne({ _id: id, active: true })
+  if (!service) return null
+  const [enriched] = await withProviders([service])
+  return enriched
+}
+
+export async function listActiveServicesByProvider(providerUid: string) {
+  const services = await Service.find({ providerUid, active: true }).sort({ createdAt: -1 })
   return withProviders(services)
 }
 

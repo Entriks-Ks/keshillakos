@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { mediaUrl } from '../api/auth'
 import {
   fetchProviderSchedule,
@@ -41,11 +42,13 @@ function formatPrice(service: ServiceItem) {
 
 type Props = {
   service: ServiceItem
+  mode?: 'list' | 'detail'
 }
 
-export default function ServiceCard({ service }: Props) {
+export default function ServiceCard({ service, mode = 'list' }: Props) {
   const { user } = useAuth()
-  const [expanded, setExpanded] = useState(false)
+  const navigate = useNavigate()
+  const isDetail = mode === 'detail'
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const details = service.details || {}
   const provider = service.provider
@@ -132,8 +135,37 @@ export default function ServiceCard({ service }: Props) {
     detailRows.push({ label: 'Referenca', value: details.references })
   }
 
+  const showDetails =
+    detailRows.length > 0 || details.regulatoryNotice || details.coachingDisclaimerAccepted
+
+  function openDetails() {
+    if (!isDetail) navigate(`/services/${service.id}`)
+  }
+
+  function onCardClick(e: MouseEvent<HTMLElement>) {
+    if (isDetail) return
+    const target = e.target as HTMLElement
+    if (target.closest('a, button, input, textarea, select, label')) return
+    openDetails()
+  }
+
+  function onCardKeyDown(e: KeyboardEvent<HTMLElement>) {
+    if (isDetail) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      openDetails()
+    }
+  }
+
   return (
-    <article className="service-card">
+    <article
+      className={`service-card${isDetail ? ' is-detail' : ' is-clickable'}`}
+      onClick={onCardClick}
+      onKeyDown={onCardKeyDown}
+      role={isDetail ? undefined : 'link'}
+      tabIndex={isDetail ? undefined : 0}
+      aria-label={isDetail ? undefined : `Shiko detajet e shërbimit ${service.title}`}
+    >
       <header className="service-card-head">
         <div>
           <p className="service-card-kicker">
@@ -157,19 +189,15 @@ export default function ServiceCard({ service }: Props) {
         {busySlots.length > 0 ? <li>{busySlots.length} orë të zëna</li> : null}
       </ul>
 
-      <p className={`service-card-desc${expanded ? ' is-expanded' : ''}`}>{service.description}</p>
+      <p className={`service-card-desc${isDetail ? ' is-expanded' : ''}`}>{service.description}</p>
 
-      {(detailRows.length > 0 || details.regulatoryNotice || details.coachingDisclaimerAccepted) && (
-        <button
-          type="button"
-          className="ghost service-card-toggle"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? 'Fshih detajet' : 'Shiko më shumë detaje'}
+      {!isDetail ? (
+        <button type="button" className="ghost service-card-toggle" onClick={openDetails}>
+          Shiko detajet
         </button>
-      )}
+      ) : null}
 
-      {expanded ? (
+      {isDetail && showDetails ? (
         <div className="service-card-details">
           <dl>
             {detailRows.map((row) => (
@@ -191,38 +219,47 @@ export default function ServiceCard({ service }: Props) {
             <p className="service-card-notice">{details.regulatoryNotice}</p>
           ) : null}
           {details.coachingDisclaimerAccepted ? (
-            <p className="service-card-notice">
-              Coaching ≠ terapi / trajtim mjekësor.
-            </p>
+            <p className="service-card-notice">Coaching ≠ terapi / trajtim mjekësor.</p>
           ) : null}
         </div>
       ) : null}
 
       <div className="service-card-provider">
-        <div className="profile-avatar-md" aria-hidden>
-          {photo ? <img src={photo} alt="" /> : <span>{(provider?.name || service.providerName).slice(0, 1)}</span>}
-        </div>
-        <div className="service-card-provider-info">
-          <strong>{provider?.name || service.providerName}</strong>
-          <span>
-            {provider?.roleLabel || 'Ofrues'}
-            {provider?.headline ? ` · ${provider.headline}` : ''}
-          </span>
-          <span>
-            ★{' '}
-            {provider && provider.ratingCount > 0
-              ? `${provider.ratingAverage.toFixed(1)} (${provider.ratingCount})`
-              : 'pa vlerësime'}
-            {provider?.location ? ` · ${provider.location}` : ''}
-          </span>
-          {provider?.skills && provider.skills.length > 0 ? (
-            <span className="service-card-skills">{provider.skills.slice(0, 5).join(' · ')}</span>
-          ) : null}
-          {provider?.languages && provider.languages.length > 0 ? (
-            <span>Gjuhë: {provider.languages.join(', ')}</span>
-          ) : null}
-          {provider?.bio && expanded ? <p className="service-card-bio">{provider.bio}</p> : null}
-        </div>
+        <Link
+          to={`/providers/${service.providerUid}`}
+          className="service-card-provider-link"
+          aria-label={`Shiko profilin e ${provider?.name || service.providerName}`}
+        >
+          <div className="profile-avatar-md" aria-hidden>
+            {photo ? (
+              <img src={photo} alt="" />
+            ) : (
+              <span>{(provider?.name || service.providerName).slice(0, 1)}</span>
+            )}
+          </div>
+          <div className="service-card-provider-info">
+            <strong>{provider?.name || service.providerName}</strong>
+            <span>
+              {provider?.roleLabel || 'Ofrues'}
+              {provider?.headline ? ` · ${provider.headline}` : ''}
+            </span>
+            <span>
+              ★{' '}
+              {provider && provider.ratingCount > 0
+                ? `${provider.ratingAverage.toFixed(1)} (${provider.ratingCount})`
+                : 'pa vlerësime'}
+              {provider?.location ? ` · ${provider.location}` : ''}
+            </span>
+            {provider?.skills && provider.skills.length > 0 ? (
+              <span className="service-card-skills">{provider.skills.slice(0, 5).join(' · ')}</span>
+            ) : null}
+            {provider?.languages && provider.languages.length > 0 ? (
+              <span>Gjuhë: {provider.languages.join(', ')}</span>
+            ) : null}
+            {provider?.bio && isDetail ? <p className="service-card-bio">{provider.bio}</p> : null}
+            <span className="service-card-profile-cta">Shiko profilin →</span>
+          </div>
+        </Link>
       </div>
 
       {schedule.length > 0 ? (

@@ -56,22 +56,22 @@ export async function upsertUser(input: {
   const $set: Record<string, string> = { email }
   if (input.updateName) $set.name = name
 
+  // MongoDB forbids the same path in both $set and $setOnInsert
+  const $setOnInsert: Record<string, unknown> = {
+    uid: input.uid,
+    role: input.role ?? 'user',
+    skills: [],
+    languages: [],
+    headline: '',
+    bio: '',
+    location: '',
+    profilePhoto: '',
+  }
+  if (!input.updateName) $setOnInsert.name = name
+
   const user = await User.findOneAndUpdate(
     { uid: input.uid },
-    {
-      $set,
-      $setOnInsert: {
-        uid: input.uid,
-        name,
-        role: input.role ?? 'user',
-        skills: [],
-        languages: [],
-        headline: '',
-        bio: '',
-        location: '',
-        profilePhoto: '',
-      },
-    },
+    { $set, $setOnInsert },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   )
 

@@ -465,8 +465,7 @@ export default function HomePage() {
         <section className="home-services" aria-labelledby="services-heading">
           <h2 id="services-heading">Shërbimet e ofruara</h2>
           <p className="muted">
-            Detaje të plota për çdo ofertë: çmimi, mënyra e ofrimit, ofruesi, aftësitë dhe oraret e
-            lira.
+            Kliko një shërbim për të parë detajet e plota: çmimi, ofruesi, aftësitë dhe oraret e lira.
           </p>
 
           {servicesLoading ? (

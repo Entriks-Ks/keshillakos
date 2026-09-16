@@ -26,6 +26,8 @@ import DashboardRedirect from './pages/DashboardRedirect'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ServiceDetailPage from './pages/ServiceDetailPage'
+import ProviderProfilePage from './pages/ProviderProfilePage'
 
 export default function App() {
   return (
@@ -33,6 +35,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/services/:id" element={<ServiceDetailPage />} />
+          <Route path="/providers/:uid" element={<ProviderProfilePage />} />
 
           <Route element={<PublicOnlyRoute />}>
             <Route path="/login" element={<LoginPage />} />

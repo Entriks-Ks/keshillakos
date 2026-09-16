@@ -12,6 +12,7 @@ import expertRoutes from './routes/expert.routes'
 import matchRoutes from './routes/match.routes'
 import ratingRoutes from './routes/rating.routes'
 import requestRoutes from './routes/request.routes'
+import providerRoutes from './routes/provider.routes'
 import serviceRoutes from './routes/service.routes'
 
 const app = express()
@@ -34,6 +35,7 @@ app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/availability', availabilityRoutes)
 app.use('/api/domains', domainRoutes)
 app.use('/api/services', serviceRoutes)
+app.use('/api/providers', providerRoutes)
 app.use('/api/experts', expertRoutes)
 app.use('/api/match', matchRoutes)
 app.use('/api/ratings', ratingRoutes)
