@@ -1962,6 +1962,82 @@ h1 {
   cursor: wait;
 }
 
+.login-form .textfield,
+.register-form .textfield {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.login-form .input,
+.login-form .input-group,
+.register-form .input {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.login-form .input-group__input,
+.login-form .input-group__input:focus {
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.login-form .input-group:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, white);
+  border-color: var(--accent);
+}
+
+.login-form .input-group__suffix {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.login-form .input-group__suffix .button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  margin: 0 6px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+.login-form .input-group__suffix .button:hover,
+.login-form .input-group__suffix .button:focus-visible {
+  background: var(--accent-soft);
+  opacity: 1;
+}
+
+.login-form .auth-submit,
+.register-form .auth-submit {
+  width: 100%;
+  height: 48px;
+  border-radius: 9999px;
+}
+
+.login-form .input[data-invalid='true'],
+.login-form .input-group[data-invalid='true'],
+.register-form .input[data-invalid='true'] {
+  border-color: var(--danger);
+}
+
 .ghost {
   background: transparent;
   color: var(--ink);
@@ -2276,6 +2352,17 @@ h1 {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.profile-role-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.profile-role-options .link-btn {
+  border-radius: 9999px;
 }
 
 .profile-photo-row {
@@ -2871,6 +2958,51 @@ h1 {
 .service-form button:disabled {
   opacity: 0.7;
   cursor: wait;
+}
+
+.password-control {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.password-control input {
+  padding-right: 52px;
+  border-radius: 9999px;
+}
+
+.auth-form .password-toggle,
+.service-form .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink);
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.auth-form .password-toggle:hover,
+.service-form .password-toggle:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+  opacity: 1;
+}
+
+.auth-form .password-toggle:focus-visible,
+.service-form .password-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  opacity: 1;
 }
 
 .success {
