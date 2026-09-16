@@ -1,71 +1,100 @@
 import type { UserRole } from '../api/auth'
+import type { LucideIcon } from 'lucide-react'
+import {
+  Briefcase,
+  Building2,
+  CalendarDays,
+  FolderKanban,
+  Home,
+  Inbox,
+  LayoutDashboard,
+  MessageCircle,
+  Search,
+  Settings,
+  Star,
+  Tags,
+  UserRound,
+  Users,
+} from 'lucide-react'
 
 export type DashNavItem = {
   to: string
   label: string
   end?: boolean
+  icon: LucideIcon
+  section?: 'main' | 'account'
 }
 
-const sharedProfile = (base: string): DashNavItem => ({
+const profile = (base: string): DashNavItem => ({
   to: `${base}/profile`,
   label: 'Profili',
+  icon: UserRound,
+  section: 'account',
 })
 
-const sharedSettings = (base: string): DashNavItem => ({
+const settings = (base: string): DashNavItem => ({
   to: `${base}/settings`,
   label: 'Cilësimet',
+  icon: Settings,
+  section: 'account',
 })
 
 export function getDashboardNav(role: UserRole): DashNavItem[] {
   switch (role) {
     case 'user':
       return [
-        { to: '/dashboard/user', label: 'Përmbledhje', end: true },
-        { to: '/dashboard/user/requests', label: 'Kërkesat e mia' },
-        { to: '/dashboard/user/messages', label: 'Mesazhet' },
-        { to: '/dashboard/user/ratings', label: 'Vlerëso ofruesit' },
-        { to: '/', label: 'Kërko ndihmë', end: true },
-        sharedProfile('/dashboard/user'),
-        sharedSettings('/dashboard/user'),
+        { to: '/dashboard/user', label: 'Përmbledhje', end: true, icon: LayoutDashboard },
+        { to: '/dashboard/user/requests', label: 'Kërkesat e mia', icon: Inbox },
+        { to: '/dashboard/user/messages', label: 'Mesazhet', icon: MessageCircle },
+        { to: '/dashboard/user/ratings', label: 'Vlerëso ofruesit', icon: Star },
+        { to: '/', label: 'Kërko ndihmë', end: true, icon: Search },
+        profile('/dashboard/user'),
+        settings('/dashboard/user'),
       ]
     case 'provider':
       return [
-        { to: '/dashboard/provider', label: 'Përmbledhje', end: true },
-        { to: '/dashboard/provider/inbox', label: 'Kërkesat' },
-        { to: '/dashboard/provider/messages', label: 'Mesazhet' },
-        { to: '/dashboard/provider/services', label: 'Shërbimet' },
-        { to: '/dashboard/provider/availability', label: 'Disponueshmëria' },
-        { to: '/dashboard/provider/ratings', label: 'Vlerësimet' },
-        sharedProfile('/dashboard/provider'),
-        sharedSettings('/dashboard/provider'),
+        { to: '/dashboard/provider', label: 'Përmbledhje', end: true, icon: LayoutDashboard },
+        { to: '/dashboard/provider/inbox', label: 'Kërkesat', icon: Inbox },
+        { to: '/dashboard/provider/messages', label: 'Mesazhet', icon: MessageCircle },
+        { to: '/dashboard/provider/services', label: 'Shërbimet', icon: Briefcase },
+        { to: '/dashboard/provider/availability', label: 'Disponueshmëria', icon: CalendarDays },
+        { to: '/dashboard/provider/ratings', label: 'Vlerësimet', icon: Star },
+        profile('/dashboard/provider'),
+        settings('/dashboard/provider'),
       ]
     case 'company':
       return [
-        { to: '/dashboard/company', label: 'Përmbledhje', end: true },
-        { to: '/dashboard/company/inbox', label: 'Kërkesat' },
-        { to: '/dashboard/company/messages', label: 'Mesazhet' },
-        { to: '/dashboard/company/experts', label: 'Ekspertët' },
-        { to: '/dashboard/company/availability', label: 'Disponueshmëria' },
-        { to: '/dashboard/company/ratings', label: 'Vlerësimet' },
-        sharedProfile('/dashboard/company'),
-        sharedSettings('/dashboard/company'),
+        { to: '/dashboard/company', label: 'Përmbledhje', end: true, icon: LayoutDashboard },
+        { to: '/dashboard/company/inbox', label: 'Kërkesat', icon: Inbox },
+        { to: '/dashboard/company/messages', label: 'Mesazhet', icon: MessageCircle },
+        { to: '/dashboard/company/experts', label: 'Ekspertët', icon: Users },
+        { to: '/dashboard/company/availability', label: 'Disponueshmëria', icon: CalendarDays },
+        { to: '/dashboard/company/ratings', label: 'Vlerësimet', icon: Star },
+        profile('/dashboard/company'),
+        settings('/dashboard/company'),
       ]
     case 'admin':
       return [
-        { to: '/dashboard/admin', label: 'Përmbledhje', end: true },
-        { to: '/dashboard/admin/users', label: 'Përdoruesit' },
-        { to: '/dashboard/admin/requests', label: 'Të gjitha kërkesat' },
-        { to: '/dashboard/admin/inbox', label: 'Inbox' },
-        { to: '/dashboard/admin/messages', label: 'Mesazhet' },
-        { to: '/dashboard/admin/domains', label: 'Kategoritë' },
-        { to: '/dashboard/admin/services', label: 'Shërbimet' },
-        { to: '/dashboard/admin/availability', label: 'Disponueshmëria' },
-        { to: '/dashboard/admin/experts', label: 'Ekspertët' },
-        { to: '/dashboard/admin/ratings', label: 'Vlerësimet' },
-        sharedProfile('/dashboard/admin'),
-        sharedSettings('/dashboard/admin'),
+        { to: '/dashboard/admin', label: 'Përmbledhje', end: true, icon: LayoutDashboard },
+        { to: '/dashboard/admin/users', label: 'Përdoruesit', icon: Users },
+        { to: '/dashboard/admin/requests', label: 'Të gjitha kërkesat', icon: FolderKanban },
+        { to: '/dashboard/admin/inbox', label: 'Inbox', icon: Inbox },
+        { to: '/dashboard/admin/messages', label: 'Mesazhet', icon: MessageCircle },
+        { to: '/dashboard/admin/domains', label: 'Kategoritë', icon: Tags },
+        { to: '/dashboard/admin/services', label: 'Shërbimet', icon: Briefcase },
+        { to: '/dashboard/admin/availability', label: 'Disponueshmëria', icon: CalendarDays },
+        { to: '/dashboard/admin/experts', label: 'Ekspertët', icon: Building2 },
+        { to: '/dashboard/admin/ratings', label: 'Vlerësimet', icon: Star },
+        profile('/dashboard/admin'),
+        settings('/dashboard/admin'),
       ]
   }
+}
+
+export function groupDashboardNav(items: DashNavItem[]) {
+  const main = items.filter((item) => item.section !== 'account')
+  const account = items.filter((item) => item.section === 'account')
+  return { main, account }
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {

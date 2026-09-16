@@ -43,13 +43,14 @@ function formatPrice(service: ServiceItem) {
 
 type Props = {
   service: ServiceItem
-  mode?: 'list' | 'detail'
+  mode?: 'list' | 'detail' | 'compact'
 }
 
 export default function ServiceCard({ service, mode = 'list' }: Props) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const isDetail = mode === 'detail'
+  const isCompact = mode === 'compact'
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const details = service.details || {}
   const provider = service.provider
@@ -57,6 +58,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
   const price = formatPrice(service)
 
   useEffect(() => {
+    if (isCompact) return
     let cancelled = false
     fetchProviderSchedule(service.providerUid)
       .then((data) => {
@@ -68,7 +70,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
     return () => {
       cancelled = true
     }
-  }, [service.providerUid])
+  }, [service.providerUid, isCompact])
 
   const freeSlots = schedule.filter((s) => s.status === 'open')
   const busySlots = schedule.filter((s) => s.status === 'held' || s.status === 'booked')
@@ -160,7 +162,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
 
   return (
     <article
-      className={`service-card${isDetail ? ' is-detail' : ' is-clickable'}`}
+      className={`service-card${isDetail ? ' is-detail' : ' is-clickable'}${isCompact ? ' is-compact' : ''}`}
       onClick={onCardClick}
       onKeyDown={onCardKeyDown}
       role={isDetail ? undefined : 'link'}
@@ -180,19 +182,19 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
 
       <ul className="service-card-chips">
         <li>{service.location}</li>
-        {details.deliveryModes?.slice(0, 2).map((mode) => (
-          <li key={mode}>{DELIVERY_LABELS[mode] || mode}</li>
+        {details.deliveryModes?.slice(0, isCompact ? 1 : 2).map((modeValue) => (
+          <li key={modeValue}>{DELIVERY_LABELS[modeValue] || modeValue}</li>
         ))}
-        {details.crossBorder ? <li>Diaspora / cross-border</li> : null}
-        {freeSlots.length > 0 ? (
+        {!isCompact && details.crossBorder ? <li>Diaspora / cross-border</li> : null}
+        {!isCompact && freeSlots.length > 0 ? (
           <li className="chip-open">{freeSlots.length} orë të lira</li>
         ) : null}
-        {busySlots.length > 0 ? <li>{busySlots.length} orë të zëna</li> : null}
+        {!isCompact && busySlots.length > 0 ? <li>{busySlots.length} orë të zëna</li> : null}
       </ul>
 
       <p className={`service-card-desc${isDetail ? ' is-expanded' : ''}`}>{service.description}</p>
 
-      {!isDetail ? (
+      {!isDetail && !isCompact ? (
         <button type="button" className="ghost service-card-toggle" onClick={openDetails}>
           Shiko detajet
         </button>
@@ -242,28 +244,39 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
             <strong>{provider?.name || service.providerName}</strong>
             <span>
               {provider?.roleLabel || 'Ofrues'}
-              {provider?.headline ? ` · ${provider.headline}` : ''}
+              {!isCompact && provider?.headline ? ` · ${provider.headline}` : ''}
             </span>
-            <span>
-              ★{' '}
-              {provider && provider.ratingCount > 0
-                ? `${provider.ratingAverage.toFixed(1)} (${provider.ratingCount})`
-                : 'pa vlerësime'}
-              {provider?.location ? ` · ${provider.location}` : ''}
-            </span>
-            {provider?.skills && provider.skills.length > 0 ? (
-              <span className="service-card-skills">{provider.skills.slice(0, 5).join(' · ')}</span>
-            ) : null}
-            {provider?.languages && provider.languages.length > 0 ? (
-              <span>Gjuhë: {provider.languages.join(', ')}</span>
-            ) : null}
-            {provider?.bio && isDetail ? <p className="service-card-bio">{provider.bio}</p> : null}
-            <span className="service-card-profile-cta">Shiko profilin →</span>
+            {!isCompact ? (
+              <>
+                <span>
+                  ★{' '}
+                  {provider && provider.ratingCount > 0
+                    ? `${provider.ratingAverage.toFixed(1)} (${provider.ratingCount})`
+                    : 'pa vlerësime'}
+                  {provider?.location ? ` · ${provider.location}` : ''}
+                </span>
+                {provider?.skills && provider.skills.length > 0 ? (
+                  <span className="service-card-skills">{provider.skills.slice(0, 5).join(' · ')}</span>
+                ) : null}
+                {provider?.languages && provider.languages.length > 0 ? (
+                  <span>Gjuhë: {provider.languages.join(', ')}</span>
+                ) : null}
+                {provider?.bio && isDetail ? <p className="service-card-bio">{provider.bio}</p> : null}
+                <span className="service-card-profile-cta">Shiko profilin →</span>
+              </>
+            ) : (
+              <span>
+                ★{' '}
+                {provider && provider.ratingCount > 0
+                  ? provider.ratingAverage.toFixed(1)
+                  : '—'}
+              </span>
+            )}
           </div>
         </Link>
       </div>
 
-      {schedule.length > 0 ? (
+      {!isCompact && schedule.length > 0 ? (
         <div className="service-card-slots">
           <p className="provider-details-label">Oraret e ofruesit</p>
           <div className="slot-time-grid slot-time-grid-compact">
@@ -285,13 +298,20 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
       ) : null}
 
       <div className="service-card-actions">
-        <RateProvider
-          providerUid={service.providerUid}
-          providerName={provider?.name || service.providerName}
-          initialAverage={provider?.ratingAverage ?? 0}
-          initialCount={provider?.ratingCount ?? 0}
-          compact
-        />
+        {!isCompact ? (
+          <RateProvider
+            providerUid={service.providerUid}
+            providerName={provider?.name || service.providerName}
+            initialAverage={provider?.ratingAverage ?? 0}
+            initialCount={provider?.ratingCount ?? 0}
+            compact
+          />
+        ) : null}
+        {isCompact ? (
+          <button type="button" className="ghost service-card-toggle" onClick={openDetails}>
+            Shiko
+          </button>
+        ) : null}
         {user?.role === 'user' || user?.role === 'admin' || !user ? (
           <>
             <StartChatButton
@@ -301,15 +321,17 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
               serviceTitle={service.title}
               compact
             />
-            <SendRequestButton
-              providerUid={service.providerUid}
-              providerId={service.providerId}
-              providerName={provider?.name || service.providerName}
-              categoryId={service.categoryId}
-              serviceId={service.id}
-              serviceTitle={service.title}
-              intake={intakeDefaults}
-            />
+            {!isCompact ? (
+              <SendRequestButton
+                providerUid={service.providerUid}
+                providerId={service.providerId}
+                providerName={provider?.name || service.providerName}
+                categoryId={service.categoryId}
+                serviceId={service.id}
+                serviceTitle={service.title}
+                intake={intakeDefaults}
+              />
+            ) : null}
           </>
         ) : null}
       </div>

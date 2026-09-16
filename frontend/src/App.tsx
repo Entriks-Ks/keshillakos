@@ -24,9 +24,9 @@ import {
   UserRateProvidersPanel,
 } from './dashboard/panels'
 import DashboardRedirect from './pages/DashboardRedirect'
-import { CompanyOnboardingPage, ExpertOnboardingPage } from './dashboard/OnboardingPages'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
+import OffersPage from './pages/OffersPage'
 import RegisterPage from './pages/RegisterPage'
 import ServiceDetailPage from './pages/ServiceDetailPage'
 import ProviderProfilePage from './pages/ProviderProfilePage'
@@ -37,6 +37,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/ofertat" element={<OffersPage />} />
           <Route path="/services/:id" element={<ServiceDetailPage />} />
           <Route path="/providers/:uid" element={<ProviderProfilePage />} />
 
@@ -56,8 +57,6 @@ export default function App() {
               <Route path="messages" element={<MessagesPage />} />
               <Route path="ratings" element={<UserRateProvidersPanel />} />
               <Route path="profile" element={<ProfilePage />} />
-              <Route path="onboarding/expert" element={<ExpertOnboardingPage />} />
-              <Route path="onboarding/company" element={<CompanyOnboardingPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

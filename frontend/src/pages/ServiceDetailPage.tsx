@@ -60,8 +60,8 @@ export default function ServiceDetailPage() {
       </header>
 
       <main className="service-detail-main">
-        <Link to="/" className="ghost link-btn service-detail-back">
-          ← Kthehu te shërbimet
+        <Link to="/ofertat" className="ghost link-btn service-detail-back">
+          ← Kthehu te ofertat
         </Link>
 
         {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
