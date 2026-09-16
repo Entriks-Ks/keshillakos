@@ -1,13 +1,5 @@
-<<<<<<< Updated upstream
 import mongoose from 'mongoose'
-import {
-  COACHING_DISCLAIMER,
-  FINANCE_REGULATORY_NOTICE,
-  domainRequires,
-} from '../data/domains'
-=======
 import { ProviderProfile } from '../models/ProviderProfile'
->>>>>>> Stashed changes
 import { Service, type ServiceDetails, type ServiceDoc } from '../models/Service'
 import { User } from '../models/User'
 import { validateExtensions } from './categoryConfiguration'
@@ -110,21 +102,15 @@ export async function listActiveServices() {
   ])
   return [...(await offersToLegacyServices(offers, true)), ...(await withLegacyProviders(legacy))]
 }
-<<<<<<< Updated upstream
-
 export async function getActiveServiceById(id: string) {
   if (!mongoose.isValidObjectId(id)) return null
   const service = await Service.findOne({ _id: id, active: true })
   if (!service) return null
-  const [enriched] = await withProviders([service])
+  const [enriched] = await withLegacyProviders([service])
   return enriched
 }
 
 export async function listActiveServicesByProvider(providerUid: string) {
   const services = await Service.find({ providerUid, active: true }).sort({ createdAt: -1 })
-  return withProviders(services)
+  return withLegacyProviders(services)
 }
-
-export { COACHING_DISCLAIMER }
-=======
->>>>>>> Stashed changes

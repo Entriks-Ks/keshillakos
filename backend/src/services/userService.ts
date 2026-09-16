@@ -91,35 +91,16 @@ export async function upsertUser(input: {
   // MongoDB forbids the same path in both $set and $setOnInsert
   const $setOnInsert: Record<string, unknown> = {
     uid: input.uid,
-    role: input.role ?? 'user',
-    skills: [],
-    languages: [],
-    headline: '',
-    bio: '',
-    location: '',
-    profilePhoto: '',
+    role: input.grantedRoles?.find((role) => role !== 'user') ?? 'user',
+    roles: input.grantedRoles ?? ['user'],
+    requestedRole: input.requestedRole,
   }
-  if (!input.updateName) $setOnInsert.name = name
+  if (!input.updateName) Object.assign($setOnInsert, { name, ...splitName(name) })
 
   const user = await User.findOneAndUpdate(
     { uid: input.uid },
-<<<<<<< Updated upstream
     { $set, $setOnInsert },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-=======
-    {
-      $set,
-      $setOnInsert: {
-        uid: input.uid,
-        name,
-        ...splitName(name),
-        role: input.requestedRole ?? input.grantedRoles?.find((role) => role !== 'user') ?? 'user',
-        roles: input.grantedRoles ?? ['user'],
-        requestedRole: input.requestedRole,
-      },
-    },
     { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true },
->>>>>>> Stashed changes
   )
 
   return toPublicUser(user)

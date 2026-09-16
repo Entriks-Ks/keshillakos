@@ -144,7 +144,6 @@ export const SYSTEM_DOMAINS: DomainDefinition[] = [
       'Shqip',
       'Gjermanisht',
       'Anglisht',
-      'Serbisht',
       'Përkthime të noterizuara/certifikuara',
     ],
     keywords: [
@@ -155,7 +154,6 @@ export const SYSTEM_DOMAINS: DomainDefinition[] = [
       'shqip',
       'gjermanisht',
       'anglisht',
-      'serbisht',
       'noterizuar',
       'certifikuar',
       'translator',

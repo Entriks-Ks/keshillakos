@@ -11,6 +11,7 @@ import { UserRequest } from '../models/UserRequest'
 import { canManageBusiness } from './businessService'
 import { DEFAULT_PORTAL } from './domainService'
 import { listMyProviderProfiles } from './providerProfileService'
+import { resolvePolicyRules, resolvePolicySnapshot } from './policyService'
 
 export type ProviderRatingStats = { providerUid: string; average: number; count: number; verifiedCount: number }
 export type InteractionChoice = { kind: 'appointment' | 'request_delivery'; id: string; providerId: string }
@@ -35,7 +36,7 @@ async function reviewInteraction(reviewer: { _id: Types.ObjectId }, subjectType:
     if (!profile) throw new Error('Ofruesi nuk u gjet')
     if (subjectType === 'provider' && !appointment.providerProfile.equals(subjectId) || subjectType === 'business' && !appointment.business?.equals(subjectId)) throw new Error('Subjekti nuk përputhet me rezervimin')
     const request = appointment.userRequest ? await UserRequest.findById(appointment.userRequest) : null
-    return { kind, ref: appointment._id, verified: true, userRequest: request?._id, appointment: appointment._id, profile, portal: request?.portal || DEFAULT_PORTAL }
+    return { kind, ref: appointment._id, verified: true, userRequest: request?._id, category: request?.category, appointment: appointment._id, profile, portal: request?.portal || DEFAULT_PORTAL }
   }
   const delivery = await RequestDelivery.findById(id)
   if (!delivery || delivery.status !== 'completed') throw new Error('Kërkohet kërkesë e përfunduar')
@@ -50,7 +51,7 @@ async function reviewInteraction(reviewer: { _id: Types.ObjectId }, subjectType:
     const offer = delivery.serviceOffer ? await ServiceOffer.findById(delivery.serviceOffer).select('business').lean() : null
     if (!offer?.business?.equals(subjectId)) throw new Error('Biznesi nuk lidhet me këtë ndërveprim')
   }
-  return { kind, ref: delivery._id, verified: false, userRequest: request._id, appointment: undefined, profile, portal: request.portal }
+  return { kind, ref: delivery._id, verified: false, userRequest: request._id, category: request.category, appointment: undefined, profile, portal: request.portal }
 }
 
 async function assertNotSelfReview(reviewerId: Types.ObjectId, profile: ProviderProfileDoc | null, businessId?: Types.ObjectId) {
@@ -75,17 +76,25 @@ export async function createReview(input: {
   if (!reviewer) throw new Error('Përdoruesi nuk u gjet')
   const interaction = await reviewInteraction(reviewer, subjectType, subjectId, input.interactionKind, input.interactionId)
   await assertNotSelfReview(reviewer._id, interaction.profile, subjectType === 'business' ? subjectId : undefined)
+  const policySnapshot = await resolvePolicySnapshot(interaction.portal, interaction.category)
+  const policy = policySnapshot.rules
+  if (interaction.kind === 'appointment' && !policy.reviewEligibility.completedAppointment || interaction.kind === 'request_delivery' && !policy.reviewEligibility.completedDelivery) throw new Error('Politika nuk lejon vlerësim për këtë ndërveprim')
   if (!Number.isInteger(input.stars) || input.stars < 1 || input.stars > 5) throw new Error('Vlerësimi duhet të jetë nga 1 deri në 5')
-  return Review.create({
+  const autoPublish = !policy.moderation.reviewRequiresApproval
+  const review = await Review.create({
     reviewer: reviewer._id, subjectType, subjectId,
     providerProfile: subjectType === 'provider' ? subjectId : undefined,
     business: subjectType === 'business' ? subjectId : undefined,
     portal: interaction.portal, source: 'web',
+    policy: policySnapshot.policyId, policyVersion: policySnapshot.version,
     interaction: { kind: interaction.kind, ref: interaction.ref, eligible: true, verified: interaction.verified },
     userRequest: interaction.userRequest, appointment: interaction.appointment,
     stars: input.stars, dimensions: input.dimensions ?? {}, text: input.text?.trim(), language: input.language,
-    moderation: { status: 'pending' }, abuse: { status: 'clear' },
+    moderation: { status: autoPublish ? 'published' : 'pending' }, abuse: { status: 'clear' },
+    publishedAt: autoPublish ? new Date() : undefined,
   })
+  if (autoPublish) await refreshRatingAggregate(review.portal, review.subjectType, review.subjectId)
+  return review
 }
 
 function dimensionEntries(dimensions: ReviewDoc['dimensions'] | Record<string, number>) {
@@ -155,7 +164,9 @@ export async function getStatsForProviders(providerUids: string[]) {
 }
 
 async function toLegacyRating(review: ReviewDoc & { _id: Types.ObjectId }, providerUid: string, providerName: string) {
-  const reviewer = await User.findById(review.reviewer).select('firstName').lean()
+  const request = review.userRequest ? await UserRequest.findById(review.userRequest).select('category').lean() : null
+  const policy = await resolvePolicyRules(review.portal, request?.category)
+  const reviewer = policy.privacy.reviewerDisplay === 'first_name' ? await User.findById(review.reviewer).select('firstName').lean() : null
   return { id: String(review._id), providerUid, providerName, raterUid: '', raterName: reviewer?.firstName || 'Përdorues', score: review.stars, comment: review.text, verified: review.interaction.verified, response: review.response?.text, createdAt: review.createdAt, updatedAt: review.updatedAt }
 }
 

@@ -34,6 +34,10 @@ test('only a completed interaction belonging to the reviewer qualifies', () => {
 test('Review validates canonical subject, interaction, stars and dimensions', async () => {
   const review = appointmentReview()
   await review.validate()
+  review.policy = new Types.ObjectId()
+  await assert.rejects(review.validate(), /Policy reference and version/)
+  review.policyVersion = 2
+  await review.validate()
   review.interaction.verified = false
   await assert.rejects(review.validate(), /Verified appointment reference/)
   review.interaction.verified = true

@@ -8,6 +8,8 @@ export type ReviewDoc = {
   business?: Types.ObjectId
   portal: string
   source: 'web' | 'admin'
+  policy?: Types.ObjectId
+  policyVersion?: number
   interaction: { kind: 'appointment' | 'request_delivery'; ref: Types.ObjectId; eligible: boolean; verified: boolean }
   userRequest?: Types.ObjectId
   appointment?: Types.ObjectId
@@ -31,6 +33,8 @@ export const reviewSchema = new Schema<ReviewDoc>({
   business: { type: Schema.Types.ObjectId, ref: 'Business' },
   portal: { type: String, required: true, trim: true, lowercase: true },
   source: { type: String, enum: ['web', 'admin'], default: 'web' },
+  policy: { type: Schema.Types.ObjectId, ref: 'Policy' },
+  policyVersion: { type: Number, min: 1 },
   interaction: {
     kind: { type: String, enum: ['appointment', 'request_delivery'], required: true },
     ref: { type: Schema.Types.ObjectId, required: true },
@@ -70,6 +74,7 @@ reviewSchema.pre('validate', function () {
   if (this.subjectType === 'provider' && (!this.providerProfile || !this.subjectId.equals(this.providerProfile) || this.business)) this.invalidate('subjectId', 'Provider subject is inconsistent')
   if (this.subjectType === 'business' && (!this.business || !this.subjectId.equals(this.business) || this.providerProfile)) this.invalidate('subjectId', 'Business subject is inconsistent')
   if (!this.interaction?.eligible) this.invalidate('interaction', 'A legitimate interaction is required')
+  if (Boolean(this.policy) !== Boolean(this.policyVersion)) this.invalidate('policy', 'Policy reference and version must be paired')
   if (this.interaction?.kind === 'appointment' && (!this.appointment?.equals(this.interaction.ref) || !this.interaction.verified)) this.invalidate('appointment', 'Verified appointment reference is required')
   if (this.interaction?.kind === 'request_delivery' && (!this.userRequest || this.appointment || this.interaction.verified)) this.invalidate('interaction', 'Delivery reviews cannot be verified appointments')
   if (this.moderation?.status === 'published' && !this.publishedAt) this.invalidate('publishedAt', 'Publication timestamp is required')
