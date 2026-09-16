@@ -15,7 +15,6 @@ import {
   updateProfilePhoto,
   upsertUser,
 } from '../services/userService'
-import { isPublicRole } from '../types/roles'
 
 const router = Router()
 
@@ -90,34 +89,36 @@ function publicUser(user: {
 
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role } = req.body as {
+    const { email, password, firstName, lastName } = req.body as {
       email?: string
       password?: string
-      name?: string
-      role?: string
+      firstName?: string
+      lastName?: string
     }
 
-    if (!email?.trim() || !password || !name?.trim()) {
-      return res.status(400).json({ message: 'Emri, email dhe fjalëkalimi janë të detyrueshme' })
+    if (!email?.trim() || !password || !firstName?.trim() || !lastName?.trim()) {
+      return res.status(400).json({ message: 'Emri, mbiemri, email dhe fjalëkalimi janë të detyrueshme' })
     }
 
     if (password.length < 6) {
       return res.status(400).json({ message: 'Fjalëkalimi duhet të ketë të paktën 6 karaktere' })
     }
 
-    const selectedRole = role ?? 'user'
-    if (!isPublicRole(selectedRole)) {
-      return res.status(400).json({
-        message: 'Roli duhet të jetë user, provider ose company. Admin nuk krijohet nga regjistrimi.',
-      })
+    const givenName = firstName.trim()
+    const familyName = lastName.trim()
+    const name = `${givenName} ${familyName}`
+    if (givenName.length > 80 || familyName.length > 80 || name.length > 160) {
+      return res.status(400).json({ message: 'Emri ose mbiemri është shumë i gjatë' })
     }
 
-    const auth = await firebaseSignUp(email.trim(), password, name.trim())
+    const auth = await firebaseSignUp(email.trim(), password, name)
     const user = await upsertUser({
       uid: auth.localId,
       email: auth.email,
-      name: name.trim(),
-      requestedRole: selectedRole,
+      name,
+      firstName: givenName,
+      lastName: familyName,
+      grantedRoles: ['user'],
       updateName: true,
     })
 

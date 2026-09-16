@@ -9,6 +9,7 @@ import {
 } from '../api/adminUsers'
 import type { UserRole } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -187,8 +188,7 @@ export default function AdminUsersPanel() {
         </label>
         <label>
           Fjalëkalimi
-          <input
-            type="password"
+          <PasswordInput
             minLength={6}
             value={createForm.password}
             onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}

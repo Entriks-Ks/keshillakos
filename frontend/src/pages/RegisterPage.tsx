@@ -1,43 +1,30 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import type { PublicRole } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
-
-const ROLE_OPTIONS: { value: PublicRole; label: string; hint: string }[] = [
-  {
-    value: 'user',
-    label: 'Përdorues',
-    hint: 'Kërkoj ndihmë / ekspert',
-  },
-  {
-    value: 'provider',
-    label: 'Ofrues shërbimi',
-    hint: 'Ofroj këshilla profesionale',
-  },
-  {
-    value: 'company',
-    label: 'Kompani',
-    hint: 'Kam ekspertë të mi në ekip',
-  },
-]
 
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<PublicRole>('user')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+    if (password !== confirmPassword) {
+      setError('Fjalëkalimi dhe konfirmimi nuk përputhen')
+      return
+    }
     setSubmitting(true)
     try {
-      await register(name, email, password, role)
+      await register(firstName, lastName, email, password)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(getErrorMessage(err))
@@ -53,40 +40,26 @@ export default function RegisterPage() {
           KëshillaKos
         </Link>
         <h1>Krijo llogari</h1>
-        <p className="muted">Zgjidh rolin dhe regjistrohu.</p>
+        <p className="muted">Regjistrohu.</p>
 
         <form onSubmit={onSubmit} className="auth-form">
-          <fieldset className="role-fieldset">
-            <legend>Unë jam</legend>
-            <div className="role-options">
-              {ROLE_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  className={`role-option${role === option.value ? ' is-selected' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="role"
-                    value={option.value}
-                    checked={role === option.value}
-                    onChange={() => setRole(option.value)}
-                  />
-                  <span className="role-option-text">
-                    <strong>{option.label}</strong>
-                    <small>{option.hint}</small>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
           <label>
-            {role === 'company' ? 'Emri i kompanisë' : 'Emri'}
+            Emri
             <input
               type="text"
-              autoComplete="organization"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Mbiemri
+            <input
+              type="text"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               required
             />
           </label>
@@ -102,11 +75,20 @@ export default function RegisterPage() {
           </label>
           <label>
             Fjalëkalimi
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          </label>
+          <label>
+            Konfirmo fjalëkalimin
+            <PasswordInput
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
             />

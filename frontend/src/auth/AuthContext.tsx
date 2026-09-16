@@ -16,7 +16,6 @@ import {
   uploadProfilePhoto as uploadProfilePhotoRequest,
   type AuthUser,
   type ProfileUpdatePayload,
-  type PublicRole,
 } from '../api/auth'
 
 type AuthContextValue = {
@@ -24,10 +23,10 @@ type AuthContextValue = {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (
-    name: string,
+    firstName: string,
+    lastName: string,
     email: string,
     password: string,
-    role: PublicRole,
   ) => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthUser>
@@ -64,8 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const register = useCallback(
-    async (name: string, email: string, password: string, role: PublicRole) => {
-      const data = await registerUser({ name, email, password, role })
+    async (firstName: string, lastName: string, email: string, password: string) => {
+      const data = await registerUser({ firstName, lastName, email, password })
       localStorage.setItem('token', data.token)
       setUser(data.user)
     },

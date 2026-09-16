@@ -75,6 +75,8 @@ export async function upsertUser(input: {
   uid: string
   email: string
   name: string
+  firstName?: string
+  lastName?: string
   /** Registration preference, not an authorization grant. */
   requestedRole?: UserRole
   /** Only trusted admin paths may supply granted roles. */
@@ -86,7 +88,11 @@ export async function upsertUser(input: {
   const name = input.name.trim() || input.email.split('@')[0] || 'User'
 
   const $set: Record<string, string> = { email }
-  if (input.updateName) Object.assign($set, { name, ...splitName(name) })
+  if (input.updateName) Object.assign($set, {
+    name,
+    firstName: input.firstName ?? splitName(name).firstName,
+    lastName: input.lastName ?? splitName(name).lastName,
+  })
 
   // MongoDB forbids the same path in both $set and $setOnInsert
   const $setOnInsert: Record<string, unknown> = {

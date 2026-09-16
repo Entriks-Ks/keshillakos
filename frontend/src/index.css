@@ -2068,6 +2068,44 @@ h1 {
   cursor: wait;
 }
 
+.password-control {
+  position: relative;
+  display: block;
+}
+
+.password-control input {
+  padding-right: 48px;
+}
+
+.auth-form .password-toggle,
+.service-form .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.auth-form .password-toggle:hover,
+.service-form .password-toggle:hover {
+  color: var(--ink);
+}
+
+.auth-form .password-toggle:focus-visible,
+.service-form .password-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
 .success {
   margin: 0;
   color: var(--accent);

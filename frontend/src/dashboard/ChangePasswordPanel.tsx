@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
 
 export default function ChangePasswordPanel() {
@@ -48,8 +49,7 @@ export default function ChangePasswordPanel() {
       <form onSubmit={onSubmit} className="service-form">
         <label>
           Fjalëkalimi aktual
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="current-password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
@@ -58,8 +58,7 @@ export default function ChangePasswordPanel() {
         </label>
         <label>
           Fjalëkalimi i ri
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -69,8 +68,7 @@ export default function ChangePasswordPanel() {
         </label>
         <label className="full">
           Konfirmo fjalëkalimin e ri
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
