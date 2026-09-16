@@ -294,7 +294,7 @@ export function ProviderServicesPanel() {
       setPortfolioUrl('')
       setReferences('')
       setCoachingOk(false)
-      setSuccess('Shërbimi u dërgua për shqyrtim.')
+      setSuccess('Shërbimi u publikua dhe shfaqet në faqen kryesore.')
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {

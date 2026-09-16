@@ -1,12 +1,17 @@
 import { User, type UserDoc } from '../models/User'
 import { isUserRole, type UserRole } from '../types/roles'
 
-export function effectiveRoles(user: Pick<UserDoc, 'role' | 'roles'>): UserRole[] {
-  // Existing admin accounts were never available through public registration.
-  // Legacy provider/company roles cannot be trusted: registration selected them.
-  const granted = user.roles?.filter(isUserRole)
-  if (granted) return [...new Set(['user' as UserRole, ...granted])]
-  return user.role === 'admin' ? ['user', 'admin'] : ['user']
+export function effectiveRoles(user: Pick<UserDoc, 'role' | 'roles' | 'requestedRole'>): UserRole[] {
+  const granted = (user.roles ?? []).filter(isUserRole)
+  const legacy =
+    user.role && isUserRole(user.role) && user.role !== 'user' ? [user.role] : []
+  // Public registration selects provider/company; treat that as an active marketplace role.
+  const requested =
+    user.requestedRole &&
+    (user.requestedRole === 'provider' || user.requestedRole === 'company')
+      ? [user.requestedRole]
+      : []
+  return [...new Set<UserRole>(['user', ...granted, ...legacy, ...requested])]
 }
 
 function cleanOptional(value?: string) {
@@ -43,7 +48,11 @@ export function toPublicUser(user: {
   createdAt?: Date
   updatedAt?: Date
 }): UserDoc {
-  const roles = effectiveRoles({ role: user.role ?? 'user', roles: user.roles })
+  const roles = effectiveRoles({
+    role: user.role ?? 'user',
+    roles: user.roles,
+    requestedRole: user.requestedRole,
+  })
   return {
     uid: user.uid,
     email: user.email,
@@ -75,8 +84,6 @@ export async function upsertUser(input: {
   uid: string
   email: string
   name: string
-  firstName?: string
-  lastName?: string
   /** Registration preference, not an authorization grant. */
   requestedRole?: UserRole
   /** Only trusted admin paths may supply granted roles. */
@@ -87,29 +94,64 @@ export async function upsertUser(input: {
   const email = input.email.trim().toLowerCase()
   const name = input.name.trim() || input.email.split('@')[0] || 'User'
 
-  const $set: Record<string, string> = { email }
-  if (input.updateName) Object.assign($set, {
-    name,
-    firstName: input.firstName ?? splitName(name).firstName,
-    lastName: input.lastName ?? splitName(name).lastName,
-  })
+  const publicRoles =
+    input.requestedRole === 'provider' || input.requestedRole === 'company'
+      ? (['user', input.requestedRole] as UserRole[])
+      : undefined
+  const grantedRoles = input.grantedRoles ?? publicRoles
+
+  const $set: Record<string, unknown> = { email }
+  if (input.updateName) Object.assign($set, { name, ...splitName(name) })
+  if (input.requestedRole) $set.requestedRole = input.requestedRole
 
   // MongoDB forbids the same path in both $set and $setOnInsert
   const $setOnInsert: Record<string, unknown> = {
     uid: input.uid,
-    role: input.grantedRoles?.find((role) => role !== 'user') ?? 'user',
-    roles: input.grantedRoles ?? ['user'],
-    requestedRole: input.requestedRole,
+    role: grantedRoles?.find((role) => role !== 'user') ?? 'user',
+    roles: grantedRoles ?? ['user'],
   }
+  if (!input.requestedRole) $setOnInsert.requestedRole = undefined
   if (!input.updateName) Object.assign($setOnInsert, { name, ...splitName(name) })
 
-  const user = await User.findOneAndUpdate(
+  let user = await User.findOneAndUpdate(
     { uid: input.uid },
     { $set, $setOnInsert },
     { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true },
   )
 
+  // Heal accounts that requested provider/company but never received the grant.
+  user = (await ensureMarketplaceRoles(user)) ?? user
+
   return toPublicUser(user)
+}
+
+async function ensureMarketplaceRoles(user: UserDoc & { _id?: unknown; save?: () => Promise<unknown> }) {
+  const doc = await User.findOne({ uid: user.uid })
+  if (!doc) return null
+
+  const wanted =
+    doc.requestedRole === 'provider' || doc.requestedRole === 'company'
+      ? doc.requestedRole
+      : doc.role === 'provider' || doc.role === 'company'
+        ? doc.role
+        : null
+
+  if (!wanted) return doc
+
+  const roles = [...new Set<UserRole>(['user', ...(doc.roles ?? []), wanted])]
+  const nextRole = roles.find((role) => role !== 'user') ?? 'user'
+  const changed =
+    doc.role !== nextRole ||
+    roles.length !== (doc.roles?.length ?? 0) ||
+    roles.some((role) => !doc.roles?.includes(role))
+
+  if (!changed) return doc
+
+  doc.roles = roles
+  doc.role = nextRole
+  if (!doc.requestedRole) doc.requestedRole = wanted
+  await doc.save()
+  return doc
 }
 
 export async function findUserByUid(uid: string): Promise<UserDoc | null> {

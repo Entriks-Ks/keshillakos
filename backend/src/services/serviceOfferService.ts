@@ -53,11 +53,33 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
   if (!profile.categories.includes(category.stableId)) {
     if (!input.allowCategoryExpansion) throw new Error('Profili nuk e mbulon këtë kategori')
     profile.categories.push(category.stableId)
-    profile.status = 'pending'
-    profile.moderation = { status: 'pending' }
-    await profile.save()
   }
+
+  // Marketplace MVP: publish profile + offer so services appear on home immediately.
+  // Admin can still suspend later via moderation endpoints.
+  if (profile.status !== 'suspended') {
+    profile.status = 'published'
+    profile.moderation = { status: 'approved', reviewedAt: new Date() }
+  }
+  await profile.save()
+
+  // Heal earlier posts that stayed pending under the old moderation flow.
+  await ServiceOffer.updateMany(
+    {
+      providerProfile: profile._id,
+      visibility: 'public',
+      $or: [{ status: 'pending' }, { 'moderation.status': 'pending' }],
+    },
+    {
+      $set: {
+        status: 'published',
+        moderation: { status: 'approved', reviewedAt: new Date() },
+      },
+    },
+  )
+
   const extensions = validateExtensions(category.extensionFields, input.extensions)
+  const visibility = input.visibility ?? 'public'
   return ServiceOffer.create({
     portal, providerProfile: profile._id, business: profile.business,
     category: category._id, categoryVersion: category.version,
@@ -67,8 +89,13 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
     languages: input.languages?.map((value) => value.trim()).filter(Boolean) ?? [],
     serviceAreas: input.serviceAreas ?? [],
     availabilityMode: input.availabilityMode ?? 'request',
-    visibility: input.visibility ?? 'public',
-    extensions, status: 'pending', moderation: { status: 'pending' },
+    visibility,
+    extensions,
+    status: visibility === 'public' ? 'published' : 'draft',
+    moderation: {
+      status: visibility === 'public' ? 'approved' : 'pending',
+      reviewedAt: visibility === 'public' ? new Date() : undefined,
+    },
   })
 }
 

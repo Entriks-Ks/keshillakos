@@ -20,8 +20,6 @@ export type AuthUser = {
   uid: string
   email: string
   name: string
-  firstName?: string
-  lastName?: string
   role: UserRole
   roles?: UserRole[]
   headline?: string
@@ -31,6 +29,8 @@ export type AuthUser = {
   languages?: string[]
   profilePhoto?: string
 }
+
+export type PublicRole = 'user' | 'provider' | 'company'
 
 export type ProfileUpdatePayload = {
   name: string
@@ -55,10 +55,10 @@ export function mediaUrl(path?: string | null) {
 }
 
 export async function registerUser(payload: {
-  firstName: string
-  lastName: string
+  name: string
   email: string
   password: string
+  role: PublicRole
 }) {
   const { data } = await api.post<AuthResponse>('/api/auth/register', payload)
   return data

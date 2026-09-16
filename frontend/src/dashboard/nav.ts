@@ -22,6 +22,7 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
       return [
         { to: '/dashboard/user', label: 'Përmbledhje', end: true },
         { to: '/dashboard/user/requests', label: 'Kërkesat e mia' },
+        { to: '/dashboard/user/messages', label: 'Mesazhet' },
         { to: '/dashboard/user/ratings', label: 'Vlerëso ofruesit' },
         { to: '/', label: 'Kërko ndihmë', end: true },
         sharedProfile('/dashboard/user'),
@@ -31,6 +32,7 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
       return [
         { to: '/dashboard/provider', label: 'Përmbledhje', end: true },
         { to: '/dashboard/provider/inbox', label: 'Kërkesat' },
+        { to: '/dashboard/provider/messages', label: 'Mesazhet' },
         { to: '/dashboard/provider/services', label: 'Shërbimet' },
         { to: '/dashboard/provider/availability', label: 'Disponueshmëria' },
         { to: '/dashboard/provider/ratings', label: 'Vlerësimet' },
@@ -41,6 +43,7 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
       return [
         { to: '/dashboard/company', label: 'Përmbledhje', end: true },
         { to: '/dashboard/company/inbox', label: 'Kërkesat' },
+        { to: '/dashboard/company/messages', label: 'Mesazhet' },
         { to: '/dashboard/company/experts', label: 'Ekspertët' },
         { to: '/dashboard/company/availability', label: 'Disponueshmëria' },
         { to: '/dashboard/company/ratings', label: 'Vlerësimet' },
@@ -53,6 +56,7 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
         { to: '/dashboard/admin/users', label: 'Përdoruesit' },
         { to: '/dashboard/admin/requests', label: 'Të gjitha kërkesat' },
         { to: '/dashboard/admin/inbox', label: 'Inbox' },
+        { to: '/dashboard/admin/messages', label: 'Mesazhet' },
         { to: '/dashboard/admin/domains', label: 'Kategoritë' },
         { to: '/dashboard/admin/services', label: 'Shërbimet' },
         { to: '/dashboard/admin/availability', label: 'Disponueshmëria' },

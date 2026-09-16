@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
+import http from 'http'
 import mongoose from 'mongoose'
 import path from 'path'
 import { connectDB, isMongoReady } from './config/db'
@@ -18,6 +19,8 @@ import providerRoutes from './routes/provider.routes'
 import appointmentRoutes from './routes/appointment.routes'
 import serviceRoutes from './routes/service.routes'
 import serviceOfferRoutes from './routes/serviceOffer.routes'
+import chatRoutes from './routes/chat.routes'
+import { attachChatSocket } from './services/chatSocket'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 4000
@@ -48,6 +51,7 @@ app.use('/api/match', matchRoutes)
 app.use('/api/ratings', ratingRoutes)
 app.use('/api/requests', requestRoutes)
 app.use('/api/appointments', appointmentRoutes)
+app.use('/api/chat', chatRoutes)
 
 app.use(
   (
@@ -75,7 +79,10 @@ async function start() {
     process.exit(1)
   }
 
-  app.listen(PORT, () => {
+  const server = http.createServer(app)
+  attachChatSocket(server)
+
+  server.listen(PORT, () => {
     console.log(`API running on http://localhost:${PORT}`)
   })
 }

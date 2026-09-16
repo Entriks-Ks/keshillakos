@@ -30,7 +30,8 @@ export function RoleRoute({ roles }: { roles: UserRole[] }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
-  if (!roles.includes(user.role)) {
+  const userRoles = user.roles?.length ? user.roles : [user.role]
+  if (!roles.some((role) => userRoles.includes(role))) {
     return <Navigate to={getDashboardPath(user.role)} replace />
   }
   return <Outlet />

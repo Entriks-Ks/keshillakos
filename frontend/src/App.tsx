@@ -16,6 +16,7 @@ import {
   ProviderInboxPanel,
   UserRequestsPanel,
 } from './dashboard/RequestPanels'
+import MessagesPage from './dashboard/MessagesPage'
 import {
   AdminDomainsPanel,
   CompanyExpertsPanel,
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/dashboard/user" element={<DashboardShell />}>
               <Route index element={<UserOverviewPage />} />
               <Route path="requests" element={<UserRequestsPanel />} />
+              <Route path="messages" element={<MessagesPage />} />
               <Route path="ratings" element={<UserRateProvidersPanel />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
@@ -61,6 +63,7 @@ export default function App() {
             <Route path="/dashboard/provider" element={<DashboardShell />}>
               <Route index element={<ProviderOverviewPage />} />
               <Route path="inbox" element={<ProviderInboxPanel />} />
+              <Route path="messages" element={<MessagesPage />} />
               <Route path="services" element={<ProviderServicesPanel />} />
               <Route path="availability" element={<AvailabilityPanel />} />
               <Route path="ratings" element={<OwnRatingsPage />} />
@@ -73,6 +76,7 @@ export default function App() {
             <Route path="/dashboard/company" element={<DashboardShell />}>
               <Route index element={<CompanyOverviewPage />} />
               <Route path="inbox" element={<ProviderInboxPanel />} />
+              <Route path="messages" element={<MessagesPage />} />
               <Route path="experts" element={<CompanyExpertsPanel />} />
               <Route path="availability" element={<AvailabilityPanel />} />
               <Route path="ratings" element={<OwnRatingsPage />} />
@@ -87,6 +91,7 @@ export default function App() {
               <Route path="users" element={<AdminUsersPanel />} />
               <Route path="requests" element={<AdminRequestsPanel />} />
               <Route path="inbox" element={<ProviderInboxPanel />} />
+              <Route path="messages" element={<MessagesPage />} />
               <Route path="domains" element={<AdminDomainsPanel />} />
               <Route path="services" element={<ProviderServicesPanel />} />
               <Route path="availability" element={<AvailabilityPanel />} />

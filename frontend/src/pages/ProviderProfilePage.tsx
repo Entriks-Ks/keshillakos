@@ -11,6 +11,7 @@ import { fetchProviderProfile, type PublicProvider } from '../api/providers'
 import type { ServiceItem } from '../api/services'
 import RateProvider from '../components/RateProvider'
 import SendRequestButton from '../components/SendRequestButton'
+import StartChatButton from '../components/StartChatButton'
 import ServiceCard from '../components/ServiceCard'
 import { useAuth } from '../auth/AuthContext'
 import { getDashboardPath } from '../utils/dashboardPath'
@@ -199,11 +200,17 @@ export default function ProviderProfilePage() {
                   compact
                 />
                 {user?.role === 'user' || user?.role === 'admin' || !user ? (
-                  <SendRequestButton
-                    providerUid={provider.uid}
-                    providerName={provider.name}
-                    intake={intakeDefaults}
-                  />
+                  <>
+                    <StartChatButton
+                      providerUid={provider.uid}
+                      providerName={provider.name}
+                    />
+                    <SendRequestButton
+                      providerUid={provider.uid}
+                      providerName={provider.name}
+                      intake={intakeDefaults}
+                    />
+                  </>
                 ) : null}
               </div>
             </section>

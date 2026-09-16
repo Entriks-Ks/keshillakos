@@ -12,6 +12,7 @@ import type { ServiceItem } from '../api/services'
 import { useAuth } from '../auth/AuthContext'
 import RateProvider from './RateProvider'
 import SendRequestButton from './SendRequestButton'
+import StartChatButton from './StartChatButton'
 
 const DELIVERY_LABELS: Record<string, string> = {
   online: 'Online',
@@ -292,15 +293,24 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
           compact
         />
         {user?.role === 'user' || user?.role === 'admin' || !user ? (
-          <SendRequestButton
-            providerUid={service.providerUid}
-            providerId={service.providerId}
-            providerName={provider?.name || service.providerName}
-            categoryId={service.categoryId}
-            serviceId={service.id}
-            serviceTitle={service.title}
-            intake={intakeDefaults}
-          />
+          <>
+            <StartChatButton
+              providerUid={service.providerUid}
+              providerName={provider?.name || service.providerName}
+              serviceId={service.id}
+              serviceTitle={service.title}
+              compact
+            />
+            <SendRequestButton
+              providerUid={service.providerUid}
+              providerId={service.providerId}
+              providerName={provider?.name || service.providerName}
+              categoryId={service.categoryId}
+              serviceId={service.id}
+              serviceTitle={service.title}
+              intake={intakeDefaults}
+            />
+          </>
         ) : null}
       </div>
     </article>

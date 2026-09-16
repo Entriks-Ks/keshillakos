@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Button, Input, ProgressBar, TextArea } from '@heroui/react'
+import { ArrowRight, LayoutDashboard, LogIn } from 'lucide-react'
 import { runMatch, type MatchIntake, type MatchedExpert } from '../api/match'
 import { fetchActiveServices, type ServiceItem } from '../api/services'
 import RateProvider from '../components/RateProvider'
@@ -154,14 +156,18 @@ export default function HomePage() {
 
   return (
     <div className="home-shell">
+      <div className="home-atmosphere" aria-hidden />
+
       <header className="home-header">
-        <p className="brand">KëshillaKos</p>
+        <p className="brand home-nav-brand">KëshillaKos</p>
         {user ? (
-          <Link className="ghost link-btn" to={getDashboardPath(user?.role)}>
+          <Link className="home-nav-cta" to={getDashboardPath(user.role)}>
+            <LayoutDashboard size={16} />
             Dashboard
           </Link>
         ) : (
-          <Link className="ghost link-btn" to="/login">
+          <Link className="home-nav-cta" to="/login">
+            <LogIn size={16} />
             Hyr
           </Link>
         )}
@@ -169,33 +175,39 @@ export default function HomePage() {
 
       <main>
         <section className="home-hero home-hero-problem">
-          <p className="brand home-brand">KëshillaKos</p>
-          <h1>Me çfarë ke nevojë për ndihmë?</h1>
-          <p className="home-lead">
+          <p className="brand home-brand animate-rise">KëshillaKos</p>
+          <h1 className="animate-rise animate-rise-delay-1">Me çfarë ke nevojë për ndihmë?</h1>
+          <p className="home-lead animate-rise animate-rise-delay-2">
             Përgjigju hap pas hapi — pa kategori të komplikuar. Pastaj të gjejmë ekspertët e duhur.
           </p>
 
           {step <= TOTAL_STEPS ? (
-            <div className="wizard">
-              <div className="wizard-progress" aria-hidden="true">
-                <div
+            <div className="wizard animate-rise animate-rise-delay-3">
+              <div className="wizard-meta">
+                <ProgressBar
+                  aria-label={`Progresi i pyetësorit: hapi ${step} nga ${TOTAL_STEPS}`}
+                  value={(step / TOTAL_STEPS) * 100}
                   className="wizard-progress-bar"
-                  style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
-                />
+                >
+                  <ProgressBar.Track>
+                    <ProgressBar.Fill />
+                  </ProgressBar.Track>
+                </ProgressBar>
+                <p className="wizard-step-label">
+                  Hapi <strong>{step}</strong> / {TOTAL_STEPS}
+                </p>
               </div>
-              <p className="wizard-step-label">
-                Hapi {step} nga {TOTAL_STEPS}
-              </p>
 
               <form onSubmit={onNext} className="wizard-body">
                 {step === 1 ? (
                   <fieldset className="wizard-fieldset">
                     <legend>Për çfarë ke nevojë?</legend>
-                    <textarea
+                    <TextArea
                       value={intake.need}
                       onChange={(e) => update('need', e.target.value)}
                       rows={3}
                       placeholder="Përshkruaj problemin tënd..."
+                      fullWidth
                       required
                     />
                     <div className="chip-row">
@@ -304,10 +316,11 @@ export default function HomePage() {
                 {step === 6 ? (
                   <fieldset className="wizard-fieldset">
                     <legend>Buxheti (opsionale)</legend>
-                    <input
+                    <Input
                       value={intake.budget}
                       onChange={(e) => update('budget', e.target.value)}
                       placeholder="p.sh. deri €100 / fleksibël"
+                      fullWidth
                     />
                   </fieldset>
                 ) : null}
@@ -340,19 +353,25 @@ export default function HomePage() {
 
                 <div className="wizard-actions">
                   {step > 1 ? (
-                    <button type="button" className="ghost" onClick={onBack} disabled={loading}>
+                    <Button type="button" variant="ghost" onPress={onBack} isDisabled={loading}>
                       Kthehu
-                    </button>
+                    </Button>
                   ) : (
                     <span />
                   )}
-                  <button type="submit" className="primary-btn" disabled={!canContinue() || loading}>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    isDisabled={!canContinue() || loading}
+                    className="wizard-submit"
+                  >
                     {loading
                       ? 'Duke gjetur ekspertë...'
                       : step === TOTAL_STEPS
                         ? 'Gjej ekspertë'
                         : 'Vazhdo'}
-                  </button>
+                    {!loading ? <ArrowRight size={18} /> : null}
+                  </Button>
                 </div>
               </form>
             </div>
@@ -360,7 +379,7 @@ export default function HomePage() {
         </section>
 
         {step === 8 ? (
-          <section className="home-services match-results" aria-labelledby="match-heading">
+          <section className="home-services match-results animate-rise" aria-labelledby="match-heading">
             <h2 id="match-heading">{resultMessage || 'Rezultatet e matching'}</h2>
             <p className="muted">
               Bazuar në përgjigjet e tua
@@ -369,12 +388,12 @@ export default function HomePage() {
             </p>
 
             <div className="wizard-actions match-toolbar">
-              <button type="button" className="ghost" onClick={onBack}>
+              <Button type="button" variant="outline" onPress={onBack}>
                 Ndrysho përgjigjet
-              </button>
-              <button type="button" className="ghost" onClick={resetAll}>
+              </Button>
+              <Button type="button" variant="ghost" onPress={resetAll}>
                 Fillo nga e para
-              </button>
+              </Button>
             </div>
 
             {!matches || matches.length === 0 ? (
@@ -465,10 +484,12 @@ export default function HomePage() {
         ) : null}
 
         <section className="home-services" aria-labelledby="services-heading">
-          <h2 id="services-heading">Shërbimet e ofruara</h2>
-          <p className="muted">
-            Kliko një shërbim për të parë detajet e plota: çmimi, ofruesi, aftësitë dhe oraret e lira.
-          </p>
+          <div className="home-services-intro">
+            <h2 id="services-heading">Shërbimet e ofruara</h2>
+            <p className="muted">
+              Zgjidh një ofertë për detaje, profilin e ofruesit dhe oraret e lira.
+            </p>
+          </div>
 
           {servicesLoading ? (
             <p className="muted home-services-status">Duke u ngarkuar...</p>

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import { ProviderProfile } from '../models/ProviderProfile'
 import { Service, type ServiceDetails, type ServiceDoc } from '../models/Service'
+import { ServiceOffer } from '../models/ServiceOffer'
 import { User } from '../models/User'
 import { validateExtensions } from './categoryConfiguration'
 import { findDomainById } from './domainService'
@@ -104,6 +105,18 @@ export async function listActiveServices() {
 }
 export async function getActiveServiceById(id: string) {
   if (!mongoose.isValidObjectId(id)) return null
+
+  const offer = await ServiceOffer.findOne({
+    _id: id,
+    status: 'published',
+    visibility: 'public',
+    'moderation.status': 'approved',
+  })
+  if (offer) {
+    const [enriched] = await offersToLegacyServices([offer], true)
+    if (enriched?.active) return enriched
+  }
+
   const service = await Service.findOne({ _id: id, active: true })
   if (!service) return null
   const [enriched] = await withLegacyProviders([service])
@@ -111,6 +124,15 @@ export async function getActiveServiceById(id: string) {
 }
 
 export async function listActiveServicesByProvider(providerUid: string) {
-  const services = await Service.find({ providerUid, active: true }).sort({ createdAt: -1 })
-  return withLegacyProviders(services)
+  const [legacy, offers] = await Promise.all([
+    Service.find({ providerUid, active: true }).sort({ createdAt: -1 }),
+    listMyServiceOffers(providerUid),
+  ])
+  const publishedOffers = offers.filter(
+    (offer) => offer.status === 'published' && offer.moderation.status === 'approved' && offer.visibility === 'public',
+  )
+  return [
+    ...(await offersToLegacyServices(publishedOffers, true)),
+    ...(await withLegacyProviders(legacy)),
+  ]
 }
