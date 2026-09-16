@@ -29,6 +29,7 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     id: e.id,
     source: 'expert',
     providerUid: e.companyUid,
+    providerId: 'providerId' in e ? e.providerId : undefined,
     name: e.name,
     title: e.title,
     categoryId: e.categoryId,
@@ -36,16 +37,17 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     specialty: e.specialty,
     location: e.location,
     languages: [e.languageFrom, e.languageTo].filter(Boolean) as string[],
-    verified: Boolean(e.licenseVerified || e.licenseNumber),
-    licenseNumber: e.licenseNumber,
+    verified: Boolean(e.licenseVerified),
     bio: e.bio,
     companyName: e.companyName,
+    providerEmail: 'providerId' in e ? e.publicEmail : undefined,
   }))
 
   const fromServices: MatchCandidate[] = services.map((s) => ({
     id: s.id,
     source: 'service',
     providerUid: s.providerUid,
+    providerId: 'providerId' in s ? s.providerId : undefined,
     name: s.provider?.name || s.providerName,
     title: s.title,
     categoryId: s.categoryId,
@@ -55,10 +57,9 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     languages: [
       s.details?.languageFrom,
       s.details?.languageTo,
-      ...(s.details?.supportLanguages ?? []),
-    ].filter(Boolean) as string[],
-    verified: Boolean(s.details?.licenseNumber || s.details?.licenseVerified),
-    licenseNumber: s.details?.licenseNumber,
+      ...(Array.isArray(s.details?.supportLanguages) ? s.details.supportLanguages : []),
+    ].filter((value): value is string => typeof value === 'string'),
+    verified: s.details?.licenseVerified === true,
     bio: s.description,
     priceFrom: s.priceFrom,
     companyName: s.provider?.name || s.providerName,
@@ -80,10 +81,10 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     const provider = providers.get(c.providerUid)
     return {
       ...c,
-      companyName: provider?.name || c.companyName,
+      companyName: c.source === 'expert' ? c.companyName : provider?.name || c.companyName,
       ratingAverage: provider?.ratingAverage ?? 0,
       ratingCount: provider?.ratingCount ?? 0,
-      providerEmail: provider?.email || '',
+      providerEmail: c.source === 'expert' && c.providerId ? c.providerEmail || '' : provider?.email || '',
       providerRole: provider?.role || 'unknown',
       providerRoleLabel: provider?.roleLabel || 'Ofrues',
     }

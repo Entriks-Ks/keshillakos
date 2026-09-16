@@ -56,6 +56,7 @@ router.post('/', requireAuth, requireRole('provider', 'admin'), async (req, res)
       location,
       priceFrom,
       details,
+      providerId,
     } = req.body as {
       title?: string
       description?: string
@@ -65,6 +66,7 @@ router.post('/', requireAuth, requireRole('provider', 'admin'), async (req, res)
       location?: string
       priceFrom?: number | string
       details?: ServiceDetails
+      providerId?: string
     }
 
     const resolvedCategoryId = categoryId?.trim() || (req.body as { category?: string }).category?.trim()
@@ -99,6 +101,7 @@ router.post('/', requireAuth, requireRole('provider', 'admin'), async (req, res)
       details,
       providerUid: req.user!.uid,
       providerName: req.user!.name,
+      providerId,
     })
 
     return res.status(201).json({ service })

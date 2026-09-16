@@ -429,7 +429,9 @@ export default function HomePage() {
 
                       <SendRequestButton
                         providerUid={m.providerUid}
+                        providerId={m.providerId}
                         providerName={m.companyName || m.name}
+                        categoryId={m.categoryId}
                         serviceId={m.source === 'service' ? m.id : undefined}
                         serviceTitle={m.title}
                         intake={{

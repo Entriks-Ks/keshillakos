@@ -273,15 +273,3 @@ export const COACHING_DISCLAIMER =
 
 export const FINANCE_REGULATORY_NOTICE =
   'Disa shërbime financiare janë të rregulluara. Kontrollo licencën dhe kufizimet ligjore para se të ofrosh këshilla financiare.'
-
-export function getSystemDomain(id: string) {
-  return SYSTEM_DOMAINS.find((d) => d.id === id) ?? null
-}
-
-export function isKnownSystemDomain(id: string) {
-  return SYSTEM_DOMAINS.some((d) => d.id === id)
-}
-
-export function domainRequires(id: string, requirement: DomainRequirement) {
-  return getSystemDomain(id)?.requirements.includes(requirement) ?? false
-}

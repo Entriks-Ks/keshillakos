@@ -12,6 +12,7 @@ export type MatchCandidate = {
   id: string
   source: 'expert' | 'service'
   providerUid: string
+  providerId?: string // Canonical ProviderProfile ID; providerUid remains a legacy API alias.
   name: string
   title: string
   categoryId?: string

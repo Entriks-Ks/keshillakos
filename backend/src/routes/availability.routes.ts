@@ -41,10 +41,19 @@ router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), as
 
 router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
-    const { startAt, endAt, note } = req.body as {
+    const { startAt, endAt, note, providerId, businessId, serviceOfferId, staffUserId, resourceKey, timezone, mode, location, capacity } = req.body as {
       startAt?: string
       endAt?: string
       note?: string
+      providerId?: string
+      businessId?: string
+      serviceOfferId?: string
+      staffUserId?: string
+      resourceKey?: string
+      timezone?: string
+      mode?: 'online' | 'on_site'
+      location?: import('../models/location').Location
+      capacity?: number
     }
 
     if (!startAt || !endAt) {
@@ -54,8 +63,10 @@ router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async
     const slot = await createAvailabilitySlot({
       providerUid: req.user!.uid,
       providerName: req.user!.name,
+      providerId, businessId, serviceOfferId, staffUserId, resourceKey,
       startAt,
       endAt,
+      timezone, mode, location, capacity,
       note,
     })
 
@@ -72,7 +83,7 @@ router.delete('/:id', requireAuth, requireRole('provider', 'company', 'admin'), 
     const result = await deleteAvailabilitySlot({
       id: String(req.params.id),
       providerUid: req.user!.uid,
-      asAdmin: req.user!.role === 'admin',
+      asAdmin: req.user!.roles.includes('admin'),
     })
     return res.json(result)
   } catch (err) {

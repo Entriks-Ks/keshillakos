@@ -10,10 +10,14 @@ import {
 import { getErrorMessage } from '../utils/errors'
 
 const STATUS_LABELS: Record<RequestStatus, string> = {
+  draft: 'Draft',
+  open: 'E hapur',
   pending: 'Në pritje',
+  read: 'Lexuar',
   accepted: 'Pranuar',
   rejected: 'Refuzuar',
   completed: 'Përfunduar',
+  withdrawn: 'Tërhequr',
 }
 
 const CONTACT_LABELS = {

@@ -2,39 +2,79 @@ import mongoose, { Schema } from 'mongoose'
 import { ROLES, type UserRole } from '../types/roles'
 
 export type UserDoc = {
-  uid: string
+  uid: string // Firebase Authentication identity; never a password store.
   email: string
-  name: string
-  role: UserRole
+  name: string // Legacy display name, retained for existing consumers.
+  firstName?: string
+  lastName?: string
+  phone?: string
+  locale?: string
+  country?: string
+  city?: string
+  role: UserRole // Legacy UI label; never an authorization grant.
+  roles?: UserRole[] // Server/admin-granted capabilities.
+  requestedRole?: UserRole // Untrusted registration preference.
+  verification?: { email: boolean; phone: boolean; identity: boolean }
+  privacy?: { profileVisibility: 'public' | 'private'; marketingConsent: boolean }
+  accountStatus?: 'active' | 'suspended' | 'closed'
+  // Legacy stored fields are read-only until ProviderProfile migration.
   headline?: string
   bio?: string
   location?: string
-  skills: string[]
-  languages: string[]
+  skills?: string[]
+  languages?: string[]
   profilePhoto?: string
   createdAt: Date
+  updatedAt: Date
 }
 
-const userSchema = new Schema<UserDoc>(
+const optionalText = (max: number) => ({
+  type: String,
+  trim: true,
+  maxlength: max,
+  set: (value: unknown) => typeof value === 'string' ? value.trim() || undefined : value,
+})
+
+export const userSchema = new Schema<UserDoc>(
   {
-    uid: { type: String, required: true, unique: true, index: true },
-    email: { type: String, required: true, unique: true, index: true },
-    name: { type: String, required: true },
-    role: {
-      type: String,
-      enum: ROLES,
-      required: true,
-      default: 'user',
-      index: true,
+    uid: { type: String, required: true, unique: true, trim: true },
+    email: {
+      type: String, required: true, unique: true, trim: true, lowercase: true,
+      validate: { validator: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), message: 'Invalid email' },
     },
-    headline: { type: String, default: '' },
-    bio: { type: String, default: '' },
-    location: { type: String, default: '' },
-    skills: { type: [String], default: [] },
-    languages: { type: [String], default: [] },
-    profilePhoto: { type: String, default: '' },
+    name: { type: String, required: true, trim: true, maxlength: 160 },
+    firstName: optionalText(80),
+    lastName: optionalText(80),
+    phone: { ...optionalText(32), match: /^\+[1-9]\d{1,14}$/ },
+    locale: optionalText(35),
+    country: { ...optionalText(2), uppercase: true, match: /^[A-Z]{2}$/ },
+    city: optionalText(120),
+    role: { type: String, enum: ROLES, required: true, default: 'user' },
+    roles: { type: [{ type: String, enum: ROLES }], default: undefined },
+    requestedRole: { type: String, enum: ROLES },
+    verification: {
+      email: { type: Boolean, default: false },
+      phone: { type: Boolean, default: false },
+      identity: { type: Boolean, default: false },
+    },
+    privacy: {
+      profileVisibility: { type: String, enum: ['public', 'private'], default: 'private' },
+      marketingConsent: { type: Boolean, default: false },
+    },
+    accountStatus: { type: String, enum: ['active', 'suspended', 'closed'], default: 'active' },
+    // Existing documents retain these fields; new account writes do not populate them.
+    headline: String,
+    bio: String,
+    location: String,
+    skills: { type: [String], default: undefined },
+    languages: { type: [String], default: undefined },
+    profilePhoto: String,
   },
-  { timestamps: { createdAt: true, updatedAt: true } },
+  { timestamps: true },
 )
+
+// Unverified phone numbers must not reserve a unique identity.
+userSchema.index({ phone: 1 }, { sparse: true })
+userSchema.index({ roles: 1, accountStatus: 1 })
 
 export const User = mongoose.model<UserDoc>('User', userSchema)

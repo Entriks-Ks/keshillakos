@@ -1,6 +1,7 @@
-import { domainRequires } from '../data/domains'
 import { Expert, type ExpertDoc } from '../models/Expert'
 import { findDomainById } from './domainService'
+import { createBusiness, listManagedBusinesses } from './businessService'
+import { createProviderProfile, listMyProviderProfiles, listPublishedProviderProfiles, providerProfilesToLegacyExperts } from './providerProfileService'
 
 export type CreateExpertInput = {
   name: string
@@ -14,8 +15,8 @@ export type CreateExpertInput = {
   languageTo?: string
   deliveryModes?: Array<'online' | 'physical' | 'group'>
   crossBorder?: boolean
-  companyUid: string
-  companyName: string
+  ownerUid: string
+  ownerName: string
 }
 
 function toExpert(doc: ExpertDoc & { _id: { toString(): string } }) {
@@ -45,51 +46,58 @@ export async function createExpert(input: CreateExpertInput) {
   const domain = await findDomainById(input.categoryId)
   if (!domain) throw new Error('Kategoria nuk ekziston')
 
-  if (domainRequires(input.categoryId, 'license_verification') && !input.licenseNumber?.trim()) {
+  if (domain.requirements.includes('license_verification') && !input.licenseNumber?.trim()) {
     throw new Error('Për Ligj duhet numri i licencës së ekspertit')
   }
 
   if (
-    domainRequires(input.categoryId, 'language_pair') &&
+    domain.requirements.includes('language_pair') &&
     (!input.languageFrom?.trim() || !input.languageTo?.trim())
   ) {
     throw new Error('Duhet kombinimi i gjuhëve për ekspertin e përkthimit')
   }
 
-  if (domainRequires(input.categoryId, 'delivery_mode') && !input.deliveryModes?.length) {
+  if (domain.requirements.includes('delivery_mode') && !input.deliveryModes?.length) {
     throw new Error('Zgjidh Online / Fizikisht / Grup')
   }
 
-  const expert = await Expert.create({
-    name: input.name.trim(),
-    title: input.title.trim(),
-    categoryId: domain.id,
-    categoryLabel: domain.labelSq,
-    specialty: input.specialty.trim(),
-    bio: input.bio.trim(),
-    location: input.location.trim(),
-    licenseNumber: input.licenseNumber?.trim(),
-    licenseVerified: false,
-    languageFrom: input.languageFrom?.trim(),
-    languageTo: input.languageTo?.trim(),
-    deliveryModes: input.deliveryModes,
-    crossBorder: domainRequires(input.categoryId, 'cross_border_multilingual')
-      ? true
-      : Boolean(input.crossBorder),
-    companyUid: input.companyUid,
-    companyName: input.companyName,
-    active: true,
+  // Compatibility endpoint: create a real Business ID before a managed individual profile.
+  // The account name is only an initial public label, never the canonical identity.
+  const businesses = await listManagedBusinesses(input.ownerUid)
+  const business = businesses[0] ?? await createBusiness({ ownerUid: input.ownerUid, publicName: input.ownerName })
+  const profile = await createProviderProfile({
+    ownerUid: input.ownerUid,
+    providerType: 'individual',
+    businessId: String(business._id),
+    categories: [domain.id],
+    languages: [input.languageFrom, input.languageTo].filter((value): value is string => Boolean(value)),
+    locations: [{ countryCode: 'XK', cityName: input.location.trim(), online: false }],
+    serviceAreas: [{ countryCode: 'XK', cityName: input.location.trim(), online: Boolean(input.crossBorder) }],
+    modes: (input.deliveryModes ?? []).filter((mode) => mode !== 'group').map((mode) => mode === 'physical' ? 'on_site' as const : 'online' as const),
+    publicProfile: {
+      displayName: input.name.trim(),
+      title: input.title.trim(),
+      shortDescription: input.specialty.trim(),
+      description: input.bio.trim(),
+    },
+    qualificationClaims: input.licenseNumber?.trim() ? [{ categoryId: domain.id, referenceNumber: input.licenseNumber.trim(), status: 'unverified' }] : undefined,
   })
-
-  return toExpert(expert)
+  const [result] = await providerProfilesToLegacyExperts([profile])
+  return { ...result, categoryLabel: domain.labelSq, specialty: input.specialty.trim(), languageFrom: input.languageFrom, languageTo: input.languageTo, crossBorder: Boolean(input.crossBorder), licenseVerified: false }
 }
 
 export async function listExpertsByCompany(companyUid: string) {
-  const experts = await Expert.find({ companyUid }).sort({ createdAt: -1 })
-  return experts.map((e) => toExpert(e))
+  const [legacy, profiles] = await Promise.all([
+    Expert.find({ companyUid }).sort({ createdAt: -1 }),
+    listMyProviderProfiles(companyUid),
+  ])
+  return [...(await providerProfilesToLegacyExperts(profiles)), ...legacy.map(toExpert)]
 }
 
 export async function listActiveExperts() {
-  const experts = await Expert.find({ active: true }).sort({ createdAt: -1 }).limit(50)
-  return experts.map((e) => toExpert(e))
+  const [legacy, profiles] = await Promise.all([
+    Expert.find({ active: true }).sort({ createdAt: -1 }).limit(50),
+    listPublishedProviderProfiles(),
+  ])
+  return [...(await providerProfilesToLegacyExperts(profiles)), ...legacy.map(toExpert)]
 }

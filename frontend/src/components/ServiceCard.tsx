@@ -294,7 +294,9 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
         {user?.role === 'user' || user?.role === 'admin' || !user ? (
           <SendRequestButton
             providerUid={service.providerUid}
+            providerId={service.providerId}
             providerName={provider?.name || service.providerName}
+            categoryId={service.categoryId}
             serviceId={service.id}
             serviceTitle={service.title}
             intake={intakeDefaults}

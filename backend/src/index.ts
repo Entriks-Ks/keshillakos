@@ -9,11 +9,18 @@ import adminUsersRoutes from './routes/adminUsers.routes'
 import availabilityRoutes from './routes/availability.routes'
 import domainRoutes from './routes/domain.routes'
 import expertRoutes from './routes/expert.routes'
+import businessRoutes from './routes/business.routes'
+import providerProfileRoutes from './routes/providerProfile.routes'
 import matchRoutes from './routes/match.routes'
 import ratingRoutes from './routes/rating.routes'
 import requestRoutes from './routes/request.routes'
+<<<<<<< Updated upstream
 import providerRoutes from './routes/provider.routes'
+=======
+import appointmentRoutes from './routes/appointment.routes'
+>>>>>>> Stashed changes
 import serviceRoutes from './routes/service.routes'
+import serviceOfferRoutes from './routes/serviceOffer.routes'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 4000
@@ -35,11 +42,18 @@ app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/availability', availabilityRoutes)
 app.use('/api/domains', domainRoutes)
 app.use('/api/services', serviceRoutes)
+<<<<<<< Updated upstream
 app.use('/api/providers', providerRoutes)
+=======
+app.use('/api/service-offers', serviceOfferRoutes)
+>>>>>>> Stashed changes
 app.use('/api/experts', expertRoutes)
+app.use('/api/businesses', businessRoutes)
+app.use('/api/providers', providerProfileRoutes)
 app.use('/api/match', matchRoutes)
 app.use('/api/ratings', ratingRoutes)
 app.use('/api/requests', requestRoutes)
+app.use('/api/appointments', appointmentRoutes)
 
 app.use(
   (

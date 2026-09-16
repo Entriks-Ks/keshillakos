@@ -104,6 +104,7 @@ export default function AvailabilityPanel() {
           const range = buildSlotIso(date, hour)
           const slot = await createAvailabilitySlot({
             ...range,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             note: note.trim() || undefined,
           })
           created.push(slot)
@@ -153,8 +154,8 @@ export default function AvailabilityPanel() {
     <section className="provider-section">
       <h2>Disponueshmëria</h2>
       <p className="muted">
-        Shto orë konkrete (p.sh. 14:00, 15:00). Kur një klient rezervon 14:00, ajo ora bëhet e zënë
-        dhe askush tjetër nuk mund ta zgjedhë.
+        Shto orë konkrete (p.sh. 14:00, 15:00). Kërkesa e klientit e mban orën përkohësisht;
+        pranimi nga ofruesi e konfirmon rezervimin.
       </p>
 
       <form onSubmit={onSubmit} className="service-form">

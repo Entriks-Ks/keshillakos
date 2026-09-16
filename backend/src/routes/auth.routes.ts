@@ -47,6 +47,16 @@ function publicUser(user: {
   email: string
   name: string
   role: string
+  roles?: string[]
+  firstName?: string
+  lastName?: string
+  phone?: string
+  locale?: string
+  country?: string
+  city?: string
+  verification?: import('../models/User').UserDoc['verification']
+  privacy?: import('../models/User').UserDoc['privacy']
+  accountStatus?: import('../models/User').UserDoc['accountStatus']
   headline?: string
   bio?: string
   location?: string
@@ -59,6 +69,16 @@ function publicUser(user: {
     email: user.email,
     name: user.name,
     role: user.role,
+    roles: user.roles ?? ['user'],
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    locale: user.locale,
+    country: user.country,
+    city: user.city,
+    verification: user.verification,
+    privacy: user.privacy,
+    accountStatus: user.accountStatus,
     headline: user.headline || '',
     bio: user.bio || '',
     location: user.location || '',
@@ -97,7 +117,7 @@ router.post('/register', async (req, res) => {
       uid: auth.localId,
       email: auth.email,
       name: name.trim(),
-      role: selectedRole,
+      requestedRole: selectedRole,
       updateName: true,
     })
 
@@ -190,22 +210,28 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { name, headline, bio, location, skills, languages } = req.body as {
+    const { name, firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent } = req.body as {
       name?: string
-      headline?: string
-      bio?: string
-      location?: string
-      skills?: string[]
-      languages?: string[]
+      firstName?: string
+      lastName?: string
+      phone?: string | null
+      locale?: string
+      country?: string
+      city?: string
+      profileVisibility?: 'public' | 'private'
+      marketingConsent?: boolean
     }
 
     const user = await updateOwnProfile(req.user!.uid, {
       name,
-      headline,
-      bio,
-      location,
-      skills,
-      languages,
+      firstName,
+      lastName,
+      phone,
+      locale,
+      country,
+      city,
+      profileVisibility,
+      marketingConsent,
     })
 
     if (name?.trim() && name.trim() !== req.user!.name) {

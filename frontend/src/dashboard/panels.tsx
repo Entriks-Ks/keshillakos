@@ -15,23 +15,20 @@ import {
 import RateProvider from '../components/RateProvider'
 import {
   AUDIENCE_OPTIONS,
-  COACHING_DISCLAIMER,
   DELIVERY_MODES,
-  FINANCE_REGULATORY_NOTICE,
   LANGUAGE_OPTIONS,
   OFFER_TYPES,
-  SYSTEM_DOMAINS,
   domainRequires,
   type DomainDefinition,
 } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
 
 function useDomains() {
-  const [domains, setDomains] = useState<DomainDefinition[]>(SYSTEM_DOMAINS)
+  const [domains, setDomains] = useState<DomainDefinition[]>([])
   useEffect(() => {
     fetchDomains()
       .then(setDomains)
-      .catch(() => setDomains(SYSTEM_DOMAINS))
+      .catch(() => setDomains([]))
   }, [])
   return domains
 }
@@ -162,15 +159,10 @@ function DomainFieldsHint({ domain }: { domain: DomainDefinition | null }) {
         {domain.labelSq} <span className="muted">({domain.labelDe})</span>
       </strong>
       <p className="muted">Shembuj: {domain.examples.join(' · ')}</p>
-      {domainRequires(domain.id, 'license_verification') ? (
+      {domainRequires(domain, 'license_verification') ? (
         <p>Kërkohet Verification / License — nuk mjafton vetëm emri dhe profili.</p>
       ) : null}
-      {domainRequires(domain.id, 'coaching_boundary') ? (
-        <p>{COACHING_DISCLAIMER}</p>
-      ) : null}
-      {domainRequires(domain.id, 'regulatory_notice') ? (
-        <p>{FINANCE_REGULATORY_NOTICE}</p>
-      ) : null}
+      {domain.guidelines?.sq ? <p>{domain.guidelines.sq}</p> : null}
     </div>
   )
 }
@@ -249,36 +241,33 @@ export function ProviderServicesPanel() {
     setSubmitting(true)
     try {
       const details: ServiceDetails = {}
-      if (domainRequires(categoryId, 'license_verification')) {
+      if (domainRequires(selectedDomain, 'license_verification')) {
         details.licenseNumber = licenseNumber
       }
-      if (domainRequires(categoryId, 'documents_deadlines')) {
+      if (domainRequires(selectedDomain, 'documents_deadlines')) {
         details.serviceTypeDetail = serviceTypeDetail
         details.documentsNote = documentsNote
         details.deadlineNote = deadlineNote
       }
-      if (domainRequires(categoryId, 'audience_b2c_b2b')) details.audience = audience
-      if (domainRequires(categoryId, 'delivery_mode')) details.deliveryModes = deliveryModes
-      if (domainRequires(categoryId, 'language_pair')) {
+      if (domainRequires(selectedDomain, 'audience_b2c_b2b')) details.audience = audience
+      if (domainRequires(selectedDomain, 'delivery_mode')) details.deliveryModes = deliveryModes
+      if (domainRequires(selectedDomain, 'language_pair')) {
         details.languageFrom = languageFrom
         details.languageTo = languageTo
         details.certifiedTranslation = certifiedTranslation
       }
-      if (domainRequires(categoryId, 'offer_type_packages')) {
+      if (domainRequires(selectedDomain, 'offer_type_packages')) {
         details.offerType = offerType
         if (priceTo.trim()) details.priceTo = Number(priceTo)
       }
-      if (domainRequires(categoryId, 'portfolio_references')) {
+      if (domainRequires(selectedDomain, 'portfolio_references')) {
         details.portfolioUrl = portfolioUrl
         details.references = references
       }
-      if (domainRequires(categoryId, 'regulatory_notice')) {
-        details.regulatoryNotice = FINANCE_REGULATORY_NOTICE
-      }
-      if (domainRequires(categoryId, 'coaching_boundary')) {
+      if (domainRequires(selectedDomain, 'coaching_boundary')) {
         details.coachingDisclaimerAccepted = coachingOk
       }
-      if (domainRequires(categoryId, 'cross_border_multilingual')) {
+      if (domainRequires(selectedDomain, 'cross_border_multilingual')) {
         details.crossBorder = true
         details.supportLanguages = supportLanguages
       }
@@ -305,7 +294,7 @@ export function ProviderServicesPanel() {
       setPortfolioUrl('')
       setReferences('')
       setCoachingOk(false)
-      setSuccess('Shërbimi u publikua.')
+      setSuccess('Shërbimi u dërgua për shqyrtim.')
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -368,7 +357,7 @@ export function ProviderServicesPanel() {
           />
         </label>
 
-        {domainRequires(categoryId, 'offer_type_packages') ? (
+        {domainRequires(selectedDomain, 'offer_type_packages') ? (
           <>
             <label>
               Lloji i ofertës
@@ -398,7 +387,7 @@ export function ProviderServicesPanel() {
           </>
         ) : null}
 
-        {domainRequires(categoryId, 'license_verification') ? (
+        {domainRequires(selectedDomain, 'license_verification') ? (
           <label className="full">
             License / Verification (numri i licencës)
             <input
@@ -410,7 +399,7 @@ export function ProviderServicesPanel() {
           </label>
         ) : null}
 
-        {domainRequires(categoryId, 'documents_deadlines') ? (
+        {domainRequires(selectedDomain, 'documents_deadlines') ? (
           <>
             <label>
               Lloji i shërbimit
@@ -440,7 +429,7 @@ export function ProviderServicesPanel() {
           </>
         ) : null}
 
-        {domainRequires(categoryId, 'audience_b2c_b2b') ? (
+        {domainRequires(selectedDomain, 'audience_b2c_b2b') ? (
           <label>
             Audienca
             <select
@@ -456,7 +445,7 @@ export function ProviderServicesPanel() {
           </label>
         ) : null}
 
-        {domainRequires(categoryId, 'delivery_mode') ? (
+        {domainRequires(selectedDomain, 'delivery_mode') ? (
           <fieldset className="full checkbox-fieldset">
             <legend>Mënyra e mbajtjes</legend>
             {DELIVERY_MODES.map((mode) => (
@@ -472,7 +461,7 @@ export function ProviderServicesPanel() {
           </fieldset>
         ) : null}
 
-        {domainRequires(categoryId, 'language_pair') ? (
+        {domainRequires(selectedDomain, 'language_pair') ? (
           <>
             <label>
               Nga gjuha
@@ -505,7 +494,7 @@ export function ProviderServicesPanel() {
           </>
         ) : null}
 
-        {domainRequires(categoryId, 'portfolio_references') ? (
+        {domainRequires(selectedDomain, 'portfolio_references') ? (
           <>
             <label>
               Portfolio URL
@@ -526,7 +515,7 @@ export function ProviderServicesPanel() {
           </>
         ) : null}
 
-        {domainRequires(categoryId, 'coaching_boundary') ? (
+        {domainRequires(selectedDomain, 'coaching_boundary') ? (
           <label className="full check-row">
             <input
               type="checkbox"
@@ -534,11 +523,11 @@ export function ProviderServicesPanel() {
               onChange={(e) => setCoachingOk(e.target.checked)}
               required
             />
-            {COACHING_DISCLAIMER}
+            {selectedDomain?.guidelines?.sq}
           </label>
         ) : null}
 
-        {domainRequires(categoryId, 'cross_border_multilingual') ? (
+        {domainRequires(selectedDomain, 'cross_border_multilingual') ? (
           <fieldset className="full checkbox-fieldset">
             <legend>Gjuhë (cross-border / diaspora)</legend>
             {LANGUAGE_OPTIONS.map((lang) => (
@@ -668,13 +657,13 @@ export function CompanyExpertsPanel() {
         specialty,
         bio,
         location,
-        licenseNumber: domainRequires(categoryId, 'license_verification')
+        licenseNumber: domainRequires(selectedDomain, 'license_verification')
           ? licenseNumber
           : undefined,
-        languageFrom: domainRequires(categoryId, 'language_pair') ? languageFrom : undefined,
-        languageTo: domainRequires(categoryId, 'language_pair') ? languageTo : undefined,
-        deliveryModes: domainRequires(categoryId, 'delivery_mode') ? deliveryModes : undefined,
-        crossBorder: domainRequires(categoryId, 'cross_border_multilingual') ? true : undefined,
+        languageFrom: domainRequires(selectedDomain, 'language_pair') ? languageFrom : undefined,
+        languageTo: domainRequires(selectedDomain, 'language_pair') ? languageTo : undefined,
+        deliveryModes: domainRequires(selectedDomain, 'delivery_mode') ? deliveryModes : undefined,
+        crossBorder: domainRequires(selectedDomain, 'cross_border_multilingual') ? true : undefined,
       })
       setExperts((prev) => [expert, ...prev])
       setName('')
@@ -733,7 +722,7 @@ export function CompanyExpertsPanel() {
           <input value={location} onChange={(e) => setLocation(e.target.value)} required />
         </label>
 
-        {domainRequires(categoryId, 'license_verification') ? (
+        {domainRequires(selectedDomain, 'license_verification') ? (
           <label>
             License / Verification
             <input
@@ -744,7 +733,7 @@ export function CompanyExpertsPanel() {
           </label>
         ) : null}
 
-        {domainRequires(categoryId, 'language_pair') ? (
+        {domainRequires(selectedDomain, 'language_pair') ? (
           <>
             <label>
               Nga
@@ -769,7 +758,7 @@ export function CompanyExpertsPanel() {
           </>
         ) : null}
 
-        {domainRequires(categoryId, 'delivery_mode') ? (
+        {domainRequires(selectedDomain, 'delivery_mode') ? (
           <fieldset className="full checkbox-fieldset">
             <legend>Online / Fizikisht / Grup</legend>
             {DELIVERY_MODES.map((mode) => (
@@ -832,7 +821,7 @@ export function CompanyExpertsPanel() {
 }
 
 export function AdminDomainsPanel() {
-  const [domains, setDomains] = useState<DomainDefinition[]>(SYSTEM_DOMAINS)
+  const [domains, setDomains] = useState<DomainDefinition[]>([])
   const [labelSq, setLabelSq] = useState('')
   const [labelDe, setLabelDe] = useState('')
   const [examples, setExamples] = useState('')

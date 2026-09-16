@@ -11,7 +11,9 @@ import SlotPicker from './SlotPicker'
 
 type Props = {
   providerUid: string
+  providerId?: string
   providerName: string
+  categoryId?: string
   serviceId?: string
   serviceTitle?: string
   intake: Pick<MatchIntake, 'need' | 'location' | 'language' | 'urgency' | 'contact'>
@@ -19,7 +21,9 @@ type Props = {
 
 export default function SendRequestButton({
   providerUid,
+  providerId,
   providerName,
+  categoryId,
   serviceId,
   serviceTitle,
   intake,
@@ -54,7 +58,9 @@ export default function SendRequestButton({
     try {
       await sendServiceRequest({
         providerUid,
+        providerId,
         providerName,
+        categoryId,
         serviceId,
         serviceTitle,
         need: intake.need,
@@ -67,7 +73,7 @@ export default function SendRequestButton({
       })
       setSuccess(
         slotId
-          ? 'Kërkesa u dërgua dhe ora u rezervua. Të tjerët nuk mund ta zgjedhin më.'
+          ? 'Kërkesa u dërgua dhe ora u mbajt në pritje të konfirmimit nga ofruesi.'
           : 'Kërkesa u dërgua te ofruesi.',
       )
       setMessage('')

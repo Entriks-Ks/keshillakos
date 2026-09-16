@@ -78,7 +78,7 @@ router.post('/', async (req, res) => {
       uid: auth.localId,
       email: auth.email,
       name: name.trim(),
-      role,
+      grantedRoles: role === 'user' ? ['user'] : ['user', role],
     })
     const saved = await updateUserByUid(auth.localId, {
       name: name.trim(),
@@ -96,17 +96,25 @@ router.post('/', async (req, res) => {
 
 router.patch('/:uid', async (req, res) => {
   try {
-    const { name, email, role } = req.body as {
+    const { name, email, role, roles, accountStatus } = req.body as {
       name?: string
       email?: string
       role?: string
+      roles?: string[]
+      accountStatus?: 'active' | 'suspended' | 'closed'
     }
 
     if (role !== undefined && !isUserRole(role)) {
       return res.status(400).json({ message: 'Roli nuk është i vlefshëm' })
     }
+    if (roles !== undefined && (!Array.isArray(roles) || roles.some((value) => !isUserRole(value)))) {
+      return res.status(400).json({ message: 'Rolet nuk janë të vlefshme' })
+    }
+    if (accountStatus !== undefined && !['active', 'suspended', 'closed'].includes(accountStatus)) {
+      return res.status(400).json({ message: 'Statusi nuk është i vlefshëm' })
+    }
 
-    if (req.params.uid === req.user!.uid && role && role !== 'admin') {
+    if (req.params.uid === req.user!.uid && ((role && role !== 'admin') || (roles && !roles.includes('admin')) || (accountStatus && accountStatus !== 'active'))) {
       return res.status(400).json({
         message: 'Nuk mund ta heqësh rolin admin nga llogaria jote',
       })
@@ -116,6 +124,8 @@ router.patch('/:uid', async (req, res) => {
       name,
       email,
       role: role && isUserRole(role) ? role : undefined,
+      roles: roles as import('../types/roles').UserRole[] | undefined,
+      accountStatus,
     })
 
     return res.json({ user })

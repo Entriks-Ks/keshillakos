@@ -39,6 +39,7 @@ export type ServiceProvider = {
 
 export type ServiceItem = {
   id: string
+  providerId?: string
   title: string
   description: string
   categoryId: string

@@ -14,6 +14,7 @@ export type MatchedExpert = {
   id: string
   source: 'expert' | 'service'
   providerUid: string
+  providerId?: string
   name: string
   title: string
   categoryId?: string
