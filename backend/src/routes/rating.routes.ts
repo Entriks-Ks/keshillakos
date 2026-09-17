@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import { Types } from 'mongoose'
 import { requireAuth, requireRole } from '../middleware/auth'
+import { ProviderProfile } from '../models/ProviderProfile'
 import { RatingAggregate } from '../models/RatingAggregate'
 import { Review } from '../models/Review'
+import { User } from '../models/User'
 import {
   createReview, eligibleInteractions, findMyRating, getProviderStats, isCanonicalReviewSubmission,
   listProviderRatings, listRateableProviders, moderateReview, respondToReview,
@@ -22,6 +24,25 @@ router.get('/eligible/:providerId', requireAuth, requireRole('user', 'admin'), a
     return res.json({ interactions: await eligibleInteractions(req.user!.uid, providerId) })
   } catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Ndërveprimet nuk u ngarkuan' }) }
 })
+
+router.get('/eligible-uid/:providerUid', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+  try {
+    const providerUid = String(req.params.providerUid)
+    const owner = await User.findOne({ uid: providerUid }).select('_id').lean()
+    if (!owner) return res.json({ interactions: [], providerId: null })
+    const profiles = await ProviderProfile.find({ ownerUser: owner._id }).select('_id').lean()
+    const interactions = (
+      await Promise.all(profiles.map((profile) => eligibleInteractions(req.user!.uid, String(profile._id))))
+    ).flat()
+    return res.json({
+      interactions,
+      providerId: interactions[0]?.providerId || (profiles[0] ? String(profiles[0]._id) : null),
+    })
+  } catch (err) {
+    return res.status(500).json({ message: err instanceof Error ? err.message : 'Ndërveprimet nuk u ngarkuan' })
+  }
+})
+
 
 router.get('/provider/:providerUid', async (req, res) => {
   try {

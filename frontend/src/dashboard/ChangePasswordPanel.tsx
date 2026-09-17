@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
 
 export default function ChangePasswordPanel() {
   const { changePassword } = useAuth()
@@ -43,8 +44,10 @@ export default function ChangePasswordPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Ndrysho fjalëkalimin</h2>
-      <p className="muted">Vendos fjalëkalimin aktual dhe zgjidh një të ri.</p>
+      <DashPageHeader
+        title="Ndrysho fjalëkalimin"
+        description="Vendos fjalëkalimin aktual dhe zgjidh një të ri."
+      />
 
       <form onSubmit={onSubmit} className="service-form">
         <label>

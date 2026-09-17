@@ -23,6 +23,7 @@ import {
   type DomainDefinition,
 } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
 
 function useDomains() {
   const [domains, setDomains] = useState<DomainDefinition[]>([])
@@ -58,18 +59,23 @@ export function UserRateProvidersPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Vlerëso ofruesit</h2>
-      <p className="muted">Jep yje ofruesve të shërbimeve që ke përdorur.</p>
+      <DashPageHeader
+        title="Vlerëso ofruesit"
+        description="Jep yje ofruesve të shërbimeve që ke përdorur."
+      />
 
       {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
       {error ? <p className="error">{error}</p> : null}
       {!loading && providers.length === 0 ? (
-        <p className="muted">Ende nuk ka ofrues të publikuar për të vlerësuar.</p>
+        <p className="muted">
+          Nuk ke ende rezervim ose kërkesë të përfunduar për të vlerësuar. Kur të përfundojë një
+          bashkëpunim, ofruesi shfaqet këtu.
+        </p>
       ) : null}
 
       <ul className="rate-provider-list">
         {providers.map((provider) => (
-          <li key={provider.providerUid}>
+          <li key={provider.providerId || provider.providerUid}>
             <div>
               <strong>{provider.providerName}</strong>
               <span className="muted">{provider.titles.slice(0, 2).join(' · ')}</span>
@@ -77,15 +83,19 @@ export function UserRateProvidersPanel() {
             <RateProvider
               providerUid={provider.providerUid}
               providerName={provider.providerName}
+              providerId={provider.providerId}
+              interaction={provider.interaction}
               initialAverage={provider.average}
               initialCount={provider.count}
               onRated={(stats) => {
                 setProviders((prev) =>
-                  prev.map((p) =>
-                    p.providerUid === stats.providerUid
-                      ? { ...p, average: stats.average, count: stats.count }
-                      : p,
-                  ),
+                  prev
+                    .map((p) =>
+                      p.providerUid === stats.providerUid
+                        ? { ...p, average: stats.average, count: stats.count, interaction: undefined }
+                        : p,
+                    )
+                    .filter((p) => p.providerUid !== stats.providerUid || Boolean(p.interaction)),
                 )
               }}
             />
@@ -124,7 +134,7 @@ export function ProviderOwnRatings({ providerUid }: { providerUid: string }) {
 
   return (
     <section className="provider-section">
-      <h2>Vlerësimet e mia</h2>
+      <DashPageHeader title="Vlerësimet e mia" description="Shiko feedback-un që ke marrë nga klientët." />
       {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
       {!loading ? (
         <p className="rate-summary">
@@ -305,8 +315,10 @@ export function ProviderServicesPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Ofro një shërbim</h2>
-      <p className="muted">Zgjidh domenin — forma kërkon fushat e duhura për atë kategori.</p>
+      <DashPageHeader
+        title="Ofro një shërbim"
+        description="Zgjidh domenin — forma kërkon fushat e duhura për atë kategori."
+      />
 
       <form onSubmit={onSubmit} className="service-form">
         <label>
@@ -684,8 +696,10 @@ export function CompanyExpertsPanel() {
     <>
     <CompanyTeamPanel />
     <section className="provider-section">
-      <h2>Shto ekspert të kompanisë</h2>
-      <p className="muted">Ekspertët shfaqen me kategorinë dhe verifikimin përkatës.</p>
+      <DashPageHeader
+        title="Shto ekspert të kompanisë"
+        description="Ekspertët shfaqen me kategorinë dhe verifikimin përkatës."
+      />
 
       <form onSubmit={onSubmit} className="service-form">
         <label>
@@ -875,11 +889,10 @@ export function AdminDomainsPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Kategori (admin)</h2>
-      <p className="muted">
-        Sistemi ka domenet bazë. Këtu shto kategori të reja kur del një shërbim që nuk hyn te
-        ato ekzistuese.
-      </p>
+      <DashPageHeader
+        title="Kategori"
+        description="Sistemi ka domenet bazë. Këtu shto kategori të reja kur del një shërbim që nuk hyn te ato ekzistuese."
+      />
 
       <ul className="domain-admin-list">
         {domains.map((d) => (

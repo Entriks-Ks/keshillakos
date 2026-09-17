@@ -9,6 +9,7 @@ import {
   type SlotStatus,
 } from '../api/availability'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
 
 const STATUS_LABELS: Record<SlotStatus, string> = {
   open: 'I lirë',
@@ -152,11 +153,10 @@ export default function AvailabilityPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Disponueshmëria</h2>
-      <p className="muted">
-        Shto orë konkrete (p.sh. 14:00, 15:00). Kërkesa e klientit e mban orën përkohësisht;
-        pranimi nga ofruesi e konfirmon rezervimin.
-      </p>
+      <DashPageHeader
+        title="Disponueshmëria"
+        description="Shto orë konkrete (p.sh. 14:00, 15:00). Kërkesa e klientit e mban orën përkohësisht; pranimi nga ofruesi e konfirmon rezervimin."
+      />
 
       <form onSubmit={onSubmit} className="service-form">
         <label>

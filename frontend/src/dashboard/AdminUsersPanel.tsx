@@ -11,6 +11,7 @@ import type { UserRole } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'user', label: 'Përdorues' },
@@ -125,8 +126,10 @@ export default function AdminUsersPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Menaxhimi i përdoruesve</h2>
-      <p className="muted">Shiko dhe menaxho të gjitha rolet: user, provider, company, admin.</p>
+      <DashPageHeader
+        title="Menaxhimi i përdoruesve"
+        description="Shiko dhe menaxho të gjitha rolet: user, provider, company, admin."
+      />
 
       {counts ? (
         <ul className="admin-role-stats">

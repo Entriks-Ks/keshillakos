@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { fetchBusinessTeam, fetchMyBusinesses, inviteExpert, removeExpert, type BusinessSummary, type BusinessTeam } from '../api/onboarding'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
 
 export default function CompanyTeamPanel() {
   const { user } = useAuth()
@@ -44,26 +45,64 @@ export default function CompanyTeamPanel() {
   }
 
   if (!(user?.roles ?? []).includes('company')) return null
-  return <section className="provider-section">
-    <h2>Ekipi i kompanisë</h2>
-    <p className="muted">Fto ekspertë të regjistruar me email. Ata bashkohen vetëm pasi ta pranojnë ftesën.</p>
-    {businesses.length > 1 ? <label>Kompania <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-      {businesses.map((business) => <option key={business._id} value={business._id}>{business.publicName}</option>)}
-    </select></label> : null}
-    {team ? <p><strong>{team.business.publicName}</strong></p> : null}
-    <form className="service-form" onSubmit={invite}>
-      <label className="full">Email i ekspertit<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-      {error ? <p className="error full">{error}</p> : null}
-      <button type="submit" className="full" disabled={saving || !selected}>{saving ? 'Duke ftuar...' : 'Fto ekspertin'}</button>
-    </form>
-    {team ? <div className="services-list">
-      <h3>Anëtarët</h3>
-      <ul>{team.members.map((member) => <li key={member.id}>
-        <strong>{member.name}</strong><span>{member.email}</span>
-        <button type="button" className="ghost" onClick={() => remove(member.id)}>Hiq nga ekipi</button>
-      </li>)}</ul>
-      <h3>Ftesat në pritje</h3>
-      <ul>{team.invitations.map((invite) => <li key={invite.id}><strong>{invite.name}</strong><span>{invite.email}</span></li>)}</ul>
-    </div> : null}
-  </section>
+  return (
+    <section className="provider-section">
+      <DashPageHeader
+        title="Ekipi i kompanisë"
+        description="Fto ekspertë të regjistruar me email. Ata bashkohen vetëm pasi ta pranojnë ftesën."
+      />
+      {businesses.length > 1 ? (
+        <label className="dash-inline-select">
+          Kompania
+          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+            {businesses.map((business) => (
+              <option key={business._id} value={business._id}>
+                {business.publicName}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {team ? (
+        <p>
+          <strong>{team.business.publicName}</strong>
+        </p>
+      ) : null}
+      <form className="service-form" onSubmit={invite}>
+        <label className="full">
+          Email i ekspertit
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        {error ? <p className="error full">{error}</p> : null}
+        <button type="submit" className="full" disabled={saving || !selected}>
+          {saving ? 'Duke ftuar...' : 'Fto ekspertin'}
+        </button>
+      </form>
+      {team ? (
+        <div className="services-list">
+          <h3>Anëtarët</h3>
+          <ul>
+            {team.members.map((member) => (
+              <li key={member.id}>
+                <strong>{member.name}</strong>
+                <span>{member.email}</span>
+                <button type="button" className="ghost" onClick={() => remove(member.id)}>
+                  Hiq nga ekipi
+                </button>
+              </li>
+            ))}
+          </ul>
+          <h3>Ftesat në pritje</h3>
+          <ul>
+            {team.invitations.map((inviteItem) => (
+              <li key={inviteItem.id}>
+                <strong>{inviteItem.name}</strong>
+                <span>{inviteItem.email}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  )
 }

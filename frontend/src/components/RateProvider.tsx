@@ -1,21 +1,38 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { submitRating, type ProviderRatingStats } from '../api/ratings'
+import {
+  fetchEligibleByProviderUid,
+  fetchProviderRatings,
+  submitRating,
+  type EligibleInteraction,
+  type ProviderRatingStats,
+} from '../api/ratings'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
 
 type Props = {
   providerUid: string
   providerName: string
+  /** Mongo ProviderProfile id — preferuar kur dihet. */
+  providerId?: string
+  /** Ndërveprim i përfunduar i gatshëm për vlerësim. */
+  interaction?: EligibleInteraction
   initialAverage?: number
   initialCount?: number
   onRated?: (stats: ProviderRatingStats) => void
   compact?: boolean
 }
 
+const INTERACTION_LABELS: Record<EligibleInteraction['kind'], string> = {
+  appointment: 'Rezervim i përfunduar',
+  request_delivery: 'Kërkesë e përfunduar',
+}
+
 export default function RateProvider({
   providerUid,
   providerName,
+  providerId: providerIdProp,
+  interaction: interactionProp,
   initialAverage = 0,
   initialCount = 0,
   onRated,
@@ -29,26 +46,74 @@ export default function RateProvider({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [loadingEligible, setLoadingEligible] = useState(false)
+  const [providerId, setProviderId] = useState(providerIdProp || '')
+  const [interactions, setInteractions] = useState<EligibleInteraction[]>(
+    interactionProp ? [interactionProp] : [],
+  )
+  const [selectedId, setSelectedId] = useState(interactionProp?.id || '')
 
   const canRate = user?.role === 'user' || user?.role === 'admin'
+  const selected = interactions.find((item) => item.id === selectedId) || interactions[0]
+
+  useEffect(() => {
+    setAverage(initialAverage)
+    setCount(initialCount)
+  }, [initialAverage, initialCount])
+
+  useEffect(() => {
+    if (interactionProp) {
+      setInteractions([interactionProp])
+      setSelectedId(interactionProp.id)
+      if (interactionProp.providerId) setProviderId(interactionProp.providerId)
+    }
+    if (providerIdProp) setProviderId(providerIdProp)
+  }, [interactionProp, providerIdProp])
+
+  useEffect(() => {
+    if (!canRate || !providerUid || interactionProp) return
+    let cancelled = false
+    setLoadingEligible(true)
+    fetchEligibleByProviderUid(providerUid)
+      .then((data) => {
+        if (cancelled) return
+        setInteractions(data.interactions)
+        if (data.providerId) setProviderId(data.providerId)
+        setSelectedId(data.interactions[0]?.id || '')
+      })
+      .catch(() => {
+        if (!cancelled) setInteractions([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEligible(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canRate, providerUid, interactionProp])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!canRate) return
+    if (!canRate || !selected || !providerId) return
     setError('')
     setSuccess('')
     setSubmitting(true)
     try {
-      const result = await submitRating({
-        providerUid,
-        providerName,
-        score,
-        comment: comment.trim() || undefined,
+      await submitRating({
+        providerId,
+        interactionKind: selected.kind,
+        interactionId: selected.id,
+        stars: score,
+        text: comment.trim() || undefined,
       })
-      setAverage(result.stats.average)
-      setCount(result.stats.count)
+      const fresh = await fetchProviderRatings(providerUid)
+      setAverage(fresh.stats.average)
+      setCount(fresh.stats.count)
       setSuccess('Vlerësimi u ruajt.')
-      onRated?.(result.stats)
+      setInteractions((prev) => prev.filter((item) => item.id !== selected.id))
+      setSelectedId('')
+      setComment('')
+      onRated?.(fresh.stats)
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -76,8 +141,31 @@ export default function RateProvider({
         <p className="muted">Vetëm përdoruesit (klientët) mund të vlerësojnë ofruesit.</p>
       ) : null}
 
-      {canRate ? (
+      {canRate && loadingEligible ? <p className="muted">Duke kontrolluar ndërveprimet...</p> : null}
+
+      {canRate && !loadingEligible && interactions.length === 0 ? (
+        <p className="muted">
+          Për të vlerësuar <strong>{providerName}</strong>, duhet një rezervim ose kërkesë e
+          përfunduar me ta.
+        </p>
+      ) : null}
+
+      {canRate && !loadingEligible && selected ? (
         <form onSubmit={onSubmit} className="rate-form">
+          {interactions.length > 1 ? (
+            <label className="rate-interaction">
+              Ndërveprimi
+              <select value={selected.id} onChange={(e) => setSelectedId(e.target.value)}>
+                {interactions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {INTERACTION_LABELS[item.kind]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="muted rate-interaction-hint">{INTERACTION_LABELS[selected.kind]}</p>
+          )}
           <div className="star-row" role="group" aria-label="Vlerësimi">
             {[1, 2, 3, 4, 5].map((value) => (
               <button
@@ -99,7 +187,7 @@ export default function RateProvider({
               maxLength={500}
             />
           ) : null}
-          <button type="submit" className="ghost" disabled={submitting}>
+          <button type="submit" className="ghost" disabled={submitting || !providerId}>
             {submitting ? 'Duke ruajtur...' : 'Vlerëso'}
           </button>
           {error ? <p className="error">{error}</p> : null}

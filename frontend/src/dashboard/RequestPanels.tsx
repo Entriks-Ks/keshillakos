@@ -10,6 +10,7 @@ import {
   type ServiceRequestItem,
 } from '../api/requests'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
 
 const STATUS_LABELS: Record<RequestStatus, string> = {
   draft: 'Draft',
@@ -283,15 +284,24 @@ export function ProviderInboxPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Kërkesat e klientëve</h2>
-      <p className="muted">
-        Inbox i kërkesave
-        {pendingCount > 0 ? ` · ${pendingCount} në pritje` : ''}.
-      </p>
+      <DashPageHeader
+        title="Kërkesat e klientëve"
+        description={
+          pendingCount > 0
+            ? `Inbox i kërkesave · ${pendingCount} në pritje.`
+            : 'Inbox i kërkesave që kanë arritur te ti.'
+        }
+      />
       {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
       {error ? <p className="error">{error}</p> : null}
       {!loading && requests.length === 0 ? (
-        <p className="muted">Ende nuk ke marrë asnjë kërkesë.</p>
+        <div className="req-empty is-soft">
+          <span className="req-empty-icon" aria-hidden>
+            <Inbox size={22} />
+          </span>
+          <h3>Ende pa kërkesa</h3>
+          <p>Kur klientët të dërgojnë kërkesa, ato do të shfaqen këtu.</p>
+        </div>
       ) : null}
       <ul className="request-list">
         {requests.map((r) => (
@@ -392,8 +402,10 @@ export function AdminRequestsPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Të gjitha kërkesat</h2>
-      <p className="muted">Mbikëqyrja e kërkesave në platformë.</p>
+      <DashPageHeader
+        title="Të gjitha kërkesat"
+        description="Mbikëqyrja e kërkesave në platformë."
+      />
       {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
       {error ? <p className="error">{error}</p> : null}
       <ul className="request-list">

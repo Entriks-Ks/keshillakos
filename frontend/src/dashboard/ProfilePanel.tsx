@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { LANGUAGE_OPTIONS } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
+import DashPageHeader from './DashPageHeader'
 
 function parseSkills(raw: string) {
   return raw
@@ -93,8 +94,10 @@ export default function ProfilePanel() {
 
   return (
     <section className="provider-section">
-      <h2>Profili im</h2>
-      <p className="muted">Ndrysho emrin, foton, aftësitë dhe informacionet e tjera të profilit.</p>
+      <DashPageHeader
+        title="Profili im"
+        description="Ndrysho emrin, foton, aftësitë dhe informacionet e tjera të profilit."
+      />
 
       <div className="profile-role-options">
         {!(user.roles ?? [user.role]).includes('provider') ? <Link className="ghost link-btn" to="/dashboard/user/onboarding/expert">Bëhu Ekspert</Link> : <Link className="ghost link-btn" to="/dashboard/provider">Paneli i ekspertit</Link>}
