@@ -148,7 +148,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
   function onCardClick(e: MouseEvent<HTMLElement>) {
     if (isDetail) return
     const target = e.target as HTMLElement
-    if (target.closest('a, button, input, textarea, select, label')) return
+    if (target.closest('a, button, input, textarea, select, label, form, .send-request')) return
     openDetails()
   }
 
@@ -192,7 +192,11 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
         {!isCompact && busySlots.length > 0 ? <li>{busySlots.length} orë të zëna</li> : null}
       </ul>
 
-      <p className={`service-card-desc${isDetail ? ' is-expanded' : ''}`}>{service.description}</p>
+      {!isCompact || service.description ? (
+        <p className={`service-card-desc${isDetail ? ' is-expanded' : ''}`}>
+          {service.description}
+        </p>
+      ) : null}
 
       {!isDetail && !isCompact ? (
         <button type="button" className="ghost service-card-toggle" onClick={openDetails}>
@@ -307,21 +311,9 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
             compact
           />
         ) : null}
-        {isCompact ? (
-          <button type="button" className="ghost service-card-toggle" onClick={openDetails}>
-            Shiko
-          </button>
-        ) : null}
         {user?.role === 'user' || user?.role === 'admin' || !user ? (
           <>
-            <StartChatButton
-              providerUid={service.providerUid}
-              providerName={provider?.name || service.providerName}
-              serviceId={service.id}
-              serviceTitle={service.title}
-              compact
-            />
-            {!isCompact ? (
+            {isCompact ? (
               <SendRequestButton
                 providerUid={service.providerUid}
                 providerId={service.providerId}
@@ -330,9 +322,33 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
                 serviceId={service.id}
                 serviceTitle={service.title}
                 intake={intakeDefaults}
+                compact
               />
-            ) : null}
+            ) : (
+              <>
+                <StartChatButton
+                  providerUid={service.providerUid}
+                  providerName={provider?.name || service.providerName}
+                  serviceId={service.id}
+                  serviceTitle={service.title}
+                  compact
+                />
+                <SendRequestButton
+                  providerUid={service.providerUid}
+                  providerId={service.providerId}
+                  providerName={provider?.name || service.providerName}
+                  categoryId={service.categoryId}
+                  serviceId={service.id}
+                  serviceTitle={service.title}
+                  intake={intakeDefaults}
+                />
+              </>
+            )}
           </>
+        ) : isCompact ? (
+          <button type="button" className="ghost service-card-toggle" onClick={openDetails}>
+            Shiko detajet
+          </button>
         ) : null}
       </div>
     </article>

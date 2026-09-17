@@ -581,16 +581,41 @@ h1 {
   gap: 8px;
 }
 
+.send-request.is-compact {
+  margin-top: 0;
+  width: 100%;
+}
+
+.send-request-cta {
+  width: 100%;
+  justify-content: center;
+}
+
+.send-request-login {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
 .send-request-form {
   display: grid;
   gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--background);
+}
+
+.send-request.is-compact .send-request-form {
+  margin-top: 4px;
 }
 
 .send-request-form label {
   display: grid;
   gap: 6px;
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--ink-secondary);
 }
 
 .send-request-form textarea,
@@ -602,6 +627,14 @@ h1 {
   padding: 10px 12px;
   font: inherit;
   background: #fff;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.send-request-slot-toggle {
+  justify-self: start;
+  font-size: 0.84rem;
+  padding: 6px 0;
 }
 
 .send-request-actions {
@@ -717,34 +750,30 @@ h1 {
   gap: 16px;
 }
 
-.req-hero {
+.req-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 20px;
-  border-radius: 18px;
-  background:
-    radial-gradient(700px 180px at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
-    linear-gradient(135deg, color-mix(in srgb, var(--brand-navy) 92%, #0a21c0), var(--brand-navy));
-  color: #fff;
 }
 
-.req-hero h2 {
+.req-head h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+  font-size: clamp(1.35rem, 2.4vw, 1.65rem);
   letter-spacing: -0.03em;
+  color: var(--brand-navy);
 }
 
-.req-hero p {
+.req-head p {
   margin: 6px 0 0;
-  color: color-mix(in srgb, #fff 78%, transparent);
+  color: var(--ink-secondary);
   font-size: 0.94rem;
   line-height: 1.45;
   max-width: 34rem;
 }
 
+.req-head-cta,
 .req-hero-cta {
   display: inline-flex;
   align-items: center;
@@ -753,15 +782,20 @@ h1 {
   min-height: 38px;
   padding: 0 14px;
   border-radius: 11px;
-  background: #fff;
-  color: var(--brand-navy);
+  background: var(--accent);
+  color: #fff;
   text-decoration: none;
   font-weight: 700;
   font-size: 0.88rem;
 }
 
+.req-head-cta:hover,
 .req-hero-cta:hover {
-  background: color-mix(in srgb, #fff 90%, var(--accent));
+  background: var(--accent-hover, color-mix(in srgb, var(--accent) 88%, #000));
+}
+
+.req-hero {
+  display: none;
 }
 
 .req-toolbar {
@@ -841,11 +875,10 @@ h1 {
 .req-card {
   display: grid;
   gap: 10px;
-  padding: 16px;
+  padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   background: var(--surface);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-navy) 4%, transparent);
 }
 
 .req-card-head {
@@ -888,7 +921,7 @@ h1 {
 
 .req-appointment {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   margin: 0;
   padding: 10px 12px;
@@ -897,11 +930,11 @@ h1 {
   border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--brand-navy);
   font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .req-appointment svg {
   flex-shrink: 0;
-  margin-top: 2px;
   color: var(--accent);
 }
 
@@ -924,6 +957,21 @@ h1 {
   color: var(--ink-secondary);
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.req-meta-line {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+}
+
+.req-waiting {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--background);
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
 }
 
 .req-note {
@@ -951,7 +999,7 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .req-link-btn {
@@ -1019,7 +1067,7 @@ h1 {
 }
 
 @media (max-width: 640px) {
-  .req-hero {
+  .req-head {
     flex-direction: column;
   }
 }
@@ -3192,7 +3240,7 @@ h1 {
 
 /* Hide duplicate topbar title when page already has its own hero/header */
 .dash-body:has(.dash-overview) .dash-topbar-title,
-.dash-body:has(.req-hero) .dash-topbar-title,
+.dash-body:has(.req-head) .dash-topbar-title,
 .dash-body:has(.chat-page) .dash-topbar-title,
 .dash-body:has(.dash-page-head) .dash-topbar-title,
 .dash-body:has(.provider-section > h2:first-child) .dash-topbar-title {
@@ -3200,7 +3248,7 @@ h1 {
 }
 
 .dash-body:has(.dash-overview) .dash-topbar,
-.dash-body:has(.req-hero) .dash-topbar,
+.dash-body:has(.req-head) .dash-topbar,
 .dash-body:has(.chat-page) .dash-topbar,
 .dash-body:has(.dash-page-head) .dash-topbar,
 .dash-body:has(.provider-section > h2:first-child) .dash-topbar {
@@ -4740,10 +4788,12 @@ h1 {
     var(--background);
 }
 
-.tt-offers-head {
-  margin-bottom: 22px;
+.tt-offers-intro {
+  margin-bottom: 20px;
+  max-width: 36rem;
 }
 
+.tt-offers-intro h1,
 .tt-offers-page .tt-section-head h1 {
   margin: 0;
   font-family: var(--font-display);
@@ -4753,59 +4803,64 @@ h1 {
   color: var(--brand-navy);
 }
 
-.tt-offers-toolbar {
+.tt-offers-intro p {
+  margin: 8px 0 0;
+  color: var(--ink-secondary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.tt-offers-bar {
   display: grid;
   gap: 12px;
-  margin-bottom: 10px;
-  padding: 14px;
-  border-radius: 20px;
-  background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--brand-navy) 4%, transparent);
+  margin-bottom: 14px;
 }
 
 .tt-offers-search {
   position: relative;
   display: flex;
   align-items: center;
-}
-
-.tt-offers-search-field {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  width: 100%;
   margin: 0;
-  padding: 4px 12px;
+  padding: 0 14px;
+  min-height: 48px;
   border-radius: 14px;
-  background: var(--background);
-  border: 1px solid transparent;
-  transition: border-color 0.15s ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
-.tt-offers-search-field:focus-within {
+.tt-offers-search:focus-within {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-.tt-offers-search-field svg {
+.tt-offers-search svg {
   flex-shrink: 0;
   color: var(--accent);
 }
 
-.tt-offers-search-field :where(input) {
-  border: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
+.tt-offers-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.98rem;
+  color: var(--foreground);
+  outline: none;
+  padding: 12px 0;
+}
+
+.tt-offers-search input::placeholder {
+  color: var(--ink-secondary);
 }
 
 .tt-offers-clear-q {
-  position: absolute;
-  right: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: 0;
   border-radius: 999px;
   background: color-mix(in srgb, var(--brand-navy) 6%, transparent);
@@ -4817,63 +4872,20 @@ h1 {
   color: var(--accent);
 }
 
-.tt-offers-filters {
+.tt-offers-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
-  gap: 10px;
-}
-
-.tt-offers-filter {
-  display: grid;
-  gap: 5px;
-  margin: 0;
-  min-width: 150px;
-  flex: 1 1 150px;
-}
-
-.tt-offers-filter span {
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-secondary);
-}
-
-.tt-offers-filter select {
-  appearance: none;
-  width: 100%;
-  min-height: 42px;
-  padding: 0 34px 0 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(45deg, transparent 50%, var(--ink-secondary) 50%) right 14px top 17px / 5px 5px no-repeat,
-    linear-gradient(135deg, var(--ink-secondary) 50%, transparent 50%) right 9px top 17px / 5px 5px no-repeat,
-    var(--background);
-  color: var(--foreground);
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.tt-offers-filter select:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  gap: 8px;
 }
 
 .tt-offers-delivery {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
   border-radius: 12px;
-  background: var(--background);
+  background: var(--surface);
   border: 1px solid var(--border);
 }
 
@@ -4899,13 +4911,47 @@ h1 {
   color: #fff;
 }
 
+.tt-offers-select {
+  appearance: none;
+  min-height: 40px;
+  min-width: 140px;
+  padding: 0 32px 0 12px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(45deg, transparent 50%, var(--ink-secondary) 50%) right 12px top 16px / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--ink-secondary) 50%, transparent 50%) right 7px top 16px / 5px 5px no-repeat,
+    var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tt-offers-select:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
 .tt-offers-reset {
-  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 8px 4px;
+}
+
+.tt-offers-reset:hover {
+  text-decoration: underline;
 }
 
 .tt-offers-meta {
-  min-height: 1.4rem;
-  margin-bottom: 14px;
+  min-height: 1.2rem;
+  margin-bottom: 12px;
 }
 
 .tt-offers-meta p {
@@ -4914,35 +4960,31 @@ h1 {
   font-size: 0.9rem;
 }
 
-.tt-offers-meta strong {
-  color: var(--brand-navy);
-}
-
 .tt-offers-empty {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   justify-items: start;
-  padding: 28px 0 8px;
+  padding: 32px 0 12px;
+  color: var(--ink-secondary);
 }
 
 .tt-offers-empty p {
   margin: 0;
-  color: var(--ink-secondary);
 }
 
 .tt-offers-grid,
 .tt-offers-page .home-services-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
-  margin-top: 8px;
 }
 
 .service-card.is-compact {
+  display: grid;
   gap: 10px;
   padding: 16px;
   border-radius: 16px;
-  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   background: var(--surface);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -4951,29 +4993,34 @@ h1 {
 .service-card.is-compact.is-clickable:focus-visible {
   transform: none;
   border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-  box-shadow: 0 14px 36px color-mix(in srgb, var(--brand-navy) 8%, transparent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--brand-navy) 7%, transparent);
 }
 
 .service-card.is-compact .service-card-kicker {
   margin-bottom: 2px;
-  font-size: 0.76rem;
-  letter-spacing: 0.01em;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  color: var(--ink-secondary);
 }
 
 .service-card.is-compact h3 {
-  font-size: 1.02rem;
+  margin: 0;
+  font-size: 1.05rem;
   line-height: 1.28;
+  letter-spacing: -0.02em;
 }
 
 .service-card.is-compact .service-card-price {
   padding: 5px 9px;
   font-size: 0.8rem;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .service-card.is-compact .service-card-chips {
   gap: 6px;
+  margin: 0;
 }
 
 .service-card.is-compact .service-card-chips li {
@@ -4995,26 +5042,8 @@ h1 {
   color: var(--ink-secondary);
 }
 
-.service-card.is-compact .service-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.service-card.is-compact .service-card-toggle {
-  font-size: 0.84rem;
-  font-weight: 650;
-  color: var(--accent);
-  padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-}
-
 .service-card.is-compact .service-card-provider {
-  margin-top: 2px;
+  margin-top: 0;
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
@@ -5039,6 +5068,12 @@ h1 {
 
 .service-card.is-compact .service-card-provider-info span {
   font-size: 0.78rem;
+}
+
+.service-card.is-compact .service-card-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .tt-match-flow.match-results {
@@ -5136,11 +5171,8 @@ h1 {
     grid-template-columns: 1fr;
   }
 
-  .tt-offers-reset {
-    margin-left: 0;
-  }
-
-  .tt-offers-filter {
-    flex: 1 1 100%;
+  .tt-offers-select {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
   }
 }

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarDays, Clock3, Inbox, MessageCircle, Search } from 'lucide-react'
+import { CalendarDays, Inbox, MessageCircle, Search } from 'lucide-react'
 import {
   fetchMyRequests,
   fetchRequestInbox,
   fetchAllRequests,
   updateRequestStatus,
+  completeMyRequest,
   type RequestStatus,
   type ServiceRequestItem,
 } from '../api/requests'
@@ -69,23 +70,36 @@ export function UserRequestsPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all')
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function load() {
+    setLoading(true)
+    try {
+      setRequests(await fetchMyRequests())
+      setError('')
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false
-    fetchMyRequests()
-      .then((items) => {
-        if (!cancelled) setRequests(items)
-      })
-      .catch((err) => {
-        if (!cancelled) setError(getErrorMessage(err))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
+    void load()
   }, [])
+
+  async function markCompleted(id: string) {
+    setBusyId(id)
+    setError('')
+    try {
+      const updated = await completeMyRequest(id)
+      setRequests((prev) => prev.map((item) => (item.id === id ? { ...item, ...updated } : item)))
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   const filtered =
     statusFilter === 'all' ? requests : requests.filter((r) => r.status === statusFilter)
@@ -108,42 +122,36 @@ export function UserRequestsPanel() {
 
   return (
     <section className="req-page">
-      <div className="req-hero">
+      <header className="req-head">
         <div>
           <h2>Kërkesat e mia</h2>
-          <p>Ndiq statusin e kërkesave që u ke dërguar ofruesve.</p>
+          <p>Ndiq përgjigjet e ofruesve për kërkesat që ke dërguar.</p>
         </div>
-        <Link to="/" className="req-hero-cta">
+        <Link to="/ofertat" className="req-head-cta">
           <Search size={16} aria-hidden />
-          Kërko ndihmë
+          Shiko ofertat
         </Link>
-      </div>
+      </header>
 
       {!loading && requests.length > 0 ? (
-        <div className="req-toolbar">
-          <div className="req-filters" role="tablist" aria-label="Filtro sipas statusit">
-            {filterOptions.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={statusFilter === item.id}
-                className={`req-filter${statusFilter === item.id ? ' is-active' : ''}`}
-                onClick={() => setStatusFilter(item.id)}
-              >
-                {item.label}
-                <em>{item.count}</em>
-              </button>
-            ))}
-          </div>
-          <p className="req-count">
-            <strong>{filtered.length}</strong>{' '}
-            {filtered.length === 1 ? 'kërkesë' : 'kërkesa'}
-          </p>
+        <div className="req-filters" role="tablist" aria-label="Filtro sipas statusit">
+          {filterOptions.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === item.id}
+              className={`req-filter${statusFilter === item.id ? ' is-active' : ''}`}
+              onClick={() => setStatusFilter(item.id)}
+            >
+              {item.label}
+              <em>{item.count}</em>
+            </button>
+          ))}
         </div>
       ) : null}
 
-      {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
+      {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
       {!loading && requests.length === 0 ? (
@@ -151,11 +159,11 @@ export function UserRequestsPanel() {
           <span className="req-empty-icon" aria-hidden>
             <Inbox size={22} />
           </span>
-          <h3>Ende nuk ke dërguar asnjë kërkesë</h3>
-          <p>Fillo nga faqja kryesore për të gjetur ofruesin e duhur.</p>
-          <Link to="/" className="req-hero-cta">
+          <h3>Ende nuk ke dërguar kërkesë</h3>
+          <p>Shiko ofertat, zgjidh ofruesin dhe dërgo kërkesë me një hap.</p>
+          <Link to="/ofertat" className="req-head-cta">
             <Search size={16} aria-hidden />
-            Fillo matching
+            Shiko ofertat
           </Link>
         </div>
       ) : null}
@@ -190,41 +198,40 @@ export function UserRequestsPanel() {
               {appointment ? (
                 <p className="req-appointment">
                   <CalendarDays size={15} aria-hidden />
-                  <span>
-                    <strong>Termini:</strong> {appointment}
-                  </span>
+                  <span>{appointment}</span>
                 </p>
               ) : null}
 
-              <ul className="req-meta">
-                <li>
-                  <MessageCircle size={14} aria-hidden />
-                  {CONTACT_LABELS[r.contactMethod]}
-                </li>
-                {r.urgency ? (
-                  <li>
-                    <Clock3 size={14} aria-hidden />
-                    {URGENCY_LABELS[r.urgency] || r.urgency}
-                  </li>
-                ) : null}
-                <li>
-                  <Clock3 size={14} aria-hidden />
-                  {formatDate(r.createdAt)}
-                </li>
-              </ul>
+              <p className="req-meta-line">
+                {CONTACT_LABELS[r.contactMethod]}
+                {r.urgency ? ` · ${URGENCY_LABELS[r.urgency] || r.urgency}` : ''}
+                {' · '}
+                {formatDate(r.createdAt)}
+              </p>
 
               {r.providerNote ? (
                 <div className="req-note">
-                  <strong>Përgjigja e ofruesit</strong>
+                  <strong>Përgjigja</strong>
                   <p>{r.providerNote}</p>
                 </div>
+              ) : r.status === 'pending' || r.status === 'open' || r.status === 'read' ? (
+                <p className="req-waiting">Në pritje të përgjigjes së ofruesit…</p>
               ) : null}
 
               <div className="req-card-actions">
+                {r.status === 'accepted' ? (
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    disabled={busyId === r.id}
+                    onClick={() => void markCompleted(r.id)}
+                  >
+                    {busyId === r.id ? 'Duke përfunduar…' : 'Shëno si të përfunduar'}
+                  </button>
+                ) : null}
                 {r.providerUid ? (
                   <Link to={`/providers/${r.providerUid}`} className="req-link-btn">
-                    Shiko profilin
-                    <ArrowRight size={14} aria-hidden />
+                    Profili
                   </Link>
                 ) : null}
                 <Link to="/dashboard/user/messages" className="req-link-btn is-accent">
@@ -332,7 +339,7 @@ export function ProviderInboxPanel() {
               <li>{formatDate(r.createdAt)}</li>
             </ul>
 
-            {r.status === 'pending' ? (
+            {r.status === 'pending' || r.status === 'read' ? (
               <div className="request-actions">
                 <input
                   value={notes[r.id] || ''}
@@ -350,14 +357,6 @@ export function ProviderInboxPanel() {
                   </button>
                   <button
                     type="button"
-                    className="ghost"
-                    disabled={busyId === r.id}
-                    onClick={() => void setStatus(r.id, 'completed')}
-                  >
-                    Përfundo
-                  </button>
-                  <button
-                    type="button"
                     className="ghost danger-ghost"
                     disabled={busyId === r.id}
                     onClick={() => void setStatus(r.id, 'rejected')}
@@ -366,7 +365,35 @@ export function ProviderInboxPanel() {
                   </button>
                 </div>
               </div>
-            ) : r.providerNote ? (
+            ) : null}
+
+            {r.status === 'accepted' ? (
+              <div className="request-actions">
+                <input
+                  value={notes[r.id] || ''}
+                  onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                  placeholder="Shënim përfundimi (opsionale)"
+                />
+                <div className="admin-row-actions">
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    disabled={busyId === r.id}
+                    onClick={() => void setStatus(r.id, 'completed')}
+                  >
+                    {busyId === r.id ? 'Duke përfunduar…' : 'Përfundo kërkesën'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {r.status !== 'pending' && r.status !== 'read' && r.status !== 'accepted' && r.providerNote ? (
+              <p className="request-note">
+                <strong>Shënimi yt:</strong> {r.providerNote}
+              </p>
+            ) : null}
+
+            {r.status === 'accepted' && r.providerNote ? (
               <p className="request-note">
                 <strong>Shënimi yt:</strong> {r.providerNote}
               </p>

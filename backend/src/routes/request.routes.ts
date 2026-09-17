@@ -14,7 +14,7 @@ import {
   updateRequestStatus,
 } from '../services/requestService'
 import { RequestDelivery, DELIVERY_STATUSES, type DeliveryStatus } from '../models/RequestDelivery'
-import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, listMyUserRequests, listProviderDeliveries, listAllUserRequests, updateDeliveryStatus, countPendingDeliveries } from '../services/userRequestService'
+import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, listMyUserRequests, listProviderDeliveries, listAllUserRequests, updateDeliveryStatus, completeDeliveryAsSeeker, countPendingDeliveries } from '../services/userRequestService'
 
 const router = Router()
 
@@ -147,6 +147,22 @@ router.patch('/:id/lifecycle', requireAuth, requireRole('user', 'admin'), async 
     const requests = await updateUserRequestLifecycle(req.user!.uid, String(req.params.id), status)
     return res.json({ requests })
   } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Përditësimi dështoi' }) }
+})
+
+router.patch('/:id/complete', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+  try {
+    const id = String(req.params.id)
+    const isCanonical = await RequestDelivery.exists({ _id: id })
+    if (!isCanonical) {
+      return res.status(400).json({ message: 'Kjo kërkesë nuk mund të përfundojë nga klienti' })
+    }
+    const request = await completeDeliveryAsSeeker(req.user!.uid, id)
+    return res.json({ request })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Përfundimi dështoi',
+    })
+  }
 })
 
 router.patch('/:id/status', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {

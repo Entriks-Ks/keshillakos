@@ -216,7 +216,23 @@ export async function updateDeliveryStatus(uid: string, id: string, status: Deli
   const request = await UserRequest.findById(delivery.request)
   if (!request || request.status !== 'open') throw new Error('Kërkesa nuk është aktive')
   if (status === 'withdrawn') throw new Error('Vetëm kërkuesi mund ta tërheqë dërgesën')
-  if (['accepted', 'rejected', 'completed'].includes(delivery.status) && status !== delivery.status) throw new Error('Kjo dërgesë është përfunduar')
+
+  const allowed: Record<DeliveryStatus, DeliveryStatus[]> = {
+    pending: ['read', 'accepted', 'rejected', 'completed'],
+    read: ['accepted', 'rejected', 'completed'],
+    accepted: ['completed'],
+    rejected: [],
+    completed: [],
+    withdrawn: [],
+  }
+  if (status !== delivery.status && !allowed[delivery.status].includes(status)) {
+    throw new Error(
+      delivery.status === 'accepted'
+        ? 'Kërkesa e pranuar mund vetëm të përfundojë'
+        : 'Kjo dërgesë nuk mund të ndryshohet më',
+    )
+  }
+
   if (delivery.slotId && status === 'accepted') await confirmAppointmentFromDelivery(String(delivery._id))
   if (delivery.slotId && status === 'completed') await completeAppointmentFromDelivery(String(delivery._id))
   delivery.status = status
@@ -226,6 +242,30 @@ export async function updateDeliveryStatus(uid: string, id: string, status: Deli
   if (offer !== undefined) delivery.offer = offer
   await delivery.save()
   if (delivery.slotId && ['rejected', 'pending'].includes(status)) await syncSlotWithRequestStatus({ requestId: String(delivery._id), status: status as 'rejected' | 'pending' })
+  const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
+  return view(request, delivery, profile?.publicProfile.displayName)
+}
+
+/** Klienti konfirmon që bashkëpunimi me ofruesin ka përfunduar (accepted → completed). */
+export async function completeDeliveryAsSeeker(uid: string, id: string) {
+  if (!Types.ObjectId.isValid(id)) throw new Error('Delivery ID i pavlefshëm')
+  const delivery = await RequestDelivery.findById(id)
+  if (!delivery) throw new Error('Dërgesa nuk u gjet')
+  const owner = await User.findOne({ uid }).select('_id').lean()
+  const request = await UserRequest.findById(delivery.request)
+  if (!owner || !request || !request.user.equals(owner._id)) throw new Error('Nuk ke leje për këtë kërkesë')
+  if (request.status !== 'open') throw new Error('Kërkesa nuk është aktive')
+  if (delivery.status === 'completed') {
+    const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
+    return view(request, delivery, profile?.publicProfile.displayName)
+  }
+  if (delivery.status !== 'accepted') {
+    throw new Error('Vetëm kërkesat e pranuara mund të shënohen si të përfunduara')
+  }
+  if (delivery.slotId) await completeAppointmentFromDelivery(String(delivery._id))
+  delivery.status = 'completed'
+  delivery.respondedAt = delivery.respondedAt || new Date()
+  await delivery.save()
   const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
   return view(request, delivery, profile?.publicProfile.displayName)
 }

@@ -86,3 +86,10 @@ export async function updateRequestStatus(
   )
   return data.request
 }
+
+export async function completeMyRequest(id: string) {
+  const { data } = await api.patch<{ request: ServiceRequestItem }>(
+    `/api/requests/${id}/complete`,
+  )
+  return data.request
+}

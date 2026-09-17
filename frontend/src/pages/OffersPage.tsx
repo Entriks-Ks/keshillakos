@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Input } from '@heroui/react'
 import { MapPin, Search, X } from 'lucide-react'
 import { fetchActiveServices, type ServiceItem } from '../api/services'
 import ServiceCard from '../components/ServiceCard'
@@ -50,9 +49,7 @@ export default function OffersPage() {
 
   const categories = useMemo(
     () =>
-      uniqueSorted(
-        services.map((s) => s.categoryLabel || s.category || s.categoryId),
-      ),
+      uniqueSorted(services.map((s) => s.categoryLabel || s.category || s.categoryId)),
     [services],
   )
 
@@ -106,27 +103,20 @@ export default function OffersPage() {
       <main>
         <section className="tt-section tt-offers-page" aria-labelledby="offers-heading">
           <div className="tt-section-inner">
-            <div className="tt-section-head tt-offers-head">
+            <header className="tt-offers-intro">
               <h1 id="offers-heading">Ofertat</h1>
-              <p>Kërko dhe filtro ofruesit — pastaj shiko profilin ose dërgo mesazh.</p>
-            </div>
+              <p>Gjej shërbimin, shiko profilin dhe dërgo kërkesë me një hap.</p>
+            </header>
 
-            <div className="tt-offers-toolbar">
-              <form
-                className="tt-offers-search"
-                onSubmit={(e) => e.preventDefault()}
-                role="search"
-              >
-                <label className="tt-offers-search-field">
-                  <Search size={18} aria-hidden />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Kërko ofertë, kategori ose ofrues..."
-                    fullWidth
-                    aria-label="Kërko oferta"
-                  />
-                </label>
+            <div className="tt-offers-bar">
+              <label className="tt-offers-search">
+                <Search size={18} aria-hidden />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Kërko shërbim ose ofrues…"
+                  aria-label="Kërko oferta"
+                />
                 {query ? (
                   <button
                     type="button"
@@ -134,46 +124,12 @@ export default function OffersPage() {
                     onClick={() => setQuery('')}
                     aria-label="Pastro kërkimin"
                   >
-                    <X size={16} />
+                    <X size={15} />
                   </button>
                 ) : null}
-              </form>
+              </label>
 
-              <div className="tt-offers-filters">
-                <label className="tt-offers-filter">
-                  <span>Kategoria</span>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    aria-label="Filtro sipas kategorisë"
-                  >
-                    <option value="all">Të gjitha</option>
-                    {categories.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="tt-offers-filter">
-                  <span>
-                    <MapPin size={13} aria-hidden /> Lokacioni
-                  </span>
-                  <select
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    aria-label="Filtro sipas lokacionit"
-                  >
-                    <option value="all">Të gjitha</option>
-                    {locations.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
+              <div className="tt-offers-row">
                 <div className="tt-offers-delivery" role="group" aria-label="Mënyra e ofrimit">
                   {DELIVERY_FILTERS.map((item) => (
                     <button
@@ -187,16 +143,38 @@ export default function OffersPage() {
                   ))}
                 </div>
 
+                <select
+                  className="tt-offers-select"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  aria-label="Kategoria"
+                >
+                  <option value="all">Kategoria</option>
+                  {categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="tt-offers-select"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  aria-label="Lokacioni"
+                >
+                  <option value="all">Lokacioni</option>
+                  {locations.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+
                 {hasActiveFilters ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="tt-offers-reset"
-                    onPress={clearFilters}
-                  >
+                  <button type="button" className="tt-offers-reset" onClick={clearFilters}>
                     Pastro
-                  </Button>
+                  </button>
                 ) : null}
               </div>
             </div>
@@ -204,27 +182,32 @@ export default function OffersPage() {
             <div className="tt-offers-meta">
               {!loading ? (
                 <p>
-                  <strong>{filtered.length}</strong>{' '}
-                  {filtered.length === 1 ? 'ofertë' : 'oferta'}
-                  {hasActiveFilters ? ' sipas filtrave' : ''}
+                  {filtered.length === 0
+                    ? 'Asnjë rezultat'
+                    : `${filtered.length} ${filtered.length === 1 ? 'ofertë' : 'oferta'}`}
                 </p>
               ) : null}
             </div>
 
-            {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
+            {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
+
             {!loading && services.length === 0 ? (
-              <p className="muted">Ende nuk ka oferta të publikuara.</p>
-            ) : null}
-            {!loading && services.length > 0 && filtered.length === 0 ? (
               <div className="tt-offers-empty">
-                <p>Nuk u gjet asnjë ofertë me këto filtra.</p>
-                <Button type="button" variant="outline" size="sm" onPress={clearFilters}>
-                  Pastro filtrat
-                </Button>
+                <p>Ende nuk ka oferta të publikuara.</p>
               </div>
             ) : null}
 
-            <div className="home-services-list tt-offers-grid">
+            {!loading && services.length > 0 && filtered.length === 0 ? (
+              <div className="tt-offers-empty">
+                <MapPin size={20} aria-hidden />
+                <p>Nuk u gjet asnjë ofertë me këto filtra.</p>
+                <button type="button" className="ghost" onClick={clearFilters}>
+                  Pastro filtrat
+                </button>
+              </div>
+            ) : null}
+
+            <div className="tt-offers-grid">
               {filtered.map((service) => (
                 <ServiceCard key={service.id} service={service} mode="compact" />
               ))}
