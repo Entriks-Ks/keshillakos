@@ -1,26 +1,81 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { Button, Input, ProgressBar } from '@heroui/react'
+import { useNavigate } from 'react-router-dom'
+import { Button, Card, Input, ProgressBar } from '@heroui/react'
 import {
   ArrowRight,
   BadgeCheck,
-  Briefcase,
-  MapPin,
+  BriefcaseBusiness,
+  Building2,
+  Calculator,
+  CarFront,
+  DraftingCompass,
+  Dumbbell,
+  GraduationCap,
+  HeartHandshake,
+  House,
+  Languages,
+  LayoutGrid,
+  Megaphone,
   MessageCircle,
+  Monitor,
+  PartyPopper,
+  Plane,
+  Scale,
+  Scissors,
   Search,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
+  Trees,
+  TrendingUp,
+  WalletCards,
+  type LucideIcon,
 } from 'lucide-react'
-import { fetchDomains } from '../api/domains'
+import { fetchCategories, fetchSubcategories, type CatalogCategory, type CatalogSubcategory } from '../api/catalog'
+import { locationLabel, type LocationSelection } from '../api/locations'
 import { runMatch, type MatchIntake, type MatchedExpert } from '../api/match'
-import type { DomainDefinition } from '../data/domains'
 import RateProvider from '../components/RateProvider'
+import LocationSelector from '../components/LocationSelector'
 import SendRequestButton from '../components/SendRequestButton'
 import SiteNav from '../components/SiteNav'
+import SiteFooter from '../components/SiteFooter'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
+import { useSavedLocation } from '../hooks/useSavedLocation'
+import heroPlaceholder from '../assets/hero.png'
 
 const TOTAL_STEPS = 7
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  'home-and-property': House,
+  'gardening-and-outdoor': Trees,
+  'auto-and-transportation': CarFront,
+  'legal-services': Scale,
+  'accounting-and-business': Calculator,
+  'it-and-technology': Monitor,
+  'marketing-and-creative': Megaphone,
+  'education-and-tutoring': GraduationCap,
+  'translation-and-language': Languages,
+  'career-development': TrendingUp,
+  'real-estate': Building2,
+  'architecture-and-engineering': DraftingCompass,
+  'finance-and-insurance': WalletCards,
+  'beauty-and-personal-care': Scissors,
+  'fitness-and-wellness': Dumbbell,
+  'events-and-weddings': PartyPopper,
+  'family-and-care': HeartHandshake,
+  'diaspora-and-relocation': Plane,
+  'personal-and-lifestyle': ShoppingBag,
+  'other-services': LayoutGrid,
+}
+
+function currentCatalogLanguage(): 'sq' | 'en' {
+  return document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'sq'
+}
+
+// Temporary visual-only images; replace here when service photography is ready.
+function subcategoryPlaceholder(slug: string) {
+  return `https://picsum.photos/seed/keshillakos-${encodeURIComponent(slug)}/640/800`
+}
 
 const NEED_CHIPS = [
   'Regjistrim biznesi + Tatime',
@@ -30,8 +85,6 @@ const NEED_CHIPS = [
   'Website / IT support',
   'Përkthim Shqip ↔ Gjermanisht',
 ]
-
-const LOCATIONS = ['Prishtinë', 'Prizren', 'Online', 'Pejë', 'Gjakovë', 'Mitrovicë']
 
 const HOW_STEPS = [
   {
@@ -64,7 +117,7 @@ type IntakeState = {
 const INITIAL: IntakeState = {
   need: '',
   audience: '',
-  location: 'Prishtinë',
+  location: '',
   language: '',
   urgency: '',
   budget: '',
@@ -72,37 +125,80 @@ const INITIAL: IntakeState = {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const heroRef = useRef<HTMLElement | null>(null)
   const needInputRef = useRef<HTMLInputElement | null>(null)
   const [step, setStep] = useState(1)
   const [intake, setIntake] = useState<IntakeState>(INITIAL)
+  const { selectedLocation, changeLocation, locationLoading, locationSaving, locationError } = useSavedLocation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [matches, setMatches] = useState<MatchedExpert[] | null>(null)
+  const [discoveryContext, setDiscoveryContext] = useState<{ categoryId?: string; subcategoryId?: string }>({})
   const [resultMessage, setResultMessage] = useState('')
   const [engine, setEngine] = useState('')
-  const [domains, setDomains] = useState<DomainDefinition[]>([])
+  const [catalogLanguage, setCatalogLanguage] = useState(currentCatalogLanguage)
+  const [categories, setCategories] = useState<CatalogCategory[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [subcategoriesResult, setSubcategoriesResult] = useState<{
+    categoryId: string
+    items: CatalogSubcategory[]
+    error: string
+  }>({ categoryId: '', items: [], error: '' })
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState('')
 
   const matching = step > 1 || matches !== null
+  const subcategoriesLoading = Boolean(selectedCategoryId && subcategoriesResult.categoryId !== selectedCategoryId)
+  const subcategories = subcategoriesLoading ? [] : subcategoriesResult.items
+  const subcategoriesError = subcategoriesLoading ? '' : subcategoriesResult.error
 
   useEffect(() => {
-    let cancelled = false
-    fetchDomains()
-      .then((items) => {
-        if (!cancelled) setDomains(items.slice(0, 8))
-      })
-      .catch(() => {
-        if (!cancelled) setDomains([])
-      })
-    return () => {
-      cancelled = true
-    }
+    const observer = new MutationObserver(() => setCatalogLanguage(currentCatalogLanguage()))
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
+    return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    setIntake((previous) => ({ ...previous, location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : '' }))
+  }, [selectedLocation, catalogLanguage])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchCategories(controller.signal)
+      .then((items) => {
+        const active = items.filter((item) => item.isActive).sort((a, b) => a.order - b.order || a.slug.localeCompare(b.slug))
+        setCategories(active)
+        setSelectedCategoryId((previous) => active.some((item) => item._id === previous) ? previous : active[0]?._id ?? '')
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) setCatalogError(getErrorMessage(err))
+      })
+      .finally(() => { if (!controller.signal.aborted) setCategoriesLoading(false) })
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCategoryId) return
+    const controller = new AbortController()
+    fetchSubcategories(selectedCategoryId, controller.signal)
+      .then((items) => setSubcategoriesResult({
+        categoryId: selectedCategoryId,
+        items: items.filter((item) => item.isActive).sort((a, b) => a.order - b.order || a.slug.localeCompare(b.slug)),
+        error: '',
+      }))
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) setSubcategoriesResult({ categoryId: selectedCategoryId, items: [], error: getErrorMessage(err) })
+      })
+    return () => controller.abort()
+  }, [selectedCategoryId])
 
   function update<K extends keyof IntakeState>(key: K, value: IntakeState[K]) {
     setIntake((prev) => ({ ...prev, [key]: value }))
   }
+
+  function selectLocation(value: LocationSelection | null) { void changeLocation(value) }
 
   function scrollToHero() {
     requestAnimationFrame(() => {
@@ -141,7 +237,9 @@ export default function HomePage() {
       const payload: MatchIntake = {
         need: intake.need.trim(),
         audience: intake.audience,
-        location: intake.location,
+        location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : intake.location,
+        cityId: selectedLocation?.city._id,
+        ...discoveryContext,
         language: intake.language,
         urgency: intake.urgency,
         budget: intake.budget.trim() || undefined,
@@ -180,7 +278,8 @@ export default function HomePage() {
   }
 
   function resetAll() {
-    setIntake(INITIAL)
+    setIntake({ ...INITIAL, location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : '' })
+    setDiscoveryContext({})
     setStep(1)
     setMatches(null)
     setResultMessage('')
@@ -188,10 +287,11 @@ export default function HomePage() {
     setError('')
   }
 
-  function startMatching(need: string, location = intake.location || 'Online') {
+  function startMatching(need: string, location = intake.location, context: { categoryId?: string; subcategoryId?: string } = {}) {
     const trimmed = need.trim()
     if (trimmed.length < 4) return
     setIntake((prev) => ({ ...prev, need: trimmed, location }))
+    setDiscoveryContext(context)
     setStep(2)
     setMatches(null)
     setResultMessage('')
@@ -202,17 +302,12 @@ export default function HomePage() {
 
   function onSearchSubmit(e: FormEvent) {
     e.preventDefault()
-    startMatching(intake.need, intake.location || 'Prishtinë')
-  }
-
-  function startFromCategory(domain: DomainDefinition) {
-    const need = domain.examples[0] || domain.labelSq
-    startMatching(need, intake.location || 'Online')
+    startMatching(intake.need)
   }
 
   return (
     <div className="tt-shell">
-      <SiteNav homeAnchors />
+      <SiteNav />
 
       <main>
         <section
@@ -244,28 +339,17 @@ export default function HomePage() {
                         aria-label="Çfarë të duhet?"
                       />
                     </label>
-                    <label className="tt-search-location">
-                      <MapPin size={18} aria-hidden />
-                      <Input
-                        value={intake.location}
-                        onChange={(e) => update('location', e.target.value)}
-                        placeholder="Ku?"
-                        fullWidth
-                        list="tt-locations"
-                        aria-label="Ku?"
-                      />
-                      <datalist id="tt-locations">
-                        {LOCATIONS.map((loc) => (
-                          <option key={loc} value={loc} />
-                        ))}
-                      </datalist>
-                    </label>
+                    <div className="tt-search-location">
+                      <LocationSelector value={selectedLocation} onChange={selectLocation} disabled={locationLoading || locationSaving} className="tt-location-selector--hero" />
+                    </div>
                     <Button type="submit" variant="primary" className="tt-search-submit">
                       Gjej ofrues
                       <ArrowRight size={18} />
                     </Button>
                   </form>
                 ) : null}
+
+                {!matching && locationError ? <p className="tt-location-save-error" role="alert">{locationError}</p> : null}
 
                 {!matching ? (
                   <div className="tt-search-chips">
@@ -274,7 +358,7 @@ export default function HomePage() {
                         key={chip}
                         type="button"
                         className="tt-quick-chip"
-                        onClick={() => startMatching(chip, intake.location || 'Online')}
+                        onClick={() => startMatching(chip)}
                       >
                         {chip}
                       </button>
@@ -326,18 +410,8 @@ export default function HomePage() {
                       {step === 3 ? (
                         <fieldset className="wizard-fieldset">
                           <legend>Ku?</legend>
-                          <div className="chip-row">
-                            {LOCATIONS.map((loc) => (
-                              <button
-                                key={loc}
-                                type="button"
-                                className={`chip${intake.location === loc ? ' is-selected' : ''}`}
-                                onClick={() => update('location', loc)}
-                              >
-                                {loc}
-                              </button>
-                            ))}
-                          </div>
+                          <LocationSelector value={selectedLocation} onChange={selectLocation} disabled={locationLoading || locationSaving} className="tt-location-selector--wizard" />
+                          {locationError ? <p className="tt-location-save-error" role="alert">{locationError}</p> : null}
                         </fieldset>
                       ) : null}
 
@@ -524,7 +598,7 @@ export default function HomePage() {
                                 serviceTitle={m.title}
                                 intake={{
                                   need: intake.need,
-                                  location: intake.location,
+                                  location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : intake.location,
                                   language: intake.language as MatchIntake['language'],
                                   urgency: intake.urgency as MatchIntake['urgency'],
                                   contact: intake.contact as MatchIntake['contact'],
@@ -550,27 +624,66 @@ export default function HomePage() {
           <div className="tt-section-inner">
             <div className="tt-section-head">
               <h2 id="categories-heading">Zgjidh një shërbim</h2>
-              <p>Shiko domenet më të kërkuara dhe nis matching menjëherë.</p>
+              <p>Eksploro kategoritë dhe zgjidh shërbimin që të duhet.</p>
             </div>
-            <div className="tt-category-grid">
-              {domains.map((domain) => (
-                <button
-                  key={domain.id}
-                  type="button"
-                  className="tt-category"
-                  onClick={() => startFromCategory(domain)}
-                >
-                  <span className="tt-category-icon" aria-hidden>
-                    <Briefcase size={22} />
-                  </span>
-                  <strong>{domain.labelSq}</strong>
-                  <span>{domain.examples[0] || 'Shiko ofrues'}</span>
-                </button>
-              ))}
-              {domains.length === 0 ? (
-                <p className="muted">Kategoritë po ngarkohen...</p>
-              ) : null}
-            </div>
+            {categoriesLoading ? <p className="muted" role="status">Kategoritë po ngarkohen...</p> : null}
+            {catalogError ? <p className="error" role="alert">{catalogError}</p> : null}
+            {!categoriesLoading && !catalogError && categories.length === 0 ? <p className="muted">Nuk ka kategori të disponueshme.</p> : null}
+            {categories.length > 0 ? (
+              <>
+                <div className="tt-category-scroll" aria-label="Kategoritë">
+                  {categories.map((category) => {
+                    const Icon = CATEGORY_ICONS[category.slug] ?? BriefcaseBusiness
+                    return (
+                      <Button
+                        key={category._id}
+                        type="button"
+                        variant="ghost"
+                        className={`tt-category-choice${selectedCategoryId === category._id ? ' is-selected' : ''}`}
+                        aria-pressed={selectedCategoryId === category._id}
+                        onPress={() => setSelectedCategoryId(category._id)}
+                      >
+                        <Icon size={36} strokeWidth={1.55} aria-hidden />
+                        <span>{category.name[catalogLanguage] || category.name.sq}</span>
+                      </Button>
+                    )
+                  })}
+                </div>
+                <div className="tt-subcategory-heading">
+                  <h3>{categories.find((item) => item._id === selectedCategoryId)?.name[catalogLanguage]}</h3>
+                  <p>Zgjidh një shërbim për të nisur kërkimin.</p>
+                </div>
+                {subcategoriesLoading ? <p className="muted" role="status">Shërbimet po ngarkohen...</p> : null}
+                {subcategoriesError ? <p className="error" role="alert">{subcategoriesError}</p> : null}
+                {!subcategoriesLoading && !subcategoriesError && selectedCategoryId && subcategories.length === 0 ? <p className="muted">Nuk ka shërbime të disponueshme.</p> : null}
+                {!subcategoriesLoading && !subcategoriesError ? (
+                  <div className="tt-subcategory-grid">
+                    {subcategories.map((subcategory) => (
+                      <button
+                        key={subcategory._id}
+                        type="button"
+                        className="tt-subcategory-action"
+                        onClick={() => startMatching(subcategory.name[catalogLanguage] || subcategory.name.sq, intake.location, { categoryId: selectedCategoryId, subcategoryId: subcategory._id })}
+                      >
+                        <Card className="tt-subcategory-card">
+                          <img
+                            className="tt-subcategory-image"
+                            src={subcategoryPlaceholder(subcategory.slug)}
+                            alt=""
+                            loading="lazy"
+                            onError={(event) => { event.currentTarget.src = heroPlaceholder }}
+                          />
+                          <span className="tt-subcategory-shade" aria-hidden />
+                          <span className="tt-subcategory-title">
+                            {subcategory.name[catalogLanguage] || subcategory.name.sq}
+                          </span>
+                        </Card>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </div>
         </section>
 
@@ -596,7 +709,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="tt-section tt-trust" aria-labelledby="trust-heading">
+        <section id="trust" className="tt-section tt-trust" aria-labelledby="trust-heading">
           <div className="tt-section-inner">
             <div className="tt-section-head">
               <h2 id="trust-heading">Pse klientët zgjedhin KëshillaKos</h2>
@@ -629,6 +742,7 @@ export default function HomePage() {
             <div className="tt-cta-actions">
               <Button
                 variant="primary"
+                className="tt-cta-button"
                 onPress={() => {
                   resetAll()
                   scrollToHero()
@@ -639,10 +753,8 @@ export default function HomePage() {
                 <ArrowRight size={18} />
               </Button>
               {!user ? (
-                <Button variant="outline">
-                  <Link to="/register" className="tt-btn-link tt-btn-link-dark">
-                    Krijo llogari
-                  </Link>
+                <Button variant="outline" className="tt-cta-button tt-cta-register" onPress={() => navigate('/register')}>
+                  Krijo llogari
                 </Button>
               ) : null}
             </div>
@@ -650,12 +762,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="tt-footer">
-        <div className="tt-section-inner tt-footer-inner">
-          <p className="brand">KëshillaKos</p>
-          <p className="muted">Matching me ofrues profesionalë në Kosovë dhe online.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

@@ -1,7 +1,11 @@
-import mongoose from 'mongoose'
+import mongoose, { Types } from 'mongoose'
+import { Category } from '../models/Category'
+import { City } from '../models/City'
+import { Country } from '../models/Country'
 import { ProviderProfile } from '../models/ProviderProfile'
 import { Service, type ServiceDetails, type ServiceDoc } from '../models/Service'
 import { ServiceOffer } from '../models/ServiceOffer'
+import { Subcategory } from '../models/Subcategory'
 import { User } from '../models/User'
 import { validateExtensions } from './categoryConfiguration'
 import { findDomainById } from './domainService'
@@ -20,6 +24,40 @@ export type CreateServiceInput = {
   providerUid: string // Legacy API account lookup only.
   providerName: string
   providerId?: string
+}
+
+export type ServiceDiscoveryFilters = {
+  cityId?: string
+  categoryId?: string
+  subcategoryId?: string
+  serviceId?: string
+  q?: string
+}
+
+function normalized(value: string) {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+export function filterDiscoveredServices<T extends {
+  id: string; categoryId: string; categoryLabel: string; subcategory: string
+  title: string; description: string; providerName: string
+}>(services: T[], filters: Omit<ServiceDiscoveryFilters, 'cityId' | 'subcategoryId'> & { subcategoryNames?: string[] }) {
+  const category = normalized(filters.categoryId || '')
+  const names = filters.subcategoryNames?.map(normalized) ?? []
+  const query = normalized(filters.q || '')
+  return services.filter((service) => {
+    if (filters.serviceId && service.id !== filters.serviceId) return false
+    if (category && ![service.categoryId, service.categoryLabel].some((value) => normalized(value) === category)) return false
+    if (names.length && !names.includes(normalized(service.subcategory))) return false
+    if (query && !normalized([service.title, service.description, service.subcategory, service.categoryLabel, service.providerName].join(' ')).includes(query)) return false
+    return true
+  })
+}
+
+export async function isActiveDiscoveryCity(cityId: string) {
+  if (!Types.ObjectId.isValid(cityId)) throw new Error('City ID i pavlefshëm')
+  const city = await City.findOne({ _id: cityId, isActive: true }).select('countryId').lean()
+  return Boolean(city && await Country.exists({ _id: city.countryId, isActive: true }))
 }
 
 function legacyService(doc: ServiceDoc & { _id: { toString(): string } }, provider?: ProviderPublicDetails) {
@@ -96,12 +134,44 @@ export async function listServicesByProvider(providerUid: string) {
   return [...(await offersToLegacyServices(offers)), ...(await withLegacyProviders(legacy))]
 }
 
-export async function listActiveServices() {
+export async function listActiveServices(filters: ServiceDiscoveryFilters = {}) {
+  let providerIds: Types.ObjectId[] | undefined
+  let providerUids: string[] | undefined
+  if (filters.cityId) {
+    if (!await isActiveDiscoveryCity(filters.cityId)) return []
+    const profiles = await ProviderProfile.find({
+      serviceAreaCityIds: new Types.ObjectId(filters.cityId),
+      status: 'published', 'moderation.status': 'approved',
+    }).select('_id ownerUser').lean()
+    if (!profiles.length) return []
+    providerIds = profiles.map((profile) => profile._id)
+    const users = await User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid').lean()
+    providerUids = users.map((user) => user.uid)
+  }
   const [legacy, offers] = await Promise.all([
-    Service.find({ active: true }).sort({ createdAt: -1 }).limit(50),
-    listPublishedServiceOffers(),
+    Service.find({ active: true, ...(providerUids ? { providerUid: { $in: providerUids } } : {}) })
+      .sort({ createdAt: -1 }).limit(filters.cityId ? 0 : 50),
+    listPublishedServiceOffers(providerIds),
   ])
-  return [...(await offersToLegacyServices(offers, true)), ...(await withLegacyProviders(legacy))]
+  let categoryId = filters.categoryId
+  if (categoryId && Types.ObjectId.isValid(categoryId)) {
+    const category = await Category.findById(categoryId).select('stableId').lean()
+    categoryId = category?.stableId ?? categoryId
+  }
+  let subcategoryNames: string[] | undefined
+  if (filters.subcategoryId) {
+    const subcategory = Types.ObjectId.isValid(filters.subcategoryId)
+      ? await Subcategory.findById(filters.subcategoryId).lean()
+      : await Subcategory.findOne({ slug: filters.subcategoryId }).lean()
+    if (!subcategory?.isActive) return []
+    subcategoryNames = [subcategory.name.sq, subcategory.name.en]
+    if (!categoryId) {
+      const parent = await Category.findById(subcategory.categoryId).select('stableId').lean()
+      categoryId = parent?.stableId
+    }
+  }
+  const services = [...(await offersToLegacyServices(offers, true)), ...(await withLegacyProviders(legacy))]
+  return filterDiscoveredServices(services, { ...filters, categoryId, subcategoryNames })
 }
 export async function getActiveServiceById(id: string) {
   if (!mongoose.isValidObjectId(id)) return null

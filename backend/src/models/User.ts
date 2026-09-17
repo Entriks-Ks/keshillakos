@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose'
+import mongoose, { Schema, Types } from 'mongoose'
 import { ROLES, type UserRole } from '../types/roles'
 
 export type UserDoc = {
@@ -20,7 +20,8 @@ export type UserDoc = {
   // Legacy stored fields are read-only until ProviderProfile migration.
   headline?: string
   bio?: string
-  location?: string
+  location?: { countryId: Types.ObjectId; cityId: Types.ObjectId }
+  legacyLocation?: string // Preserves pre-catalog free-text profile locations.
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
@@ -34,6 +35,11 @@ const optionalText = (max: number) => ({
   maxlength: max,
   set: (value: unknown) => typeof value === 'string' ? value.trim() || undefined : value,
 })
+
+const savedLocationSchema = new Schema({
+  countryId: { type: Schema.Types.ObjectId, ref: 'Country', required: true },
+  cityId: { type: Schema.Types.ObjectId, ref: 'City', required: true },
+}, { _id: false })
 
 export const userSchema = new Schema<UserDoc>(
   {
@@ -65,13 +71,21 @@ export const userSchema = new Schema<UserDoc>(
     // Existing documents retain these fields; new account writes do not populate them.
     headline: String,
     bio: String,
-    location: String,
+    location: { type: savedLocationSchema, default: undefined },
+    legacyLocation: String,
     skills: { type: [String], default: undefined },
     languages: { type: [String], default: undefined },
     profilePhoto: String,
   },
   { timestamps: true },
 )
+
+userSchema.pre('init', (raw: Record<string, unknown>) => {
+  if (typeof raw.location === 'string') {
+    raw.legacyLocation = raw.location
+    delete raw.location
+  }
+})
 
 // Unverified phone numbers must not reserve a unique identity.
 userSchema.index({ phone: 1 }, { sparse: true })

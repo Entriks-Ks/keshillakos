@@ -4,11 +4,7 @@ import { LayoutDashboard } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { getDashboardPath } from '../utils/dashboardPath'
 
-type Props = {
-  homeAnchors?: boolean
-}
-
-export default function SiteNav({ homeAnchors = false }: Props) {
+export default function SiteNav() {
   const { user } = useAuth()
 
   return (
@@ -18,17 +14,6 @@ export default function SiteNav({ homeAnchors = false }: Props) {
           KëshillaKos
         </Link>
         <nav className="tt-nav-links" aria-label="Kryesore">
-          {homeAnchors ? (
-            <>
-              <a href="#categories">Eksploro</a>
-              <a href="#how">Si funksionon</a>
-            </>
-          ) : (
-            <>
-              <Link to="/#categories">Eksploro</Link>
-              <Link to="/#how">Si funksionon</Link>
-            </>
-          )}
           <Link to="/ofertat" className="tt-nav-offers">
             Ofertat
           </Link>

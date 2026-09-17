@@ -94,10 +94,10 @@ export async function listExpertsByCompany(companyUid: string) {
   return [...(await providerProfilesToLegacyExperts(profiles)), ...legacy.map(toExpert)]
 }
 
-export async function listActiveExperts() {
+export async function listActiveExperts(cityId?: string) {
   const [legacy, profiles] = await Promise.all([
-    Expert.find({ active: true }).sort({ createdAt: -1 }).limit(50),
-    listPublishedProviderProfiles(),
+    cityId ? Promise.resolve([]) : Expert.find({ active: true }).sort({ createdAt: -1 }).limit(50),
+    listPublishedProviderProfiles(cityId),
   ])
   return [...(await providerProfilesToLegacyExperts(profiles)), ...legacy.map(toExpert)]
 }

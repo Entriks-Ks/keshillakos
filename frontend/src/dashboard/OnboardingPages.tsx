@@ -5,6 +5,8 @@ import { fetchDomains } from '../api/domains'
 import { useAuth } from '../auth/AuthContext'
 import type { DomainDefinition } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
+import type { LocationSelection } from '../api/locations'
+import ProviderLocationFields from '../components/ProviderLocationFields'
 
 export function ExpertOnboardingPage() {
   const { user, refreshUser } = useAuth()
@@ -16,7 +18,8 @@ export function ExpertOnboardingPage() {
   const [category, setCategory] = useState('')
   const [languages, setLanguages] = useState('')
   const [mode, setMode] = useState<'online' | 'on_site'>('online')
-  const [city, setCity] = useState('')
+  const [location, setLocation] = useState<LocationSelection | null>(null)
+  const [serviceAreas, setServiceAreas] = useState<LocationSelection[]>([])
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -29,10 +32,15 @@ export function ExpertOnboardingPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
+    if (!location || (mode === 'on_site' && !serviceAreas.length)) {
+      setError('Zgjidh lokacionin dhe të paktën një qytet ku ofron shërbime.')
+      return
+    }
     setError('')
     setSaving(true)
     try {
-      await becomeExpert({ displayName, title, description, categories: [category], languages: languages.split(',').map((value) => value.trim()).filter(Boolean), mode, city })
+      await becomeExpert({ displayName, title, description, categories: [category], languages: languages.split(',').map((value) => value.trim()).filter(Boolean), mode,
+        location: { countryId: location.country._id, cityId: location.city._id }, serviceAreaCityIds: serviceAreas.map((area) => area.city._id) })
       await refreshUser()
       navigate('/dashboard/provider', { replace: true })
     } catch (err) { setError(getErrorMessage(err)) }
@@ -52,7 +60,7 @@ export function ExpertOnboardingPage() {
       <label>Mënyra e punës<select value={mode} onChange={(e) => setMode(e.target.value as 'online' | 'on_site')}>
         <option value="online">Online</option><option value="on_site">Në lokacion</option>
       </select></label>
-      {mode === 'on_site' ? <label>Qyteti<input value={city} onChange={(e) => setCity(e.target.value)} required /></label> : null}
+      <ProviderLocationFields location={location} serviceAreas={serviceAreas} onLocationChange={setLocation} onServiceAreasChange={setServiceAreas} disabled={saving} />
       <label className="full">Përshkrimi<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} /></label>
       {error ? <p className="error full">{error}</p> : null}
       <button type="submit" className="full" disabled={saving || !category}>{saving ? 'Duke krijuar...' : 'Krijo profilin e ekspertit'}</button>

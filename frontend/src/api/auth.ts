@@ -27,19 +27,21 @@ export type AuthUser = {
   headline?: string
   bio?: string
   location?: string
+  savedLocation?: { countryId: string; cityId: string }
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
 }
 
 export type ProfileUpdatePayload = {
-  firstName: string
-  lastName: string
+  firstName?: string
+  lastName?: string
   headline?: string
   bio?: string
   location?: string
   skills?: string[]
   languages?: string[]
+  savedLocation?: { countryId: string; cityId: string } | null
 }
 
 type AuthResponse = {

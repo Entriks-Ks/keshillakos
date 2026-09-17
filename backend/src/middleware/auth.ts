@@ -21,6 +21,7 @@ export type AuthUser = {
   headline: string
   bio: string
   location: string
+  savedLocation?: import('../services/userService').SavedLocation
   skills: string[]
   languages: string[]
   profilePhoto: string
@@ -63,6 +64,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       headline: dbUser?.headline,
       bio: dbUser?.bio,
       location: dbUser?.location,
+      savedLocation: dbUser?.savedLocation,
       skills: dbUser?.skills,
       languages: dbUser?.languages,
       profilePhoto: dbUser?.profilePhoto,
@@ -91,6 +93,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       headline: publicUser.headline || '',
       bio: publicUser.bio || '',
       location: publicUser.location || '',
+      savedLocation: publicUser.savedLocation,
       skills: publicUser.skills ?? [],
       languages: publicUser.languages ?? [],
       profilePhoto: publicUser.profilePhoto || '',

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Types } from 'mongoose'
 import { Business } from '../src/models/Business'
-import { ProviderProfile } from '../src/models/ProviderProfile'
+import { City } from '../src/models/City'
+import { Country } from '../src/models/Country'
+import { ProviderProfile, providerProfileSchema } from '../src/models/ProviderProfile'
 import { canManageBusiness } from '../src/services/businessService'
-import { toPublicProvider } from '../src/services/providerProfileService'
+import { toPublicProvider, validateProviderLocations } from '../src/services/providerProfileService'
 
 const owner = new Types.ObjectId()
 const other = new Types.ObjectId()
@@ -72,4 +74,52 @@ test('public projection excludes owner, private qualification claims and moderat
   assert.equal('qualificationClaims' in publicValue, false)
   assert.equal('moderation' in publicValue, false)
   assert.equal('ownerUser' in publicValue, false)
+})
+
+test('provider base and service areas use referenced cities with searchable indexes', async () => {
+  const countryId = new Types.ObjectId()
+  const cityId = new Types.ObjectId()
+  const provider = new ProviderProfile({
+    providerType: 'individual', ownerUser: owner, categories: ['law'], modes: ['on_site'],
+    location: { countryId, cityId }, serviceAreaCityIds: [cityId], publicProfile: { displayName: 'Ada' },
+  })
+  await provider.validate()
+  assert.equal(String(toPublicProvider(provider).location?.cityId), String(cityId))
+  assert.deepEqual(toPublicProvider(provider).serviceAreaCityIds.map(String), [String(cityId)])
+  assert.ok(providerProfileSchema.indexes().some(([keys]) => keys['location.countryId'] === 1 && keys['location.cityId'] === 1))
+  assert.ok(providerProfileSchema.indexes().some(([keys]) => keys.serviceAreaCityIds === 1))
+  provider.serviceAreaCityIds.push(cityId)
+  await assert.rejects(provider.validate(), /Duplicate service-area cities/)
+  provider.serviceAreaCityIds.pop()
+  provider.location = { countryId } as typeof provider.location
+  await assert.rejects(provider.validate(), /cityId/)
+})
+
+test('provider location validation rejects mismatched and inactive catalog references', async () => {
+  const countryId = new Types.ObjectId()
+  const cityId = new Types.ObjectId()
+  const originalCountryExists = Country.exists
+  const originalCityExists = City.exists
+  const originalCityFind = City.find
+  const originalCountryFind = Country.find
+  Country.exists = (() => Promise.resolve({ _id: countryId })) as unknown as typeof Country.exists
+  City.exists = (() => Promise.resolve({ _id: cityId })) as unknown as typeof City.exists
+  City.find = (() => ({ select: () => ({ lean: () => Promise.resolve([{ _id: cityId, countryId }]) }) })) as unknown as typeof City.find
+  Country.find = (() => ({ select: () => ({ lean: () => Promise.resolve([{ _id: countryId }]) }) })) as unknown as typeof Country.find
+  try {
+    await validateProviderLocations({ countryId: String(countryId), cityId: String(cityId) }, [String(cityId)])
+    await assert.rejects(validateProviderLocations(undefined, [String(cityId), String(cityId)]), /pavlefshme/)
+    City.exists = (() => Promise.resolve(null)) as unknown as typeof City.exists
+    await assert.rejects(validateProviderLocations({ countryId: String(countryId), cityId: String(cityId) }), /nuk përputhen/)
+    City.find = (() => ({ select: () => ({ lean: () => Promise.resolve([]) }) })) as unknown as typeof City.find
+    await assert.rejects(validateProviderLocations(undefined, [String(cityId)]), /joaktive/)
+    City.find = (() => ({ select: () => ({ lean: () => Promise.resolve([{ _id: cityId, countryId }]) }) })) as unknown as typeof City.find
+    Country.find = (() => ({ select: () => ({ lean: () => Promise.resolve([]) }) })) as unknown as typeof Country.find
+    await assert.rejects(validateProviderLocations(undefined, [String(cityId)]), /joaktive/)
+  } finally {
+    Country.exists = originalCountryExists
+    City.exists = originalCityExists
+    City.find = originalCityFind
+    Country.find = originalCountryFind
+  }
 })

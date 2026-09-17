@@ -112,13 +112,13 @@ export function UserRequestsPanel() {
     {} as Partial<Record<RequestStatus, number>>,
   )
 
-  const filterOptions: Array<{ id: 'all' | RequestStatus; label: string; count: number }> = [
+  const filterOptions = ([
     { id: 'all', label: 'Të gjitha', count: requests.length },
     { id: 'pending', label: 'Në pritje', count: statusCounts.pending || 0 },
     { id: 'accepted', label: 'Pranuar', count: statusCounts.accepted || 0 },
     { id: 'completed', label: 'Përfunduar', count: statusCounts.completed || 0 },
     { id: 'rejected', label: 'Refuzuar', count: statusCounts.rejected || 0 },
-  ].filter((item) => item.id === 'all' || item.count > 0)
+  ] satisfies Array<{ id: 'all' | RequestStatus; label: string; count: number }>).filter((item) => item.id === 'all' || item.count > 0)
 
   return (
     <section className="req-page">

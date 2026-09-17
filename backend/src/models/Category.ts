@@ -11,6 +11,8 @@ export type ExtensionField = {
 }
 
 export type CategoryDoc = {
+  name?: { sq: string; en: string }
+  isActive?: boolean
   portal: string
   stableId: string
   slug: string
@@ -47,6 +49,11 @@ const extensionFieldSchema = new Schema<ExtensionField>({
 }, { _id: false })
 
 export const categorySchema = new Schema<CategoryDoc>({
+  name: {
+    sq: { type: String, trim: true },
+    en: { type: String, trim: true },
+  },
+  isActive: { type: Boolean, default: true },
   portal: { type: String, required: true, trim: true, lowercase: true, match: /^[a-z][a-z0-9-]*$/ },
   stableId: { type: String, required: true, trim: true, lowercase: true, match: /^[a-z][a-z0-9-]*$/ },
   slug: { type: String, required: true, trim: true, lowercase: true, match: /^[a-z][a-z0-9-]*$/ },
@@ -77,6 +84,8 @@ categorySchema.pre('validate', function () {
 })
 categorySchema.index({ portal: 1, stableId: 1 }, { unique: true })
 categorySchema.index({ portal: 1, slug: 1 }, { unique: true })
+categorySchema.index({ slug: 1 }, { unique: true })
+categorySchema.index({ isActive: 1, order: 1 })
 categorySchema.index({ portal: 1, parent: 1, status: 1, order: 1 })
 
 export const Category = mongoose.model<CategoryDoc>('Category', categorySchema)

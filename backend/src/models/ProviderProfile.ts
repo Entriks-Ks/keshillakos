@@ -10,6 +10,8 @@ export type ProviderProfileDoc = {
   languages: string[]
   locations: Location[]
   serviceAreas: Location[]
+  location?: { countryId: Types.ObjectId; cityId: Types.ObjectId }
+  serviceAreaCityIds: Types.ObjectId[]
   modes: Array<'online' | 'on_site'>
   publicProfile: {
     displayName: string
@@ -33,6 +35,10 @@ export type ProviderProfileDoc = {
 }
 
 const verificationStates = ['unverified', 'pending', 'verified', 'rejected']
+const baseLocationSchema = new Schema({
+  countryId: { type: Schema.Types.ObjectId, ref: 'Country', required: true },
+  cityId: { type: Schema.Types.ObjectId, ref: 'City', required: true },
+}, { _id: false })
 
 export const providerProfileSchema = new Schema<ProviderProfileDoc>(
   {
@@ -43,6 +49,8 @@ export const providerProfileSchema = new Schema<ProviderProfileDoc>(
     languages: { type: [{ type: String, trim: true }], default: [] },
     locations: { type: [locationSchema], default: [] },
     serviceAreas: { type: [locationSchema], default: [] },
+    location: { type: baseLocationSchema, default: undefined },
+    serviceAreaCityIds: { type: [{ type: Schema.Types.ObjectId, ref: 'City' }], default: [] },
     modes: { type: [{ type: String, enum: ['online', 'on_site'] }], default: [] },
     publicProfile: {
       displayName: { type: String, required: true, trim: true, minlength: 1, maxlength: 160 },
@@ -74,14 +82,17 @@ export const providerProfileSchema = new Schema<ProviderProfileDoc>(
 )
 
 providerProfileSchema.pre('validate', function () {
-  if (this.modes.includes('on_site') && this.locations.length === 0) {
-    this.invalidate('locations', 'On-site providers require a location')
+  if (this.modes.includes('on_site') && !this.location && this.locations.length === 0) {
+    this.invalidate('location', 'On-site providers require a location')
   }
+  if (new Set(this.serviceAreaCityIds.map(String)).size !== this.serviceAreaCityIds.length) this.invalidate('serviceAreaCityIds', 'Duplicate service-area cities')
 })
 providerProfileSchema.index({ ownerUser: 1, status: 1 })
 providerProfileSchema.index({ business: 1, status: 1 })
 providerProfileSchema.index({ categories: 1, status: 1 })
 providerProfileSchema.index({ status: 1, 'moderation.status': 1, updatedAt: -1 })
 providerProfileSchema.index({ business: 1, providerType: 1 }, { unique: true, partialFilterExpression: { providerType: 'business' } })
+providerProfileSchema.index({ 'location.countryId': 1, 'location.cityId': 1, status: 1 })
+providerProfileSchema.index({ serviceAreaCityIds: 1, status: 1 })
 
 export const ProviderProfile = mongoose.model<ProviderProfileDoc>('ProviderProfile', providerProfileSchema)

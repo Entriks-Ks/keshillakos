@@ -2,6 +2,7 @@ import { Types } from 'mongoose'
 import { Business } from '../models/Business'
 import { Category } from '../models/Category'
 import { ProviderProfile } from '../models/ProviderProfile'
+import { City } from '../models/City'
 import { ServiceOffer, type ServiceOfferDoc } from '../models/ServiceOffer'
 import { User } from '../models/User'
 import type { Location } from '../models/location'
@@ -104,9 +105,11 @@ export async function listMyServiceOffers(uid: string) {
   return ServiceOffer.find({ providerProfile: { $in: profiles.map((profile) => profile._id) } }).sort({ createdAt: -1 })
 }
 
-export async function listPublishedServiceOffers() {
-  const offers = await ServiceOffer.find({ status: 'published', visibility: 'public', 'moderation.status': 'approved' })
-    .sort({ updatedAt: -1 }).limit(50)
+export async function listPublishedServiceOffers(providerIds?: Types.ObjectId[]) {
+  const offers = await ServiceOffer.find({
+    status: 'published', visibility: 'public', 'moderation.status': 'approved',
+    ...(providerIds ? { providerProfile: { $in: providerIds } } : {}),
+  }).sort({ updatedAt: -1 }).limit(providerIds ? 0 : 50)
   const [profiles, categories, businesses] = await Promise.all([
     ProviderProfile.find({ _id: { $in: offers.map((offer) => offer.providerProfile) }, status: 'published', 'moderation.status': 'approved' }).select('_id'),
     Category.find({ _id: { $in: offers.map((offer) => offer.category) }, status: 'active' }).select('_id'),
@@ -180,6 +183,9 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
     Business.find({ _id: { $in: offers.map((offer) => offer.business).filter(Boolean) } }).select('publicName'),
   ])
   const profileById = new Map(profiles.map((profile) => [String(profile._id), profile]))
+  const cityIds = profiles.flatMap((profile) => [profile.location?.cityId, ...profile.serviceAreaCityIds].filter((id): id is Types.ObjectId => Boolean(id)))
+  const cities = cityIds.length ? await City.find({ _id: { $in: cityIds } }).select('name.sq').lean() : []
+  const cityNameById = new Map(cities.map((city) => [String(city._id), city.name.sq]))
   const categoryById = new Map(categories.map((category) => [String(category._id), category]))
   const businessById = new Map(businesses.map((business) => [String(business._id), business]))
   const users = await User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid').lean()
@@ -192,7 +198,8 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
     const providerName = profile?.publicProfile.displayName || business?.publicName || ''
     const extensions = { ...offer.extensions }
     if (publicOnly) delete extensions.licenseNumber
-    const area = offer.serviceAreas[0]?.cityName || (offer.modes.includes('online') ? 'Online' : '')
+    const area = offer.serviceAreas[0]?.cityName || (profile?.serviceAreaCityIds[0] && cityNameById.get(String(profile.serviceAreaCityIds[0]))) ||
+      (profile?.location?.cityId && cityNameById.get(String(profile.location.cityId))) || (offer.modes.includes('online') ? 'Online' : '')
     return {
       id: String((offer as ServiceOfferDoc & { _id: Types.ObjectId })._id),
       serviceOfferId: String((offer as ServiceOfferDoc & { _id: Types.ObjectId })._id),

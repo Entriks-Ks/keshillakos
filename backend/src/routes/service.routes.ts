@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import { Types } from 'mongoose'
+import { z } from 'zod'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
   createService,
@@ -9,10 +11,19 @@ import {
 import type { ServiceDetails } from '../models/Service'
 
 const router = Router()
+const discoveryQuery = z.object({
+  cityId: z.string().refine(Types.ObjectId.isValid, 'Invalid city ID').optional(),
+  categoryId: z.string().trim().min(1).max(120).optional(),
+  subcategoryId: z.string().trim().min(1).max(120).optional(),
+  serviceId: z.string().refine(Types.ObjectId.isValid, 'Invalid service ID').optional(),
+  q: z.string().trim().max(160).optional(),
+})
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const services = await listActiveServices()
+    const parsed = discoveryQuery.safeParse(req.query)
+    if (!parsed.success) return res.status(400).json({ message: 'Filtrat nuk janë të vlefshëm', errors: parsed.error.issues })
+    const services = await listActiveServices(parsed.data)
     return res.json({ services })
   } catch (err) {
     return res.status(500).json({

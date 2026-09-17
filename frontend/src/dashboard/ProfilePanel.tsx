@@ -6,6 +6,9 @@ import { LANGUAGE_OPTIONS } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
 import DashPageHeader from './DashPageHeader'
+import { fetchMyProviderProfiles, updateProviderLocations, type ManagedProviderProfile } from '../api/providerProfiles'
+import { resolveProviderLocations, type LocationSelection } from '../api/locations'
+import ProviderLocationFields from '../components/ProviderLocationFields'
 
 function parseSkills(raw: string) {
   return raw
@@ -91,6 +94,7 @@ export default function ProfilePanel() {
   }
 
   if (!user) return null
+  const hasProviderProfile = (user.roles ?? [user.role]).some((role) => role === 'provider' || role === 'company')
 
   return (
     <section className="provider-section">
@@ -143,7 +147,7 @@ export default function ProfilePanel() {
             maxLength={120}
           />
         </label>
-        <label>
+        {!hasProviderProfile ? <label>
           Lokacioni
           <input
             value={location}
@@ -151,7 +155,7 @@ export default function ProfilePanel() {
             placeholder="Prishtinë / Online / Diaspora"
             maxLength={120}
           />
-        </label>
+        </label> : null}
         <label>
           Email
           <input value={user.email} disabled />
@@ -195,6 +199,70 @@ export default function ProfilePanel() {
           {saving ? 'Duke ruajtur...' : 'Ruaj profilin'}
         </button>
       </form>
+      {hasProviderProfile ? <ProviderLocationsPanel /> : null}
     </section>
   )
+}
+
+function ProviderLocationsPanel() {
+  const [profiles, setProfiles] = useState<ManagedProviderProfile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchMyProviderProfiles(controller.signal).then(setProfiles)
+      .catch((err: unknown) => { if (!controller.signal.aborted) setError(getErrorMessage(err)) })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [])
+
+  return <section className="provider-location-panel">
+    <h3>Lokacioni dhe zonat e shërbimit</h3>
+    {loading ? <p className="muted" role="status">Profilet po ngarkohen...</p> : null}
+    {error ? <p className="error" role="alert">{error}</p> : null}
+    {profiles.map((profile) => <ProviderLocationEditor key={profile._id} profile={profile} />)}
+  </section>
+}
+
+function ProviderLocationEditor({ profile }: { profile: ManagedProviderProfile }) {
+  const [location, setLocation] = useState<LocationSelection | null>(null)
+  const [serviceAreas, setServiceAreas] = useState<LocationSelection[]>([])
+  const [loading, setLoading] = useState(true)
+  const [restoreFailed, setRestoreFailed] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    resolveProviderLocations({ location: profile.location, serviceAreaCityIds: profile.serviceAreaCityIds ?? [] }, controller.signal)
+      .then((values) => { if (!controller.signal.aborted) { setLocation(values.location); setServiceAreas(values.serviceAreas) } })
+      .catch((err: unknown) => { if (!controller.signal.aborted) { setError(getErrorMessage(err)); setRestoreFailed(true) } })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [profile.location, profile.serviceAreaCityIds])
+
+  async function onSave(event: FormEvent) {
+    event.preventDefault()
+    setError('')
+    setSuccess('')
+    setSaving(true)
+    try {
+      await updateProviderLocations(profile._id, {
+        location: location ? { countryId: location.country._id, cityId: location.city._id } : null,
+        serviceAreaCityIds: serviceAreas.map((area) => area.city._id),
+      })
+      setSuccess('Lokacioni dhe zonat e shërbimit u ruajtën.')
+    } catch (err) { setError(getErrorMessage(err)) }
+    finally { setSaving(false) }
+  }
+
+  return <form className="service-form provider-location-form" onSubmit={onSave}>
+    <h4 className="full">{profile.publicProfile.displayName}</h4>
+    {loading ? <p className="muted full" role="status">Lokacionet po ngarkohen...</p> : !restoreFailed ? <ProviderLocationFields location={location} serviceAreas={serviceAreas} onLocationChange={setLocation} onServiceAreasChange={setServiceAreas} disabled={saving} /> : null}
+    {error ? <p className="error full" role="alert">{error}</p> : null}
+    {success ? <p className="success full" role="status">{success}</p> : null}
+    <button type="submit" className="full" disabled={loading || saving || restoreFailed}>{saving ? 'Duke ruajtur...' : 'Ruaj lokacionet'}</button>
+  </form>
 }

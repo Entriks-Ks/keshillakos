@@ -1,5 +1,11 @@
 import { User, type UserDoc } from '../models/User'
+import { City } from '../models/City'
+import { Country } from '../models/Country'
+import { Types } from 'mongoose'
 import { isUserRole, type UserRole } from '../types/roles'
+
+export type SavedLocation = { countryId: string; cityId: string }
+export type PublicUser = Omit<UserDoc, 'location'> & { location: string; savedLocation?: SavedLocation }
 
 export function effectiveRoles(user: Pick<UserDoc, 'role' | 'roles'>): UserRole[] {
   const granted = user.roles?.filter(isUserRole)
@@ -35,13 +41,15 @@ export function toPublicUser(user: {
   accountStatus?: UserDoc['accountStatus']
   headline?: string
   bio?: string
-  location?: string
+  location?: UserDoc['location'] | string
+  legacyLocation?: string
+  savedLocation?: SavedLocation
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
   createdAt?: Date
   updatedAt?: Date
-}): UserDoc {
+}): PublicUser {
   const roles = effectiveRoles({ role: user.role ?? 'user', roles: user.roles })
   return {
     uid: user.uid,
@@ -61,7 +69,10 @@ export function toPublicUser(user: {
     accountStatus: user.accountStatus ?? 'active',
     headline: user.headline || '',
     bio: user.bio || '',
-    location: user.location || '',
+    location: typeof user.location === 'string' ? user.location : user.legacyLocation || '',
+    savedLocation: user.savedLocation ?? (user.location && typeof user.location !== 'string'
+      ? { countryId: String(user.location.countryId), cityId: String(user.location.cityId) }
+      : undefined),
     skills: user.skills ?? [],
     languages: user.languages ?? [],
     profilePhoto: user.profilePhoto || '',
@@ -82,7 +93,7 @@ export async function upsertUser(input: {
   grantedRoles?: UserRole[]
   /** When true, overwrite name (register / explicit rename) */
   updateName?: boolean
-}): Promise<UserDoc> {
+}): Promise<PublicUser> {
   const email = input.email.trim().toLowerCase()
   const name = input.name.trim() || input.email.split('@')[0] || 'User'
 
@@ -121,7 +132,7 @@ export async function grantCapability(uid: string, role: 'provider' | 'company')
   return toPublicUser(user)
 }
 
-export async function findUserByUid(uid: string): Promise<UserDoc | null> {
+export async function findUserByUid(uid: string): Promise<PublicUser | null> {
   const user = await User.findOne({ uid }).lean()
   if (!user) return null
   return toPublicUser(user)
@@ -129,10 +140,10 @@ export async function findUserByUid(uid: string): Promise<UserDoc | null> {
 
 export async function findUsersByUids(uids: string[]) {
   const unique = [...new Set(uids.filter(Boolean))]
-  if (unique.length === 0) return new Map<string, UserDoc>()
+  if (unique.length === 0) return new Map<string, PublicUser>()
 
   const users = await User.find({ uid: { $in: unique } }).lean()
-  const map = new Map<string, UserDoc>()
+  const map = new Map<string, PublicUser>()
   for (const user of users) {
     map.set(user.uid, toPublicUser(user))
   }
@@ -172,8 +183,9 @@ export async function updateOwnProfile(
     city?: string
     profileVisibility?: 'public' | 'private'
     marketingConsent?: boolean
+    savedLocation?: SavedLocation | null
   },
-): Promise<UserDoc> {
+): Promise<PublicUser> {
   const existing = await User.findOne({ uid })
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
 
@@ -201,12 +213,27 @@ export async function updateOwnProfile(
   if (input.marketingConsent !== undefined) {
     existing.set('privacy.marketingConsent', input.marketingConsent)
   }
+  if (input.savedLocation !== undefined) {
+    if (existing.legacyLocation) existing.markModified('legacyLocation')
+    if (input.savedLocation === null) {
+      existing.location = undefined
+    } else {
+      const { countryId, cityId } = input.savedLocation
+      if (!Types.ObjectId.isValid(countryId) || !Types.ObjectId.isValid(cityId)) throw new Error('Lokacioni është i pavlefshëm')
+      const [country, city] = await Promise.all([
+        Country.exists({ _id: countryId, isActive: true }),
+        City.exists({ _id: cityId, countryId, isActive: true }),
+      ])
+      if (!country || !city) throw new Error('Qyteti dhe shteti nuk përputhen ose nuk janë aktivë')
+      existing.location = { countryId: new Types.ObjectId(countryId), cityId: new Types.ObjectId(cityId) }
+    }
+  }
 
   await existing.save()
   return toPublicUser(existing)
 }
 
-export async function updateProfilePhoto(uid: string, profilePhoto: string): Promise<UserDoc> {
+export async function updateProfilePhoto(uid: string, profilePhoto: string): Promise<PublicUser> {
   const existing = await User.findOne({ uid })
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
   // Account avatar remains supported; professional media belongs to ProviderProfile.
@@ -218,7 +245,7 @@ export async function updateProfilePhoto(uid: string, profilePhoto: string): Pro
 export async function updateUserByUid(
   uid: string,
   input: { name?: string; email?: string; role?: UserRole; roles?: UserRole[]; accountStatus?: UserDoc['accountStatus'] },
-): Promise<UserDoc> {
+): Promise<PublicUser> {
   const existing = await User.findOne({ uid })
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
 

@@ -1,4 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { Types } from 'mongoose'
+import { Category } from '../models/Category'
+import { Subcategory } from '../models/Subcategory'
 import { listActiveExperts } from './expertService'
 import { getProvidersPublicDetails } from './providerPublicService'
 import { listActiveServices } from './serviceService'
@@ -22,8 +25,24 @@ function languageLabel(code: MatchIntake['language']) {
   }
 }
 
-async function loadCandidates(): Promise<MatchCandidate[]> {
-  const [experts, services] = await Promise.all([listActiveExperts(), listActiveServices()])
+export function filterMatchCandidates<T extends MatchCandidate>(candidates: T[], filters: {
+  categoryId?: string; subcategoryNames?: string[]; serviceId?: string
+}) {
+  const category = filters.categoryId && normalize(filters.categoryId)
+  const names = filters.subcategoryNames?.map(normalize) ?? []
+  return candidates.filter((candidate) => {
+    if (filters.serviceId && (candidate.source !== 'service' || candidate.id !== filters.serviceId)) return false
+    if (category && ![candidate.categoryId || '', candidate.categoryLabel || ''].some((value) => normalize(value) === category)) return false
+    if (names.length && !names.some((name) => normalize(`${candidate.specialty || ''} ${candidate.title}`).includes(name))) return false
+    return true
+  })
+}
+
+async function loadCandidates(intake: MatchIntake): Promise<MatchCandidate[]> {
+  const [experts, services] = await Promise.all([
+    intake.serviceId ? Promise.resolve([]) : listActiveExperts(intake.cityId),
+    listActiveServices({ cityId: intake.cityId, categoryId: intake.categoryId, subcategoryId: intake.subcategoryId, serviceId: intake.serviceId }),
+  ])
 
   const fromExperts: MatchCandidate[] = experts.map((e) => ({
     id: e.id,
@@ -70,7 +89,22 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     ratingCount: s.provider?.ratingCount,
   }))
 
-  const all = [...fromExperts, ...fromServices]
+  let categoryId = intake.categoryId
+  if (categoryId && Types.ObjectId.isValid(categoryId)) {
+    const category = await Category.findById(categoryId).select('stableId').lean()
+    categoryId = category?.stableId ?? categoryId
+  }
+  let subcategoryNames: string[] | undefined
+  if (intake.subcategoryId) {
+    const subcategory = await Subcategory.findById(intake.subcategoryId).lean()
+    if (!subcategory?.isActive) return []
+    subcategoryNames = [subcategory.name.sq, subcategory.name.en]
+    if (!categoryId) {
+      const parent = await Category.findById(subcategory.categoryId).select('stableId').lean()
+      categoryId = parent?.stableId
+    }
+  }
+  const all = filterMatchCandidates([...fromExperts, ...fromServices], { categoryId, subcategoryNames, serviceId: intake.serviceId })
   const fallbackNames = new Map(all.map((c) => [c.providerUid, c.companyName || c.name]))
   const providers = await getProvidersPublicDetails(
     all.map((c) => c.providerUid),
@@ -107,7 +141,9 @@ function heuristicMatch(intake: MatchIntake, candidates: MatchCandidate[]): Matc
         if (hay.includes(token)) score += 2
       }
 
-      if (loc === 'online') {
+      if (intake.cityId) {
+        score += 5 // Candidates were already filtered by provider service-area IDs.
+      } else if (loc === 'online') {
         if (normalize(c.location).includes('online')) score += 4
       } else if (normalize(c.location).includes(loc)) {
         score += 5
@@ -203,6 +239,7 @@ Rregulla:
 - Prefero verified / me licencë për Ligj & Taksa.
 - Prefero ratingAverage më të lartë dhe ratingCount > 0 kur është e mundur.
 - Respekto lokacionin (përfshi Online).
+- Kur cityId është zgjedhur, kandidatët janë filtruar sipas zonave të shërbimit; lokacioni bazë i ofruesit nuk është filtër.
 - Respekto gjuhën.
 - Nëse urgency = today, favorizo përgjigje të shpejtë.
 - Mos invento id që nuk ekzistojnë në listë.
@@ -232,7 +269,7 @@ Rregulla:
 }
 
 export async function matchExperts(intake: MatchIntake) {
-  const candidates = await loadCandidates()
+  const candidates = await loadCandidates(intake)
   if (candidates.length === 0) {
     return {
       engine: 'none' as const,

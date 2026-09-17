@@ -92,7 +92,7 @@ function OverviewStats({ items, loading }: { items: StatItem[]; loading?: boolea
     return (
       <div className="dash-stat-grid is-loading" aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="dash-stat-card is-skeleton" />
+          <Card key={i} className="dash-stat-card is-skeleton"><span aria-hidden="true" /></Card>
         ))}
       </div>
     )

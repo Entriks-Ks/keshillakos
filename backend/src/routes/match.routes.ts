@@ -1,5 +1,7 @@
 import { Router } from 'express'
+import { Types } from 'mongoose'
 import { matchExperts } from '../services/matchService'
+import { isActiveDiscoveryCity } from '../services/serviceService'
 import type { MatchIntake } from '../types/match'
 
 const router = Router()
@@ -22,6 +24,13 @@ router.post('/', async (req, res) => {
     if (!body.location?.trim()) {
       return res.status(400).json({ message: 'Zgjidh lokacionin' })
     }
+    if ([body.cityId, body.subcategoryId, body.serviceId].some((id) => id !== undefined && (typeof id !== 'string' || !Types.ObjectId.isValid(id)))) {
+      return res.status(400).json({ message: 'ID i lokacionit ose shërbimit është i pavlefshëm' })
+    }
+    if (body.categoryId !== undefined && (typeof body.categoryId !== 'string' || !body.categoryId.trim())) {
+      return res.status(400).json({ message: 'Kategoria është e pavlefshme' })
+    }
+    if (body.cityId && !await isActiveDiscoveryCity(body.cityId)) return res.status(404).json({ message: 'Qyteti nuk u gjet' })
     if (!body.language || !LANGUAGES.has(body.language)) {
       return res.status(400).json({ message: 'Zgjidh gjuhën' })
     }
@@ -36,6 +45,10 @@ router.post('/', async (req, res) => {
       need: body.need.trim(),
       audience: body.audience,
       location: body.location.trim(),
+      cityId: body.cityId,
+      categoryId: body.categoryId?.trim(),
+      subcategoryId: body.subcategoryId,
+      serviceId: body.serviceId,
       language: body.language,
       urgency: body.urgency,
       budget: body.budget?.trim() || undefined,

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { Types } from 'mongoose'
+import { City } from '../src/models/City'
+import { Country } from '../src/models/Country'
 import { User, userSchema } from '../src/models/User'
-import { effectiveRoles, toPublicUser } from '../src/services/userService'
+import { effectiveRoles, toPublicUser, updateOwnProfile } from '../src/services/userService'
 
 test('new account normalizes identity and leaves professional fields unset', async () => {
   const user = new User({ uid: 'firebase-1', email: ' Person@Example.COM ', name: ' Ada Lovelace ', phone: '  ', country: ' xk ' })
@@ -40,4 +43,50 @@ test('user indexes distinguish canonical email from nonunique unverified phone',
   assert.ok(indexes.some(([keys, options]) => keys.uid === 1 && options.unique))
   assert.ok(indexes.some(([keys, options]) => keys.email === 1 && options.unique))
   assert.ok(indexes.some(([keys, options]) => keys.phone === 1 && !options.unique))
+})
+
+test('saved customer location requires both referenced IDs and is returned by the user mapper', async () => {
+  const countryId = new Types.ObjectId()
+  const cityId = new Types.ObjectId()
+  const user = new User({ uid: 'located', email: 'located@example.com', name: 'Located User', location: { countryId, cityId } })
+  await user.validate()
+  assert.deepEqual(toPublicUser(user).savedLocation, { countryId: String(countryId), cityId: String(cityId) })
+  assert.equal(toPublicUser(user).location, '')
+  assert.equal(toPublicUser({ uid: 'legacy-location', email: 'legacy@example.com', name: 'Legacy', location: 'Prishtinë' }).location, 'Prishtinë')
+  const legacy = User.hydrate({ uid: 'old', email: 'old@example.com', name: 'Old', location: 'Prishtinë' })
+  await legacy.validate()
+  assert.equal(toPublicUser(legacy).location, 'Prishtinë')
+  await assert.rejects(new User({ uid: 'incomplete', email: 'incomplete@example.com', name: 'Incomplete', location: { countryId } }).validate(), /cityId/)
+})
+
+test('profile location update checks active country/city relation and allows clearing', async () => {
+  const countryId = new Types.ObjectId()
+  const cityId = new Types.ObjectId()
+  const user = new User({ uid: 'located', email: 'located@example.com', name: 'Located User' })
+  const originalFind = User.findOne
+  const originalCountryExists = Country.exists
+  const originalCityExists = City.exists
+  const originalSave = user.save
+  let saves = 0
+  User.findOne = (() => Promise.resolve(user)) as unknown as typeof User.findOne
+  Country.exists = (() => Promise.resolve({ _id: countryId })) as unknown as typeof Country.exists
+  City.exists = ((query: { countryId: Types.ObjectId }) => Promise.resolve(String(query.countryId) === String(countryId) ? { _id: cityId } : null)) as unknown as typeof City.exists
+  user.save = (async () => { saves += 1; return user }) as typeof user.save
+  try {
+    const saved = await updateOwnProfile('located', { savedLocation: { countryId: String(countryId), cityId: String(cityId) } })
+    assert.deepEqual(saved.savedLocation, { countryId: String(countryId), cityId: String(cityId) })
+    assert.equal(saves, 1)
+    await assert.rejects(updateOwnProfile('located', { savedLocation: { countryId: 'invalid', cityId: String(cityId) } }), /Lokacioni/)
+    City.exists = (() => Promise.resolve(null)) as unknown as typeof City.exists
+    await assert.rejects(updateOwnProfile('located', { savedLocation: { countryId: String(countryId), cityId: String(cityId) } }), /nuk përputhen/)
+    assert.equal(saves, 1)
+    const cleared = await updateOwnProfile('located', { savedLocation: null })
+    assert.equal(cleared.savedLocation, undefined)
+    assert.equal(saves, 2)
+  } finally {
+    User.findOne = originalFind
+    Country.exists = originalCountryExists
+    City.exists = originalCityExists
+    user.save = originalSave
+  }
 })

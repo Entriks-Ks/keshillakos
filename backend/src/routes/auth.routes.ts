@@ -2,6 +2,8 @@ import { Router } from 'express'
 import fs from 'fs'
 import multer from 'multer'
 import path from 'path'
+import { Types } from 'mongoose'
+import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
 import {
   firebaseChangePassword,
@@ -17,6 +19,10 @@ import {
 } from '../services/userService'
 
 const router = Router()
+const savedLocationInput = z.object({
+  countryId: z.string().refine(Types.ObjectId.isValid, 'Invalid country ID'),
+  cityId: z.string().refine(Types.ObjectId.isValid, 'Invalid city ID'),
+}).nullable()
 
 const uploadsRoot = path.resolve(process.cwd(), 'uploads')
 const profilesDir = path.join(uploadsRoot, 'profiles')
@@ -59,6 +65,7 @@ function publicUser(user: {
   headline?: string
   bio?: string
   location?: string
+  savedLocation?: import('../services/userService').SavedLocation
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
@@ -81,6 +88,7 @@ function publicUser(user: {
     headline: user.headline || '',
     bio: user.bio || '',
     location: user.location || '',
+    savedLocation: user.savedLocation,
     skills: user.skills ?? [],
     languages: user.languages ?? [],
     profilePhoto: user.profilePhoto || '',
@@ -211,7 +219,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent } = req.body as {
+    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location } = req.body as {
       firstName?: string
       lastName?: string
       phone?: string | null
@@ -220,7 +228,13 @@ router.patch('/me', requireAuth, async (req, res) => {
       city?: string
       profileVisibility?: 'public' | 'private'
       marketingConsent?: boolean
+      savedLocation?: unknown
+      location?: unknown
     }
+
+    // Legacy profile clients still send a free-text `location`; only an object updates the saved selection.
+    const locationInput = savedLocation !== undefined ? savedLocation : typeof location === 'object' ? location : undefined
+    const parsedLocation = locationInput === undefined ? undefined : savedLocationInput.parse(locationInput)
 
     const user = await updateOwnProfile(req.user!.uid, {
       firstName,
@@ -231,6 +245,7 @@ router.patch('/me', requireAuth, async (req, res) => {
       city,
       profileVisibility,
       marketingConsent,
+      savedLocation: parsedLocation,
     })
 
     if (user.name !== req.user!.name) {

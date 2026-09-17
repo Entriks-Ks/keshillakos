@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes'
 import adminUsersRoutes from './routes/adminUsers.routes'
 import availabilityRoutes from './routes/availability.routes'
 import domainRoutes from './routes/domain.routes'
+import catalogRoutes from './routes/catalog.routes'
 import expertRoutes from './routes/expert.routes'
 import businessRoutes from './routes/business.routes'
 import providerProfileRoutes from './routes/providerProfile.routes'
@@ -43,6 +44,7 @@ app.use('/api/onboarding', onboardingRoutes)
 app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/availability', availabilityRoutes)
 app.use('/api/domains', domainRoutes)
+app.use('/api/v1', catalogRoutes)
 app.use('/api/services', serviceRoutes)
 app.use('/api/service-offers', serviceOfferRoutes)
 app.use('/api/experts', expertRoutes)

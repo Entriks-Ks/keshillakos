@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import { Types } from 'mongoose'
+import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
 import { ProviderProfile } from '../models/ProviderProfile'
 import { createBusiness, userIdForUid } from '../services/businessService'
@@ -6,6 +8,13 @@ import { createProviderProfile } from '../services/providerProfileService'
 import { grantCapability } from '../services/userService'
 
 const router = Router()
+const locationFieldsInput = z.object({
+  location: z.object({
+    countryId: z.string().refine(Types.ObjectId.isValid, 'Invalid country ID'),
+    cityId: z.string().refine(Types.ObjectId.isValid, 'Invalid city ID'),
+  }).optional(),
+  serviceAreaCityIds: z.array(z.string().refine(Types.ObjectId.isValid, 'Invalid city ID')).max(200).optional(),
+})
 router.use(requireAuth)
 
 router.post('/expert', async (req, res) => {
@@ -14,9 +23,10 @@ router.post('/expert', async (req, res) => {
       displayName?: string; title?: string; description?: string; categories?: string[]
       languages?: string[]; mode?: 'online' | 'on_site'; city?: string
     }
+    const locationFields = locationFieldsInput.parse(req.body)
     if (!displayName?.trim() || !Array.isArray(categories) || categories.length === 0 ||
       !categories.every((value) => typeof value === 'string') ||
-      (mode !== 'online' && mode !== 'on_site') || (mode === 'on_site' && !city?.trim())) {
+      (mode !== 'online' && mode !== 'on_site') || (mode === 'on_site' && !city?.trim() && !locationFields.location)) {
       return res.status(400).json({ message: 'Emri, kategoria dhe mënyra e punës janë të detyrueshme' })
     }
     const ownerUser = await userIdForUid(req.user!.uid)
@@ -26,8 +36,9 @@ router.post('/expert', async (req, res) => {
         ownerUid: req.user!.uid, providerType: 'individual', categories,
         languages: Array.isArray(languages) ? languages : [],
         modes: [mode],
-        locations: mode === 'on_site' ? [{ countryCode: 'XK', cityName: city!.trim(), online: false }] : [],
-        serviceAreas: [{ countryCode: 'XK', cityName: mode === 'on_site' ? city!.trim() : undefined, online: mode === 'online' }],
+        locations: mode === 'on_site' && city?.trim() ? [{ countryCode: 'XK', cityName: city.trim(), online: false }] : [],
+        serviceAreas: city?.trim() ? [{ countryCode: 'XK', cityName: city.trim(), online: mode === 'online' }] : [],
+        ...locationFields,
         publicProfile: { displayName: displayName.trim(), title: title?.trim(), description: description?.trim() },
       })
     }

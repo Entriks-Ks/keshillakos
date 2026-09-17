@@ -74,8 +74,16 @@ export async function fetchMyServices() {
   return data.services
 }
 
-export async function fetchActiveServices() {
-  const { data } = await api.get<{ services: ServiceItem[] }>('/api/services')
+export type ServiceSearchParams = {
+  cityId?: string
+  categoryId?: string
+  subcategoryId?: string
+  serviceId?: string
+  q?: string
+}
+
+export async function fetchActiveServices(params: ServiceSearchParams = {}, signal?: AbortSignal) {
+  const { data } = await api.get<{ services: ServiceItem[] }>('/api/services', { params, signal })
   return data.services
 }
 

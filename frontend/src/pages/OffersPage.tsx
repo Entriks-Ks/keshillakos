@@ -3,6 +3,11 @@ import { MapPin, Search, X } from 'lucide-react'
 import { fetchActiveServices, type ServiceItem } from '../api/services'
 import ServiceCard from '../components/ServiceCard'
 import SiteNav from '../components/SiteNav'
+import SiteFooter from '../components/SiteFooter'
+import LocationSelector from '../components/LocationSelector'
+import { useSavedLocation } from '../hooks/useSavedLocation'
+import { getErrorMessage } from '../utils/errors'
+import { filterVisibleServices, serviceDiscoveryRequest } from '../utils/serviceDiscovery'
 
 const DELIVERY_FILTERS = [
   { id: 'all', label: 'Të gjitha' },
@@ -27,25 +32,28 @@ export default function OffersPage() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
-  const [location, setLocation] = useState('all')
   const [delivery, setDelivery] = useState<DeliveryFilter>('all')
+  const [error, setError] = useState('')
+  const { selectedLocation, changeLocation, locationLoading, locationSaving, locationError } = useSavedLocation()
+  const cityId = selectedLocation?.city._id
 
   useEffect(() => {
-    let cancelled = false
-    fetchActiveServices()
+    if (locationLoading) return
+    const controller = new AbortController()
+    setLoading(true)
+    setError('')
+    fetchActiveServices(serviceDiscoveryRequest(cityId), controller.signal)
       .then((items) => {
-        if (!cancelled) setServices(items)
+        if (!controller.signal.aborted) setServices(items)
       })
-      .catch(() => {
-        if (!cancelled) setServices([])
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) { setServices([]); setError(getErrorMessage(err)) }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    return () => controller.abort()
+  }, [cityId, locationLoading])
 
   const categories = useMemo(
     () =>
@@ -53,46 +61,14 @@ export default function OffersPage() {
     [services],
   )
 
-  const locations = useMemo(
-    () => uniqueSorted(services.map((s) => s.location)),
-    [services],
-  )
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return services.filter((service) => {
-      const categoryLabel = service.categoryLabel || service.category || ''
-      if (category !== 'all' && categoryLabel !== category) return false
-      if (location !== 'all' && service.location !== location) return false
-      if (delivery !== 'all') {
-        const modes = service.details?.deliveryModes || []
-        if (!modes.includes(delivery)) return false
-      }
-      if (!q) return true
-      const haystack = [
-        service.title,
-        service.description,
-        service.subcategory,
-        categoryLabel,
-        service.location,
-        service.providerName,
-        service.provider?.name,
-        service.provider?.headline,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(q)
-    })
-  }, [services, query, category, location, delivery])
+  const filtered = useMemo(() => filterVisibleServices(services, { query, category, delivery }), [services, query, category, delivery])
 
   const hasActiveFilters =
-    query.trim().length > 0 || category !== 'all' || location !== 'all' || delivery !== 'all'
+    query.trim().length > 0 || category !== 'all' || delivery !== 'all'
 
   function clearFilters() {
     setQuery('')
     setCategory('all')
-    setLocation('all')
     setDelivery('all')
   }
 
@@ -157,19 +133,7 @@ export default function OffersPage() {
                   ))}
                 </select>
 
-                <select
-                  className="tt-offers-select"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  aria-label="Lokacioni"
-                >
-                  <option value="all">Lokacioni</option>
-                  {locations.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
+                <LocationSelector value={selectedLocation} onChange={(value) => { void changeLocation(value) }} disabled={locationLoading || locationSaving} className="tt-offers-location" />
 
                 {hasActiveFilters ? (
                   <button type="button" className="tt-offers-reset" onClick={clearFilters}>
@@ -178,6 +142,8 @@ export default function OffersPage() {
                 ) : null}
               </div>
             </div>
+            {locationError ? <p className="error" role="alert">{locationError}</p> : null}
+            {error ? <p className="error" role="alert">{error}</p> : null}
 
             <div className="tt-offers-meta">
               {!loading ? (
@@ -191,9 +157,9 @@ export default function OffersPage() {
 
             {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
 
-            {!loading && services.length === 0 ? (
+            {!loading && services.length === 0 && !error ? (
               <div className="tt-offers-empty">
-                <p>Ende nuk ka oferta të publikuara.</p>
+                <p>{cityId ? 'Nuk ka oferta të disponueshme në qytetin e zgjedhur.' : 'Ende nuk ka oferta të publikuara.'}</p>
               </div>
             ) : null}
 
@@ -216,12 +182,7 @@ export default function OffersPage() {
         </section>
       </main>
 
-      <footer className="tt-footer">
-        <div className="tt-section-inner tt-footer-inner">
-          <p className="brand">KëshillaKos</p>
-          <p className="muted">Matching me ofrues profesionalë në Kosovë dhe online.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

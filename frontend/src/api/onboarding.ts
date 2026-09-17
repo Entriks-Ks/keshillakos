@@ -1,4 +1,5 @@
 import api, { type AuthUser } from './auth'
+import type { SavedLocationIds } from './locations'
 
 export async function becomeExpert(payload: {
   displayName: string
@@ -8,6 +9,8 @@ export async function becomeExpert(payload: {
   languages?: string[]
   mode: 'online' | 'on_site'
   city?: string
+  location?: SavedLocationIds
+  serviceAreaCityIds?: string[]
 }) {
   const { data } = await api.post<{ user: AuthUser }>('/api/onboarding/expert', payload)
   return data.user
