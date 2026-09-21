@@ -19,6 +19,7 @@ export type ServiceDetails = {
   coachingDisclaimerAccepted?: boolean
   crossBorder?: boolean
   supportLanguages?: string[]
+  photos?: string[]
 }
 
 export type ServiceProvider = {
@@ -72,6 +73,35 @@ export async function createService(payload: {
 export async function fetchMyServices() {
   const { data } = await api.get<{ services: ServiceItem[] }>('/api/services/mine')
   return data.services
+}
+
+export async function updateService(
+  id: string,
+  payload: {
+    title: string
+    description: string
+    categoryId: string
+    subcategory: string
+    location: string
+    priceFrom?: number
+    details?: ServiceDetails
+  },
+) {
+  const { data } = await api.patch<{ service: ServiceItem }>(`/api/services/${id}`, payload)
+  return data.service
+}
+
+export async function deleteService(id: string) {
+  await api.delete(`/api/services/${id}`)
+}
+
+export async function uploadServicePhoto(file: File) {
+  const form = new FormData()
+  form.append('photo', file)
+  const { data } = await api.post<{ url: string }>('/api/services/photos', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data.url
 }
 
 export type ServiceSearchParams = {

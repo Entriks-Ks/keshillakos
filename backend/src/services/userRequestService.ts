@@ -73,6 +73,7 @@ export async function createUserRequest(input: NewRequestInput) {
   const profiles = input.draft ? [] : await resolveProviders(input, category.stableId)
   if (!input.draft && !profiles.length) throw new Error('Zgjidh të paktën një ofrues')
   if (profiles.some((profile) => profile.ownerUser.equals(user._id))) throw new Error('Nuk mund t’i dërgosh kërkesë vetes')
+  if (!input.draft && !input.slotId?.trim()) throw new Error('Zgjidh një orë të lirë për kërkesën')
   if (input.slotId && profiles.length !== 1) throw new Error('Termini kërkon saktësisht një ofrues')
   let slot: Awaited<ReturnType<typeof getSlotById>> | null = null
   if (input.slotId) {
@@ -148,12 +149,13 @@ export async function updateUserRequestLifecycle(uid: string, id: string, status
   return listMyUserRequests(uid)
 }
 
-async function view(request: UserRequestDoc & { _id: Types.ObjectId }, delivery?: { _id: Types.ObjectId; providerProfile: Types.ObjectId; status: DeliveryStatus; response?: string; offer?: { description: string; amount?: number; currency?: string }; slotId?: string; requestedStartAt?: Date; requestedEndAt?: Date; sentAt: Date; readAt?: Date; respondedAt?: Date }, providerName = '') {
+async function view(request: UserRequestDoc & { _id: Types.ObjectId }, delivery?: { _id: Types.ObjectId; providerProfile: Types.ObjectId; status: DeliveryStatus; response?: string; offer?: { description: string; amount?: number; currency?: string }; slotId?: string; requestedStartAt?: Date; requestedEndAt?: Date; sentAt: Date; readAt?: Date; respondedAt?: Date }, providerName = '', providerUid = '') {
   const owner = await User.findById(request.user).select('uid firstName lastName email').lean()
   return {
     id: delivery ? String(delivery._id) : String(request._id), requestId: String(request._id),
     deliveryId: delivery ? String(delivery._id) : undefined,
     providerId: delivery ? String(delivery.providerProfile) : undefined,
+    providerUid,
     seekerUid: owner?.uid || '', seekerName: [owner?.firstName, owner?.lastName].filter(Boolean).join(' '), seekerEmail: owner?.email || '',
     providerName, need: request.problem, message: request.description,
     location: request.location?.cityName || '', language: request.language, urgency: request.urgency,
@@ -169,15 +171,18 @@ async function view(request: UserRequestDoc & { _id: Types.ObjectId }, delivery?
 async function viewsForRequests(requests: Array<UserRequestDoc & { _id: Types.ObjectId }>, providerFilter?: Set<string>) {
   const deliveries = await RequestDelivery.find({ request: { $in: requests.map((request) => request._id) } }).sort({ sentAt: -1 })
   const filtered = providerFilter ? deliveries.filter((delivery) => providerFilter.has(String(delivery.providerProfile))) : deliveries
-  const profiles = await ProviderProfile.find({ _id: { $in: filtered.map((delivery) => delivery.providerProfile) } }).select('publicProfile.displayName')
+  const profiles = await ProviderProfile.find({ _id: { $in: filtered.map((delivery) => delivery.providerProfile) } }).select('publicProfile.displayName ownerUser')
+  const owners = await User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid').lean()
+  const uidByOwner = new Map(owners.map((item) => [String(item._id), item.uid]))
   const names = new Map(profiles.map((profile) => [String(profile._id), profile.publicProfile.displayName]))
+  const uids = new Map(profiles.map((profile) => [String(profile._id), uidByOwner.get(String(profile.ownerUser)) || '']))
   const byRequest = new Map<string, typeof filtered>()
   for (const delivery of filtered) byRequest.set(String(delivery.request), [...(byRequest.get(String(delivery.request)) ?? []), delivery])
   const output = []
   for (const request of requests) {
     const rows = byRequest.get(String(request._id)) ?? []
     if (!rows.length && !providerFilter) output.push(await view(request))
-    for (const delivery of rows) output.push(await view(request, delivery, names.get(String(delivery.providerProfile))))
+    for (const delivery of rows) output.push(await view(request, delivery, names.get(String(delivery.providerProfile)), uids.get(String(delivery.providerProfile))))
   }
   return output
 }
@@ -198,7 +203,7 @@ export async function listProviderDeliveries(uid: string) {
   const output = []
   for (const delivery of deliveries) {
     const request = byId.get(String(delivery.request))
-    if (request) output.push(await view(request, delivery, names.get(String(delivery.providerProfile))))
+    if (request) output.push(await view(request, delivery, names.get(String(delivery.providerProfile)), uid))
   }
   return output
 }
@@ -242,30 +247,6 @@ export async function updateDeliveryStatus(uid: string, id: string, status: Deli
   if (offer !== undefined) delivery.offer = offer
   await delivery.save()
   if (delivery.slotId && ['rejected', 'pending'].includes(status)) await syncSlotWithRequestStatus({ requestId: String(delivery._id), status: status as 'rejected' | 'pending' })
-  const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
-  return view(request, delivery, profile?.publicProfile.displayName)
-}
-
-/** Klienti konfirmon që bashkëpunimi me ofruesin ka përfunduar (accepted → completed). */
-export async function completeDeliveryAsSeeker(uid: string, id: string) {
-  if (!Types.ObjectId.isValid(id)) throw new Error('Delivery ID i pavlefshëm')
-  const delivery = await RequestDelivery.findById(id)
-  if (!delivery) throw new Error('Dërgesa nuk u gjet')
-  const owner = await User.findOne({ uid }).select('_id').lean()
-  const request = await UserRequest.findById(delivery.request)
-  if (!owner || !request || !request.user.equals(owner._id)) throw new Error('Nuk ke leje për këtë kërkesë')
-  if (request.status !== 'open') throw new Error('Kërkesa nuk është aktive')
-  if (delivery.status === 'completed') {
-    const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
-    return view(request, delivery, profile?.publicProfile.displayName)
-  }
-  if (delivery.status !== 'accepted') {
-    throw new Error('Vetëm kërkesat e pranuara mund të shënohen si të përfunduara')
-  }
-  if (delivery.slotId) await completeAppointmentFromDelivery(String(delivery._id))
-  delivery.status = 'completed'
-  delivery.respondedAt = delivery.respondedAt || new Date()
-  await delivery.save()
   const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
   return view(request, delivery, profile?.publicProfile.displayName)
 }

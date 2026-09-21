@@ -57,6 +57,11 @@ export async function createProviderProfile(input: CreateProviderProfileInput) {
   if (input.providerType === 'business' && !input.businessId) throw new Error('Biznesi është i detyrueshëm')
   if (input.businessId) await ownedBusinessById(input.ownerUid, input.businessId)
   await validateProviderLocations(input.location, input.serviceAreaCityIds)
+  const owner = await User.findById(ownerUser).select('profilePhoto').lean()
+  const publicProfile = {
+    ...input.publicProfile,
+    photoUrl: input.publicProfile.photoUrl || owner?.profilePhoto,
+  }
 
   return ProviderProfile.create({
     providerType: input.providerType,
@@ -69,7 +74,7 @@ export async function createProviderProfile(input: CreateProviderProfileInput) {
     location: input.location,
     serviceAreaCityIds: input.serviceAreaCityIds ?? [],
     modes: [...new Set(input.modes ?? [])],
-    publicProfile: input.publicProfile,
+    publicProfile,
     qualificationClaims: input.qualificationClaims,
     status: 'pending',
     moderation: { status: 'pending' },

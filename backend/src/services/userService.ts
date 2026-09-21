@@ -1,4 +1,5 @@
 import { User, type UserDoc } from '../models/User'
+import { ProviderProfile } from '../models/ProviderProfile'
 import { City } from '../models/City'
 import { Country } from '../models/Country'
 import { Types } from 'mongoose'
@@ -172,6 +173,11 @@ export async function listUsers(filters?: { role?: UserRole; q?: string }) {
   return users.map((u) => toPublicUser(u))
 }
 
+function cleanStringList(values?: string[], maxItems = 20, itemMax = 48) {
+  if (!values) return undefined
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean).map((value) => value.slice(0, itemMax)))].slice(0, maxItems)
+}
+
 export async function updateOwnProfile(
   uid: string,
   input: {
@@ -184,6 +190,11 @@ export async function updateOwnProfile(
     profileVisibility?: 'public' | 'private'
     marketingConsent?: boolean
     savedLocation?: SavedLocation | null
+    headline?: string
+    bio?: string
+    skills?: string[]
+    languages?: string[]
+    legacyLocation?: string
   },
 ): Promise<PublicUser> {
   const existing = await User.findOne({ uid })
@@ -228,17 +239,45 @@ export async function updateOwnProfile(
       existing.location = { countryId: new Types.ObjectId(countryId), cityId: new Types.ObjectId(cityId) }
     }
   }
+  if (input.headline !== undefined) {
+    const headline = input.headline.trim()
+    if (headline.length > 160) throw new Error('Titulli duhet të jetë deri në 160 karaktere')
+    existing.headline = headline || undefined
+  }
+  if (input.bio !== undefined) {
+    const bio = input.bio.trim()
+    if (bio.length > 3000) throw new Error('Përshkrimi duhet të jetë deri në 3000 karaktere')
+    existing.bio = bio || undefined
+  }
+  if (input.skills !== undefined) existing.skills = cleanStringList(input.skills)
+  if (input.languages !== undefined) existing.languages = cleanStringList(input.languages, 12, 40)
+  if (input.legacyLocation !== undefined) existing.legacyLocation = cleanOptional(input.legacyLocation)
 
   await existing.save()
+
+  const publicFields: Record<string, unknown> = {}
+  if (input.headline !== undefined) publicFields['publicProfile.title'] = existing.headline || ''
+  if (input.bio !== undefined) {
+    publicFields['publicProfile.description'] = existing.bio || ''
+    publicFields['publicProfile.shortDescription'] = (existing.bio || '').slice(0, 300)
+  }
+  if (input.languages !== undefined) publicFields.languages = existing.languages || []
+  if (Object.keys(publicFields).length) {
+    await ProviderProfile.updateMany({ ownerUser: existing._id }, { $set: publicFields })
+  }
+
   return toPublicUser(existing)
 }
 
 export async function updateProfilePhoto(uid: string, profilePhoto: string): Promise<PublicUser> {
   const existing = await User.findOne({ uid })
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
-  // Account avatar remains supported; professional media belongs to ProviderProfile.
   existing.profilePhoto = profilePhoto
   await existing.save()
+  await ProviderProfile.updateMany(
+    { ownerUser: existing._id },
+    { $set: { 'publicProfile.photoUrl': profilePhoto } },
+  )
   return toPublicUser(existing)
 }
 

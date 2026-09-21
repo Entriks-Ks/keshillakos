@@ -1,6 +1,11 @@
 import mongoose from 'mongoose'
 import { Conversation } from '../models/Conversation'
 import { Message } from '../models/Message'
+import { ProviderProfile } from '../models/ProviderProfile'
+import { RequestDelivery } from '../models/RequestDelivery'
+import { ServiceRequest } from '../models/ServiceRequest'
+import { User } from '../models/User'
+import { UserRequest } from '../models/UserRequest'
 import { findUserByUid, findUsersByUids } from './userService'
 
 const MAX_BODY = 4000
@@ -61,12 +66,38 @@ async function assertParticipant(conversationId: string, uid: string) {
   return conversation
 }
 
+export async function assertProviderCanMessageSeeker(providerUid: string, seekerUid: string) {
+  const [provider, seeker] = await Promise.all([
+    User.findOne({ uid: providerUid }).select('_id').lean(),
+    User.findOne({ uid: seekerUid }).select('_id').lean(),
+  ])
+  if (!provider || !seeker) {
+    throw Object.assign(new Error('Përdoruesi nuk u gjet'), { status: 404 })
+  }
+  const [profiles, requests] = await Promise.all([
+    ProviderProfile.find({ ownerUser: provider._id }).select('_id').lean(),
+    UserRequest.find({ user: seeker._id }).select('_id').lean(),
+  ])
+  if (profiles.length && requests.length) {
+    const hit = await RequestDelivery.exists({
+      providerProfile: { $in: profiles.map((profile) => profile._id) },
+      request: { $in: requests.map((request) => request._id) },
+    })
+    if (hit) return
+  }
+  const legacy = await ServiceRequest.exists({ providerUid, seekerUid })
+  if (!legacy) {
+    throw Object.assign(new Error('Mund t’i dërgosh mesazh vetëm klientit që ka bërë kërkesë'), { status: 403 })
+  }
+}
+
 export async function openOrGetConversation(input: {
   seekerUid: string
   providerUid: string
   serviceId?: string
   serviceTitle?: string
   initialMessage?: string
+  senderUid?: string
 }) {
   if (!input.providerUid?.trim()) {
     throw Object.assign(new Error('Ofruesi është i detyrueshëm'), { status: 400 })
@@ -107,13 +138,13 @@ export async function openOrGetConversation(input: {
   if (input.initialMessage?.trim()) {
     message = await sendMessage({
       conversationId: conversation._id.toString(),
-      senderUid: input.seekerUid,
+      senderUid: input.senderUid || input.seekerUid,
       body: input.initialMessage.trim(),
     })
     conversation = (await Conversation.findById(conversation._id))!
   }
 
-  const publicConv = await toPublicConversation(conversation, input.seekerUid)
+  const publicConv = await toPublicConversation(conversation, input.senderUid || input.seekerUid)
   return { conversation: publicConv, message }
 }
 

@@ -1,15 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, Inbox, MessageCircle, Search } from 'lucide-react'
+import {
+  CalendarDays,
+  Clock,
+  Inbox,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Search,
+} from 'lucide-react'
 import {
   fetchMyRequests,
   fetchRequestInbox,
   fetchAllRequests,
   updateRequestStatus,
-  completeMyRequest,
   type RequestStatus,
   type ServiceRequestItem,
 } from '../api/requests'
+import StartChatButton from '../components/StartChatButton'
 import { getErrorMessage } from '../utils/errors'
 import DashPageHeader from './DashPageHeader'
 
@@ -47,6 +56,28 @@ function formatDate(value: string) {
   }
 }
 
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  const first = parts[0][0] || ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : parts[0][1] || ''
+  return `${first}${last}`.toUpperCase()
+}
+
+function isAwaitingProvider(status: RequestStatus) {
+  return status === 'pending' || status === 'open' || status === 'read'
+}
+
+function inboxStatusLabel(status: RequestStatus) {
+  if (isAwaitingProvider(status)) return 'Në pritje'
+  return STATUS_LABELS[status]
+}
+
+function inboxStatusClass(status: RequestStatus) {
+  if (isAwaitingProvider(status)) return 'pending'
+  return status
+}
+
 function formatAppointment(startAt?: string, endAt?: string) {
   if (!startAt || !endAt) return null
   try {
@@ -70,7 +101,6 @@ export function UserRequestsPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all')
-  const [busyId, setBusyId] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -87,19 +117,6 @@ export function UserRequestsPanel() {
   useEffect(() => {
     void load()
   }, [])
-
-  async function markCompleted(id: string) {
-    setBusyId(id)
-    setError('')
-    try {
-      const updated = await completeMyRequest(id)
-      setRequests((prev) => prev.map((item) => (item.id === id ? { ...item, ...updated } : item)))
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setBusyId(null)
-    }
-  }
 
   const filtered =
     statusFilter === 'all' ? requests : requests.filter((r) => r.status === statusFilter)
@@ -216,28 +233,37 @@ export function UserRequestsPanel() {
                 </div>
               ) : r.status === 'pending' || r.status === 'open' || r.status === 'read' ? (
                 <p className="req-waiting">Në pritje të përgjigjes së ofruesit…</p>
+              ) : r.status === 'accepted' ? (
+                <p className="req-waiting">Ofruesi do ta shënojë kërkesën si të përfunduar.</p>
               ) : null}
 
               <div className="req-card-actions">
-                {r.status === 'accepted' ? (
-                  <button
-                    type="button"
-                    className="primary-btn"
-                    disabled={busyId === r.id}
-                    onClick={() => void markCompleted(r.id)}
-                  >
-                    {busyId === r.id ? 'Duke përfunduar…' : 'Shëno si të përfunduar'}
-                  </button>
-                ) : null}
                 {r.providerUid ? (
                   <Link to={`/providers/${r.providerUid}`} className="req-link-btn">
                     Profili
                   </Link>
                 ) : null}
-                <Link to="/dashboard/user/messages" className="req-link-btn is-accent">
-                  <MessageCircle size={14} aria-hidden />
-                  Mesazhet
-                </Link>
+                {r.status === 'completed' && r.providerUid ? (
+                  <Link to={`/providers/${r.providerUid}#vleresimet`} className="req-link-btn is-accent">
+                    Vlerëso ofruesin
+                  </Link>
+                ) : null}
+                {r.providerUid ? (
+                  <StartChatButton
+                    providerUid={r.providerUid}
+                    providerName={r.providerName}
+                    serviceId={r.serviceId}
+                    serviceTitle={r.serviceTitle}
+                    className="req-link-btn is-accent"
+                    label="Dërgo mesazh"
+                    hideGuestHint
+                  />
+                ) : (
+                  <Link to="/dashboard/user/messages" className="req-link-btn is-accent">
+                    <MessageCircle size={14} aria-hidden />
+                    Mesazhet
+                  </Link>
+                )}
               </div>
             </li>
           )
@@ -247,11 +273,20 @@ export function UserRequestsPanel() {
   )
 }
 
+type InboxFilter = 'all' | 'waiting' | 'accepted' | 'completed' | 'rejected'
+
+function rankInbox(status: RequestStatus) {
+  if (isAwaitingProvider(status)) return 0
+  if (status === 'accepted') return 1
+  if (status === 'completed') return 2
+  return 3
+}
+
 export function ProviderInboxPanel() {
   const [requests, setRequests] = useState<ServiceRequestItem[]>([])
-  const [pendingCount, setPendingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [statusFilter, setStatusFilter] = useState<InboxFilter>('all')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
 
@@ -261,7 +296,6 @@ export function ProviderInboxPanel() {
     try {
       const data = await fetchRequestInbox()
       setRequests(data.requests)
-      setPendingCount(data.pendingCount)
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -289,92 +323,222 @@ export function ProviderInboxPanel() {
     }
   }
 
+  const waitingCount = requests.filter((r) => isAwaitingProvider(r.status)).length
+  const acceptedCount = requests.filter((r) => r.status === 'accepted').length
+  const completedCount = requests.filter((r) => r.status === 'completed').length
+  const rejectedCount = requests.filter((r) => r.status === 'rejected').length
+
+  const filterOptions = (
+    [
+      { id: 'all', label: 'Të gjitha', count: requests.length },
+      { id: 'waiting', label: 'Në pritje', count: waitingCount },
+      { id: 'accepted', label: 'Pranuar', count: acceptedCount },
+      { id: 'completed', label: 'Përfunduar', count: completedCount },
+      { id: 'rejected', label: 'Refuzuar', count: rejectedCount },
+    ] satisfies Array<{ id: InboxFilter; label: string; count: number }>
+  ).filter((item) => item.id === 'all' || item.count > 0)
+
+  const filtered = useMemo(() => {
+    const next = requests.filter((r) => {
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'waiting') return isAwaitingProvider(r.status)
+      return r.status === statusFilter
+    })
+    return [...next].sort((a, b) => {
+      const byRank = rankInbox(a.status) - rankInbox(b.status)
+      if (byRank !== 0) return byRank
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }, [requests, statusFilter])
+
   return (
-    <section className="provider-section">
-      <DashPageHeader
-        title="Kërkesat e klientëve"
-        description={
-          pendingCount > 0
-            ? `Inbox i kërkesave · ${pendingCount} në pritje.`
-            : 'Inbox i kërkesave që kanë arritur te ti.'
-        }
-      />
-      {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
+    <section className="req-page inbox-page">
+      <header className="req-head">
+        <div>
+          <h2>Kërkesat e klientëve</h2>
+          <p>Prano, refuzo ose mesazho klientët që të kanë dërguar kërkesë.</p>
+        </div>
+        {waitingCount > 0 ? (
+          <span className="inbox-pending-badge">{waitingCount} në pritje</span>
+        ) : null}
+      </header>
+
+      {!loading && requests.length > 0 ? (
+        <ul className="inbox-stats">
+          <li className={waitingCount ? 'is-warn' : ''}>
+            <strong>{waitingCount}</strong>
+            <span>Në pritje</span>
+          </li>
+          <li className={acceptedCount ? 'is-success' : ''}>
+            <strong>{acceptedCount}</strong>
+            <span>Pranuar</span>
+          </li>
+          <li>
+            <strong>{completedCount}</strong>
+            <span>Përfunduar</span>
+          </li>
+          <li>
+            <strong>{requests.length}</strong>
+            <span>Gjithsej</span>
+          </li>
+        </ul>
+      ) : null}
+
+      {!loading && requests.length > 0 ? (
+        <div className="req-filters" role="tablist" aria-label="Filtro kërkesat">
+          {filterOptions.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === item.id}
+              className={`req-filter${statusFilter === item.id ? ' is-active' : ''}`}
+              onClick={() => setStatusFilter(item.id)}
+            >
+              {item.label}
+              <em>{item.count}</em>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
       {error ? <p className="error">{error}</p> : null}
+
       {!loading && requests.length === 0 ? (
-        <div className="req-empty is-soft">
+        <div className="req-empty">
           <span className="req-empty-icon" aria-hidden>
             <Inbox size={22} />
           </span>
           <h3>Ende pa kërkesa</h3>
-          <p>Kur klientët të dërgojnë kërkesa, ato do të shfaqen këtu.</p>
+          <p>Kur klientët të dërgojnë kërkesë, ato do të shfaqen këtu për t’i pranuar ose refuzuar.</p>
         </div>
       ) : null}
-      <ul className="request-list">
-        {requests.map((r) => (
-          <li key={r.id}>
-            <div className="request-list-head">
-              <strong>{r.seekerName}</strong>
-              <span className={`status-pill status-${r.status}`}>{STATUS_LABELS[r.status]}</span>
-            </div>
-            <p className="muted">
-              {r.seekerEmail}
-              {r.serviceTitle ? ` · ${r.serviceTitle}` : ''}
-            </p>
-            <p>
-              <strong>Nevoja:</strong> {r.need}
-            </p>
-            <p>{r.message}</p>
-            {formatAppointment(r.requestedStartAt, r.requestedEndAt) ? (
-              <p className="request-appointment">
-                <strong>Termini i kërkuar:</strong>{' '}
-                {formatAppointment(r.requestedStartAt, r.requestedEndAt)}
-              </p>
-            ) : null}
-            <ul className="match-meta">
-              <li>{CONTACT_LABELS[r.contactMethod]}</li>
-              {r.location ? <li>{r.location}</li> : null}
-              {r.language ? <li>{r.language}</li> : null}
-              {r.urgency ? <li>{URGENCY_LABELS[r.urgency] || r.urgency}</li> : null}
-              <li>{formatDate(r.createdAt)}</li>
-            </ul>
 
-            {r.status === 'pending' || r.status === 'read' ? (
-              <div className="request-actions">
-                <input
-                  value={notes[r.id] || ''}
-                  onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                  placeholder="Shënim për klientin (opsionale)"
-                />
-                <div className="admin-row-actions">
-                  <button
-                    type="button"
-                    className="primary-btn"
-                    disabled={busyId === r.id}
-                    onClick={() => void setStatus(r.id, 'accepted')}
-                  >
-                    Prano
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost danger-ghost"
-                    disabled={busyId === r.id}
-                    onClick={() => void setStatus(r.id, 'rejected')}
-                  >
-                    Refuzo
-                  </button>
+      {!loading && requests.length > 0 && filtered.length === 0 ? (
+        <div className="req-empty is-soft">
+          <p>Nuk ka kërkesa me këtë status.</p>
+          <button type="button" className="ghost" onClick={() => setStatusFilter('all')}>
+            Shiko të gjitha
+          </button>
+        </div>
+      ) : null}
+
+      <ul className="req-list">
+        {filtered.map((r) => {
+          const appointment = formatAppointment(r.requestedStartAt, r.requestedEndAt)
+          const waiting = isAwaitingProvider(r.status)
+          const extraMessage = r.message && r.message.trim() !== r.need.trim() ? r.message : ''
+          return (
+            <li key={r.id} className={`req-card inbox-card${waiting ? ' is-action' : ''}`}>
+              <div className="inbox-card-head">
+                <span className="inbox-avatar" aria-hidden>
+                  {initials(r.seekerName)}
+                </span>
+                <div className="req-card-title">
+                  <strong>{r.seekerName || 'Klient'}</strong>
+                  <span>
+                    {r.serviceTitle || 'Kërkesë për shërbim'}
+                    {r.status === 'pending' ? ' · E re' : ''}
+                  </span>
                 </div>
+                <span className={`status-pill status-${inboxStatusClass(r.status)}`}>
+                  {inboxStatusLabel(r.status)}
+                </span>
               </div>
-            ) : null}
 
-            {r.status === 'accepted' ? (
-              <div className="request-actions">
-                <input
-                  value={notes[r.id] || ''}
-                  onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                  placeholder="Shënim përfundimi (opsionale)"
-                />
-                <div className="admin-row-actions">
+              {appointment ? (
+                <p className="req-appointment">
+                  <CalendarDays size={15} aria-hidden />
+                  <span>{appointment}</span>
+                </p>
+              ) : (
+                <p className="req-waiting">Klienti nuk ka zgjedhur ende një orë.</p>
+              )}
+
+              <div className="inbox-copy">
+                <p className="req-need">{r.need || extraMessage || 'Pa përshkrim'}</p>
+                {r.need && extraMessage ? <p className="req-message">{extraMessage}</p> : null}
+              </div>
+
+              <ul className="req-meta">
+                <li>
+                  {r.contactMethod === 'phone' ? (
+                    <Phone size={13} aria-hidden />
+                  ) : r.contactMethod === 'email' ? (
+                    <Mail size={13} aria-hidden />
+                  ) : (
+                    <MessageCircle size={13} aria-hidden />
+                  )}
+                  {CONTACT_LABELS[r.contactMethod]}
+                </li>
+                {r.location ? (
+                  <li>
+                    <MapPin size={13} aria-hidden />
+                    {r.location}
+                  </li>
+                ) : null}
+                {r.urgency ? (
+                  <li>
+                    <Clock size={13} aria-hidden />
+                    {URGENCY_LABELS[r.urgency] || r.urgency}
+                  </li>
+                ) : null}
+                {r.language ? <li>{r.language}</li> : null}
+                {r.seekerEmail ? (
+                  <li>
+                    <Mail size={13} aria-hidden />
+                    {r.seekerEmail}
+                  </li>
+                ) : null}
+                <li>{formatDate(r.createdAt)}</li>
+              </ul>
+
+              {r.providerNote && !waiting ? (
+                <div className="req-note">
+                  <strong>Shënimi yt</strong>
+                  <p>{r.providerNote}</p>
+                </div>
+              ) : null}
+
+              {waiting || r.status === 'accepted' ? (
+                <label className="inbox-reply">
+                  {waiting ? 'Përgjigja për klientin (opsionale)' : 'Shënim përfundimi (opsionale)'}
+                  <textarea
+                    value={notes[r.id] || ''}
+                    onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                    placeholder={
+                      waiting
+                        ? 'P.sh. e pranoj orën, na shohim atë ditë.'
+                        : 'P.sh. takimi u krye, faleminderit.'
+                    }
+                    rows={2}
+                  />
+                </label>
+              ) : null}
+
+              <div className="req-card-actions inbox-actions">
+                {waiting ? (
+                  <>
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      disabled={busyId === r.id}
+                      onClick={() => void setStatus(r.id, 'accepted')}
+                    >
+                      {busyId === r.id ? 'Duke ruajtur…' : 'Prano'}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost danger-ghost"
+                      disabled={busyId === r.id}
+                      onClick={() => void setStatus(r.id, 'rejected')}
+                    >
+                      Refuzo
+                    </button>
+                  </>
+                ) : null}
+                {r.status === 'accepted' ? (
                   <button
                     type="button"
                     className="primary-btn"
@@ -383,23 +547,23 @@ export function ProviderInboxPanel() {
                   >
                     {busyId === r.id ? 'Duke përfunduar…' : 'Përfundo kërkesën'}
                   </button>
-                </div>
+                ) : null}
+                {r.seekerUid ? (
+                  <StartChatButton
+                    providerUid={r.providerUid || ''}
+                    seekerUid={r.seekerUid}
+                    seekerName={r.seekerName}
+                    serviceId={r.serviceId}
+                    serviceTitle={r.serviceTitle}
+                    className="req-link-btn is-accent"
+                    label="Dërgo mesazh"
+                    hideGuestHint
+                  />
+                ) : null}
               </div>
-            ) : null}
-
-            {r.status !== 'pending' && r.status !== 'read' && r.status !== 'accepted' && r.providerNote ? (
-              <p className="request-note">
-                <strong>Shënimi yt:</strong> {r.providerNote}
-              </p>
-            ) : null}
-
-            {r.status === 'accepted' && r.providerNote ? (
-              <p className="request-note">
-                <strong>Shënimi yt:</strong> {r.providerNote}
-              </p>
-            ) : null}
-          </li>
-        ))}
+            </li>
+          )
+        })}
       </ul>
     </section>
   )

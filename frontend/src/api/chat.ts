@@ -34,7 +34,8 @@ export async function fetchConversations() {
 }
 
 export async function openConversation(payload: {
-  providerUid: string
+  providerUid?: string
+  seekerUid?: string
   serviceId?: string
   serviceTitle?: string
   initialMessage?: string

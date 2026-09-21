@@ -70,7 +70,6 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
           icon: MessageCircle,
           mobilePrimary: true,
         },
-        { to: '/dashboard/user/ratings', label: 'Vlerëso ofruesit', icon: Star },
         {
           to: '/',
           label: 'Kërko ndihmë',

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { mediaUrl } from '../api/auth'
 import { createCustomDomain, fetchDomains } from '../api/domains'
 import { createExpert, fetchMyExperts, type ExpertItem } from '../api/experts'
 import {
@@ -8,7 +10,10 @@ import {
 } from '../api/ratings'
 import {
   createService,
+  deleteService,
   fetchMyServices,
+  updateService,
+  uploadServicePhoto,
   type ServiceDetails,
   type ServiceItem,
 } from '../api/services'
@@ -60,16 +65,15 @@ export function UserRateProvidersPanel() {
   return (
     <section className="provider-section">
       <DashPageHeader
-        title="Vlerëso ofruesit"
-        description="Jep yje ofruesve të shërbimeve që ke përdorur."
+        title="Si ishte shërbimi?"
+        description="Këtu shfaqen ofruesit me të cilët ke përfunduar një bashkëpunim. Zgjidh yjet dhe, nëse do, shto një koment."
       />
 
-      {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
+      {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
       {error ? <p className="error">{error}</p> : null}
       {!loading && providers.length === 0 ? (
         <p className="muted">
-          Nuk ke ende rezervim ose kërkesë të përfunduar për të vlerësuar. Kur të përfundojë një
-          bashkëpunim, ofruesi shfaqet këtu.
+          Nuk ke ende një shërbim të përfunduar. Kur ofruesi ta shënojë kërkesën si të përfunduar, mund ta vlerësosh këtu.
         </p>
       ) : null}
 
@@ -106,11 +110,17 @@ export function UserRateProvidersPanel() {
   )
 }
 
-export function ProviderOwnRatings({ providerUid }: { providerUid: string }) {
+export function ProviderOwnRatings({
+  providerUid,
+  audience = 'provider',
+}: {
+  providerUid: string
+  audience?: 'provider' | 'company'
+}) {
   const [average, setAverage] = useState(0)
   const [count, setCount] = useState(0)
   const [ratings, setRatings] = useState<
-    Array<{ id: string; raterName: string; score: number; comment?: string }>
+    Array<{ id: string; raterName: string; providerName?: string; score: number; comment?: string }>
   >([])
   const [loading, setLoading] = useState(true)
 
@@ -134,7 +144,14 @@ export function ProviderOwnRatings({ providerUid }: { providerUid: string }) {
 
   return (
     <section className="provider-section">
-      <DashPageHeader title="Vlerësimet e mia" description="Shiko feedback-un që ke marrë nga klientët." />
+      <DashPageHeader
+        title="Vlerësimet"
+        description={
+          audience === 'company'
+            ? 'Feedback-u i klientëve për ofruesit dhe ekspertët e kompanisë.'
+            : 'Shiko feedback-un që ke marrë nga klientët.'
+        }
+      />
       {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
       {!loading ? (
         <p className="rate-summary">
@@ -151,12 +168,17 @@ export function ProviderOwnRatings({ providerUid }: { providerUid: string }) {
             <strong>
               ★ {r.score} — {r.raterName}
             </strong>
+            {r.providerName ? <span className="muted">{r.providerName}</span> : null}
             {r.comment ? <p>{r.comment}</p> : null}
           </li>
         ))}
       </ul>
       {!loading && ratings.length === 0 ? (
-        <p className="muted">Ende nuk ke asnjë vlerësim nga klientët.</p>
+        <p className="muted">
+          {audience === 'company'
+            ? 'Ende nuk ka vlerësime për ofruesit e kompanisë. Klientët vlerësojnë pasi ti të përfundosh kërkesën.'
+            : 'Ende nuk ke asnjë vlerësim nga klientët. Ato shfaqen këtu pasi ta përfundosh kërkesën.'}
+        </p>
       ) : null}
     </section>
   )
@@ -180,8 +202,10 @@ function DomainFieldsHint({ domain }: { domain: DomainDefinition | null }) {
 
 export function ProviderServicesPanel() {
   const domains = useDomains()
+  const formRef = useRef<HTMLFormElement>(null)
   const [services, setServices] = useState<ServiceItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [categoryId, setCategoryId] = useState('business-founding')
@@ -203,14 +227,21 @@ export function ProviderServicesPanel() {
   const [references, setReferences] = useState('')
   const [coachingOk, setCoachingOk] = useState(false)
   const [supportLanguages, setSupportLanguages] = useState<string[]>(['Shqip', 'Gjermanisht'])
+  const [photos, setPhotos] = useState<string[]>([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState('')
 
   const selectedDomain = useMemo(
     () => domains.find((d) => d.id === categoryId) ?? null,
     [domains, categoryId],
   )
+  const subcategoryOptions = useMemo(() => {
+    const examples = selectedDomain?.examples ?? ['Tjetër']
+    return subcategory && !examples.includes(subcategory) ? [subcategory, ...examples] : examples
+  }, [selectedDomain, subcategory])
 
   useEffect(() => {
     let cancelled = false
@@ -230,8 +261,11 @@ export function ProviderServicesPanel() {
   }, [])
 
   useEffect(() => {
-    if (selectedDomain?.examples[0]) setSubcategory(selectedDomain.examples[0])
-  }, [selectedDomain])
+    if (editingId || !selectedDomain?.examples[0]) return
+    setSubcategory((current) =>
+      selectedDomain.examples.includes(current) ? current : selectedDomain.examples[0],
+    )
+  }, [selectedDomain, editingId])
 
   function toggleDelivery(mode: 'online' | 'physical' | 'group') {
     setDeliveryModes((prev) =>
@@ -245,67 +279,147 @@ export function ProviderServicesPanel() {
     )
   }
 
+  function resetForm() {
+    setEditingId(null)
+    setTitle('')
+    setDescription('')
+    setLocation('')
+    setPriceFrom('')
+    setPriceTo('')
+    setLicenseNumber('')
+    setServiceTypeDetail('')
+    setDocumentsNote('')
+    setDeadlineNote('')
+    setAudience('both')
+    setDeliveryModes([])
+    setLanguageFrom('Shqip')
+    setLanguageTo('Gjermanisht')
+    setCertifiedTranslation(false)
+    setOfferType('package')
+    setPortfolioUrl('')
+    setReferences('')
+    setCoachingOk(false)
+    setSupportLanguages(['Shqip', 'Gjermanisht'])
+    setPhotos([])
+  }
+
+  function startEdit(service: ServiceItem) {
+    const details = service.details || {}
+    setEditingId(service.id)
+    setTitle(service.title)
+    setDescription(service.description)
+    setCategoryId(service.categoryId || categoryId)
+    setSubcategory(service.subcategory)
+    setLocation(service.location)
+    setPriceFrom(service.priceFrom != null ? String(service.priceFrom) : '')
+    setPriceTo(details.priceTo != null ? String(details.priceTo) : '')
+    setLicenseNumber(details.licenseNumber || '')
+    setServiceTypeDetail(details.serviceTypeDetail || '')
+    setDocumentsNote(details.documentsNote || '')
+    setDeadlineNote(details.deadlineNote || '')
+    setAudience(details.audience || 'both')
+    setDeliveryModes(details.deliveryModes || [])
+    setLanguageFrom(details.languageFrom || 'Shqip')
+    setLanguageTo(details.languageTo || 'Gjermanisht')
+    setCertifiedTranslation(Boolean(details.certifiedTranslation))
+    setOfferType(details.offerType || 'package')
+    setPortfolioUrl(details.portfolioUrl || '')
+    setReferences(details.references || '')
+    setCoachingOk(Boolean(details.coachingDisclaimerAccepted))
+    setSupportLanguages(details.supportLanguages?.length ? details.supportLanguages : ['Shqip', 'Gjermanisht'])
+    setPhotos(details.photos || [])
+    setError('')
+    setSuccess('')
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function collectDetails(): ServiceDetails {
+    const details: ServiceDetails = { photos }
+    if (licenseNumber.trim()) details.licenseNumber = licenseNumber.trim()
+    if (serviceTypeDetail.trim()) details.serviceTypeDetail = serviceTypeDetail.trim()
+    if (documentsNote.trim()) details.documentsNote = documentsNote.trim()
+    if (deadlineNote.trim()) details.deadlineNote = deadlineNote.trim()
+    details.audience = audience
+    if (deliveryModes.length) details.deliveryModes = deliveryModes
+    details.languageFrom = languageFrom
+    details.languageTo = languageTo
+    details.certifiedTranslation = certifiedTranslation
+    details.offerType = offerType
+    if (priceTo.trim()) details.priceTo = Number(priceTo)
+    if (portfolioUrl.trim()) details.portfolioUrl = portfolioUrl.trim()
+    if (references.trim()) details.references = references.trim()
+    if (coachingOk) details.coachingDisclaimerAccepted = true
+    if (supportLanguages.length) {
+      details.crossBorder = true
+      details.supportLanguages = supportLanguages
+    }
+    return details
+  }
+
+  async function onPhotoChange(file: File | undefined) {
+    if (!file) return
+    setError('')
+    setUploadingPhoto(true)
+    try {
+      const url = await uploadServicePhoto(file)
+      setPhotos((prev) => [...prev, url].slice(0, 8))
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setSuccess('')
+    if (domainRequires(selectedDomain, 'delivery_mode') && deliveryModes.length === 0) {
+      setError('Zgjidh të paktën një mënyrë mbajtjeje (online, fizikisht ose grup).')
+      return
+    }
+    if (domainRequires(selectedDomain, 'license_verification') && !licenseNumber.trim()) {
+      setError('Numri i licencës është i detyrueshëm për këtë kategori.')
+      return
+    }
+    if (domainRequires(selectedDomain, 'coaching_boundary') && !coachingOk) {
+      setError('Duhet të pranosh kufirin e coaching-ut për këtë kategori.')
+      return
+    }
+    if (domainRequires(selectedDomain, 'documents_deadlines') && !serviceTypeDetail.trim()) {
+      setError('Lloji i shërbimit është i detyrueshëm për këtë kategori.')
+      return
+    }
+    if (domainRequires(selectedDomain, 'portfolio_references') && !portfolioUrl.trim() && !references.trim()) {
+      setError('Shto një portfolio ose një referencë për këtë kategori.')
+      return
+    }
+    if (domainRequires(selectedDomain, 'cross_border_multilingual') && supportLanguages.length === 0) {
+      setError('Zgjidh të paktën një gjuhë për këtë kategori.')
+      return
+    }
     setSubmitting(true)
+    const payload = {
+      title,
+      description,
+      categoryId,
+      subcategory,
+      location,
+      priceFrom: priceFrom.trim() ? Number(priceFrom) : undefined,
+      details: collectDetails(),
+    }
     try {
-      const details: ServiceDetails = {}
-      if (domainRequires(selectedDomain, 'license_verification')) {
-        details.licenseNumber = licenseNumber
+      if (editingId) {
+        const service = await updateService(editingId, payload)
+        setServices((prev) => prev.map((item) => (item.id === service.id ? service : item)))
+        resetForm()
+        setSuccess('Shërbimi u përditësua.')
+      } else {
+        const service = await createService(payload)
+        setServices((prev) => [service, ...prev])
+        resetForm()
+        setSuccess('Shërbimi u publikua dhe shfaqet te ofertat.')
       }
-      if (domainRequires(selectedDomain, 'documents_deadlines')) {
-        details.serviceTypeDetail = serviceTypeDetail
-        details.documentsNote = documentsNote
-        details.deadlineNote = deadlineNote
-      }
-      if (domainRequires(selectedDomain, 'audience_b2c_b2b')) details.audience = audience
-      if (domainRequires(selectedDomain, 'delivery_mode')) details.deliveryModes = deliveryModes
-      if (domainRequires(selectedDomain, 'language_pair')) {
-        details.languageFrom = languageFrom
-        details.languageTo = languageTo
-        details.certifiedTranslation = certifiedTranslation
-      }
-      if (domainRequires(selectedDomain, 'offer_type_packages')) {
-        details.offerType = offerType
-        if (priceTo.trim()) details.priceTo = Number(priceTo)
-      }
-      if (domainRequires(selectedDomain, 'portfolio_references')) {
-        details.portfolioUrl = portfolioUrl
-        details.references = references
-      }
-      if (domainRequires(selectedDomain, 'coaching_boundary')) {
-        details.coachingDisclaimerAccepted = coachingOk
-      }
-      if (domainRequires(selectedDomain, 'cross_border_multilingual')) {
-        details.crossBorder = true
-        details.supportLanguages = supportLanguages
-      }
-
-      const service = await createService({
-        title,
-        description,
-        categoryId,
-        subcategory,
-        location,
-        priceFrom: priceFrom.trim() ? Number(priceFrom) : undefined,
-        details,
-      })
-      setServices((prev) => [service, ...prev])
-      setTitle('')
-      setDescription('')
-      setLocation('')
-      setPriceFrom('')
-      setPriceTo('')
-      setLicenseNumber('')
-      setServiceTypeDetail('')
-      setDocumentsNote('')
-      setDeadlineNote('')
-      setPortfolioUrl('')
-      setReferences('')
-      setCoachingOk(false)
-      setSuccess('Shërbimi u publikua dhe shfaqet në faqen kryesore.')
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -313,14 +427,31 @@ export function ProviderServicesPanel() {
     }
   }
 
+  async function onDelete(id: string) {
+    if (!window.confirm('A je i sigurt që do ta fshish këtë shërbim?')) return
+    setError('')
+    setSuccess('')
+    setDeletingId(id)
+    try {
+      await deleteService(id)
+      setServices((prev) => prev.filter((item) => item.id !== id))
+      if (editingId === id) resetForm()
+      setSuccess('Shërbimi u fshi.')
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setDeletingId('')
+    }
+  }
+
   return (
     <section className="provider-section">
       <DashPageHeader
-        title="Ofro një shërbim"
-        description="Zgjidh domenin — forma kërkon fushat e duhura për atë kategori."
+        title={editingId ? 'Ndrysho shërbimin' : 'Ofro një shërbim'}
+        description="Plotëso fushat e shërbimit, shto foto të punës dhe menaxho ofertat: shiko, ndrysho ose fshij."
       />
 
-      <form onSubmit={onSubmit} className="service-form">
+      <form ref={formRef} onSubmit={onSubmit} className="service-form">
         <label>
           Domeni / kategoria
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
@@ -335,7 +466,7 @@ export function ProviderServicesPanel() {
         <label>
           Nënkategoria / shembulli
           <select value={subcategory} onChange={(e) => setSubcategory(e.target.value)} required>
-            {(selectedDomain?.examples ?? ['Tjetër']).map((item) => (
+            {subcategoryOptions.map((item) => (
               <option key={item} value={item}>
                 {item}
               </option>
@@ -370,191 +501,166 @@ export function ProviderServicesPanel() {
           />
         </label>
 
-        {domainRequires(selectedDomain, 'offer_type_packages') ? (
-          <>
-            <label>
-              Lloji i ofertës
-              <select
-                value={offerType}
-                onChange={(e) =>
-                  setOfferType(e.target.value as 'package' | 'project' | 'service')
-                }
-              >
-                {OFFER_TYPES.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Çmimi deri (€)
-              <input
-                type="number"
-                min={0}
-                value={priceTo}
-                onChange={(e) => setPriceTo(e.target.value)}
-                placeholder="p.sh. 1500"
-              />
-            </label>
-          </>
-        ) : null}
+        <label>
+          Çmimi deri (€)
+          <input
+            type="number"
+            min={0}
+            value={priceTo}
+            onChange={(e) => setPriceTo(e.target.value)}
+            placeholder="p.sh. 1500"
+          />
+        </label>
 
-        {domainRequires(selectedDomain, 'license_verification') ? (
-          <label className="full">
-            License / Verification (numri i licencës)
-            <input
-              value={licenseNumber}
-              onChange={(e) => setLicenseNumber(e.target.value)}
-              placeholder="Numri i licencës së avokatit / ekspertit"
-              required
-            />
-          </label>
-        ) : null}
-
-        {domainRequires(selectedDomain, 'documents_deadlines') ? (
-          <>
-            <label>
-              Lloji i shërbimit
-              <input
-                value={serviceTypeDetail}
-                onChange={(e) => setServiceTypeDetail(e.target.value)}
-                placeholder="p.sh. Deklarata tatimore mujore"
-                required
-              />
-            </label>
-            <label>
-              Dokumentet
-              <input
-                value={documentsNote}
-                onChange={(e) => setDocumentsNote(e.target.value)}
-                placeholder="Çfarë dokumentesh duhen"
-              />
-            </label>
-            <label className="full">
-              Afatet
-              <input
-                value={deadlineNote}
-                onChange={(e) => setDeadlineNote(e.target.value)}
-                placeholder="p.sh. deri më 15 të muajit"
-              />
-            </label>
-          </>
-        ) : null}
-
-        {domainRequires(selectedDomain, 'audience_b2c_b2b') ? (
-          <label>
-            Audienca
-            <select
-              value={audience}
-              onChange={(e) => setAudience(e.target.value as 'b2c' | 'b2b' | 'both')}
-            >
-              {AUDIENCE_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-
-        {domainRequires(selectedDomain, 'delivery_mode') ? (
-          <fieldset className="full checkbox-fieldset">
-            <legend>Mënyra e mbajtjes</legend>
-            {DELIVERY_MODES.map((mode) => (
-              <label key={mode.id} className="check-row">
-                <input
-                  type="checkbox"
-                  checked={deliveryModes.includes(mode.id)}
-                  onChange={() => toggleDelivery(mode.id)}
-                />
-                {mode.label}
-              </label>
+        <label>
+          Lloji i ofertës
+          <select
+            value={offerType}
+            onChange={(e) => setOfferType(e.target.value as 'package' | 'project' | 'service')}
+          >
+            {OFFER_TYPES.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
             ))}
-          </fieldset>
-        ) : null}
+          </select>
+        </label>
 
-        {domainRequires(selectedDomain, 'language_pair') ? (
-          <>
-            <label>
-              Nga gjuha
-              <select value={languageFrom} onChange={(e) => setLanguageFrom(e.target.value)}>
-                {LANGUAGE_OPTIONS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Në gjuhën
-              <select value={languageTo} onChange={(e) => setLanguageTo(e.target.value)}>
-                {LANGUAGE_OPTIONS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="full check-row">
+        <label>
+          License / Verification
+          <input
+            value={licenseNumber}
+            onChange={(e) => setLicenseNumber(e.target.value)}
+            placeholder="Numri i licencës së avokatit / ekspertit"
+            required={domainRequires(selectedDomain, 'license_verification')}
+          />
+        </label>
+
+        <label>
+          Lloji i shërbimit
+          <input
+            value={serviceTypeDetail}
+            onChange={(e) => setServiceTypeDetail(e.target.value)}
+            placeholder="p.sh. Deklarata tatimore mujore"
+            required={domainRequires(selectedDomain, 'documents_deadlines')}
+          />
+        </label>
+
+        <label>
+          Dokumentet
+          <input
+            value={documentsNote}
+            onChange={(e) => setDocumentsNote(e.target.value)}
+            placeholder="Çfarë dokumentesh duhen"
+          />
+        </label>
+
+        <label className="full">
+          Afatet
+          <input
+            value={deadlineNote}
+            onChange={(e) => setDeadlineNote(e.target.value)}
+            placeholder="p.sh. deri më 15 të muajit"
+          />
+        </label>
+
+        <label>
+          Audienca
+          <select
+            value={audience}
+            onChange={(e) => setAudience(e.target.value as 'b2c' | 'b2b' | 'both')}
+          >
+            {AUDIENCE_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <fieldset className="full checkbox-fieldset">
+          <legend>Mënyra e mbajtjes</legend>
+          {DELIVERY_MODES.map((mode) => (
+            <label key={mode.id} className="check-row">
               <input
                 type="checkbox"
-                checked={certifiedTranslation}
-                onChange={(e) => setCertifiedTranslation(e.target.checked)}
+                checked={deliveryModes.includes(mode.id)}
+                onChange={() => toggleDelivery(mode.id)}
               />
-              Përkthim i noterizuar / certifikuar
+              {mode.label}
             </label>
-          </>
-        ) : null}
+          ))}
+        </fieldset>
 
-        {domainRequires(selectedDomain, 'portfolio_references') ? (
-          <>
-            <label>
-              Portfolio URL
-              <input
-                value={portfolioUrl}
-                onChange={(e) => setPortfolioUrl(e.target.value)}
-                placeholder="https://..."
-              />
-            </label>
-            <label>
-              Referenca
-              <input
-                value={references}
-                onChange={(e) => setReferences(e.target.value)}
-                placeholder="Klienti / projekti"
-              />
-            </label>
-          </>
-        ) : null}
-
-        {domainRequires(selectedDomain, 'coaching_boundary') ? (
-          <label className="full check-row">
-            <input
-              type="checkbox"
-              checked={coachingOk}
-              onChange={(e) => setCoachingOk(e.target.checked)}
-              required
-            />
-            {selectedDomain?.guidelines?.sq}
-          </label>
-        ) : null}
-
-        {domainRequires(selectedDomain, 'cross_border_multilingual') ? (
-          <fieldset className="full checkbox-fieldset">
-            <legend>Gjuhë (cross-border / diaspora)</legend>
-            {LANGUAGE_OPTIONS.map((lang) => (
-              <label key={lang} className="check-row">
-                <input
-                  type="checkbox"
-                  checked={supportLanguages.includes(lang)}
-                  onChange={() => toggleSupportLanguage(lang)}
-                />
-                {lang}
-              </label>
+        <label>
+          Nga gjuha
+          <select value={languageFrom} onChange={(e) => setLanguageFrom(e.target.value)}>
+            {LANGUAGE_OPTIONS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
             ))}
-          </fieldset>
-        ) : null}
+          </select>
+        </label>
+        <label>
+          Në gjuhën
+          <select value={languageTo} onChange={(e) => setLanguageTo(e.target.value)}>
+            {LANGUAGE_OPTIONS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="full check-row">
+          <input
+            type="checkbox"
+            checked={certifiedTranslation}
+            onChange={(e) => setCertifiedTranslation(e.target.checked)}
+          />
+          Përkthim i noterizuar / certifikuar
+        </label>
+
+        <label>
+          Portfolio URL
+          <input
+            value={portfolioUrl}
+            onChange={(e) => setPortfolioUrl(e.target.value)}
+            placeholder="https://..."
+          />
+        </label>
+        <label>
+          Referenca
+          <input
+            value={references}
+            onChange={(e) => setReferences(e.target.value)}
+            placeholder="Klienti / projekti"
+          />
+        </label>
+
+        <label className="full check-row">
+          <input
+            type="checkbox"
+            checked={coachingOk}
+            onChange={(e) => setCoachingOk(e.target.checked)}
+            required={domainRequires(selectedDomain, 'coaching_boundary')}
+          />
+          Coaching nuk është terapi ose trajtim mjekësor.
+        </label>
+
+        <fieldset className="full checkbox-fieldset">
+          <legend>Gjuhë (cross-border / diaspora)</legend>
+          {LANGUAGE_OPTIONS.map((lang) => (
+            <label key={lang} className="check-row">
+              <input
+                type="checkbox"
+                checked={supportLanguages.includes(lang)}
+                onChange={() => toggleSupportLanguage(lang)}
+              />
+              {lang}
+            </label>
+          ))}
+        </fieldset>
 
         <label className="full">
           Përshkrimi
@@ -566,12 +672,68 @@ export function ProviderServicesPanel() {
           />
         </label>
 
+        <div className="full service-photo-picker">
+          <span>Foto të punës (deri 8)</span>
+          <div className="service-photo-grid">
+            {photos.map((url) => (
+              <div key={url} className="service-photo-tile">
+                <img src={mediaUrl(url)} alt="" />
+                <button
+                  type="button"
+                  className="service-photo-remove"
+                  onClick={() => setPhotos((prev) => prev.filter((item) => item !== url))}
+                  aria-label="Hiq foton"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {photos.length < 8 ? (
+              <label className="service-photo-add">
+                {uploadingPhoto ? '...' : '+'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  hidden
+                  disabled={uploadingPhoto}
+                  onChange={(e) => {
+                    void onPhotoChange(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            ) : null}
+          </div>
+          <p className="muted">JPG, PNG ose WEBP · max 2MB. Këto foto shfaqen te oferta dhe te profili publik.</p>
+        </div>
+
         {error ? <p className="error full">{error}</p> : null}
         {success ? <p className="success full">{success}</p> : null}
 
-        <button type="submit" className="full" disabled={submitting}>
-          {submitting ? 'Duke publikuar...' : 'Publiko shërbimin'}
-        </button>
+        <div className="full form-actions">
+          <button type="submit" disabled={submitting || uploadingPhoto}>
+            {submitting
+              ? editingId
+                ? 'Duke ruajtur...'
+                : 'Duke publikuar...'
+              : editingId
+                ? 'Ruaj ndryshimet'
+                : 'Publiko shërbimin'}
+          </button>
+          {editingId ? (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                resetForm()
+                setSuccess('')
+                setError('')
+              }}
+            >
+              Anulo
+            </button>
+          ) : null}
+        </div>
       </form>
 
       <div className="services-list">
@@ -582,7 +744,7 @@ export function ProviderServicesPanel() {
         ) : null}
         <ul>
           {services.map((service) => (
-            <li key={service.id}>
+            <li key={service.id} className={editingId === service.id ? 'is-editing' : undefined}>
               <strong>{service.title}</strong>
               <span>
                 {service.categoryLabel || service.category} · {service.subcategory} ·{' '}
@@ -598,7 +760,33 @@ export function ProviderServicesPanel() {
                   {service.details.languageFrom} → {service.details.languageTo}
                 </span>
               ) : null}
+              {service.details?.deliveryModes?.length ? (
+                <span>{service.details.deliveryModes.join(' · ')}</span>
+              ) : null}
               <p>{service.description}</p>
+              {service.details?.photos?.length ? (
+                <div className="services-list-thumbs">
+                  {service.details.photos.map((url) => (
+                    <img key={url} src={mediaUrl(url)} alt="" />
+                  ))}
+                </div>
+              ) : null}
+              <div className="services-list-actions">
+                <Link className="ghost link-btn" to={`/services/${service.id}`}>
+                  Shiko
+                </Link>
+                <button type="button" className="ghost" onClick={() => startEdit(service)}>
+                  Ndrysho
+                </button>
+                <button
+                  type="button"
+                  className="ghost danger-ghost"
+                  disabled={deletingId === service.id}
+                  onClick={() => void onDelete(service.id)}
+                >
+                  {deletingId === service.id ? 'Duke fshirë...' : 'Fshi'}
+                </button>
+              </div>
             </li>
           ))}
         </ul>

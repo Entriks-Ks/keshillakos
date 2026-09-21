@@ -66,6 +66,19 @@ export async function createAvailabilitySlot(payload: {
   return data.slot
 }
 
+export async function createAvailabilitySlotsBulk(payload: {
+  slots: Array<{ startAt: string; endAt: string }>
+  note?: string
+  timezone?: string
+  mode?: 'online' | 'on_site'
+}) {
+  const { data } = await api.post<{ created: AvailabilitySlot[]; skipped: number }>(
+    '/api/availability/bulk',
+    payload,
+  )
+  return data
+}
+
 export async function deleteAvailabilitySlot(id: string) {
   const { data } = await api.delete<{ deleted: boolean; id: string }>(`/api/availability/${id}`)
   return data

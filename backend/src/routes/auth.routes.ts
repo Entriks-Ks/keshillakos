@@ -219,7 +219,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location } = req.body as {
+    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages } = req.body as {
       firstName?: string
       lastName?: string
       phone?: string | null
@@ -230,10 +230,14 @@ router.patch('/me', requireAuth, async (req, res) => {
       marketingConsent?: boolean
       savedLocation?: unknown
       location?: unknown
+      headline?: string
+      bio?: string
+      skills?: string[]
+      languages?: string[]
     }
 
     // Legacy profile clients still send a free-text `location`; only an object updates the saved selection.
-    const locationInput = savedLocation !== undefined ? savedLocation : typeof location === 'object' ? location : undefined
+    const locationInput = savedLocation !== undefined ? savedLocation : location && typeof location === 'object' ? location : undefined
     const parsedLocation = locationInput === undefined ? undefined : savedLocationInput.parse(locationInput)
 
     const user = await updateOwnProfile(req.user!.uid, {
@@ -246,6 +250,11 @@ router.patch('/me', requireAuth, async (req, res) => {
       profileVisibility,
       marketingConsent,
       savedLocation: parsedLocation,
+      headline,
+      bio,
+      skills,
+      languages,
+      legacyLocation: typeof location === 'string' ? location : undefined,
     })
 
     if (user.name !== req.user!.name) {

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
+  assertProviderCanMessageSeeker,
   getConversationForUser,
   listConversationsForUser,
   listMessages,
@@ -36,22 +37,33 @@ router.get('/conversations', requireAuth, async (req, res) => {
 router.post(
   '/conversations',
   requireAuth,
-  requireRole('user', 'admin'),
+  requireRole('user', 'provider', 'company', 'admin'),
   async (req, res) => {
     try {
-      const { providerUid, serviceId, serviceTitle, initialMessage } = req.body as {
+      const { providerUid, seekerUid, serviceId, serviceTitle, initialMessage } = req.body as {
         providerUid?: string
+        seekerUid?: string
         serviceId?: string
         serviceTitle?: string
         initialMessage?: string
       }
 
+      const roles = req.user!.roles
+      const asProvider = roles.some((role) => role === 'provider' || role === 'company') && Boolean(seekerUid?.trim())
+      const resolvedSeekerUid = asProvider ? seekerUid!.trim() : req.user!.uid
+      const resolvedProviderUid = asProvider ? req.user!.uid : providerUid || ''
+
+      if (asProvider) {
+        await assertProviderCanMessageSeeker(resolvedProviderUid, resolvedSeekerUid)
+      }
+
       const result = await openOrGetConversation({
-        seekerUid: req.user!.uid,
-        providerUid: providerUid || '',
+        seekerUid: resolvedSeekerUid,
+        providerUid: resolvedProviderUid,
         serviceId,
         serviceTitle,
         initialMessage,
+        senderUid: req.user!.uid,
       })
 
       return res.status(201).json(result)

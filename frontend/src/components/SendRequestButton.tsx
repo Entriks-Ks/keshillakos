@@ -18,6 +18,9 @@ type Props = {
   serviceTitle?: string
   intake: Pick<MatchIntake, 'need' | 'location' | 'language' | 'urgency' | 'contact'>
   compact?: boolean
+  openByDefault?: boolean
+  ctaLabel?: string
+  guestLabel?: string
 }
 
 export default function SendRequestButton({
@@ -29,13 +32,16 @@ export default function SendRequestButton({
   serviceTitle,
   intake,
   compact = false,
+  openByDefault = false,
+  ctaLabel = 'Dërgo kërkesë',
+  guestLabel = 'Hyr për të dërguar kërkesë',
 }: Props) {
   const { user } = useAuth()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(openByDefault)
   const [message, setMessage] = useState('')
   const [contactMethod, setContactMethod] = useState<ContactMethod>(intake.contact)
-  const [wantSlot, setWantSlot] = useState(false)
   const [slotId, setSlotId] = useState('')
+  const [freeCount, setFreeCount] = useState(0)
   const [scheduleKey, setScheduleKey] = useState(0)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -43,13 +49,18 @@ export default function SendRequestButton({
 
   if (!user) {
     return (
-      <p className={`muted${compact ? ' send-request-login' : ''}`}>
-        <Link to="/login">Hyr</Link> për të dërguar kërkesë.
-      </p>
+      <Link to="/login" className="primary-btn send-request-login-btn">
+        {guestLabel}
+      </Link>
     )
   }
 
-  if (user.role !== 'user' && user.role !== 'admin') {
+  const roles = user.roles ?? [user.role]
+  if (!roles.includes('user') && !roles.includes('admin')) {
+    return null
+  }
+
+  if (user.uid === providerUid) {
     return null
   }
 
@@ -57,6 +68,14 @@ export default function SendRequestButton({
     e.preventDefault()
     setError('')
     setSuccess('')
+    if (!slotId) {
+      setError(
+        freeCount > 0
+          ? 'Zgjidh një orë të lirë. Termini është i detyrueshëm.'
+          : 'Ofruesi nuk ka orare të lira. Nuk mund të dërgosh kërkesë pa termin.',
+      )
+      return
+    }
     setSubmitting(true)
     try {
       await sendServiceRequest({
@@ -72,18 +91,13 @@ export default function SendRequestButton({
         language: intake.language,
         urgency: intake.urgency,
         contactMethod,
-        slotId: wantSlot && slotId ? slotId : undefined,
+        slotId,
       })
-      setSuccess(
-        wantSlot && slotId
-          ? 'Kërkesa u dërgua. Ora pret konfirmimin e ofruesit.'
-          : 'Kërkesa u dërgua te ofruesi.',
-      )
+      setSuccess('Kërkesa u dërgua. Ora pret konfirmimin e ofruesit.')
       setMessage('')
       setSlotId('')
-      setWantSlot(false)
       setScheduleKey((k) => k + 1)
-      setOpen(false)
+      setOpen(openByDefault)
     } catch (err) {
       setError(getErrorMessage(err))
       setScheduleKey((k) => k + 1)
@@ -101,17 +115,20 @@ export default function SendRequestButton({
           className={compact ? 'primary-btn send-request-cta' : 'primary-btn'}
           onClick={() => setOpen(true)}
         >
-          Dërgo kërkesë
+          {ctaLabel}
         </button>
       ) : (
         <form onSubmit={onSubmit} className="send-request-form">
+          {openByDefault ? (
+            <p className="send-request-title">{ctaLabel}</p>
+          ) : null}
           <label>
             Çfarë të duhet?
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              rows={compact ? 2 : 3}
-              placeholder="Shkruaj shkurt nevojën tënde…"
+              rows={compact ? 2 : 4}
+              placeholder="Shkruaj shkurt: çfarë të duhet, kur dhe si preferon të flisni."
               required
               minLength={8}
             />
@@ -123,59 +140,42 @@ export default function SendRequestButton({
               value={contactMethod}
               onChange={(e) => setContactMethod(e.target.value as ContactMethod)}
             >
-              <option value="chat">Chat</option>
+              <option value="chat">Chat në platformë</option>
               <option value="phone">Telefon</option>
               <option value="email">Email</option>
             </select>
           </label>
 
-          {!wantSlot ? (
-            <button
-              type="button"
-              className="ghost send-request-slot-toggle"
-              onClick={() => setWantSlot(true)}
-            >
-              + Shto termin (opsionale)
-            </button>
-          ) : (
-            <fieldset className="slot-fieldset">
-              <legend>Zgjidh orën</legend>
-              <p className="muted slot-hint">E gjelbra = e lirë. Gri = e zënë.</p>
-              <SlotPicker
-                providerUid={providerUid}
-                selectedId={slotId}
-                onSelect={setSlotId}
-                refreshKey={scheduleKey}
-              />
-              <button
-                type="button"
-                className="ghost send-request-slot-toggle"
-                onClick={() => {
-                  setWantSlot(false)
-                  setSlotId('')
-                }}
-              >
-                Hiq termin
-              </button>
-            </fieldset>
-          )}
+          <fieldset className="slot-fieldset">
+            <legend>Zgjidh orën (e detyrueshme)</legend>
+            <p className="muted slot-hint">E gjelbra = e lirë, mund ta zgjedhësh. E kuqja = e zënë.</p>
+            <SlotPicker
+              providerUid={providerUid}
+              selectedId={slotId}
+              onSelect={setSlotId}
+              refreshKey={scheduleKey}
+              required
+              onLoaded={({ freeCount: next }) => setFreeCount(next)}
+            />
+          </fieldset>
 
           <div className="send-request-actions">
-            <button type="submit" className="primary-btn" disabled={submitting}>
-              {submitting ? 'Duke dërguar…' : 'Dërgo'}
+            <button type="submit" className="primary-btn" disabled={submitting || !slotId}>
+              {submitting ? 'Duke dërguar…' : ctaLabel}
             </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => {
-                setOpen(false)
-                setWantSlot(false)
-                setSlotId('')
-              }}
-              disabled={submitting}
-            >
-              Anulo
-            </button>
+            {!openByDefault ? (
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setOpen(false)
+                  setSlotId('')
+                }}
+                disabled={submitting}
+              >
+                Anulo
+              </button>
+            ) : null}
           </div>
         </form>
       )}

@@ -21,7 +21,6 @@ import {
   AdminDomainsPanel,
   CompanyExpertsPanel,
   ProviderServicesPanel,
-  UserRateProvidersPanel,
 } from './dashboard/panels'
 import DashboardRedirect from './pages/DashboardRedirect'
 import HomePage from './pages/HomePage'
@@ -55,7 +54,7 @@ export default function App() {
               <Route index element={<UserOverviewPage />} />
               <Route path="requests" element={<UserRequestsPanel />} />
               <Route path="messages" element={<MessagesPage />} />
-              <Route path="ratings" element={<UserRateProvidersPanel />} />
+              <Route path="ratings" element={<Navigate to="/dashboard/user/requests" replace />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>

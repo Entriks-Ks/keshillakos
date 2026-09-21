@@ -8,7 +8,7 @@ import { Review, reviewIsAggregateEligible, type ReviewDoc } from '../models/Rev
 import { ServiceOffer } from '../models/ServiceOffer'
 import { User } from '../models/User'
 import { UserRequest } from '../models/UserRequest'
-import { canManageBusiness } from './businessService'
+import { canManageBusiness, listManagedBusinesses } from './businessService'
 import { DEFAULT_PORTAL } from './domainService'
 import { listMyProviderProfiles } from './providerProfileService'
 import { resolvePolicyRules, resolvePolicySnapshot } from './policyService'
@@ -146,15 +146,44 @@ export async function respondToReview(uid: string, id: string, text: string) {
 }
 
 async function profilesForUid(uid: string) {
-  const user = await User.findOne({ uid }).select('_id').lean()
-  return user ? ProviderProfile.find({ ownerUser: user._id }).select('_id publicProfile.displayName ownerUser') : []
+  try {
+    return await listMyProviderProfiles(uid)
+  } catch {
+    return []
+  }
+}
+
+async function businessesForUid(uid: string) {
+  try {
+    return await listManagedBusinesses(uid)
+  } catch {
+    return []
+  }
+}
+
+function combinedAverage(aggregates: Array<{ average: number; count: number }>) {
+  const count = aggregates.reduce((sum, item) => sum + item.count, 0)
+  return count
+    ? Math.round(aggregates.reduce((sum, item) => sum + item.average * item.count, 0) / count * 10) / 10
+    : 0
 }
 
 export async function getProviderStats(providerUid: string): Promise<ProviderRatingStats> {
-  const profiles = await profilesForUid(providerUid)
-  const aggregates = await RatingAggregate.find({ portal: DEFAULT_PORTAL, scope: 'provider', subjectId: { $in: profiles.map((profile) => profile._id) } })
+  const [profiles, businesses] = await Promise.all([profilesForUid(providerUid), businessesForUid(providerUid)])
+  const aggregates = await RatingAggregate.find({
+    portal: DEFAULT_PORTAL,
+    $or: [
+      { scope: 'provider', subjectId: { $in: profiles.map((profile) => profile._id) } },
+      { scope: 'business', subjectId: { $in: businesses.map((business) => business._id) } },
+    ],
+  })
   const count = aggregates.reduce((sum, item) => sum + item.count, 0)
-  return { providerUid, count, verifiedCount: aggregates.reduce((sum, item) => sum + item.verifiedCount, 0), average: count ? Math.round(aggregates.reduce((sum, item) => sum + item.average * item.count, 0) / count * 10) / 10 : 0 }
+  return {
+    providerUid,
+    count,
+    verifiedCount: aggregates.reduce((sum, item) => sum + item.verifiedCount, 0),
+    average: combinedAverage(aggregates),
+  }
 }
 
 export async function getStatsForProviders(providerUids: string[]) {
@@ -171,10 +200,27 @@ async function toLegacyRating(review: ReviewDoc & { _id: Types.ObjectId }, provi
 }
 
 export async function listProviderRatings(providerUid: string, limit = 20) {
-  const profiles = await profilesForUid(providerUid)
-  const names = new Map(profiles.map((profile) => [String(profile._id), profile.publicProfile.displayName]))
-  const reviews = await Review.find({ portal: DEFAULT_PORTAL, subjectType: 'provider', subjectId: { $in: profiles.map((profile) => profile._id) }, 'moderation.status': 'published', 'abuse.status': 'clear', 'interaction.eligible': true, publishedAt: { $exists: true } }).sort({ publishedAt: -1 }).limit(limit)
-  return Promise.all(reviews.map((review) => toLegacyRating(review, providerUid, names.get(String(review.subjectId)) || 'Ofrues')))
+  const [profiles, businesses] = await Promise.all([profilesForUid(providerUid), businessesForUid(providerUid)])
+  const names = new Map([
+    ...profiles.map((profile) => [String(profile._id), profile.publicProfile.displayName] as const),
+    ...businesses.map((business) => [String(business._id), business.publicName] as const),
+  ])
+  const reviews = await Review.find({
+    portal: DEFAULT_PORTAL,
+    $or: [
+      { subjectType: 'provider', subjectId: { $in: profiles.map((profile) => profile._id) } },
+      { subjectType: 'business', subjectId: { $in: businesses.map((business) => business._id) } },
+    ],
+    'moderation.status': 'published',
+    'abuse.status': 'clear',
+    'interaction.eligible': true,
+    publishedAt: { $exists: true },
+  }).sort({ publishedAt: -1 }).limit(limit)
+  return Promise.all(
+    reviews.map((review) =>
+      toLegacyRating(review, providerUid, names.get(String(review.subjectId)) || (review.subjectType === 'business' ? 'Kompani' : 'Ofrues')),
+    ),
+  )
 }
 
 export async function findMyRating(raterUid: string, providerUid: string) {

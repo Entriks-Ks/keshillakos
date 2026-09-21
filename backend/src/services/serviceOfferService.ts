@@ -25,6 +25,7 @@ export type CreateServiceOfferInput = {
   modes?: ServiceOfferDoc['modes']
   languages?: string[]
   serviceAreas?: Location[]
+  photos?: string[]
   availabilityMode?: ServiceOfferDoc['availabilityMode']
   visibility?: ServiceOfferDoc['visibility']
   extensions?: Record<string, unknown>
@@ -89,6 +90,7 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
     formats: input.formats ?? [], modes: input.modes ?? [],
     languages: input.languages?.map((value) => value.trim()).filter(Boolean) ?? [],
     serviceAreas: input.serviceAreas ?? [],
+    photos: (input.photos ?? []).filter((value) => typeof value === 'string' && value.startsWith('/uploads/')).slice(0, 8),
     availabilityMode: input.availabilityMode ?? 'request',
     visibility,
     extensions,
@@ -158,22 +160,42 @@ export async function reviewServiceOffer(id: string, reviewerUid: string, decisi
 }
 
 export async function updateServiceOffer(uid: string, id: string, changes: Partial<Pick<ServiceOfferDoc,
-  'name' | 'subtitle' | 'description' | 'price' | 'durationMinutes' | 'formats' | 'modes' | 'languages' | 'serviceAreas' | 'availabilityMode' | 'visibility' | 'extensions'>>) {
+  'name' | 'subtitle' | 'description' | 'price' | 'durationMinutes' | 'formats' | 'modes' | 'languages' | 'serviceAreas' | 'photos' | 'availabilityMode' | 'visibility' | 'extensions'>> & { categoryId?: string }) {
   if (!Types.ObjectId.isValid(id)) throw new Error('Service ID i pavlefshëm')
   const offer = await ServiceOffer.findById(id)
   if (!offer) throw new Error('Shërbimi nuk u gjet')
   await managedProfile(uid, String(offer.providerProfile))
+  if (changes.categoryId) {
+    const nextCategory = await findCategoryById(changes.categoryId, offer.portal)
+    if (!nextCategory) throw new Error('Kategoria nuk ekziston')
+    offer.category = nextCategory._id
+    offer.categoryVersion = nextCategory.version
+  }
   const category = await Category.findById(offer.category)
   if (!category) throw new Error('Kategoria nuk u gjet')
   for (const key of ['name', 'subtitle', 'description', 'price', 'durationMinutes', 'formats', 'modes', 'languages', 'serviceAreas', 'availabilityMode', 'visibility'] as const) {
     if (changes[key] !== undefined) offer.set(key, changes[key])
   }
+  if (changes.photos !== undefined) {
+    offer.photos = [...new Set(changes.photos.filter((value) => typeof value === 'string' && value.startsWith('/uploads/')))].slice(0, 8)
+  }
   if (changes.extensions !== undefined) offer.extensions = validateExtensions(category.extensionFields, changes.extensions)
   offer.categoryVersion = category.version
-  offer.status = 'pending'
-  offer.moderation = { status: 'pending' }
+  if (offer.visibility === 'public') {
+    offer.status = 'published'
+    offer.moderation = { status: 'approved', reviewedAt: new Date() }
+  }
   await offer.save()
   return offer
+}
+
+export async function deleteServiceOffer(uid: string, id: string) {
+  if (!Types.ObjectId.isValid(id)) throw new Error('Service ID i pavlefshëm')
+  const offer = await ServiceOffer.findById(id)
+  if (!offer) throw new Error('Shërbimi nuk u gjet')
+  await managedProfile(uid, String(offer.providerProfile))
+  await offer.deleteOne()
+  return { deleted: true, id }
 }
 
 export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOnly = false) {
@@ -188,16 +210,18 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
   const cityNameById = new Map(cities.map((city) => [String(city._id), city.name.sq]))
   const categoryById = new Map(categories.map((category) => [String(category._id), category]))
   const businessById = new Map(businesses.map((business) => [String(business._id), business]))
-  const users = await User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid').lean()
-  const uidById = new Map(users.map((user) => [String(user._id), user.uid]))
+  const users = await User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid profilePhoto headline bio skills languages').lean()
+  const ownerById = new Map(users.map((user) => [String(user._id), user]))
   return offers.map((offer) => {
     const profile = profileById.get(String(offer.providerProfile))
     const category = categoryById.get(String(offer.category))
     const business = offer.business ? businessById.get(String(offer.business)) : undefined
-    const uid = profile ? uidById.get(String(profile.ownerUser)) || '' : ''
+    const owner = profile ? ownerById.get(String(profile.ownerUser)) : undefined
+    const uid = owner?.uid || ''
     const providerName = profile?.publicProfile.displayName || business?.publicName || ''
     const extensions = { ...offer.extensions }
     if (publicOnly) delete extensions.licenseNumber
+    if (offer.photos?.length) extensions.photos = offer.photos
     const area = offer.serviceAreas[0]?.cityName || (profile?.serviceAreaCityIds[0] && cityNameById.get(String(profile.serviceAreaCityIds[0]))) ||
       (profile?.location?.cityId && cityNameById.get(String(profile.location.cityId))) || (offer.modes.includes('online') ? 'Online' : '')
     return {
@@ -209,7 +233,14 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
       subcategory: offer.subtitle || '', location: area,
       priceFrom: offer.price.amountFrom, details: extensions,
       providerUid: uid, providerName,
-      provider: { uid, name: providerName, email: profile?.publicProfile.publicEmail || '', role: profile?.providerType === 'business' ? 'company' : 'provider', roleLabel: 'Ofrues', headline: profile?.publicProfile.title || '', bio: profile?.publicProfile.description || '', location: area, skills: [], languages: profile?.languages || [], profilePhoto: profile?.publicProfile.photoUrl || '', ratingAverage: 0, ratingCount: 0 },
+      provider: {
+        uid, name: providerName, email: profile?.publicProfile.publicEmail || '',
+        role: profile?.providerType === 'business' ? 'company' : 'provider', roleLabel: 'Ofrues',
+        headline: profile?.publicProfile.title || owner?.headline || '', bio: profile?.publicProfile.description || owner?.bio || '',
+        location: area, skills: owner?.skills || [], languages: profile?.languages?.length ? profile.languages : owner?.languages || [],
+        profilePhoto: profile?.publicProfile.photoUrl || owner?.profilePhoto || '',
+        ratingAverage: 0, ratingCount: 0,
+      },
       active: offer.status === 'published' && offer.moderation.status === 'approved',
       createdAt: offer.createdAt,
     }

@@ -21,6 +21,7 @@ export type ServiceOfferDoc = {
   modes: Array<'online' | 'on_site'>
   languages: string[]
   serviceAreas: Location[]
+  photos: string[]
   availabilityMode: 'by_arrangement' | 'request' | 'slots'
   status: 'draft' | 'pending' | 'published' | 'suspended'
   visibility: 'public' | 'unlisted' | 'private'
@@ -50,6 +51,7 @@ export const serviceOfferSchema = new Schema<ServiceOfferDoc>({
   modes: { type: [{ type: String, enum: ['online', 'on_site'] }], default: [] },
   languages: { type: [String], default: [] },
   serviceAreas: { type: [locationSchema], default: [] },
+  photos: { type: [String], default: [] },
   availabilityMode: { type: String, enum: ['by_arrangement', 'request', 'slots'], default: 'request' },
   status: { type: String, enum: ['draft', 'pending', 'published', 'suspended'], default: 'pending' },
   visibility: { type: String, enum: ['public', 'unlisted', 'private'], default: 'public' },

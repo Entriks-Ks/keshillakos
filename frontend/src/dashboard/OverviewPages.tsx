@@ -21,7 +21,7 @@ import { fetchConversations } from '../api/chat'
 import { fetchDomains } from '../api/domains'
 import { fetchMyExperts } from '../api/experts'
 import { fetchBusinessTeam, fetchMyBusinesses } from '../api/onboarding'
-import { fetchProviderRatings, fetchRateableProviders } from '../api/ratings'
+import { fetchProviderRatings } from '../api/ratings'
 import {
   fetchAllRequests,
   fetchMyRequests,
@@ -177,8 +177,8 @@ export function UserOverviewPage() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([fetchMyRequests(), fetchConversations(), fetchRateableProviders()])
-      .then(([requests, conversations, rateable]) => {
+    Promise.all([fetchMyRequests(), fetchConversations()])
+      .then(([requests, conversations]) => {
         if (cancelled) return
         const byStatus = countByStatus(requests)
         const pending = byStatus.pending || 0
@@ -207,12 +207,6 @@ export function UserOverviewPage() {
             to: '/dashboard/user/messages',
             tone: unread > 0 ? 'warn' : 'default',
           },
-          {
-            label: 'Për vlerësim',
-            value: rateable.length,
-            hint: 'Ofrues të gatshëm',
-            to: '/dashboard/user/ratings',
-          },
         ])
         setCharts({
           bar: {
@@ -237,9 +231,9 @@ export function UserOverviewPage() {
                 color: OVERVIEW_CHART_COLORS.info,
               },
               {
-                label: 'Për vlerësim',
-                value: rateable.length,
-                color: OVERVIEW_CHART_COLORS.warning,
+                label: 'Përfunduar',
+                value: completed,
+                color: OVERVIEW_CHART_COLORS.success,
               },
             ],
             emptyText: 'Aktiviteti do të shfaqet sapo të fillosh.',
@@ -288,13 +282,6 @@ export function UserOverviewPage() {
         to="/dashboard/user/messages"
         cta="Hap"
         icon={MessageCircle}
-      />
-      <OverviewCard
-        title="Vlerëso ofruesit"
-        description="Jep feedback pasi të marrësh ndihmë."
-        to="/dashboard/user/ratings"
-        cta="Hap"
-        icon={Star}
       />
     </OverviewShell>
   )
@@ -583,6 +570,13 @@ export function CompanyOverviewPage() {
         to="/dashboard/company/availability"
         cta="Hap"
         icon={CalendarDays}
+      />
+      <OverviewCard
+        title="Vlerësimet"
+        description="Shiko feedback-un që kanë lënë klientët për ofruesit e kompanisë."
+        to="/dashboard/company/ratings"
+        cta="Hap"
+        icon={Star}
       />
     </OverviewShell>
   )

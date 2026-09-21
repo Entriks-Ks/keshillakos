@@ -19,6 +19,7 @@ export type ServiceDetails = {
   coachingDisclaimerAccepted?: boolean
   crossBorder?: boolean
   supportLanguages?: string[]
+  photos?: string[]
 }
 
 export type ServiceDoc = {
@@ -67,6 +68,7 @@ const serviceSchema = new Schema<ServiceDoc>(
           coachingDisclaimerAccepted: Boolean,
           crossBorder: Boolean,
           supportLanguages: [String],
+          photos: [String],
         },
         { _id: false },
       ),

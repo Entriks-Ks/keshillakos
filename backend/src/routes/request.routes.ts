@@ -14,7 +14,8 @@ import {
   updateRequestStatus,
 } from '../services/requestService'
 import { RequestDelivery, DELIVERY_STATUSES, type DeliveryStatus } from '../models/RequestDelivery'
-import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, listMyUserRequests, listProviderDeliveries, listAllUserRequests, updateDeliveryStatus, completeDeliveryAsSeeker, countPendingDeliveries } from '../services/userRequestService'
+import { openOrGetConversation } from '../services/chatService'
+import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, listMyUserRequests, listProviderDeliveries, listAllUserRequests, updateDeliveryStatus, countPendingDeliveries } from '../services/userRequestService'
 
 const router = Router()
 
@@ -71,6 +72,9 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
     if (!contactMethod || !CONTACT_METHODS.includes(contactMethod as ContactMethod)) {
       return res.status(400).json({ message: 'Zgjidh mënyrën e kontaktit' })
     }
+    if (!draft && !slotId?.trim()) {
+      return res.status(400).json({ message: 'Zgjidh një orë të lirë për kërkesën' })
+    }
 
     const created = await createUserRequest({
       uid: req.user!.uid, providerIds: providerIds ?? (providerId ? [providerId] : undefined),
@@ -82,6 +86,19 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
       portal, slotId, draft,
     })
     const request = (await listMyUserRequests(req.user!.uid)).find((item) => item.requestId === String(created.request._id))
+    const chatProviderUid = request?.providerUid || providerUid?.trim()
+    if (chatProviderUid) {
+      try {
+        await openOrGetConversation({
+          seekerUid: req.user!.uid,
+          providerUid: chatProviderUid,
+          serviceId,
+          serviceTitle,
+        })
+      } catch {
+        // Request is already saved; chat thread is best-effort.
+      }
+    }
 
     return res.status(201).json({ request })
   } catch (err) {
@@ -147,22 +164,6 @@ router.patch('/:id/lifecycle', requireAuth, requireRole('user', 'admin'), async 
     const requests = await updateUserRequestLifecycle(req.user!.uid, String(req.params.id), status)
     return res.json({ requests })
   } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Përditësimi dështoi' }) }
-})
-
-router.patch('/:id/complete', requireAuth, requireRole('user', 'admin'), async (req, res) => {
-  try {
-    const id = String(req.params.id)
-    const isCanonical = await RequestDelivery.exists({ _id: id })
-    if (!isCanonical) {
-      return res.status(400).json({ message: 'Kjo kërkesë nuk mund të përfundojë nga klienti' })
-    }
-    const request = await completeDeliveryAsSeeker(req.user!.uid, id)
-    return res.json({ request })
-  } catch (err) {
-    return res.status(400).json({
-      message: err instanceof Error ? err.message : 'Përfundimi dështoi',
-    })
-  }
 })
 
 router.patch('/:id/status', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {

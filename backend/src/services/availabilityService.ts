@@ -131,6 +131,64 @@ export async function createAvailabilitySlot(input: {
   })
 }
 
+export async function createAvailabilitySlotsBulk(input: {
+  providerUid: string
+  providerName: string
+  providerId?: string
+  slots: Array<{ startAt: string | Date; endAt: string | Date }>
+  timezone?: string
+  mode?: 'online' | 'on_site'
+  note?: string
+}) {
+  if (!input.slots.length) throw new Error('Zgjidh të paktën një orë')
+  if (input.slots.length > 400) throw new Error('Maksimumi 400 orë njëherësh')
+  const profile = await managedProfile(input.providerUid, input.providerId)
+  const ranges: Array<{ startAt: Date; endAt: Date }> = []
+  for (const slot of input.slots) {
+    const startAt = new Date(slot.startAt)
+    const endAt = new Date(slot.endAt)
+    try {
+      assertValidRange(startAt, endAt)
+      ranges.push({ startAt, endAt })
+    } catch {
+      // Skip hours that already passed or that are invalid.
+    }
+  }
+  if (!ranges.length) throw new Error('Asnjë orë e vlefshme për t’u publikuar')
+  const key = profile ? `profile:${profile._id}` : `legacy:${input.providerUid}`
+  return withScheduleLock(key, async () => {
+    const minStart = new Date(Math.min(...ranges.map((range) => range.startAt.getTime())))
+    const maxEnd = new Date(Math.max(...ranges.map((range) => range.endAt.getTime())))
+    const conflictScope: Array<Record<string, unknown>> = profile
+      ? [{ providerProfile: profile._id }, { providerUid: input.providerUid, providerProfile: { $exists: false } }]
+      : [{ providerUid: input.providerUid }]
+    const existing = await AvailabilitySlot.find({
+      $or: conflictScope, status: { $ne: 'cancelled' },
+      startAt: { $lt: maxEnd }, endAt: { $gt: minStart },
+    }).select('startAt endAt')
+    const docs: Array<Record<string, unknown>> = []
+    for (const range of ranges) {
+      const clash = existing.some((item) => rangesOverlap(item.startAt, item.endAt, range.startAt, range.endAt))
+        || docs.some((item) => rangesOverlap(item.startAt as Date, item.endAt as Date, range.startAt, range.endAt))
+      if (clash) continue
+      docs.push({
+        providerUid: input.providerUid, providerName: input.providerName,
+        providerProfile: profile?._id, business: profile?.business,
+        startAt: range.startAt, endAt: range.endAt,
+        timezone: input.timezone || 'Europe/Belgrade',
+        mode: input.mode || 'online',
+        capacity: 1, note: input.note?.trim() || undefined, status: 'open',
+      })
+    }
+    if (!docs.length) return { created: [], skipped: ranges.length }
+    const inserted = await AvailabilitySlot.insertMany(docs)
+    return {
+      created: inserted.map((doc) => toSlot(doc as AvailabilitySlotDoc & { _id: { toString(): string } })),
+      skipped: input.slots.length - inserted.length,
+    }
+  })
+}
+
 async function providerSlotFilter(identifier: string) {
   if (Types.ObjectId.isValid(identifier)) return { providerProfile: new Types.ObjectId(identifier) }
   const user = await User.findOne({ uid: identifier }).select('_id').lean()
@@ -150,14 +208,14 @@ export async function listMyAvailability(uid: string) {
 export async function listOpenAvailabilityForProvider(identifier: string) {
   const docs = await AvailabilitySlot.find({
     ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() },
-  }).sort({ startAt: 1 }).limit(100)
-  return docs.map(toSlot).filter((slot) => slot.remainingCapacity > 0).slice(0, 40)
+  }).sort({ startAt: 1 }).limit(200)
+  return docs.map(toSlot).filter((slot) => slot.remainingCapacity > 0).slice(0, 120)
 }
 
 export async function listScheduleForProvider(identifier: string) {
   const docs = await AvailabilitySlot.find({
     ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() },
-  }).sort({ startAt: 1 }).limit(60)
+  }).sort({ startAt: 1 }).limit(200)
   const slots = docs.map(toSlot)
   return { slots, free: slots.filter((slot) => slot.remainingCapacity > 0), busy: slots.filter((slot) => slot.remainingCapacity === 0) }
 }

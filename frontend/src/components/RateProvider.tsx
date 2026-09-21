@@ -13,20 +13,16 @@ import { getErrorMessage } from '../utils/errors'
 type Props = {
   providerUid: string
   providerName: string
-  /** Mongo ProviderProfile id — preferuar kur dihet. */
   providerId?: string
-  /** Ndërveprim i përfunduar i gatshëm për vlerësim. */
   interaction?: EligibleInteraction
   initialAverage?: number
   initialCount?: number
   onRated?: (stats: ProviderRatingStats) => void
-  compact?: boolean
+  /** Hide the form unless this user can rate now. Use on public pages. */
+  quiet?: boolean
 }
 
-const INTERACTION_LABELS: Record<EligibleInteraction['kind'], string> = {
-  appointment: 'Rezervim i përfunduar',
-  request_delivery: 'Kërkesë e përfunduar',
-}
+const STAR_HINTS = ['Shumë keq', 'Keq', 'Në rregull', 'Mirë', 'Shkëlqyeshëm'] as const
 
 export default function RateProvider({
   providerUid,
@@ -36,10 +32,10 @@ export default function RateProvider({
   initialAverage = 0,
   initialCount = 0,
   onRated,
-  compact = false,
+  quiet = false,
 }: Props) {
   const { user } = useAuth()
-  const [score, setScore] = useState(5)
+  const [score, setScore] = useState(0)
   const [comment, setComment] = useState('')
   const [average, setAverage] = useState(initialAverage)
   const [count, setCount] = useState(initialCount)
@@ -55,6 +51,7 @@ export default function RateProvider({
 
   const canRate = user?.role === 'user' || user?.role === 'admin'
   const selected = interactions.find((item) => item.id === selectedId) || interactions[0]
+  const readyToRate = Boolean(canRate && selected && providerId)
 
   useEffect(() => {
     setAverage(initialAverage)
@@ -94,7 +91,7 @@ export default function RateProvider({
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!canRate || !selected || !providerId) return
+    if (!canRate || !selected || !providerId || score < 1) return
     setError('')
     setSuccess('')
     setSubmitting(true)
@@ -109,10 +106,11 @@ export default function RateProvider({
       const fresh = await fetchProviderRatings(providerUid)
       setAverage(fresh.stats.average)
       setCount(fresh.stats.count)
-      setSuccess('Vlerësimi u ruajt.')
+      setSuccess('Faleminderit! Vlerësimi u ruajt.')
       setInteractions((prev) => prev.filter((item) => item.id !== selected.id))
       setSelectedId('')
       setComment('')
+      setScore(0)
       onRated?.(fresh.stats)
     } catch (err) {
       setError(getErrorMessage(err))
@@ -121,79 +119,71 @@ export default function RateProvider({
     }
   }
 
+  if (quiet && (!canRate || loadingEligible || (!selected && !success))) return null
+
   return (
-    <div className={`rate-box${compact ? ' is-compact' : ''}`}>
-      <p className="rate-summary">
-        ★ {count > 0 ? average.toFixed(1) : '—'}
-        <span className="muted">
-          {' '}
-          · {count} {count === 1 ? 'vlerësim' : 'vlerësime'}
-        </span>
-      </p>
-
-      {!user ? (
-        <p className="muted">
-          <Link to="/login">Hyr</Link> si përdorues për të vlerësuar.
+    <div className="rate-box">
+      {!quiet ? (
+        <p className="rate-summary">
+          ★ {count > 0 ? average.toFixed(1) : '—'}
+          <span className="muted">
+            {' '}
+            · {count} {count === 1 ? 'vlerësim' : 'vlerësime'}
+          </span>
         </p>
       ) : null}
 
-      {user && !canRate ? (
-        <p className="muted">Vetëm përdoruesit (klientët) mund të vlerësojnë ofruesit.</p>
-      ) : null}
-
-      {canRate && loadingEligible ? <p className="muted">Duke kontrolluar ndërveprimet...</p> : null}
-
-      {canRate && !loadingEligible && interactions.length === 0 ? (
+      {!user && !quiet ? (
         <p className="muted">
-          Për të vlerësuar <strong>{providerName}</strong>, duhet një rezervim ose kërkesë e
-          përfunduar me ta.
+          <Link to="/login">Hyr</Link> për të lënë një vlerësim pasi ofruesi të përfundojë shërbimin.
         </p>
       ) : null}
 
-      {canRate && !loadingEligible && selected ? (
+      {user && !canRate && !quiet ? (
+        <p className="muted">Vlerësimin e lënë vetëm klientët.</p>
+      ) : null}
+
+      {canRate && loadingEligible && !quiet ? <p className="muted">Duke kontrolluar…</p> : null}
+
+      {canRate && !loadingEligible && interactions.length === 0 && !success && !quiet ? (
+        <p className="muted">
+          Mund ta vlerësosh <strong>{providerName}</strong> pasi ofruesi të përfundojë shërbimin.
+        </p>
+      ) : null}
+
+      {readyToRate ? (
         <form onSubmit={onSubmit} className="rate-form">
-          {interactions.length > 1 ? (
-            <label className="rate-interaction">
-              Ndërveprimi
-              <select value={selected.id} onChange={(e) => setSelectedId(e.target.value)}>
-                {interactions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {INTERACTION_LABELS[item.kind]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <p className="muted rate-interaction-hint">{INTERACTION_LABELS[selected.kind]}</p>
-          )}
-          <div className="star-row" role="group" aria-label="Vlerësimi">
+          <p className="rate-form-title">Si ishte bashkëpunimi me {providerName}?</p>
+          <p className="muted rate-form-hint">Zgjidh yjet — komenti është opsional.</p>
+          <div className="star-row" role="group" aria-label="Vlerësimi me yje">
             {[1, 2, 3, 4, 5].map((value) => (
               <button
                 key={value}
                 type="button"
                 className={`star-btn${score >= value ? ' is-active' : ''}`}
                 onClick={() => setScore(value)}
-                aria-label={`${value} yje`}
+                aria-label={`${value} yje, ${STAR_HINTS[value - 1]}`}
               >
                 ★
               </button>
             ))}
+            {score > 0 ? <span className="rate-star-hint">{STAR_HINTS[score - 1]}</span> : null}
           </div>
-          {!compact ? (
-            <input
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Koment (opsionale)"
-              maxLength={500}
-            />
-          ) : null}
-          <button type="submit" className="ghost" disabled={submitting || !providerId}>
-            {submitting ? 'Duke ruajtur...' : 'Vlerëso'}
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Çfarë shkoi mirë? Çfarë mund të përmirësohej?"
+            maxLength={500}
+            rows={3}
+          />
+          <button type="submit" className="primary-btn" disabled={submitting || score < 1}>
+            {submitting ? 'Duke ruajtur…' : 'Dërgo vlerësimin'}
           </button>
           {error ? <p className="error">{error}</p> : null}
-          {success ? <p className="success">{success}</p> : null}
         </form>
       ) : null}
+
+      {success ? <p className="success">{success}</p> : null}
     </div>
   )
 }
