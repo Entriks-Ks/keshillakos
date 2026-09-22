@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, BadgeCheck, Clock, Languages, MapPin, MessageCircle } from 'lucide-react'
-import { mediaUrl } from '../api/auth'
+import { mediaUrl } from '../api/media'
 import {
   fetchProviderSchedule,
   type AvailabilitySlot,

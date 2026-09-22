@@ -3,7 +3,6 @@ import cors from 'cors'
 import express from 'express'
 import http from 'http'
 import mongoose from 'mongoose'
-import path from 'path'
 import { connectDB, isMongoReady } from './config/db'
 import authRoutes from './routes/auth.routes'
 import adminUsersRoutes from './routes/adminUsers.routes'
@@ -23,13 +22,14 @@ import serviceRoutes from './routes/service.routes'
 import serviceOfferRoutes from './routes/serviceOffer.routes'
 import chatRoutes from './routes/chat.routes'
 import { attachChatSocket } from './services/chatSocket'
+import { UPLOADS_ROOT } from './services/mediaService'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 4000
 
 app.use(cors({ origin: true, credentials: true }))
 app.use(express.json())
-app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')))
+app.use('/uploads', express.static(UPLOADS_ROOT))
 
 app.get('/api/health', (_req, res) => {
   res.json({

@@ -9,6 +9,7 @@ import type { Location } from '../models/location'
 import { validateExtensions } from './categoryConfiguration'
 import { canManageBusiness, userIdForUid } from './businessService'
 import { DEFAULT_PORTAL, findCategoryById } from './domainService'
+import { deleteRemovedUploads, deleteUploads, sanitizeUploadPaths } from './mediaService'
 import { listMyProviderProfiles } from './providerProfileService'
 import { getStatsForProviders } from './ratingService'
 
@@ -91,7 +92,7 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
     formats: input.formats ?? [], modes: input.modes ?? [],
     languages: input.languages?.map((value) => value.trim()).filter(Boolean) ?? [],
     serviceAreas: input.serviceAreas ?? [],
-    photos: (input.photos ?? []).filter((value) => typeof value === 'string' && value.startsWith('/uploads/')).slice(0, 8),
+    photos: sanitizeUploadPaths(input.photos),
     availabilityMode: input.availabilityMode ?? 'request',
     visibility,
     extensions,
@@ -178,7 +179,9 @@ export async function updateServiceOffer(uid: string, id: string, changes: Parti
     if (changes[key] !== undefined) offer.set(key, changes[key])
   }
   if (changes.photos !== undefined) {
-    offer.photos = [...new Set(changes.photos.filter((value) => typeof value === 'string' && value.startsWith('/uploads/')))].slice(0, 8)
+    const nextPhotos = sanitizeUploadPaths(changes.photos)
+    await deleteRemovedUploads(offer.photos, nextPhotos)
+    offer.photos = nextPhotos
   }
   if (changes.extensions !== undefined) offer.extensions = validateExtensions(category.extensionFields, changes.extensions)
   offer.categoryVersion = category.version
@@ -195,7 +198,9 @@ export async function deleteServiceOffer(uid: string, id: string) {
   const offer = await ServiceOffer.findById(id)
   if (!offer) throw new Error('Shërbimi nuk u gjet')
   await managedProfile(uid, String(offer.providerProfile))
+  const photos = [...(offer.photos || [])]
   await offer.deleteOne()
+  await deleteUploads(photos)
   return { deleted: true, id }
 }
 

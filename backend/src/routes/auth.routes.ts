@@ -1,7 +1,4 @@
 import { Router } from 'express'
-import fs from 'fs'
-import multer from 'multer'
-import path from 'path'
 import { Types } from 'mongoose'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
@@ -12,6 +9,12 @@ import {
   firebaseUpdateDisplayName,
   firebaseVerifyIdToken,
 } from '../services/firebaseAuth'
+import {
+  profilePhotoUpload,
+  requireUploadedImage,
+  toPublicUploadPath,
+  withImageUpload,
+} from '../services/mediaService'
 import {
   findUserByUid,
   requestRoleChange,
@@ -25,29 +28,6 @@ const savedLocationInput = z.object({
   countryId: z.string().refine(Types.ObjectId.isValid, 'Invalid country ID'),
   cityId: z.string().refine(Types.ObjectId.isValid, 'Invalid city ID'),
 }).nullable()
-
-const uploadsRoot = path.resolve(process.cwd(), 'uploads')
-const profilesDir = path.join(uploadsRoot, 'profiles')
-fs.mkdirSync(profilesDir, { recursive: true })
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, profilesDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
-      const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg'
-      cb(null, `${req.user!.uid}${safeExt}`)
-    },
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(new Error('Ngarko vetëm foto (JPG, PNG, WEBP)'))
-      return
-    }
-    cb(null, true)
-  },
-})
 
 function publicUser(user: {
   uid: string
@@ -316,32 +296,17 @@ router.patch('/me', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/me/photo', requireAuth, (req, res) => {
-  upload.single('photo')(req, res, async (err) => {
-    try {
-      if (err) {
-        const message =
-          err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
-            ? 'Fotoja duhet të jetë më e vogël se 2MB'
-            : err instanceof Error
-              ? err.message
-              : 'Ngarkimi i fotos dështoi'
-        return res.status(400).json({ message })
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ message: 'Zgjidh një foto për profilin' })
-      }
-
-      const profilePhoto = `/uploads/profiles/${req.file.filename}`
-      const user = await updateProfilePhoto(req.user!.uid, profilePhoto)
-      return res.json({ user: publicUser(user) })
-    } catch (error) {
-      return res.status(400).json({
-        message: error instanceof Error ? error.message : 'Ngarkimi i fotos dështoi',
-      })
-    }
-  })
+router.post('/me/photo', requireAuth, withImageUpload(profilePhotoUpload), async (req, res) => {
+  try {
+    const file = requireUploadedImage(req, 'Zgjidh një foto për profilin')
+    const profilePhoto = toPublicUploadPath('profiles', file.filename)
+    const user = await updateProfilePhoto(req.user!.uid, profilePhoto)
+    return res.json({ user: publicUser(user) })
+  } catch (error) {
+    return res.status(400).json({
+      message: error instanceof Error ? error.message : 'Ngarkimi i fotos dështoi',
+    })
+  }
 })
 
 router.post('/request-role', requireAuth, async (req, res) => {

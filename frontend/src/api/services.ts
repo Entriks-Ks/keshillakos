@@ -1,4 +1,5 @@
 import api from './auth'
+import { postPhotoUpload } from './media'
 
 export type ServiceDetails = {
   licenseNumber?: string
@@ -96,11 +97,7 @@ export async function deleteService(id: string) {
 }
 
 export async function uploadServicePhoto(file: File) {
-  const form = new FormData()
-  form.append('photo', file)
-  const { data } = await api.post<{ url: string }>('/api/services/photos', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const data = await postPhotoUpload<{ url: string }>(api, '/api/services/photos', file)
   return data.url
 }
 

@@ -1,10 +1,13 @@
 import { Router } from 'express'
-import fs from 'fs'
-import multer from 'multer'
-import path from 'path'
 import { Types } from 'mongoose'
 import { z } from 'zod'
 import { requireAuth, requireRole } from '../middleware/auth'
+import {
+  requireUploadedImage,
+  servicePhotoUpload,
+  toPublicUploadPath,
+  withImageUpload,
+} from '../services/mediaService'
 import {
   createService,
   deleteService,
@@ -22,28 +25,6 @@ const discoveryQuery = z.object({
   subcategoryId: z.string().trim().min(1).max(120).optional(),
   serviceId: z.string().refine(Types.ObjectId.isValid, 'Invalid service ID').optional(),
   q: z.string().trim().max(160).optional(),
-})
-
-const servicesDir = path.join(path.resolve(process.cwd(), 'uploads'), 'services')
-fs.mkdirSync(servicesDir, { recursive: true })
-
-const photoUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, servicesDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
-      const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg'
-      cb(null, `${req.user!.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeExt}`)
-    },
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(new Error('Ngarko vetëm foto (JPG, PNG, WEBP)'))
-      return
-    }
-    cb(null, true)
-  },
 })
 
 function parseServicePayload(body: {
@@ -96,21 +77,22 @@ router.get('/mine', requireAuth, requireRole('provider', 'admin'), async (req, r
   }
 })
 
-router.post('/photos', requireAuth, requireRole('provider', 'admin'), (req, res) => {
-  photoUpload.single('photo')(req, res, (err) => {
-    if (err) {
-      const message =
-        err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
-          ? 'Fotoja duhet të jetë më e vogël se 2MB'
-          : err instanceof Error
-            ? err.message
-            : 'Ngarkimi i fotos dështoi'
-      return res.status(400).json({ message })
+router.post(
+  '/photos',
+  requireAuth,
+  requireRole('provider', 'admin'),
+  withImageUpload(servicePhotoUpload),
+  (req, res) => {
+    try {
+      const file = requireUploadedImage(req, 'Zgjidh një foto për shërbimin')
+      return res.status(201).json({ url: toPublicUploadPath('services', file.filename) })
+    } catch (err) {
+      return res.status(400).json({
+        message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi',
+      })
     }
-    if (!req.file) return res.status(400).json({ message: 'Zgjidh një foto për shërbimin' })
-    return res.status(201).json({ url: `/uploads/services/${req.file.filename}` })
-  })
-})
+  },
+)
 
 router.get('/:id', async (req, res) => {
   try {

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { postPhotoUpload } from './media'
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -51,13 +52,7 @@ type AuthResponse = {
   user: AuthUser
 }
 
-export function mediaUrl(path?: string | null) {
-  if (!path) return ''
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) {
-    return path
-  }
-  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
-}
+export { mediaUrl } from './media'
 
 export async function registerUser(payload: {
   firstName: string
@@ -90,11 +85,7 @@ export async function updateProfile(payload: ProfileUpdatePayload) {
 }
 
 export async function uploadProfilePhoto(file: File) {
-  const form = new FormData()
-  form.append('photo', file)
-  const { data } = await api.post<{ user: AuthUser }>('/api/auth/me/photo', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const data = await postPhotoUpload<{ user: AuthUser }>(api, '/api/auth/me/photo', file)
   return data.user
 }
 

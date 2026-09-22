@@ -9,7 +9,7 @@ import {
   type ChatMessage,
   type ConversationItem,
 } from '../api/chat'
-import { mediaUrl } from '../api/auth'
+import { mediaUrl } from '../api/media'
 import { useAuth } from '../auth/AuthContext'
 import { useChatSocket } from '../hooks/useChatSocket'
 import { getErrorMessage } from '../utils/errors'

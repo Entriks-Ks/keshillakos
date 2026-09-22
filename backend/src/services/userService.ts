@@ -4,6 +4,7 @@ import { City } from '../models/City'
 import { Country } from '../models/Country'
 import { Types } from 'mongoose'
 import { isUserRole, type UserRole } from '../types/roles'
+import { deleteUpload, normalizeUploadPath } from './mediaService'
 
 export type SavedLocation = { countryId: string; cityId: string }
 export type PublicUser = Omit<UserDoc, 'location'> & { location: string; savedLocation?: SavedLocation }
@@ -151,7 +152,7 @@ export async function requestRoleChange(uid: string, role: 'provider' | 'company
 
 export async function listPendingRoleRequests() {
   const users = await User.find({ requestedRole: { $in: ['provider', 'company'] } }).sort({ updatedAt: -1 }).lean()
-  return users.map(toPublicUser).filter((user) => user.requestedRole && !user.roles.includes(user.requestedRole))
+  return users.map(toPublicUser).filter((user) => user.requestedRole && !(user.roles ?? []).includes(user.requestedRole))
 }
 
 export async function reviewRoleRequest(uid: string, action: 'accept' | 'reject') {
@@ -308,12 +309,18 @@ export async function updateOwnProfile(
 export async function updateProfilePhoto(uid: string, profilePhoto: string): Promise<PublicUser> {
   const existing = await User.findOne({ uid })
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
-  existing.profilePhoto = profilePhoto
+  const nextPhoto = normalizeUploadPath(profilePhoto)
+  if (!nextPhoto) throw new Error('Rruga e fotos nuk është e vlefshme')
+  const previous = existing.profilePhoto
+  existing.profilePhoto = nextPhoto
   await existing.save()
   await ProviderProfile.updateMany(
     { ownerUser: existing._id },
-    { $set: { 'publicProfile.photoUrl': profilePhoto } },
+    { $set: { 'publicProfile.photoUrl': nextPhoto } },
   )
+  if (previous && previous !== nextPhoto) {
+    await deleteUpload(previous)
+  }
   return toPublicUser(existing)
 }
 

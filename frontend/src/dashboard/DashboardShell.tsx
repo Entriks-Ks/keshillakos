@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { Home, LogOut, MoreHorizontal, X } from 'lucide-react'
-import { mediaUrl } from '../api/auth'
+import { mediaUrl } from '../api/media'
 import { useAuth } from '../auth/AuthContext'
 import {
   getDashboardNav,

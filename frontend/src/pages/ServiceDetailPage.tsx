@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Wallet,
 } from 'lucide-react'
-import { mediaUrl } from '../api/auth'
+import { mediaUrl } from '../api/media'
 import {
   fetchProviderSchedule,
   type AvailabilitySlot,

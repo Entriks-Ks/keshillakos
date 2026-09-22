@@ -1,7 +1,7 @@
 import { type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Clock, MapPin } from 'lucide-react'
-import { mediaUrl } from '../api/auth'
+import { mediaUrl } from '../api/media'
 import type { ServiceItem } from '../api/services'
 import { catalogImageForLabels } from '../data/catalogImages'
 

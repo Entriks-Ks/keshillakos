@@ -9,6 +9,7 @@ import { Subcategory } from '../models/Subcategory'
 import { User } from '../models/User'
 import { validateExtensions } from './categoryConfiguration'
 import { findDomainById } from './domainService'
+import { deleteRemovedUploads, deleteUploads, sanitizeUploadPaths } from './mediaService'
 import { createProviderProfile } from './providerProfileService'
 import { createServiceOffer, deleteServiceOffer, listMyServiceOffers, listPublishedServiceOffers, offersToLegacyServices, updateServiceOffer } from './serviceOfferService'
 import { getProvidersPublicDetails, type ProviderPublicDetails } from './providerPublicService'
@@ -88,8 +89,7 @@ export async function validateServiceDetails(categoryId: string, details: Servic
 }
 
 function cleanPhotos(photos?: string[]) {
-  if (!Array.isArray(photos)) return []
-  return [...new Set(photos.filter((value) => typeof value === 'string' && value.startsWith('/uploads/')))].slice(0, 8)
+  return sanitizeUploadPaths(photos)
 }
 
 async function resolveLegacyProvider(uid: string, providerName: string, categoryId: string, location: string) {
@@ -170,7 +170,9 @@ export async function updateService(id: string, uid: string, input: Omit<CreateS
   service.subcategory = input.subcategory
   service.location = input.location
   service.priceFrom = input.priceFrom
-  service.details = { ...extensions, photos: cleanPhotos(input.details?.photos) }
+  const nextPhotos = cleanPhotos(input.details?.photos)
+  await deleteRemovedUploads(service.details?.photos, nextPhotos)
+  service.details = { ...extensions, photos: nextPhotos }
   await service.save()
   const [result] = await withLegacyProviders([service])
   return result
@@ -185,7 +187,9 @@ export async function deleteService(id: string, uid: string) {
   const service = await Service.findById(id)
   if (!service) throw new Error('Shërbimi nuk u gjet')
   if (service.providerUid !== uid) throw new Error('Nuk ke leje për këtë shërbim')
+  const photos = [...(service.details?.photos || [])]
   await service.deleteOne()
+  await deleteUploads(photos)
   return { deleted: true, id }
 }
 

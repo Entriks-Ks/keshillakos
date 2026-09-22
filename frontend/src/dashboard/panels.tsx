@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { mediaUrl } from '../api/auth'
+import { IMAGE_ACCEPT, IMAGE_ACCEPT_HINT, MAX_SERVICE_PHOTOS, mediaUrl } from '../api/media'
 import { createCustomDomain, fetchDomains } from '../api/domains'
 import { createExpert, fetchMyExperts, type ExpertItem } from '../api/experts'
 import {
@@ -290,7 +290,7 @@ export function ProviderServicesPanel() {
     setUploadingPhoto(true)
     try {
       const url = await uploadServicePhoto(file)
-      setPhotos((prev) => [...prev, url].slice(0, 8))
+      setPhotos((prev) => [...prev, url].slice(0, MAX_SERVICE_PHOTOS))
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -600,7 +600,7 @@ export function ProviderServicesPanel() {
         </label>
 
         <div className="full service-photo-picker">
-          <span>Foto të punës (deri 8)</span>
+          <span>Foto të punës (deri {MAX_SERVICE_PHOTOS})</span>
           <div className="service-photo-grid">
             {photos.map((url) => (
               <div key={url} className="service-photo-tile">
@@ -615,12 +615,12 @@ export function ProviderServicesPanel() {
                 </button>
               </div>
             ))}
-            {photos.length < 8 ? (
+            {photos.length < MAX_SERVICE_PHOTOS ? (
               <label className="service-photo-add">
                 {uploadingPhoto ? '...' : '+'}
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  accept={IMAGE_ACCEPT}
                   hidden
                   disabled={uploadingPhoto}
                   onChange={(e) => {
@@ -631,7 +631,7 @@ export function ProviderServicesPanel() {
               </label>
             ) : null}
           </div>
-          <p className="muted">JPG, PNG ose WEBP · max 2MB. Këto foto shfaqen te oferta dhe te profili publik.</p>
+          <p className="muted">{IMAGE_ACCEPT_HINT}. Këto foto shfaqen te oferta dhe te profili publik.</p>
         </div>
 
         {error ? <p className="error full">{error}</p> : null}

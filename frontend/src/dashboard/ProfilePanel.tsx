@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { mediaUrl, requestRoleChange } from '../api/auth'
+import { requestRoleChange } from '../api/auth'
+import { IMAGE_ACCEPT, IMAGE_ACCEPT_HINT, mediaUrl, validateImageFile } from '../api/media'
 import { useAuth } from '../auth/AuthContext'
 import { LANGUAGE_OPTIONS } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
@@ -78,6 +79,12 @@ export default function ProfilePanel() {
     if (!file) return
     setError('')
     setSuccess('')
+    try {
+      validateImageFile(file)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      return
+    }
     setUploading(true)
     const localPreview = URL.createObjectURL(file)
     setPreview(localPreview)
@@ -169,13 +176,13 @@ export default function ProfilePanel() {
             {uploading ? 'Duke ngarkuar...' : 'Ngarko foto'}
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
+              accept={IMAGE_ACCEPT}
               hidden
               disabled={uploading}
               onChange={(e) => onPhotoChange(e.target.files?.[0])}
             />
           </label>
-          <p className="muted">JPG, PNG ose WEBP · max 2MB</p>
+          <p className="muted">{IMAGE_ACCEPT_HINT}</p>
         </div>
       </div>
 
