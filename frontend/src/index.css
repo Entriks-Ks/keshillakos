@@ -4112,7 +4112,8 @@ h1 {
   box-shadow: 0 10px 28px color-mix(in srgb, var(--brand-navy) 4%, transparent);
 }
 
-.service-form label {
+.service-form label,
+.service-form .field {
   display: grid;
   gap: 6px;
   text-align: left;
@@ -5295,6 +5296,14 @@ h1 {
   font-weight: 500;
 }
 
+.service-form-section-title {
+  margin: 4px 0 0;
+  grid-column: 1 / -1;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .service-form .tt-location-selector button {
   width: auto;
   min-height: 0;
@@ -5304,12 +5313,27 @@ h1 {
   box-shadow: none;
 }
 
+.service-form .tt-location-selector button:hover:not(:disabled) {
+  background: transparent;
+}
+
 .service-form .tt-location-trigger {
   min-height: 46px;
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px 12px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.service-form .tt-location-selector .tt-location-trigger {
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.service-form .tt-location-selector .tt-location-trigger:hover:not(:disabled) {
   background: #fff;
 }
 
@@ -5443,6 +5467,9 @@ h1 {
 }
 
 .tt-quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   background: color-mix(in srgb, var(--brand-navy) 5%, var(--background));
   color: var(--ink-secondary);

@@ -1,9 +1,25 @@
 import 'dotenv/config'
 import mongoose from 'mongoose'
 import { connectDB } from '../config/db'
+import type { DomainRequirement } from '../data/domains'
 import { Category } from '../models/Category'
 import { Subcategory } from '../models/Subcategory'
+import { legacyExtensionFields } from '../services/categoryConfiguration'
 import { DEFAULT_PORTAL } from '../services/domainService'
+
+/** Category-specific requirements for the bilingual catalog (universal fields live on the form). */
+export const CATALOG_REQUIREMENTS: Record<string, DomainRequirement[]> = {
+  'legal-services': ['license_verification'],
+  'accounting-and-business': ['documents_deadlines', 'audience_b2c_b2b'],
+  'it-and-technology': ['offer_type_packages'],
+  'marketing-and-creative': ['offer_type_packages'],
+  'events-and-weddings': ['offer_type_packages'],
+  'finance-and-insurance': ['regulatory_notice'],
+  'career-development': ['coaching_boundary'],
+  'fitness-and-wellness': ['coaching_boundary'],
+  'real-estate': ['license_verification'],
+  'architecture-and-engineering': ['license_verification'],
+}
 
 // Each entry is [English, Albanian]. Slugs derive from English names.
 export const catalog: [string, string, [string, string][]][] = [
@@ -85,7 +101,18 @@ export async function seedCategories() {
     const slug = slugify(en)
     const existing = await Category.findOne({ portal: DEFAULT_PORTAL, $or: [{ stableId: slug }, { slug }] })
     const category = existing ?? new Category({ portal: DEFAULT_PORTAL, stableId: slug, slug })
-    category.set({ name: { sq, en }, labels: { sq, en }, slug, order: index + 1, isActive: true, status: 'active', source: 'seed' })
+    const requirements = CATALOG_REQUIREMENTS[slug] ?? []
+    category.set({
+      name: { sq, en },
+      labels: { sq, en },
+      slug,
+      order: index + 1,
+      isActive: true,
+      status: 'active',
+      source: 'seed',
+      requirements,
+      extensionFields: legacyExtensionFields(requirements),
+    })
     await category.save()
     for (const [position, [childEn, childSq]] of children.entries()) {
       const childSlug = slugify(childEn)

@@ -57,6 +57,7 @@ exports.serviceOfferSchema = new mongoose_1.Schema({
     languages: { type: [String], default: [] },
     serviceAreas: { type: [location_1.locationSchema], default: [] },
     photos: { type: [String], default: [] },
+    subcategoryId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Subcategory' },
     availabilityMode: { type: String, enum: ['by_arrangement', 'request', 'slots'], default: 'request' },
     status: { type: String, enum: ['draft', 'pending', 'published', 'suspended'], default: 'pending' },
     visibility: { type: String, enum: ['public', 'unlisted', 'private'], default: 'public' },

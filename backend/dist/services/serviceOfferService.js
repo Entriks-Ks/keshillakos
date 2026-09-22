@@ -78,6 +78,9 @@ async function createServiceOffer(input) {
         languages: input.languages?.map((value) => value.trim()).filter(Boolean) ?? [],
         serviceAreas: input.serviceAreas ?? [],
         photos: (0, mediaService_1.sanitizeUploadPaths)(input.photos),
+        subcategoryId: input.subcategoryId && mongoose_1.Types.ObjectId.isValid(input.subcategoryId)
+            ? new mongoose_1.Types.ObjectId(input.subcategoryId)
+            : undefined,
         availabilityMode: input.availabilityMode ?? 'request',
         visibility,
         extensions,
@@ -169,6 +172,11 @@ async function updateServiceOffer(uid, id, changes) {
         await (0, mediaService_1.deleteRemovedUploads)(offer.photos, nextPhotos);
         offer.photos = nextPhotos;
     }
+    if (changes.subcategoryId !== undefined) {
+        offer.subcategoryId = changes.subcategoryId && mongoose_1.Types.ObjectId.isValid(String(changes.subcategoryId))
+            ? new mongoose_1.Types.ObjectId(String(changes.subcategoryId))
+            : undefined;
+    }
     if (changes.extensions !== undefined)
         offer.extensions = (0, categoryConfiguration_1.validateExtensions)(category.extensionFields, changes.extensions);
     offer.categoryVersion = category.version;
@@ -226,8 +234,8 @@ async function offersToLegacyServices(offers, publicOnly = false) {
             serviceOfferId: String(offer._id),
             providerId: String(offer.providerProfile), businessId: offer.business ? String(offer.business) : undefined,
             title: offer.name, description: offer.description,
-            categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || '', category: category?.labels.get('sq') || '',
-            subcategory: offer.subtitle || '', location: area,
+            categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || category?.name?.sq || '', category: category?.labels.get('sq') || category?.name?.sq || '',
+            subcategory: offer.subtitle || '', subcategoryId: offer.subcategoryId ? String(offer.subcategoryId) : undefined, location: area,
             priceFrom: offer.price.amountFrom, details: extensions,
             providerUid: uid, providerName,
             provider: {

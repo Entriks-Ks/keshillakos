@@ -3,14 +3,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.catalog = void 0;
+exports.catalog = exports.CATALOG_REQUIREMENTS = void 0;
 exports.seedCategories = seedCategories;
 require("dotenv/config");
 const mongoose_1 = __importDefault(require("mongoose"));
 const db_1 = require("../config/db");
 const Category_1 = require("../models/Category");
 const Subcategory_1 = require("../models/Subcategory");
+const categoryConfiguration_1 = require("../services/categoryConfiguration");
 const domainService_1 = require("../services/domainService");
+/** Category-specific requirements for the bilingual catalog (universal fields live on the form). */
+exports.CATALOG_REQUIREMENTS = {
+    'legal-services': ['license_verification'],
+    'accounting-and-business': ['documents_deadlines', 'audience_b2c_b2b'],
+    'it-and-technology': ['offer_type_packages'],
+    'marketing-and-creative': ['offer_type_packages'],
+    'events-and-weddings': ['offer_type_packages'],
+    'finance-and-insurance': ['regulatory_notice'],
+    'career-development': ['coaching_boundary'],
+    'fitness-and-wellness': ['coaching_boundary'],
+    'real-estate': ['license_verification'],
+    'architecture-and-engineering': ['license_verification'],
+};
 // Each entry is [English, Albanian]. Slugs derive from English names.
 exports.catalog = [
     ['Home & Property', 'Shtëpi dhe Pronë', [
@@ -88,7 +102,18 @@ async function seedCategories() {
         const slug = slugify(en);
         const existing = await Category_1.Category.findOne({ portal: domainService_1.DEFAULT_PORTAL, $or: [{ stableId: slug }, { slug }] });
         const category = existing ?? new Category_1.Category({ portal: domainService_1.DEFAULT_PORTAL, stableId: slug, slug });
-        category.set({ name: { sq, en }, labels: { sq, en }, slug, order: index + 1, isActive: true, status: 'active', source: 'seed' });
+        const requirements = exports.CATALOG_REQUIREMENTS[slug] ?? [];
+        category.set({
+            name: { sq, en },
+            labels: { sq, en },
+            slug,
+            order: index + 1,
+            isActive: true,
+            status: 'active',
+            source: 'seed',
+            requirements,
+            extensionFields: (0, categoryConfiguration_1.legacyExtensionFields)(requirements),
+        });
         await category.save();
         for (const [position, [childEn, childSq]] of children.entries()) {
             const childSlug = slugify(childEn);

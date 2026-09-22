@@ -1,8 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.REMOVED_DETAIL_KEYS = exports.UNIVERSAL_DETAIL_KEYS = void 0;
+exports.categorySpecificExtensionFields = categorySpecificExtensionFields;
 exports.legacyExtensionFields = legacyExtensionFields;
 exports.validateExtensions = validateExtensions;
 const domains_1 = require("../data/domains");
+const serviceOptions_1 = require("../data/serviceOptions");
+/** Handled by the universal service form — not category-specific extension validation. */
+exports.UNIVERSAL_DETAIL_KEYS = new Set([
+    'deliveryModes',
+    'supportLanguages',
+    'crossBorder',
+    'portfolioUrl',
+    'references',
+    'experience',
+    'availabilityMode',
+    'priceTo',
+    'photos',
+]);
+/** Removed from the universal form; never required via category extension fields. */
+exports.REMOVED_DETAIL_KEYS = new Set(['languageFrom', 'languageTo', 'certifiedTranslation']);
+function categorySpecificExtensionFields(fields = []) {
+    return fields.filter((field) => !exports.UNIVERSAL_DETAIL_KEYS.has(field.key) && !exports.REMOVED_DETAIL_KEYS.has(field.key));
+}
 // One-time import mapping for historical KeshillaKos rules. Runtime validation reads Category.extensionFields.
 function legacyExtensionFields(requirements) {
     const fields = [];
@@ -15,16 +35,16 @@ function legacyExtensionFields(requirements) {
                 fields.push({ key: 'serviceTypeDetail', type: 'string', required: true }, { key: 'documentsNote', type: 'string' }, { key: 'deadlineNote', type: 'string' });
                 break;
             case 'audience_b2c_b2b':
-                fields.push({ key: 'audience', type: 'string', required: true, allowedValues: ['b2c', 'b2b', 'both'] });
+                fields.push({ key: 'audience', type: 'string', required: true, allowedValues: (0, serviceOptions_1.serviceOptionValues)('audience') });
                 break;
             case 'delivery_mode':
-                fields.push({ key: 'deliveryModes', type: 'stringArray', required: true, allowedValues: ['online', 'physical', 'group'] });
+                fields.push({ key: 'deliveryModes', type: 'stringArray', required: true, allowedValues: (0, serviceOptions_1.serviceOptionValues)('delivery-mode') });
                 break;
             case 'language_pair':
-                fields.push({ key: 'languageFrom', type: 'string', required: true }, { key: 'languageTo', type: 'string', required: true }, { key: 'certifiedTranslation', type: 'boolean' });
+                fields.push({ key: 'languageFrom', type: 'string', required: true, allowedValues: (0, serviceOptions_1.serviceOptionValues)('language') }, { key: 'languageTo', type: 'string', required: true, allowedValues: (0, serviceOptions_1.serviceOptionValues)('language') }, { key: 'certifiedTranslation', type: 'boolean' });
                 break;
             case 'offer_type_packages':
-                fields.push({ key: 'offerType', type: 'string', required: true, allowedValues: ['package', 'project', 'service'] }, { key: 'priceTo', type: 'number' });
+                fields.push({ key: 'offerType', type: 'string', required: true, allowedValues: (0, serviceOptions_1.serviceOptionValues)('offer-type') }, { key: 'priceTo', type: 'number' });
                 break;
             case 'portfolio_references':
                 fields.push({ key: 'portfolioUrl', type: 'string', oneOfGroup: 'portfolio' }, { key: 'references', type: 'string', oneOfGroup: 'portfolio' });
@@ -36,20 +56,20 @@ function legacyExtensionFields(requirements) {
                 fields.push({ key: 'coachingDisclaimerAccepted', type: 'boolean', required: true, mustBeTrue: true }, { key: 'coachingDisclaimer', type: 'string', defaultValue: domains_1.COACHING_DISCLAIMER });
                 break;
             case 'cross_border_multilingual':
-                fields.push({ key: 'crossBorder', type: 'boolean', defaultValue: true }, { key: 'supportLanguages', type: 'stringArray', required: true });
+                fields.push({ key: 'crossBorder', type: 'boolean', defaultValue: true }, { key: 'supportLanguages', type: 'stringArray', required: true, allowedValues: (0, serviceOptions_1.serviceOptionValues)('language') });
                 break;
         }
     }
     return fields;
 }
 function validateExtensions(fields, raw = {}) {
-    const allowed = new Set(fields.map((field) => field.key));
-    for (const key of Object.keys(raw))
-        if (!allowed.has(key))
-            throw new Error(`Unsupported category field: ${key}`);
-    const value = { ...raw };
+    const specificFields = categorySpecificExtensionFields(fields);
+    const allowed = new Set(specificFields.map((field) => field.key));
+    const passthrough = Object.fromEntries(Object.entries(raw).filter(([key]) => exports.UNIVERSAL_DETAIL_KEYS.has(key) && !exports.REMOVED_DETAIL_KEYS.has(key)));
+    const specificRaw = Object.fromEntries(Object.entries(raw).filter(([key]) => allowed.has(key)));
+    const value = { ...specificRaw };
     const groups = new Map();
-    for (const field of fields) {
+    for (const field of specificFields) {
         let entry = value[field.key];
         if (entry === undefined && field.defaultValue !== undefined)
             entry = field.defaultValue;
@@ -76,6 +96,6 @@ function validateExtensions(fields, raw = {}) {
     for (const [group, keys] of groups)
         if (!keys.some((key) => value[key] !== undefined))
             throw new Error(`One field in ${group} is required`);
-    return value;
+    return { ...value, ...passthrough };
 }
 //# sourceMappingURL=categoryConfiguration.js.map

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { requestRoleChange } from '../api/auth'
 import { IMAGE_ACCEPT, IMAGE_ACCEPT_HINT, mediaUrl, validateImageFile } from '../api/media'
 import { useAuth } from '../auth/AuthContext'
-import { LANGUAGE_OPTIONS } from '../data/domains'
+import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { getErrorMessage } from '../utils/errors'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
 import DashPageHeader from './DashPageHeader'
@@ -20,6 +20,7 @@ function parseSkills(raw: string) {
 
 export default function ProfilePanel() {
   const { user, updateProfile, uploadProfilePhoto, refreshUser } = useAuth()
+  const { languages: languageOptions } = useCatalogOptions()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [headline, setHeadline] = useState('')
@@ -227,14 +228,14 @@ export default function ProfilePanel() {
         </label>
         <fieldset className="full checkbox-fieldset">
           <legend>Gjuhët</legend>
-          {LANGUAGE_OPTIONS.map((lang) => (
-            <label key={lang} className="check-row">
+          {languageOptions.map((lang) => (
+            <label key={lang.id} className="check-row">
               <input
                 type="checkbox"
-                checked={languages.includes(lang)}
-                onChange={() => toggleLanguage(lang)}
+                checked={languages.includes(lang.value)}
+                onChange={() => toggleLanguage(lang.value)}
               />
-              {lang}
+              {lang.label}
             </label>
           ))}
         </fieldset>

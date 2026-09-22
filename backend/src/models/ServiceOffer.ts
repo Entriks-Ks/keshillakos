@@ -22,6 +22,7 @@ export type ServiceOfferDoc = {
   languages: string[]
   serviceAreas: Location[]
   photos: string[]
+  subcategoryId?: Types.ObjectId
   availabilityMode: 'by_arrangement' | 'request' | 'slots'
   status: 'draft' | 'pending' | 'published' | 'suspended'
   visibility: 'public' | 'unlisted' | 'private'
@@ -52,6 +53,7 @@ export const serviceOfferSchema = new Schema<ServiceOfferDoc>({
   languages: { type: [String], default: [] },
   serviceAreas: { type: [locationSchema], default: [] },
   photos: { type: [String], default: [] },
+  subcategoryId: { type: Schema.Types.ObjectId, ref: 'Subcategory' },
   availabilityMode: { type: String, enum: ['by_arrangement', 'request', 'slots'], default: 'request' },
   status: { type: String, enum: ['draft', 'pending', 'published', 'suspended'], default: 'pending' },
   visibility: { type: String, enum: ['public', 'unlisted', 'private'], default: 'public' },

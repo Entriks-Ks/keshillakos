@@ -28,6 +28,7 @@ export type CreateServiceOfferInput = {
   languages?: string[]
   serviceAreas?: Location[]
   photos?: string[]
+  subcategoryId?: string
   availabilityMode?: ServiceOfferDoc['availabilityMode']
   visibility?: ServiceOfferDoc['visibility']
   extensions?: Record<string, unknown>
@@ -93,6 +94,9 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
     languages: input.languages?.map((value) => value.trim()).filter(Boolean) ?? [],
     serviceAreas: input.serviceAreas ?? [],
     photos: sanitizeUploadPaths(input.photos),
+    subcategoryId: input.subcategoryId && Types.ObjectId.isValid(input.subcategoryId)
+      ? new Types.ObjectId(input.subcategoryId)
+      : undefined,
     availabilityMode: input.availabilityMode ?? 'request',
     visibility,
     extensions,
@@ -162,7 +166,7 @@ export async function reviewServiceOffer(id: string, reviewerUid: string, decisi
 }
 
 export async function updateServiceOffer(uid: string, id: string, changes: Partial<Pick<ServiceOfferDoc,
-  'name' | 'subtitle' | 'description' | 'price' | 'durationMinutes' | 'formats' | 'modes' | 'languages' | 'serviceAreas' | 'photos' | 'availabilityMode' | 'visibility' | 'extensions'>> & { categoryId?: string }) {
+  'name' | 'subtitle' | 'description' | 'price' | 'durationMinutes' | 'formats' | 'modes' | 'languages' | 'serviceAreas' | 'photos' | 'availabilityMode' | 'visibility' | 'extensions'>> & { categoryId?: string; subcategoryId?: string | null }) {
   if (!Types.ObjectId.isValid(id)) throw new Error('Service ID i pavlefshëm')
   const offer = await ServiceOffer.findById(id)
   if (!offer) throw new Error('Shërbimi nuk u gjet')
@@ -182,6 +186,11 @@ export async function updateServiceOffer(uid: string, id: string, changes: Parti
     const nextPhotos = sanitizeUploadPaths(changes.photos)
     await deleteRemovedUploads(offer.photos, nextPhotos)
     offer.photos = nextPhotos
+  }
+  if (changes.subcategoryId !== undefined) {
+    offer.subcategoryId = changes.subcategoryId && Types.ObjectId.isValid(String(changes.subcategoryId))
+      ? new Types.ObjectId(String(changes.subcategoryId))
+      : undefined
   }
   if (changes.extensions !== undefined) offer.extensions = validateExtensions(category.extensionFields, changes.extensions)
   offer.categoryVersion = category.version
@@ -237,8 +246,8 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
       serviceOfferId: String((offer as ServiceOfferDoc & { _id: Types.ObjectId })._id),
       providerId: String(offer.providerProfile), businessId: offer.business ? String(offer.business) : undefined,
       title: offer.name, description: offer.description,
-      categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || '', category: category?.labels.get('sq') || '',
-      subcategory: offer.subtitle || '', location: area,
+      categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || category?.name?.sq || '', category: category?.labels.get('sq') || category?.name?.sq || '',
+      subcategory: offer.subtitle || '', subcategoryId: offer.subcategoryId ? String(offer.subcategoryId) : undefined, location: area,
       priceFrom: offer.price.amountFrom, details: extensions,
       providerUid: uid, providerName,
       provider: {

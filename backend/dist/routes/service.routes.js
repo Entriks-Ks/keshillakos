@@ -18,9 +18,10 @@ function parseServicePayload(body) {
     const title = body.title?.trim();
     const description = body.description?.trim();
     const categoryId = body.categoryId?.trim() || body.category?.trim();
+    const subcategoryId = body.subcategoryId?.trim();
     const subcategory = body.subcategory?.trim();
     const location = body.location?.trim();
-    if (!title || !description || !categoryId || !subcategory || !location) {
+    if (!title || !description || !categoryId || !location || (!subcategory && !subcategoryId)) {
         throw new Error('Titulli, përshkrimi, kategoria, nënkategoria dhe lokacioni janë të detyrueshme');
     }
     let priceFrom;
@@ -29,7 +30,7 @@ function parseServicePayload(body) {
         if (Number.isNaN(priceFrom) || priceFrom < 0)
             throw new Error('Çmimi fillestar nuk është i vlefshëm');
     }
-    return { title, description, categoryId, subcategory, location, priceFrom, details: body.details };
+    return { title, description, categoryId, subcategory: subcategory || '', subcategoryId, location, priceFrom, details: body.details };
 }
 router.get('/', async (req, res) => {
     try {

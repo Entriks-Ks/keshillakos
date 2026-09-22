@@ -4,10 +4,12 @@ const express_1 = require("express");
 const mongoose_1 = require("mongoose");
 const zod_1 = require("zod");
 const auth_1 = require("../middleware/auth");
+const serviceOptions_1 = require("../data/serviceOptions");
 const Category_1 = require("../models/Category");
 const City_1 = require("../models/City");
 const Country_1 = require("../models/Country");
 const Subcategory_1 = require("../models/Subcategory");
+const catalogOptionService_1 = require("../services/catalogOptionService");
 const domainService_1 = require("../services/domainService");
 const router = (0, express_1.Router)();
 const admin = [auth_1.requireAuth, (0, auth_1.requireRole)('admin')];
@@ -16,6 +18,7 @@ const name = zod_1.z.object({ sq: zod_1.z.string().trim().min(1), en: zod_1.z.st
 const fields = { name, slug, order: zod_1.z.number().int(), isActive: zod_1.z.boolean() };
 const categoryInput = zod_1.z.object(fields);
 const subcategoryInput = zod_1.z.object({ ...fields, categoryId: zod_1.z.string().refine(mongoose_1.Types.ObjectId.isValid, 'Invalid category ID') });
+const optionGroup = zod_1.z.enum(serviceOptions_1.CATALOG_OPTION_GROUPS);
 function failure(res, err) {
     if (err instanceof zod_1.z.ZodError)
         return res.status(400).json({ message: 'Të dhëna të pavlefshme', errors: err.issues });
@@ -74,6 +77,16 @@ router.get('/cities/:slug', async (req, res) => {
         if (cities.length > 1)
             return res.status(409).json({ message: 'Slug i paqartë; specifikoni country' });
         return res.json({ city: cities[0] });
+    }
+    catch (err) {
+        return failure(res, err);
+    }
+});
+router.get('/catalog-options', async (req, res) => {
+    try {
+        const group = req.query.group === undefined ? undefined : optionGroup.parse(req.query.group);
+        const options = await (0, catalogOptionService_1.listCatalogOptions)(group);
+        return res.json({ options });
     }
     catch (err) {
         return failure(res, err);

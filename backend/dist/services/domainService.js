@@ -85,12 +85,28 @@ async function listAllDomains(portal = exports.DEFAULT_PORTAL) {
 }
 async function findDomainById(id, portal = exports.DEFAULT_PORTAL) {
     await ensureCategoryCatalog();
-    const category = await Category_1.Category.findOne({ portal, status: 'active', $or: [{ stableId: id }, { slug: id }] });
+    const category = await Category_1.Category.findOne({
+        portal,
+        status: 'active',
+        $or: [
+            ...(mongoose_1.Types.ObjectId.isValid(id) ? [{ _id: id }] : []),
+            { stableId: id },
+            { slug: id },
+        ],
+    });
     return category ? toCategoryView(category) : null;
 }
 async function findCategoryById(id, portal = exports.DEFAULT_PORTAL) {
     await ensureCategoryCatalog();
-    return Category_1.Category.findOne({ portal, status: 'active', $or: [{ stableId: id }, { slug: id }] });
+    return Category_1.Category.findOne({
+        portal,
+        status: 'active',
+        $or: [
+            ...(mongoose_1.Types.ObjectId.isValid(id) ? [{ _id: id }] : []),
+            { stableId: id },
+            { slug: id },
+        ],
+    });
 }
 async function createCategory(input) {
     await ensureCategoryCatalog();

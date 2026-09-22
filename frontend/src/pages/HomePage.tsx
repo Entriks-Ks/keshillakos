@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Card, Input, ProgressBar } from '@heroui/react'
 import {
@@ -72,14 +72,7 @@ function currentCatalogLanguage(): 'sq' | 'en' {
   return document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'sq'
 }
 
-const NEED_CHIPS = [
-  'Regjistrim biznesi + Tatime',
-  'Kontrata / çështje ligjore',
-  'Kontabilitet dhe paga',
-  'Marketing / social media',
-  'Website / IT support',
-  'Përkthim Shqip ↔ Gjermanisht',
-]
+const POPULAR_CATEGORY_COUNT = 6
 
 const HOW_STEPS = [
   {
@@ -151,6 +144,10 @@ export default function HomePage() {
   const subcategoriesLoading = Boolean(selectedCategoryId && subcategoriesResult.categoryId !== selectedCategoryId)
   const subcategories = subcategoriesLoading ? [] : subcategoriesResult.items
   const subcategoriesError = subcategoriesLoading ? '' : subcategoriesResult.error
+  const popularCategories = useMemo(
+    () => categories.slice(0, POPULAR_CATEGORY_COUNT),
+    [categories],
+  )
 
   useEffect(() => {
     const observer = new MutationObserver(() => setCatalogLanguage(currentCatalogLanguage()))
@@ -397,18 +394,25 @@ export default function HomePage() {
 
                 {searchMode === 'browse' ? (
                   <>
-                    <div className="tt-search-chips">
-                      {NEED_CHIPS.map((chip) => (
-                        <button
-                          key={chip}
-                          type="button"
-                          className="tt-quick-chip"
-                          onClick={() => browseOffers(chip)}
-                        >
-                          {chip}
-                        </button>
-                      ))}
-                    </div>
+                    {popularCategories.length > 0 ? (
+                      <div className="tt-search-chips" aria-label="Kategori të popullarizuara">
+                        {popularCategories.map((category) => {
+                          const Icon = CATEGORY_ICONS[category.slug] ?? BriefcaseBusiness
+                          const label = category.name[catalogLanguage] || category.name.sq
+                          return (
+                            <button
+                              key={category._id}
+                              type="button"
+                              className="tt-quick-chip"
+                              onClick={() => browseOffers('', { categoryId: category._id })}
+                            >
+                              <Icon size={15} strokeWidth={2} aria-hidden />
+                              <span>{label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
                     <button type="button" className="tt-search-switch" onClick={startGuided}>
                       Nuk e di saktësisht? Fillo matching me 7 hapa
                     </button>

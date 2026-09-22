@@ -2,10 +2,12 @@ import { Router, type Response } from 'express'
 import { Error as MongooseError, Types } from 'mongoose'
 import { z } from 'zod'
 import { requireAuth, requireRole } from '../middleware/auth'
+import { CATALOG_OPTION_GROUPS } from '../data/serviceOptions'
 import { Category } from '../models/Category'
 import { City } from '../models/City'
 import { Country } from '../models/Country'
 import { Subcategory } from '../models/Subcategory'
+import { listCatalogOptions } from '../services/catalogOptionService'
 import { DEFAULT_PORTAL } from '../services/domainService'
 
 const router = Router()
@@ -15,6 +17,7 @@ const name = z.object({ sq: z.string().trim().min(1), en: z.string().trim().min(
 const fields = { name, slug, order: z.number().int(), isActive: z.boolean() }
 const categoryInput = z.object(fields)
 const subcategoryInput = z.object({ ...fields, categoryId: z.string().refine(Types.ObjectId.isValid, 'Invalid category ID') })
+const optionGroup = z.enum(CATALOG_OPTION_GROUPS)
 
 function failure(res: Response, err: unknown) {
   if (err instanceof z.ZodError) return res.status(400).json({ message: 'Të dhëna të pavlefshme', errors: err.issues })
@@ -63,6 +66,14 @@ router.get('/cities/:slug', async (req, res) => {
     if (!cities.length) return res.status(404).json({ message: 'Qyteti nuk u gjet' })
     if (cities.length > 1) return res.status(409).json({ message: 'Slug i paqartë; specifikoni country' })
     return res.json({ city: cities[0] })
+  } catch (err) { return failure(res, err) }
+})
+
+router.get('/catalog-options', async (req, res) => {
+  try {
+    const group = req.query.group === undefined ? undefined : optionGroup.parse(req.query.group)
+    const options = await listCatalogOptions(group)
+    return res.json({ options })
   } catch (err) { return failure(res, err) }
 })
 

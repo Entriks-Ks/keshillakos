@@ -19,12 +19,26 @@ export type CreateServiceInput = {
   description: string
   categoryId: string
   subcategory: string
+  subcategoryId?: string
   location: string
   priceFrom?: number
   details?: ServiceDetails
   providerUid: string // Legacy API account lookup only.
   providerName: string
   providerId?: string
+}
+
+async function resolveCatalogSubcategory(categoryId: string, subcategoryId: string | undefined, subcategory: string) {
+  if (!subcategoryId?.trim()) return { subcategory: subcategory.trim(), subcategoryId: undefined as string | undefined }
+  if (!Types.ObjectId.isValid(subcategoryId)) throw new Error('Nënkategoria nuk është e vlefshme')
+  const category = await Category.findOne({
+    status: 'active',
+    $or: [{ _id: categoryId }, { stableId: categoryId }, { slug: categoryId }],
+  }).select('_id')
+  if (!category) throw new Error('Kategoria nuk ekziston')
+  const child = await Subcategory.findOne({ _id: subcategoryId, categoryId: category._id, isActive: true })
+  if (!child) throw new Error('Nënkategoria nuk ekziston')
+  return { subcategory: child.name.sq, subcategoryId: String(child._id) }
 }
 
 export type ServiceDiscoveryFilters = {
@@ -78,14 +92,28 @@ async function withLegacyProviders(docs: Array<ServiceDoc & { _id: { toString():
   return docs.map((doc) => legacyService(doc, providers.get(doc.providerUid)))
 }
 
+/** Handled by the universal service form — not rendered as category-specific fields. */
+const UNIVERSAL_DETAIL_KEYS = new Set([
+  'deliveryModes',
+  'supportLanguages',
+  'crossBorder',
+  'portfolioUrl',
+  'references',
+  'experience',
+  'availabilityMode',
+  'priceTo',
+  'photos',
+])
+
+/** Removed from the universal form; never required via category extension fields. */
+const REMOVED_DETAIL_KEYS = new Set(['languageFrom', 'languageTo', 'certifiedTranslation'])
+
 export async function validateServiceDetails(categoryId: string, details: ServiceDetails = {}) {
   const category = await findDomainById(categoryId)
   if (!category) throw new Error('Kategoria nuk ekziston')
   // This field is a legacy client claim, never a source of verification truth.
   const { licenseVerified: _ignored, photos: _photos, ...raw } = details
-  const allowed = new Set(category.extensionFields.map((field) => field.key))
-  const extensions = Object.fromEntries(Object.entries(raw).filter(([key, value]) => allowed.has(key) && value !== undefined && value !== ''))
-  return validateExtensions(category.extensionFields, extensions)
+  return validateExtensions(category.extensionFields, raw as Record<string, unknown>)
 }
 
 function cleanPhotos(photos?: string[]) {
@@ -112,23 +140,28 @@ async function resolveLegacyProvider(uid: string, providerName: string, category
 export async function createService(input: CreateServiceInput) {
   const category = await findDomainById(input.categoryId)
   if (!category) throw new Error('Kategoria nuk ekziston')
+  const resolved = await resolveCatalogSubcategory(input.categoryId, input.subcategoryId, input.subcategory)
   const extensions = await validateServiceDetails(input.categoryId, input.details)
   const providerId = input.providerId || await resolveLegacyProvider(input.providerUid, input.providerName, input.categoryId, input.location)
   const modeValues = Array.isArray(extensions.deliveryModes) ? extensions.deliveryModes as string[] : []
   const online = input.location.trim().toLowerCase() === 'online'
   const modes = [...new Set(modeValues.filter((mode) => mode !== 'group').map((mode) => mode === 'physical' ? 'on_site' as const : 'online' as const))]
   if (!modes.length) modes.push(online ? 'online' : 'on_site')
-  const languages = [extensions.languageFrom, extensions.languageTo, ...(Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])]
+  const languages = (Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])
     .filter((value): value is string => typeof value === 'string')
+  const availabilityMode = extensions.availabilityMode === 'by_arrangement' || extensions.availabilityMode === 'slots'
+    ? extensions.availabilityMode
+    : 'request'
   const offer = await createServiceOffer({
     ownerUid: input.providerUid, providerId, categoryId: category.id,
-    name: input.title, subtitle: input.subcategory, description: input.description,
+    name: input.title, subtitle: resolved.subcategory, description: input.description,
     price: input.priceFrom === undefined ? { model: 'quote' } : { model: 'starting_at', amountFrom: input.priceFrom, currency: 'EUR', amountTo: typeof extensions.priceTo === 'number' ? extensions.priceTo : undefined },
     formats: modeValues.includes('group') ? ['group'] : ['individual'],
     modes, languages,
     serviceAreas: [{ countryCode: 'XK', cityName: online ? undefined : input.location, online }],
     photos: cleanPhotos(input.details?.photos),
-    availabilityMode: 'request', extensions, allowCategoryExpansion: true,
+    subcategoryId: resolved.subcategoryId,
+    availabilityMode, extensions, allowCategoryExpansion: true,
   })
   const [result] = await offersToLegacyServices([offer])
   return result
@@ -137,23 +170,29 @@ export async function createService(input: CreateServiceInput) {
 export async function updateService(id: string, uid: string, input: Omit<CreateServiceInput, 'providerUid' | 'providerName' | 'providerId'>) {
   const category = await findDomainById(input.categoryId)
   if (!category) throw new Error('Kategoria nuk ekziston')
+  const resolved = await resolveCatalogSubcategory(input.categoryId, input.subcategoryId, input.subcategory)
   const extensions = await validateServiceDetails(input.categoryId, input.details)
   const modeValues = Array.isArray(extensions.deliveryModes) ? extensions.deliveryModes as string[] : []
   const online = input.location.trim().toLowerCase() === 'online'
   const modes = [...new Set(modeValues.filter((mode) => mode !== 'group').map((mode) => mode === 'physical' ? 'on_site' as const : 'online' as const))]
   if (!modes.length) modes.push(online ? 'online' : 'on_site')
-  const languages = [extensions.languageFrom, extensions.languageTo, ...(Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])]
+  const languages = (Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])
     .filter((value): value is string => typeof value === 'string')
+  const availabilityMode = extensions.availabilityMode === 'by_arrangement' || extensions.availabilityMode === 'slots'
+    ? extensions.availabilityMode
+    : 'request'
   const offer = await ServiceOffer.findById(id)
   if (offer) {
     const updated = await updateServiceOffer(uid, id, {
       categoryId: category.id,
-      name: input.title, subtitle: input.subcategory, description: input.description,
+      name: input.title, subtitle: resolved.subcategory, description: input.description,
       price: input.priceFrom === undefined ? { model: 'quote' } : { model: 'starting_at', amountFrom: input.priceFrom, currency: 'EUR', amountTo: typeof extensions.priceTo === 'number' ? extensions.priceTo : undefined },
       formats: modeValues.includes('group') ? ['group'] : ['individual'],
       modes, languages,
       serviceAreas: [{ countryCode: 'XK', cityName: online ? undefined : input.location, online }],
       photos: cleanPhotos(input.details?.photos),
+      subcategoryId: resolved.subcategoryId,
+      availabilityMode,
       extensions,
     })
     const [result] = await offersToLegacyServices([updated])
@@ -167,7 +206,8 @@ export async function updateService(id: string, uid: string, input: Omit<CreateS
   service.description = input.description
   service.categoryId = category.id
   service.categoryLabel = category.labelSq
-  service.subcategory = input.subcategory
+  service.subcategory = resolved.subcategory
+  service.subcategoryId = resolved.subcategoryId
   service.location = input.location
   service.priceFrom = input.priceFrom
   const nextPhotos = cleanPhotos(input.details?.photos)

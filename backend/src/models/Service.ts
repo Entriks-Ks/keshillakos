@@ -19,6 +19,8 @@ export type ServiceDetails = {
   coachingDisclaimerAccepted?: boolean
   crossBorder?: boolean
   supportLanguages?: string[]
+  experience?: string
+  availabilityMode?: 'by_arrangement' | 'request' | 'slots'
   photos?: string[]
 }
 
@@ -28,6 +30,7 @@ export type ServiceDoc = {
   categoryId: string
   categoryLabel: string
   subcategory: string
+  subcategoryId?: string
   location: string
   priceFrom?: number
   details: ServiceDetails
@@ -45,6 +48,7 @@ const serviceSchema = new Schema<ServiceDoc>(
     categoryId: { type: String, required: true, index: true },
     categoryLabel: { type: String, required: true, trim: true },
     subcategory: { type: String, required: true, trim: true },
+    subcategoryId: { type: String, trim: true, index: true },
     location: { type: String, required: true, trim: true },
     priceFrom: { type: Number, min: 0 },
     details: {
@@ -68,6 +72,8 @@ const serviceSchema = new Schema<ServiceDoc>(
           coachingDisclaimerAccepted: Boolean,
           crossBorder: Boolean,
           supportLanguages: [String],
+          experience: String,
+          availabilityMode: { type: String, enum: ['by_arrangement', 'request', 'slots'] },
           photos: [String],
         },
         { _id: false },

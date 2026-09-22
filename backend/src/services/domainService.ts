@@ -97,13 +97,29 @@ export async function listAllDomains(portal = DEFAULT_PORTAL): Promise<CategoryV
 
 export async function findDomainById(id: string, portal = DEFAULT_PORTAL): Promise<CategoryView | null> {
   await ensureCategoryCatalog()
-  const category = await Category.findOne({ portal, status: 'active', $or: [{ stableId: id }, { slug: id }] })
+  const category = await Category.findOne({
+    portal,
+    status: 'active',
+    $or: [
+      ...(Types.ObjectId.isValid(id) ? [{ _id: id }] : []),
+      { stableId: id },
+      { slug: id },
+    ],
+  })
   return category ? toCategoryView(category) : null
 }
 
 export async function findCategoryById(id: string, portal = DEFAULT_PORTAL) {
   await ensureCategoryCatalog()
-  return Category.findOne({ portal, status: 'active', $or: [{ stableId: id }, { slug: id }] })
+  return Category.findOne({
+    portal,
+    status: 'active',
+    $or: [
+      ...(Types.ObjectId.isValid(id) ? [{ _id: id }] : []),
+      { stableId: id },
+      { slug: id },
+    ],
+  })
 }
 
 export async function createCategory(input: {

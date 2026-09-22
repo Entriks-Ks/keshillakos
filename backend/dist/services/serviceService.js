@@ -58,6 +58,22 @@ const mediaService_1 = require("./mediaService");
 const providerProfileService_1 = require("./providerProfileService");
 const serviceOfferService_1 = require("./serviceOfferService");
 const providerPublicService_1 = require("./providerPublicService");
+async function resolveCatalogSubcategory(categoryId, subcategoryId, subcategory) {
+    if (!subcategoryId?.trim())
+        return { subcategory: subcategory.trim(), subcategoryId: undefined };
+    if (!mongoose_1.Types.ObjectId.isValid(subcategoryId))
+        throw new Error('Nënkategoria nuk është e vlefshme');
+    const category = await Category_1.Category.findOne({
+        status: 'active',
+        $or: [{ _id: categoryId }, { stableId: categoryId }, { slug: categoryId }],
+    }).select('_id');
+    if (!category)
+        throw new Error('Kategoria nuk ekziston');
+    const child = await Subcategory_1.Subcategory.findOne({ _id: subcategoryId, categoryId: category._id, isActive: true });
+    if (!child)
+        throw new Error('Nënkategoria nuk ekziston');
+    return { subcategory: child.name.sq, subcategoryId: String(child._id) };
+}
 function normalized(value) {
     return (value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
@@ -98,15 +114,27 @@ async function withLegacyProviders(docs) {
     const providers = await (0, providerPublicService_1.getProvidersPublicDetails)(docs.map((doc) => doc.providerUid), new Map(docs.map((doc) => [doc.providerUid, doc.providerName])));
     return docs.map((doc) => legacyService(doc, providers.get(doc.providerUid)));
 }
+/** Handled by the universal service form — not rendered as category-specific fields. */
+const UNIVERSAL_DETAIL_KEYS = new Set([
+    'deliveryModes',
+    'supportLanguages',
+    'crossBorder',
+    'portfolioUrl',
+    'references',
+    'experience',
+    'availabilityMode',
+    'priceTo',
+    'photos',
+]);
+/** Removed from the universal form; never required via category extension fields. */
+const REMOVED_DETAIL_KEYS = new Set(['languageFrom', 'languageTo', 'certifiedTranslation']);
 async function validateServiceDetails(categoryId, details = {}) {
     const category = await (0, domainService_1.findDomainById)(categoryId);
     if (!category)
         throw new Error('Kategoria nuk ekziston');
     // This field is a legacy client claim, never a source of verification truth.
     const { licenseVerified: _ignored, photos: _photos, ...raw } = details;
-    const allowed = new Set(category.extensionFields.map((field) => field.key));
-    const extensions = Object.fromEntries(Object.entries(raw).filter(([key, value]) => allowed.has(key) && value !== undefined && value !== ''));
-    return (0, categoryConfiguration_1.validateExtensions)(category.extensionFields, extensions);
+    return (0, categoryConfiguration_1.validateExtensions)(category.extensionFields, raw);
 }
 function cleanPhotos(photos) {
     return (0, mediaService_1.sanitizeUploadPaths)(photos);
@@ -133,6 +161,7 @@ async function createService(input) {
     const category = await (0, domainService_1.findDomainById)(input.categoryId);
     if (!category)
         throw new Error('Kategoria nuk ekziston');
+    const resolved = await resolveCatalogSubcategory(input.categoryId, input.subcategoryId, input.subcategory);
     const extensions = await validateServiceDetails(input.categoryId, input.details);
     const providerId = input.providerId || await resolveLegacyProvider(input.providerUid, input.providerName, input.categoryId, input.location);
     const modeValues = Array.isArray(extensions.deliveryModes) ? extensions.deliveryModes : [];
@@ -140,17 +169,21 @@ async function createService(input) {
     const modes = [...new Set(modeValues.filter((mode) => mode !== 'group').map((mode) => mode === 'physical' ? 'on_site' : 'online'))];
     if (!modes.length)
         modes.push(online ? 'online' : 'on_site');
-    const languages = [extensions.languageFrom, extensions.languageTo, ...(Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])]
+    const languages = (Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])
         .filter((value) => typeof value === 'string');
+    const availabilityMode = extensions.availabilityMode === 'by_arrangement' || extensions.availabilityMode === 'slots'
+        ? extensions.availabilityMode
+        : 'request';
     const offer = await (0, serviceOfferService_1.createServiceOffer)({
         ownerUid: input.providerUid, providerId, categoryId: category.id,
-        name: input.title, subtitle: input.subcategory, description: input.description,
+        name: input.title, subtitle: resolved.subcategory, description: input.description,
         price: input.priceFrom === undefined ? { model: 'quote' } : { model: 'starting_at', amountFrom: input.priceFrom, currency: 'EUR', amountTo: typeof extensions.priceTo === 'number' ? extensions.priceTo : undefined },
         formats: modeValues.includes('group') ? ['group'] : ['individual'],
         modes, languages,
         serviceAreas: [{ countryCode: 'XK', cityName: online ? undefined : input.location, online }],
         photos: cleanPhotos(input.details?.photos),
-        availabilityMode: 'request', extensions, allowCategoryExpansion: true,
+        subcategoryId: resolved.subcategoryId,
+        availabilityMode, extensions, allowCategoryExpansion: true,
     });
     const [result] = await (0, serviceOfferService_1.offersToLegacyServices)([offer]);
     return result;
@@ -159,24 +192,30 @@ async function updateService(id, uid, input) {
     const category = await (0, domainService_1.findDomainById)(input.categoryId);
     if (!category)
         throw new Error('Kategoria nuk ekziston');
+    const resolved = await resolveCatalogSubcategory(input.categoryId, input.subcategoryId, input.subcategory);
     const extensions = await validateServiceDetails(input.categoryId, input.details);
     const modeValues = Array.isArray(extensions.deliveryModes) ? extensions.deliveryModes : [];
     const online = input.location.trim().toLowerCase() === 'online';
     const modes = [...new Set(modeValues.filter((mode) => mode !== 'group').map((mode) => mode === 'physical' ? 'on_site' : 'online'))];
     if (!modes.length)
         modes.push(online ? 'online' : 'on_site');
-    const languages = [extensions.languageFrom, extensions.languageTo, ...(Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])]
+    const languages = (Array.isArray(extensions.supportLanguages) ? extensions.supportLanguages : [])
         .filter((value) => typeof value === 'string');
+    const availabilityMode = extensions.availabilityMode === 'by_arrangement' || extensions.availabilityMode === 'slots'
+        ? extensions.availabilityMode
+        : 'request';
     const offer = await ServiceOffer_1.ServiceOffer.findById(id);
     if (offer) {
         const updated = await (0, serviceOfferService_1.updateServiceOffer)(uid, id, {
             categoryId: category.id,
-            name: input.title, subtitle: input.subcategory, description: input.description,
+            name: input.title, subtitle: resolved.subcategory, description: input.description,
             price: input.priceFrom === undefined ? { model: 'quote' } : { model: 'starting_at', amountFrom: input.priceFrom, currency: 'EUR', amountTo: typeof extensions.priceTo === 'number' ? extensions.priceTo : undefined },
             formats: modeValues.includes('group') ? ['group'] : ['individual'],
             modes, languages,
             serviceAreas: [{ countryCode: 'XK', cityName: online ? undefined : input.location, online }],
             photos: cleanPhotos(input.details?.photos),
+            subcategoryId: resolved.subcategoryId,
+            availabilityMode,
             extensions,
         });
         const [result] = await (0, serviceOfferService_1.offersToLegacyServices)([updated]);
@@ -191,7 +230,8 @@ async function updateService(id, uid, input) {
     service.description = input.description;
     service.categoryId = category.id;
     service.categoryLabel = category.labelSq;
-    service.subcategory = input.subcategory;
+    service.subcategory = resolved.subcategory;
+    service.subcategoryId = resolved.subcategoryId;
     service.location = input.location;
     service.priceFrom = input.priceFrom;
     const nextPhotos = cleanPhotos(input.details?.photos);

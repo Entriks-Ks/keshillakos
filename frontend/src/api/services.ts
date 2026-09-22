@@ -7,15 +7,17 @@ export type ServiceDetails = {
   documentsNote?: string
   deadlineNote?: string
   serviceTypeDetail?: string
-  audience?: 'b2c' | 'b2b' | 'both'
-  deliveryModes?: Array<'online' | 'physical' | 'group'>
+  audience?: string
+  deliveryModes?: string[]
   languageFrom?: string
   languageTo?: string
   certifiedTranslation?: boolean
-  offerType?: 'package' | 'project' | 'service'
+  offerType?: string
   priceTo?: number
   portfolioUrl?: string
   references?: string
+  experience?: string
+  availabilityMode?: 'by_arrangement' | 'request' | 'slots'
   regulatoryNotice?: string
   coachingDisclaimerAccepted?: boolean
   crossBorder?: boolean
@@ -48,6 +50,7 @@ export type ServiceItem = {
   categoryLabel: string
   category?: string
   subcategory: string
+  subcategoryId?: string
   location: string
   priceFrom?: number
   details?: ServiceDetails
@@ -63,6 +66,7 @@ export async function createService(payload: {
   description: string
   categoryId: string
   subcategory: string
+  subcategoryId?: string
   location: string
   priceFrom?: number
   details?: ServiceDetails
@@ -83,6 +87,7 @@ export async function updateService(
     description: string
     categoryId: string
     subcategory: string
+    subcategoryId?: string
     location: string
     priceFrom?: number
     details?: ServiceDetails
