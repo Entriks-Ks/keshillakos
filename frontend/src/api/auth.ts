@@ -74,6 +74,11 @@ export async function loginUser(payload: { email: string; password: string }) {
   return data
 }
 
+export async function loginWithGoogleToken(idToken: string) {
+  const { data } = await api.post<AuthResponse>('/api/auth/google', { idToken })
+  return data
+}
+
 export async function fetchMe() {
   const { data } = await api.get<{ user: AuthUser }>('/api/auth/me')
   return data.user

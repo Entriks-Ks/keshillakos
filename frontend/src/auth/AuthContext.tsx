@@ -11,17 +11,27 @@ import {
   changePassword as changePasswordRequest,
   fetchMe,
   loginUser,
+  loginWithGoogleToken,
   registerUser,
   updateProfile as updateProfileRequest,
   uploadProfilePhoto as uploadProfilePhotoRequest,
   type AuthUser,
   type ProfileUpdatePayload,
 } from '../api/auth'
+import { FirebaseError } from 'firebase/app'
+import { signInWithPopup } from 'firebase/auth'
+import {
+  firebaseAuth,
+  googleProvider,
+  isFirebaseConfigured,
+  mapFirebaseClientError,
+} from '../firebase'
 
 type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<boolean>
   register: (
     firstName: string,
     lastName: string,
@@ -61,6 +71,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await loginUser({ email, password })
     localStorage.setItem('token', data.token)
     setUser(data.user)
+  }, [])
+
+  const loginWithGoogle = useCallback(async () => {
+    if (!isFirebaseConfigured()) {
+      throw new Error('Hyrja me Google nuk është e konfiguruar')
+    }
+    try {
+      const credential = await signInWithPopup(firebaseAuth(), googleProvider)
+      const idToken = await credential.user.getIdToken()
+      const data = await loginWithGoogleToken(idToken)
+      localStorage.setItem('token', data.token)
+      setUser(data.user)
+      return true
+    } catch (err) {
+      if (err instanceof FirebaseError) {
+        const message = mapFirebaseClientError(err.code)
+        if (!message) return false
+        throw new Error(message)
+      }
+      throw err
+    }
   }, [])
 
   const register = useCallback(
@@ -105,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login,
+      loginWithGoogle,
       register,
       changePassword,
       updateProfile,
@@ -116,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login,
+      loginWithGoogle,
       register,
       changePassword,
       updateProfile,

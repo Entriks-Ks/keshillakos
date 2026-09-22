@@ -19,6 +19,7 @@ type AccountInfoResponse = {
     localId: string
     email?: string
     displayName?: string
+    photoUrl?: string
   }>
   error?: { message: string }
 }
@@ -59,6 +60,9 @@ function mapFirebaseError(code: string) {
       return 'Email i pavlefshëm'
     case 'TOO_MANY_ATTEMPTS_TRY_LATER':
       return 'Shumë tentativa. Provo më vonë'
+    case 'INVALID_ID_TOKEN':
+    case 'INVALID_IDP_RESPONSE':
+      return 'Hyrja me Google dështoi. Provo sërish.'
     default:
       return code.replace(/_/g, ' ')
   }

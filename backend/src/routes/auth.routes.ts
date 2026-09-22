@@ -10,6 +10,7 @@ import {
   firebaseSignIn,
   firebaseSignUp,
   firebaseUpdateDisplayName,
+  firebaseVerifyIdToken,
 } from '../services/firebaseAuth'
 import {
   findUserByUid,
@@ -168,6 +169,41 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     return res.status(401).json({
       message: err instanceof Error ? err.message : 'Hyrja dështoi',
+    })
+  }
+})
+
+router.post('/google', async (req, res) => {
+  try {
+    const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken.trim() : ''
+    if (!idToken) {
+      return res.status(400).json({ message: 'Token i Google mungon' })
+    }
+
+    const firebaseUser = await firebaseVerifyIdToken(idToken)
+    if (!firebaseUser.email) {
+      return res.status(400).json({ message: 'Llogaria e Google nuk ka email' })
+    }
+
+    const existing = await findUserByUid(firebaseUser.localId)
+    const displayName = firebaseUser.displayName?.trim() || firebaseUser.email.split('@')[0] || 'User'
+    const [firstName, ...rest] = displayName.split(/\s+/)
+    const user = await upsertUser({
+      uid: firebaseUser.localId,
+      email: firebaseUser.email,
+      name: existing?.name || displayName,
+      firstName: existing?.firstName || firstName,
+      lastName: existing?.lastName || rest.join(' ') || undefined,
+      updateName: !existing,
+    })
+
+    return res.json({
+      token: idToken,
+      user: publicUser(user),
+    })
+  } catch (err) {
+    return res.status(401).json({
+      message: err instanceof Error ? err.message : 'Hyrja me Google dështoi',
     })
   }
 })

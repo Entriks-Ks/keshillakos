@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useAuth } from '../auth/AuthContext'
+import GoogleAuthButton from '../components/GoogleAuthButton'
 import { getErrorMessage } from '../utils/errors'
 
 const loginSchema = z.object({
@@ -105,6 +106,8 @@ export default function LoginPage() {
             {submitting ? 'Duke hyrë...' : 'Hyr'}
           </Button>
         </form>
+
+        <GoogleAuthButton disabled={submitting} />
 
         <p className="switch">
           Nuk ke llogari? <Link to="/register">Regjistrohu</Link>
