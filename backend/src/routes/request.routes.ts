@@ -19,7 +19,7 @@ import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, lis
 
 const router = Router()
 
-router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.post('/', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const {
       providerUid,
@@ -32,6 +32,8 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
       language,
       urgency,
       contactMethod,
+      contactPhone,
+      contactEmail,
       slotId,
       providerId,
       providerIds,
@@ -60,6 +62,8 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
       language?: string
       urgency?: string
       contactMethod?: string
+      contactPhone?: string
+      contactEmail?: string
       slotId?: string
     }
 
@@ -72,6 +76,12 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
     if (!contactMethod || !CONTACT_METHODS.includes(contactMethod as ContactMethod)) {
       return res.status(400).json({ message: 'Zgjidh mënyrën e kontaktit' })
     }
+    if (!contactPhone?.trim()) {
+      return res.status(400).json({ message: 'Shkruaj numrin e telefonit' })
+    }
+    if (contactMethod === 'email' && !contactEmail?.trim()) {
+      return res.status(400).json({ message: 'Shkruaj email-in' })
+    }
     if (!draft && !slotId?.trim()) {
       return res.status(400).json({ message: 'Zgjidh një orë të lirë për kërkesën' })
     }
@@ -83,6 +93,7 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
       location: locationDetail, legacyLocation: location,
       language, urgency: urgency as import('../models/UserRequest').UserRequestDoc['urgency'],
       budget, preferredMode, contactPreference: contactMethod as ContactMethod,
+      contactPhone, contactEmail,
       portal, slotId, draft,
     })
     const request = (await listMyUserRequests(req.user!.uid)).find((item) => item.requestId === String(created.request._id))
@@ -108,7 +119,7 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
   }
 })
 
-router.get('/mine', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.get('/mine', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const [canonical, legacy] = await Promise.all([listMyUserRequests(req.user!.uid), listRequestsBySeeker(req.user!.uid)])
     const requests = [...canonical, ...legacy]
@@ -148,7 +159,7 @@ router.get('/all', requireAuth, requireRole('admin'), async (_req, res) => {
   }
 })
 
-router.post('/:id/deliver', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.post('/:id/deliver', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const { providerIds } = req.body as { providerIds?: string[] }
     if (!Array.isArray(providerIds) || !providerIds.length) return res.status(400).json({ message: 'Zgjidh të paktën një ofrues' })
@@ -157,7 +168,7 @@ router.post('/:id/deliver', requireAuth, requireRole('user', 'admin'), async (re
   } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Dërgimi dështoi' }) }
 })
 
-router.patch('/:id/lifecycle', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.patch('/:id/lifecycle', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const { status } = req.body as { status?: 'closed' | 'cancelled' }
     if (status !== 'closed' && status !== 'cancelled') return res.status(400).json({ message: 'Status i pavlefshëm' })

@@ -29,6 +29,8 @@ export type ServiceRequestItem = {
   language?: string
   urgency?: string
   contactMethod: ContactMethod
+  contactPhone?: string
+  contactEmail?: string
   status: RequestStatus
   providerNote?: string
   offer?: { description: string; amount?: number; currency?: string }
@@ -52,6 +54,8 @@ export async function sendServiceRequest(payload: {
   language?: string
   urgency?: string
   contactMethod: ContactMethod
+  contactPhone?: string
+  contactEmail?: string
   slotId?: string
 }) {
   const { data } = await api.post<{ request: ServiceRequestItem }>('/api/requests', payload)

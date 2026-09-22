@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth'
 import { ProviderProfile } from '../models/ProviderProfile'
 import { createBusiness, userIdForUid } from '../services/businessService'
 import { createProviderProfile } from '../services/providerProfileService'
-import { grantCapability } from '../services/userService'
+import { requestRoleChange } from '../services/userService'
 
 const router = Router()
 const locationFieldsInput = z.object({
@@ -42,7 +42,7 @@ router.post('/expert', async (req, res) => {
         publicProfile: { displayName: displayName.trim(), title: title?.trim(), description: description?.trim() },
       })
     }
-    const user = await grantCapability(req.user!.uid, 'provider')
+    const user = await requestRoleChange(req.user!.uid, 'provider')
     return res.status(201).json({ provider, user })
   } catch (err) {
     return res.status(400).json({ message: err instanceof Error ? err.message : 'Regjistrimi i ekspertit dështoi' })
@@ -54,7 +54,7 @@ router.post('/company', async (req, res) => {
     const { publicName, legalName } = req.body as { publicName?: string; legalName?: string }
     if (!publicName?.trim()) return res.status(400).json({ message: 'Emri i kompanisë është i detyrueshëm' })
     const business = await createBusiness({ ownerUid: req.user!.uid, publicName, legalName })
-    const user = await grantCapability(req.user!.uid, 'company')
+    const user = await requestRoleChange(req.user!.uid, 'company')
     return res.status(201).json({ business, user })
   } catch (err) {
     return res.status(400).json({ message: err instanceof Error ? err.message : 'Krijimi i kompanisë dështoi' })

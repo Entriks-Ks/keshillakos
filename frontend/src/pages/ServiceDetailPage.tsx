@@ -19,7 +19,6 @@ import {
 import type { MatchIntake } from '../api/match'
 import { fetchService, type ServiceItem } from '../api/services'
 import ProviderReviews from '../components/ProviderReviews'
-import ScheduleCalendar from '../components/ScheduleCalendar'
 import SendRequestButton from '../components/SendRequestButton'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
@@ -266,7 +265,6 @@ export default function ServiceDetailPage() {
                       <a href="#sherbimi">Shërbimi</a>
                       <a href="#foto">Foto</a>
                       <a href="#vleresimet">Vlerësimet</a>
-                      {schedule.length > 0 ? <a href="#oraret">Oraret</a> : null}
                     </nav>
 
                     <div className="tt-pro-why">
@@ -356,14 +354,6 @@ export default function ServiceDetailPage() {
                       )}
                     </section>
 
-                    {schedule.length > 0 ? (
-                      <section className="tt-pro-section" id="oraret">
-                        <h2>Oraret</h2>
-                        <p className="muted">E gjelbra = e lirë. E kuqja = e zënë. Zgjidh orën te kërkesa.</p>
-                        <ScheduleCalendar slots={schedule} />
-                      </section>
-                    ) : null}
-
                     <div className="tt-pro-contact-row">
                       <StartChatButton
                         providerUid={service.providerUid}
@@ -379,6 +369,20 @@ export default function ServiceDetailPage() {
                       providerName={provider?.name || service.providerName}
                       initialAverage={rating}
                       initialCount={ratingCount}
+                      onStatsChange={(stats) => {
+                        setService((current) =>
+                          current?.provider
+                            ? {
+                                ...current,
+                                provider: {
+                                  ...current.provider,
+                                  ratingAverage: stats.average,
+                                  ratingCount: stats.count,
+                                },
+                              }
+                            : current,
+                        )
+                      }}
                     />
                   </div>
 

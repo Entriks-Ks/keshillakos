@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { mediaUrl } from '../api/auth'
+import { mediaUrl, requestRoleChange } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import { LANGUAGE_OPTIONS } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
@@ -18,7 +18,7 @@ function parseSkills(raw: string) {
 }
 
 export default function ProfilePanel() {
-  const { user, updateProfile, uploadProfilePhoto } = useAuth()
+  const { user, updateProfile, uploadProfilePhoto, refreshUser } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [headline, setHeadline] = useState('')
@@ -31,6 +31,7 @@ export default function ProfilePanel() {
   const [success, setSuccess] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [requestingRole, setRequestingRole] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -94,7 +95,30 @@ export default function ProfilePanel() {
   }
 
   if (!user) return null
-  const hasProviderProfile = (user.roles ?? [user.role]).some((role) => role === 'provider' || role === 'company')
+  const roles = user.roles ?? [user.role]
+  const hasProviderProfile = roles.some((role) => role === 'provider' || role === 'company')
+  const providerPending = user.requestedRole === 'provider' && !roles.includes('provider')
+  const companyPending = user.requestedRole === 'company' && !roles.includes('company')
+  const rolePending = providerPending || companyPending
+
+  async function requestCapability(role: 'provider' | 'company') {
+    setError('')
+    setSuccess('')
+    setRequestingRole(true)
+    try {
+      await requestRoleChange(role)
+      await refreshUser()
+      setSuccess(
+        role === 'provider'
+          ? 'Kërkesa u dërgua. Admini do ta shqyrtojë para se të bëhesh ofrues.'
+          : 'Kërkesa u dërgua. Admini do ta shqyrtojë para se të bëhesh kompani.',
+      )
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setRequestingRole(false)
+    }
+  }
 
   return (
     <section className="provider-section">
@@ -104,10 +128,36 @@ export default function ProfilePanel() {
       />
 
       <div className="profile-role-options">
-        {!(user.roles ?? [user.role]).includes('provider') ? <Link className="ghost link-btn" to="/dashboard/user/onboarding/expert">Bëhu Ekspert</Link> : <Link className="ghost link-btn" to="/dashboard/provider">Paneli i ekspertit</Link>}
-        {!(user.roles ?? [user.role]).includes('company') ? <Link className="ghost link-btn" to="/dashboard/user/onboarding/company">Krijo Kompani / Agjenci</Link> : <Link className="ghost link-btn" to="/dashboard/company/experts">Paneli i kompanisë</Link>}
+        {roles.includes('provider') ? (
+          <Link className="ghost link-btn" to="/dashboard/provider">Paneli i ofruesit</Link>
+        ) : providerPending ? (
+          <span className="role-pending-pill">Kërkesa për ofrues · Pending</span>
+        ) : (
+          <button type="button" className="ghost link-btn" onClick={() => void requestCapability('provider')} disabled={requestingRole || rolePending}>
+            {requestingRole ? 'Duke dërguar…' : 'Bëhu ofrues'}
+          </button>
+        )}
+        {roles.includes('company') ? (
+          <Link className="ghost link-btn" to="/dashboard/company/experts">Paneli i kompanisë</Link>
+        ) : companyPending ? (
+          <span className="role-pending-pill">Kërkesa për kompani · Pending</span>
+        ) : (
+          <button type="button" className="ghost link-btn" onClick={() => void requestCapability('company')} disabled={requestingRole || rolePending}>
+            {requestingRole ? 'Duke dërguar…' : 'Bëhu kompani'}
+          </button>
+        )}
         {user.role !== 'user' ? <Link className="ghost link-btn" to="/dashboard/user">Paneli i përdoruesit</Link> : null}
       </div>
+      {providerPending ? (
+        <p className="muted profile-role-pending">
+          Kërkesa jote për ofrues është në pritje. Admini e shqyrton dhe, nëse e pranon, roli ndryshon automatikisht.
+        </p>
+      ) : null}
+      {companyPending ? (
+        <p className="muted profile-role-pending">
+          Kërkesa jote për kompani është në pritje. Admini e shqyrton dhe, nëse e pranon, roli ndryshon automatikisht.
+        </p>
+      ) : null}
       {(user.roles ?? [user.role]).includes('provider') ? <ExpertInvitationsPanel /> : null}
 
       <div className="profile-photo-row">

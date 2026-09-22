@@ -2,16 +2,15 @@ import type { UserRole } from '../api/auth'
 import type { LucideIcon } from 'lucide-react'
 import {
   Briefcase,
-  Building2,
   CalendarDays,
   FolderKanban,
   Inbox,
   LayoutDashboard,
   MessageCircle,
   Search,
+  Send,
   Settings,
   Star,
-  Tags,
   UserRound,
   Users,
 } from 'lucide-react'
@@ -93,10 +92,16 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
         },
         {
           to: '/dashboard/provider/inbox',
-          label: 'Kërkesat',
+          label: 'Kërkesat e marra',
           shortLabel: 'Inbox',
           icon: Inbox,
           mobilePrimary: true,
+        },
+        {
+          to: '/dashboard/provider/my-requests',
+          label: 'Kërkesat e mia',
+          shortLabel: 'Të miat',
+          icon: Send,
         },
         {
           to: '/dashboard/provider/messages',
@@ -129,10 +134,16 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
         },
         {
           to: '/dashboard/company/inbox',
-          label: 'Kërkesat',
+          label: 'Kërkesat e marra',
           shortLabel: 'Inbox',
           icon: Inbox,
           mobilePrimary: true,
+        },
+        {
+          to: '/dashboard/company/my-requests',
+          label: 'Kërkesat e mia',
+          shortLabel: 'Të miat',
+          icon: Send,
         },
         {
           to: '/dashboard/company/messages',
@@ -186,30 +197,6 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
           mobilePrimary: true,
         },
         {
-          to: '/dashboard/admin/domains',
-          label: 'Kategoritë',
-          icon: Tags,
-          section: 'manage',
-        },
-        {
-          to: '/dashboard/admin/services',
-          label: 'Shërbimet',
-          icon: Briefcase,
-          section: 'manage',
-        },
-        {
-          to: '/dashboard/admin/availability',
-          label: 'Disponueshmëria',
-          icon: CalendarDays,
-          section: 'manage',
-        },
-        {
-          to: '/dashboard/admin/experts',
-          label: 'Ekspertët',
-          icon: Building2,
-          section: 'manage',
-        },
-        {
           to: '/dashboard/admin/ratings',
           label: 'Vlerësimet',
           icon: Star,
@@ -250,5 +237,5 @@ export const ROLE_HINTS: Record<UserRole, string> = {
   user: 'Gjej ndihmë, ndiq kërkesat dhe flit me ofruesit.',
   provider: 'Prano kërkesa, menaxho ofertat dhe oraret.',
   company: 'Koordino ekipin, kërkesat dhe komunikimin.',
-  admin: 'Mbikëqyr përdoruesit, kërkesat dhe kategoritë.',
+  admin: 'Mbikëqyr përdoruesit, kërkesat dhe vlerësimet.',
 }

@@ -4,7 +4,6 @@ import { mediaUrl } from '../api/auth'
 import { createCustomDomain, fetchDomains } from '../api/domains'
 import { createExpert, fetchMyExperts, type ExpertItem } from '../api/experts'
 import {
-  fetchProviderRatings,
   fetchRateableProviders,
   type RateableProvider,
 } from '../api/ratings'
@@ -29,6 +28,8 @@ import {
 } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
 import DashPageHeader from './DashPageHeader'
+import LocationSelector from '../components/LocationSelector'
+import { locationLabel, matchLocationByText, type LocationSelection } from '../api/locations'
 
 function useDomains() {
   const [domains, setDomains] = useState<DomainDefinition[]>([])
@@ -110,80 +111,6 @@ export function UserRateProvidersPanel() {
   )
 }
 
-export function ProviderOwnRatings({
-  providerUid,
-  audience = 'provider',
-}: {
-  providerUid: string
-  audience?: 'provider' | 'company'
-}) {
-  const [average, setAverage] = useState(0)
-  const [count, setCount] = useState(0)
-  const [ratings, setRatings] = useState<
-    Array<{ id: string; raterName: string; providerName?: string; score: number; comment?: string }>
-  >([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    fetchProviderRatings(providerUid)
-      .then((data) => {
-        if (cancelled) return
-        setAverage(data.stats.average)
-        setCount(data.stats.count)
-        setRatings(data.ratings)
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [providerUid])
-
-  return (
-    <section className="provider-section">
-      <DashPageHeader
-        title="Vlerësimet"
-        description={
-          audience === 'company'
-            ? 'Feedback-u i klientëve për ofruesit dhe ekspertët e kompanisë.'
-            : 'Shiko feedback-un që ke marrë nga klientët.'
-        }
-      />
-      {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
-      {!loading ? (
-        <p className="rate-summary">
-          ★ {count > 0 ? average.toFixed(1) : '—'}
-          <span className="muted">
-            {' '}
-            · {count} {count === 1 ? 'vlerësim' : 'vlerësime'}
-          </span>
-        </p>
-      ) : null}
-      <ul className="rate-provider-list">
-        {ratings.map((r) => (
-          <li key={r.id}>
-            <strong>
-              ★ {r.score} — {r.raterName}
-            </strong>
-            {r.providerName ? <span className="muted">{r.providerName}</span> : null}
-            {r.comment ? <p>{r.comment}</p> : null}
-          </li>
-        ))}
-      </ul>
-      {!loading && ratings.length === 0 ? (
-        <p className="muted">
-          {audience === 'company'
-            ? 'Ende nuk ka vlerësime për ofruesit e kompanisë. Klientët vlerësojnë pasi ti të përfundosh kërkesën.'
-            : 'Ende nuk ke asnjë vlerësim nga klientët. Ato shfaqen këtu pasi ta përfundosh kërkesën.'}
-        </p>
-      ) : null}
-    </section>
-  )
-}
-
 function DomainFieldsHint({ domain }: { domain: DomainDefinition | null }) {
   if (!domain) return null
   return (
@@ -210,7 +137,7 @@ export function ProviderServicesPanel() {
   const [description, setDescription] = useState('')
   const [categoryId, setCategoryId] = useState('business-founding')
   const [subcategory, setSubcategory] = useState('')
-  const [location, setLocation] = useState('')
+  const [location, setLocation] = useState<LocationSelection | null>(null)
   const [priceFrom, setPriceFrom] = useState('')
   const [priceTo, setPriceTo] = useState('')
   const [licenseNumber, setLicenseNumber] = useState('')
@@ -283,7 +210,7 @@ export function ProviderServicesPanel() {
     setEditingId(null)
     setTitle('')
     setDescription('')
-    setLocation('')
+    setLocation(null)
     setPriceFrom('')
     setPriceTo('')
     setLicenseNumber('')
@@ -310,7 +237,8 @@ export function ProviderServicesPanel() {
     setDescription(service.description)
     setCategoryId(service.categoryId || categoryId)
     setSubcategory(service.subcategory)
-    setLocation(service.location)
+    setLocation(null)
+    void matchLocationByText(service.location).then(setLocation)
     setPriceFrom(service.priceFrom != null ? String(service.priceFrom) : '')
     setPriceTo(details.priceTo != null ? String(details.priceTo) : '')
     setLicenseNumber(details.licenseNumber || '')
@@ -398,13 +326,17 @@ export function ProviderServicesPanel() {
       setError('Zgjidh të paktën një gjuhë për këtë kategori.')
       return
     }
+    if (!location) {
+      setError('Zgjidh lokacionin nga lista e qyteteve.')
+      return
+    }
     setSubmitting(true)
     const payload = {
       title,
       description,
       categoryId,
       subcategory,
-      location,
+      location: locationLabel(location, 'sq'),
       priceFrom: priceFrom.trim() ? Number(priceFrom) : undefined,
       details: collectDetails(),
     }
@@ -481,14 +413,9 @@ export function ProviderServicesPanel() {
           <input value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
 
-        <label>
+        <label className="full">
           Lokacioni
-          <input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Prishtinë / Online / Diaspora"
-            required
-          />
+          <LocationSelector value={location} onChange={setLocation} />
         </label>
 
         <label>
@@ -803,7 +730,7 @@ export function CompanyExpertsPanel() {
   const [title, setTitle] = useState('')
   const [categoryId, setCategoryId] = useState('law')
   const [specialty, setSpecialty] = useState('')
-  const [location, setLocation] = useState('')
+  const [location, setLocation] = useState<LocationSelection | null>(null)
   const [bio, setBio] = useState('')
   const [licenseNumber, setLicenseNumber] = useState('')
   const [languageFrom, setLanguageFrom] = useState('Shqip')
@@ -849,6 +776,10 @@ export function CompanyExpertsPanel() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    if (!location) {
+      setError('Zgjidh lokacionin nga lista e qyteteve.')
+      return
+    }
     setSubmitting(true)
     try {
       const expert = await createExpert({
@@ -857,7 +788,7 @@ export function CompanyExpertsPanel() {
         categoryId,
         specialty,
         bio,
-        location,
+        location: locationLabel(location, 'sq'),
         licenseNumber: domainRequires(selectedDomain, 'license_verification')
           ? licenseNumber
           : undefined,
@@ -869,7 +800,7 @@ export function CompanyExpertsPanel() {
       setExperts((prev) => [expert, ...prev])
       setName('')
       setTitle('')
-      setLocation('')
+      setLocation(null)
       setBio('')
       setLicenseNumber('')
       setSuccess('Eksperti u shtua.')
@@ -922,9 +853,9 @@ export function CompanyExpertsPanel() {
           Titulli / pozita
           <input value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
-        <label>
+        <label className="full">
           Lokacioni
-          <input value={location} onChange={(e) => setLocation(e.target.value)} required />
+          <LocationSelector value={location} onChange={setLocation} />
         </label>
 
         {domainRequires(selectedDomain, 'license_verification') ? (

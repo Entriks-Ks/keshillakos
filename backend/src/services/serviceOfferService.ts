@@ -10,6 +10,7 @@ import { validateExtensions } from './categoryConfiguration'
 import { canManageBusiness, userIdForUid } from './businessService'
 import { DEFAULT_PORTAL, findCategoryById } from './domainService'
 import { listMyProviderProfiles } from './providerProfileService'
+import { getStatsForProviders } from './ratingService'
 
 export type CreateServiceOfferInput = {
   ownerUid: string
@@ -212,12 +213,14 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
   const businessById = new Map(businesses.map((business) => [String(business._id), business]))
   const users = await User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid profilePhoto headline bio skills languages').lean()
   const ownerById = new Map(users.map((user) => [String(user._id), user]))
+  const ratings = await getStatsForProviders(users.map((user) => user.uid).filter(Boolean))
   return offers.map((offer) => {
     const profile = profileById.get(String(offer.providerProfile))
     const category = categoryById.get(String(offer.category))
     const business = offer.business ? businessById.get(String(offer.business)) : undefined
     const owner = profile ? ownerById.get(String(profile.ownerUser)) : undefined
     const uid = owner?.uid || ''
+    const rating = ratings.get(uid)
     const providerName = profile?.publicProfile.displayName || business?.publicName || ''
     const extensions = { ...offer.extensions }
     if (publicOnly) delete extensions.licenseNumber
@@ -239,7 +242,7 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
         headline: profile?.publicProfile.title || owner?.headline || '', bio: profile?.publicProfile.description || owner?.bio || '',
         location: area, skills: owner?.skills || [], languages: profile?.languages?.length ? profile.languages : owner?.languages || [],
         profilePhoto: profile?.publicProfile.photoUrl || owner?.profilePhoto || '',
-        ratingAverage: 0, ratingCount: 0,
+        ratingAverage: rating?.average ?? 0, ratingCount: rating?.count ?? 0,
       },
       active: offer.status === 'published' && offer.moderation.status === 'approved',
       createdAt: offer.createdAt,

@@ -10,7 +10,6 @@ import { fetchProviderProfile, type PublicProvider } from '../api/providers'
 import type { ServiceItem } from '../api/services'
 import type { MatchIntake } from '../api/match'
 import ProviderReviews from '../components/ProviderReviews'
-import ScheduleCalendar from '../components/ScheduleCalendar'
 import SendRequestButton from '../components/SendRequestButton'
 import ServiceCard from '../components/ServiceCard'
 import SiteFooter from '../components/SiteFooter'
@@ -255,14 +254,6 @@ export default function ProviderProfilePage() {
                       )}
                     </section>
 
-                    {schedule.length > 0 ? (
-                      <section className="tt-pro-section" id="oraret">
-                        <h2>Oraret</h2>
-                        <p className="muted">E gjelbra = e lirë. E kuqja = e zënë.</p>
-                        <ScheduleCalendar slots={schedule} />
-                      </section>
-                    ) : null}
-
                     <div className="tt-pro-contact-row">
                       <StartChatButton providerUid={provider.uid} providerName={provider.name} hideGuestHint />
                     </div>
@@ -272,6 +263,13 @@ export default function ProviderProfilePage() {
                       providerName={provider.name}
                       initialAverage={provider.ratingAverage}
                       initialCount={provider.ratingCount}
+                      onStatsChange={(stats) => {
+                        setProvider((current) =>
+                          current
+                            ? { ...current, ratingAverage: stats.average, ratingCount: stats.count }
+                            : current,
+                        )
+                      }}
                     />
                   </div>
 

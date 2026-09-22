@@ -13,6 +13,7 @@ import {
 } from '../services/firebaseAuth'
 import {
   findUserByUid,
+  requestRoleChange,
   updateOwnProfile,
   updateProfilePhoto,
   upsertUser,
@@ -53,6 +54,7 @@ function publicUser(user: {
   name: string
   role: string
   roles?: string[]
+  requestedRole?: string
   firstName?: string
   lastName?: string
   phone?: string
@@ -76,6 +78,7 @@ function publicUser(user: {
     name: user.name,
     role: user.role,
     roles: user.roles ?? ['user'],
+    requestedRole: user.requestedRole,
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,
@@ -303,6 +306,21 @@ router.post('/me/photo', requireAuth, (req, res) => {
       })
     }
   })
+})
+
+router.post('/request-role', requireAuth, async (req, res) => {
+  try {
+    const role = req.body?.role as string | undefined
+    if (role !== 'provider' && role !== 'company') {
+      return res.status(400).json({ message: 'Mund të kërkosh vetëm rolin ofrues ose kompani' })
+    }
+    const user = await requestRoleChange(req.user!.uid, role)
+    return res.json({ user: publicUser(user) })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Kërkesa për rol dështoi',
+    })
+  }
 })
 
 router.get('/me', requireAuth, async (req, res) => {

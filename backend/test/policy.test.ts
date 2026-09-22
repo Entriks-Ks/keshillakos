@@ -35,4 +35,5 @@ test('category-scoped policy keeps the category ObjectId distinct from portal an
   assert.ok(policy.category?.equals(category))
   assert.equal(policy.version, 2)
   assert.ok(DEFAULT_POLICY_RULES.sensitiveData.publicRedactions.includes('licenseNumber'))
+  assert.equal(DEFAULT_POLICY_RULES.moderation.reviewRequiresApproval, false)
 })

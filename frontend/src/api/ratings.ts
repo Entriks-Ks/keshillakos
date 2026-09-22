@@ -66,12 +66,44 @@ export async function submitRating(payload: {
   stars: number
   text?: string
 }) {
-  const { data } = await api.post<{ review: unknown }>('/api/ratings', {
+  const { data } = await api.post<{ review: { id?: string; moderation?: { status?: string } } }>('/api/ratings', {
     providerId: payload.providerId,
     interactionKind: payload.interactionKind,
     interactionId: payload.interactionId,
     stars: payload.stars,
     text: payload.text,
+  })
+  return data
+}
+
+export type AdminReviewItem = {
+  id: string
+  stars: number
+  text?: string
+  status: 'pending' | 'published' | 'rejected'
+  subjectName: string
+  reviewerName: string
+  createdAt: string
+}
+
+export async function fetchModerationQueue() {
+  const { data } = await api.get<{ reviews: AdminReviewItem[]; published: AdminReviewItem[] }>(
+    '/api/ratings/moderation/pending',
+  )
+  return { pending: data.reviews || [], published: data.published || [] }
+}
+
+export async function moderateRating(
+  id: string,
+  payload: { decision: 'published' | 'rejected'; reason?: string },
+) {
+  const { data } = await api.patch<{ review: unknown }>(`/api/ratings/${id}/moderation`, payload)
+  return data
+}
+
+export async function respondToRating(id: string, text: string) {
+  const { data } = await api.patch<{ review: { response?: { text?: string } } }>(`/api/ratings/${id}/response`, {
+    text,
   })
   return data
 }

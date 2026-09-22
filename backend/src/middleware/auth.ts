@@ -17,6 +17,7 @@ export type AuthUser = {
   privacy?: import('../models/User').UserDoc['privacy']
   role: UserRole
   roles: UserRole[]
+  requestedRole?: UserRole
   accountStatus: 'active' | 'suspended' | 'closed'
   headline: string
   bio: string
@@ -89,6 +90,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       privacy: publicUser.privacy,
       role: publicUser.role,
       roles: publicUser.roles ?? ['user'],
+      requestedRole: publicUser.requestedRole,
       accountStatus: publicUser.accountStatus ?? 'active',
       headline: publicUser.headline || '',
       bio: publicUser.bio || '',

@@ -24,6 +24,8 @@ export type NewRequestInput = {
   urgency?: UserRequestDoc['urgency']
   preferredMode?: UserRequestDoc['preferredMode']
   contactPreference: UserRequestDoc['contactPreference']
+  contactPhone?: string
+  contactEmail?: string
   portal?: string
   source?: UserRequestDoc['source']
   providerIds?: string[]
@@ -94,7 +96,9 @@ export async function createUserRequest(input: NewRequestInput) {
     problem: input.problem, description: input.description, location,
     language: input.language, budget: input.budget,
     urgency: input.urgency ?? 'flexible', preferredMode: input.preferredMode ?? 'either',
-    contactPreference: input.contactPreference, source: input.source ?? 'web',
+    contactPreference: input.contactPreference,
+    contactPhone: input.contactPhone, contactEmail: input.contactEmail,
+    source: input.source ?? 'web',
     status: input.draft ? 'draft' : 'open',
   })
   try {
@@ -160,6 +164,7 @@ async function view(request: UserRequestDoc & { _id: Types.ObjectId }, delivery?
     providerName, need: request.problem, message: request.description,
     location: request.location?.cityName || '', language: request.language, urgency: request.urgency,
     contactMethod: request.contactPreference,
+    contactPhone: request.contactPhone, contactEmail: request.contactEmail || owner?.email || '',
     status: delivery?.status || request.status, providerNote: delivery?.response, offer: delivery?.offer,
     slotId: delivery?.slotId, requestedStartAt: delivery?.requestedStartAt?.toISOString(), requestedEndAt: delivery?.requestedEndAt?.toISOString(),
     sentAt: delivery?.sentAt, readAt: delivery?.readAt, respondedAt: delivery?.respondedAt,

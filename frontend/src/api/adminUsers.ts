@@ -5,6 +5,7 @@ export type AdminUser = {
   email: string
   name: string
   role: UserRole
+  requestedRole?: UserRole
   createdAt: string
 }
 
@@ -46,6 +47,16 @@ export async function updateAdminUser(
   payload: { name?: string; email?: string; role?: UserRole },
 ) {
   const { data } = await api.patch<{ user: AdminUser }>(`/api/admin/users/${uid}`, payload)
+  return data.user
+}
+
+export async function fetchPendingRoleRequests() {
+  const { data } = await api.get<{ users: AdminUser[] }>('/api/admin/users/role-requests')
+  return data.users
+}
+
+export async function reviewRoleRequest(uid: string, action: 'accept' | 'reject') {
+  const { data } = await api.post<{ user: AdminUser }>(`/api/admin/users/${uid}/role-request`, { action })
   return data.user
 }
 

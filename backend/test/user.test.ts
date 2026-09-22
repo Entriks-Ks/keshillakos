@@ -4,7 +4,7 @@ import { Types } from 'mongoose'
 import { City } from '../src/models/City'
 import { Country } from '../src/models/Country'
 import { User, userSchema } from '../src/models/User'
-import { effectiveRoles, toPublicUser, updateOwnProfile } from '../src/services/userService'
+import { effectiveRoles, requestRoleChange, reviewRoleRequest, toPublicUser, updateOwnProfile } from '../src/services/userService'
 
 test('new account normalizes identity and leaves professional fields unset', async () => {
   const user = new User({ uid: 'firebase-1', email: ' Person@Example.COM ', name: ' Ada Lovelace ', phone: '  ', country: ' xk ' })
@@ -36,6 +36,7 @@ test('legacy self-selected provider/company roles do not authorize; explicit gra
   const requested = toPublicUser({ uid: 'requested', email: 'r@example.com', name: 'R', role: 'user', roles: ['user'], requestedRole: 'company' })
   assert.deepEqual(requested.roles, ['user'])
   assert.equal(requested.role, 'user')
+  assert.equal(requested.requestedRole, 'company')
 })
 
 test('user indexes distinguish canonical email from nonunique unverified phone', () => {
@@ -87,6 +88,40 @@ test('profile location update checks active country/city relation and allows cle
     User.findOne = originalFind
     Country.exists = originalCountryExists
     City.exists = originalCityExists
+    user.save = originalSave
+  }
+})
+
+test('role change request stays pending until admin accepts it', async () => {
+  const user = new User({ uid: 'role-req', email: 'role@example.com', name: 'Role User', roles: ['user'], role: 'user' })
+  const originalFind = User.findOne
+  const originalSave = user.save
+  User.findOne = (() => Promise.resolve(user)) as unknown as typeof User.findOne
+  user.save = (async () => user) as typeof user.save
+  try {
+    const pending = await requestRoleChange('role-req', 'provider')
+    assert.equal(pending.requestedRole, 'provider')
+    assert.deepEqual(pending.roles, ['user'])
+    assert.equal(pending.role, 'user')
+    await assert.rejects(requestRoleChange('role-req', 'company'), /në pritje/)
+
+    const rejected = await reviewRoleRequest('role-req', 'reject')
+    assert.equal(rejected.requestedRole, undefined)
+    assert.deepEqual(rejected.roles, ['user'])
+
+    await requestRoleChange('role-req', 'provider')
+    const accepted = await reviewRoleRequest('role-req', 'accept')
+    assert.equal(accepted.requestedRole, undefined)
+    assert.ok(accepted.roles.includes('provider'))
+    assert.equal(accepted.role, 'provider')
+
+    const companyPending = await requestRoleChange('role-req', 'company')
+    assert.equal(companyPending.requestedRole, 'company')
+    const companyAccepted = await reviewRoleRequest('role-req', 'accept')
+    assert.equal(companyAccepted.requestedRole, undefined)
+    assert.ok(companyAccepted.roles.includes('company'))
+  } finally {
+    User.findOne = originalFind
     user.save = originalSave
   }
 })

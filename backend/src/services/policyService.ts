@@ -8,7 +8,9 @@ export const DEFAULT_POLICY_RULES: PolicyRules = {
   sensitiveData: { publicRedactions: ['licenseNumber'], prohibitFreeTextSecrets: true, exportRequiresApproval: true },
   providerVerification: { requiredChecks: [], requireBusinessVerification: false },
   reviewEligibility: { completedDelivery: true, completedAppointment: true },
-  moderation: { reviewRequiresApproval: true, abuseBlocksPublication: true, responseRequiresApproval: false },
+  // Fallback when no published Policy exists: completed jobs go live so the rating
+  // appears on the public profile, service page, and provider dashboard.
+  moderation: { reviewRequiresApproval: false, abuseBlocksPublication: true, responseRequiresApproval: false },
   retention: { legalHold: false },
   categoryRequirements: { requiredProviderFields: [], requiredOfferExtensions: [], allowedModes: ['online', 'on_site'] },
 }

@@ -19,11 +19,13 @@ export type UserRole = 'user' | 'provider' | 'company' | 'admin'
 export type AuthUser = {
   uid: string
   email: string
+  phone?: string
   name: string
   firstName?: string
   lastName?: string
   role: UserRole
   roles?: UserRole[]
+  requestedRole?: UserRole
   headline?: string
   bio?: string
   location?: string
@@ -100,6 +102,11 @@ export async function changePassword(payload: {
     payload,
   )
   return data
+}
+
+export async function requestRoleChange(role: 'provider' | 'company') {
+  const { data } = await api.post<{ user: AuthUser }>('/api/auth/request-role', { role })
+  return data.user
 }
 
 export default api

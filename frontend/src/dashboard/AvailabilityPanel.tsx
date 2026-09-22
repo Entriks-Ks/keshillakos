@@ -391,7 +391,7 @@ export default function AvailabilityPanel() {
         ) : null}
         {slots.length > 0 ? (
           <>
-            <p className="muted">E gjelbra = e lirë (mund ta fshish). E kuqja = e zënë.</p>
+            <p className="muted">Zgjidh ditën, pastaj një orë të lirë për ta fshirë. Pikat e gjelbra kanë orë të lira.</p>
             <ScheduleCalendar
               slots={slots}
               selectedId={selectedSlotId}

@@ -19,6 +19,7 @@ import {
   type ServiceRequestItem,
 } from '../api/requests'
 import StartChatButton from '../components/StartChatButton'
+import RateProvider from '../components/RateProvider'
 import { getErrorMessage } from '../utils/errors'
 import DashPageHeader from './DashPageHeader'
 
@@ -137,6 +138,17 @@ export function UserRequestsPanel() {
     { id: 'rejected', label: 'Refuzuar', count: statusCounts.rejected || 0 },
   ] satisfies Array<{ id: 'all' | RequestStatus; label: string; count: number }>).filter((item) => item.id === 'all' || item.count > 0)
 
+  const ratingCardIds = useMemo(() => {
+    const seen = new Set<string>()
+    const ids = new Set<string>()
+    for (const request of requests) {
+      if (request.status !== 'completed' || !request.providerUid || seen.has(request.providerUid)) continue
+      seen.add(request.providerUid)
+      ids.add(request.id)
+    }
+    return ids
+  }, [requests])
+
   return (
     <section className="req-page">
       <header className="req-head">
@@ -221,6 +233,10 @@ export function UserRequestsPanel() {
 
               <p className="req-meta-line">
                 {CONTACT_LABELS[r.contactMethod]}
+                {r.contactPhone ? ` · ${r.contactPhone}` : ''}
+                {r.contactMethod === 'email' && (r.contactEmail || r.seekerEmail)
+                  ? ` · ${r.contactEmail || r.seekerEmail}`
+                  : ''}
                 {r.urgency ? ` · ${URGENCY_LABELS[r.urgency] || r.urgency}` : ''}
                 {' · '}
                 {formatDate(r.createdAt)}
@@ -245,7 +261,7 @@ export function UserRequestsPanel() {
                 ) : null}
                 {r.status === 'completed' && r.providerUid ? (
                   <Link to={`/providers/${r.providerUid}#vleresimet`} className="req-link-btn is-accent">
-                    Vlerëso ofruesin
+                    Shiko vlerësimet
                   </Link>
                 ) : null}
                 {r.providerUid ? (
@@ -265,6 +281,16 @@ export function UserRequestsPanel() {
                   </Link>
                 )}
               </div>
+              {ratingCardIds.has(r.id) && r.providerUid ? (
+                <div className="req-rate">
+                  <RateProvider
+                    providerUid={r.providerUid}
+                    providerName={r.providerName}
+                    providerId={r.providerId}
+                    quiet
+                  />
+                </div>
+              ) : null}
             </li>
           )
         })}
@@ -471,6 +497,10 @@ export function ProviderInboxPanel() {
                     <MessageCircle size={13} aria-hidden />
                   )}
                   {CONTACT_LABELS[r.contactMethod]}
+                  {r.contactPhone ? ` · ${r.contactPhone}` : ''}
+                  {r.contactMethod === 'email' && (r.contactEmail || r.seekerEmail)
+                    ? ` · ${r.contactEmail || r.seekerEmail}`
+                    : ''}
                 </li>
                 {r.location ? (
                   <li>
@@ -615,7 +645,13 @@ export function AdminRequestsPanel() {
               </p>
             ) : null}
             <ul className="match-meta">
-              <li>{CONTACT_LABELS[r.contactMethod]}</li>
+              <li>
+                {CONTACT_LABELS[r.contactMethod]}
+                {r.contactPhone ? ` · ${r.contactPhone}` : ''}
+                {r.contactMethod === 'email' && (r.contactEmail || r.seekerEmail)
+                  ? ` · ${r.contactEmail || r.seekerEmail}`
+                  : ''}
+              </li>
               <li>{formatDate(r.createdAt)}</li>
             </ul>
           </li>

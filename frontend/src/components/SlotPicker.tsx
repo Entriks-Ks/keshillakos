@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Spinner } from '@heroui/react'
 import { fetchProviderSchedule, type AvailabilitySlot } from '../api/availability'
 import ScheduleCalendar from './ScheduleCalendar'
 
@@ -53,7 +54,12 @@ export default function SlotPicker({
   }, [providerUid, refreshKey])
 
   if (loading) {
-    return <p className="muted">Duke ngarkuar oraret...</p>
+    return (
+      <p className="muted schedule-cal-loading">
+        <Spinner size="sm" />
+        Duke ngarkuar oraret...
+      </p>
+    )
   }
 
   if (error) {

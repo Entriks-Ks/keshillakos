@@ -1,28 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchProviderRatings, type RatingItem } from '../api/ratings'
+import { BadgeCheck, MessageSquareReply, Star } from 'lucide-react'
+import { fetchProviderRatings, type ProviderRatingStats, type RatingItem } from '../api/ratings'
 import RateProvider from './RateProvider'
+import {
+  formatReviewDate,
+  initials,
+  ratingBuckets,
+  ratingWord,
+  StarRow,
+} from './ratingUi'
 
 type Props = {
   providerUid: string
   providerName: string
   initialAverage?: number
   initialCount?: number
-}
-
-function ratingWord(average: number, count: number) {
-  if (count <= 0) return 'Ende pa vlerësime'
-  if (average >= 4.8) return 'Shkëlqyeshëm'
-  if (average >= 4) return 'Shumë mirë'
-  if (average >= 3) return 'Mirë'
-  return 'Në përmirësim'
-}
-
-function formatReviewDate(value: string) {
-  try {
-    return new Date(value).toLocaleDateString('sq-AL', { day: 'numeric', month: 'short', year: 'numeric' })
-  } catch {
-    return value
-  }
+  onStatsChange?: (stats: ProviderRatingStats) => void
 }
 
 export default function ProviderReviews({
@@ -30,6 +23,7 @@ export default function ProviderReviews({
   providerName,
   initialAverage = 0,
   initialCount = 0,
+  onStatsChange,
 }: Props) {
   const [average, setAverage] = useState(initialAverage)
   const [count, setCount] = useState(initialCount)
@@ -44,6 +38,7 @@ export default function ProviderReviews({
         setAverage(data.stats.average)
         setCount(data.stats.count)
         setRatings(data.ratings)
+        onStatsChange?.(data.stats)
       })
       .catch(() => {
         if (!cancelled) setRatings([])
@@ -56,70 +51,90 @@ export default function ProviderReviews({
     }
   }, [providerUid])
 
-  const comments = ratings.filter((item) => item.comment?.trim())
-  const buckets = useMemo(() => {
-    const total = ratings.length || 1
-    return [5, 4, 3, 2, 1].map((stars) => {
-      const n = ratings.filter((item) => item.score === stars).length
-      return { stars, count: n, pct: Math.round((n / total) * 100) }
-    })
-  }, [ratings])
+  useEffect(() => {
+    if (loading) return
+    if (window.location.hash !== '#vleresimet') return
+    document.getElementById('vleresimet')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [loading, providerUid])
+
+  const buckets = useMemo(() => ratingBuckets(ratings.map((item) => item.score)), [ratings])
 
   return (
     <section className="tt-pro-section tt-reviews" id="vleresimet" aria-labelledby={`reviews-${providerUid}`}>
       <header className="tt-reviews-head">
         <h2 id={`reviews-${providerUid}`}>Vlerësimet</h2>
-        <p className="tt-pro-rating">
-          <strong>{ratingWord(average, count)}</strong>
-          {count > 0 ? (
-            <>
-              <span className="tt-pro-rating-score">{average.toFixed(1)}</span>
-              <span className="tt-pro-stars" aria-hidden>
-                {'★'.repeat(Math.round(average))}
-                {'☆'.repeat(5 - Math.round(average))}
-              </span>
-              <span className="muted">({count})</span>
-            </>
-          ) : (
-            <span className="muted"> · ende pa vlerësime publike</span>
-          )}
-        </p>
+        <p className="muted">Feedback nga klientë që kanë përfunduar një shërbim me {providerName}.</p>
       </header>
 
       {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
 
       {!loading && count > 0 ? (
-        <ul className="tt-review-bars" aria-label="Shpërndarja e vlerësimeve">
-          {buckets.map((bucket) => (
-            <li key={bucket.stars}>
-              <span>{bucket.stars}</span>
-              <span className="tt-review-bar">
-                <em style={{ width: `${bucket.pct}%` }} />
-              </span>
-              <span>{bucket.pct}%</span>
-            </li>
-          ))}
-        </ul>
+        <div className="tt-reviews-summary">
+          <div className="tt-reviews-score">
+            <span className="tt-reviews-score-num">{average.toFixed(1)}</span>
+            <StarRow value={average} size={18} label={`${average.toFixed(1)} nga 5 yje`} />
+            <strong>{ratingWord(average, count)}</strong>
+            <span className="muted">
+              {count} {count === 1 ? 'vlerësim' : 'vlerësime'}
+            </span>
+          </div>
+          <ul className="tt-review-bars" aria-label="Shpërndarja e vlerësimeve">
+            {buckets.map((bucket) => (
+              <li key={bucket.stars}>
+                <span>
+                  {bucket.stars}
+                  <Star size={11} className="is-filled" aria-hidden />
+                </span>
+                <span className="tt-review-bar">
+                  <em style={{ width: `${bucket.pct}%` }} />
+                </span>
+                <span>{bucket.pct}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
-      {!loading && comments.length === 0 ? (
-        <p className="muted">Kur ofruesi përfundon shërbimin, komenti i klientit shfaqet këtu.</p>
+      {!loading && ratings.length === 0 ? (
+        <div className="tt-reviews-empty">
+          <Star size={22} aria-hidden />
+          <p>Ende pa vlerësime publike</p>
+          <span>Kur ofruesi përfundon shërbimin, yjet dhe komenti i klientit shfaqen këtu.</span>
+        </div>
       ) : null}
 
-      {comments.length > 0 ? (
+      {ratings.length > 0 ? (
         <ul className="tt-review-list">
-          {comments.slice(0, 6).map((item) => (
-            <li key={item.id}>
-              <div className="tt-review-meta">
-                <strong>{item.raterName}</strong>
-                <span className="muted">{formatReviewDate(item.createdAt)}</span>
+          {ratings.slice(0, 8).map((item) => (
+            <li key={item.id} className="tt-review-card">
+              <div className="tt-review-card-head">
+                <span className="tt-review-avatar" aria-hidden>
+                  {initials(item.raterName)}
+                </span>
+                <div className="tt-review-who">
+                  <strong>{item.raterName}</strong>
+                  <span className="muted">{formatReviewDate(item.createdAt)}</span>
+                </div>
+                <StarRow value={item.score} size={14} label={`${item.score} nga 5 yje`} />
               </div>
-              <p className="tt-review-stars" aria-label={`${item.score} nga 5 yje`}>
-                {'★'.repeat(item.score)}
-                <span>{'☆'.repeat(5 - item.score)}</span>
-              </p>
-              <p className="tt-review-hired">Punë e përfunduar në KëshillaKos</p>
-              <p className="tt-review-comment">{item.comment}</p>
+              {item.verified ? (
+                <p className="tt-review-hired">
+                  <BadgeCheck size={14} aria-hidden />
+                  Punë e përfunduar në KëshillaKos
+                </p>
+              ) : (
+                <p className="tt-review-hired is-plain">Klient në KëshillaKos</p>
+              )}
+              {item.comment?.trim() ? <p className="tt-review-comment">{item.comment}</p> : null}
+              {item.response ? (
+                <div className="tt-review-response">
+                  <p>
+                    <MessageSquareReply size={14} aria-hidden />
+                    Përgjigja e ofruesit
+                  </p>
+                  <span>{item.response}</span>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -131,9 +146,19 @@ export default function ProviderReviews({
         initialAverage={average}
         initialCount={count}
         quiet
+        className="tt-reviews-rate"
         onRated={(stats) => {
           setAverage(stats.average)
           setCount(stats.count)
+          onStatsChange?.(stats)
+          fetchProviderRatings(providerUid)
+            .then((data) => {
+              setAverage(data.stats.average)
+              setCount(data.stats.count)
+              setRatings(data.ratings)
+              onStatsChange?.(data.stats)
+            })
+            .catch(() => undefined)
         }}
       />
     </section>

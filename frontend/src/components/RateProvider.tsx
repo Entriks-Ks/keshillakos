@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Star } from 'lucide-react'
 import {
   fetchEligibleByProviderUid,
   fetchProviderRatings,
@@ -20,6 +21,7 @@ type Props = {
   onRated?: (stats: ProviderRatingStats) => void
   /** Hide the form unless this user can rate now. Use on public pages. */
   quiet?: boolean
+  className?: string
 }
 
 const STAR_HINTS = ['Shumë keq', 'Keq', 'Në rregull', 'Mirë', 'Shkëlqyeshëm'] as const
@@ -33,9 +35,11 @@ export default function RateProvider({
   initialCount = 0,
   onRated,
   quiet = false,
+  className = '',
 }: Props) {
   const { user } = useAuth()
   const [score, setScore] = useState(0)
+  const [hover, setHover] = useState(0)
   const [comment, setComment] = useState('')
   const [average, setAverage] = useState(initialAverage)
   const [count, setCount] = useState(initialCount)
@@ -49,7 +53,7 @@ export default function RateProvider({
   )
   const [selectedId, setSelectedId] = useState(interactionProp?.id || '')
 
-  const canRate = user?.role === 'user' || user?.role === 'admin'
+  const canRate = Boolean(user && user.uid !== providerUid)
   const selected = interactions.find((item) => item.id === selectedId) || interactions[0]
   const readyToRate = Boolean(canRate && selected && providerId)
 
@@ -96,17 +100,22 @@ export default function RateProvider({
     setSuccess('')
     setSubmitting(true)
     try {
-      await submitRating({
+      const result = await submitRating({
         providerId,
         interactionKind: selected.kind,
         interactionId: selected.id,
         stars: score,
         text: comment.trim() || undefined,
       })
+      const published = result.review?.moderation?.status !== 'pending'
       const fresh = await fetchProviderRatings(providerUid)
       setAverage(fresh.stats.average)
       setCount(fresh.stats.count)
-      setSuccess('Faleminderit! Vlerësimi u ruajt.')
+      setSuccess(
+        published
+          ? 'Faleminderit! Vlerësimi u ruajt dhe tani shfaqet te profili i ofruesit.'
+          : 'Faleminderit! Vlerësimi u ruajt dhe do të shfaqet pasi të miratohet.',
+      )
       setInteractions((prev) => prev.filter((item) => item.id !== selected.id))
       setSelectedId('')
       setComment('')
@@ -121,8 +130,10 @@ export default function RateProvider({
 
   if (quiet && (!canRate || loadingEligible || (!selected && !success))) return null
 
+  const shownScore = hover || score
+
   return (
-    <div className="rate-box">
+    <div className={`rate-box${quiet ? ' is-quiet' : ''}${className ? ` ${className}` : ''}`}>
       {!quiet ? (
         <p className="rate-summary">
           ★ {count > 0 ? average.toFixed(1) : '—'}
@@ -155,19 +166,20 @@ export default function RateProvider({
         <form onSubmit={onSubmit} className="rate-form">
           <p className="rate-form-title">Si ishte bashkëpunimi me {providerName}?</p>
           <p className="muted rate-form-hint">Zgjidh yjet — komenti është opsional.</p>
-          <div className="star-row" role="group" aria-label="Vlerësimi me yje">
+          <div className="star-row" role="group" aria-label="Vlerësimi me yje" onMouseLeave={() => setHover(0)}>
             {[1, 2, 3, 4, 5].map((value) => (
               <button
                 key={value}
                 type="button"
-                className={`star-btn${score >= value ? ' is-active' : ''}`}
+                className={`star-btn${shownScore >= value ? ' is-active' : ''}`}
                 onClick={() => setScore(value)}
+                onMouseEnter={() => setHover(value)}
                 aria-label={`${value} yje, ${STAR_HINTS[value - 1]}`}
               >
-                ★
+                <Star size={26} strokeWidth={1.6} />
               </button>
             ))}
-            {score > 0 ? <span className="rate-star-hint">{STAR_HINTS[score - 1]}</span> : null}
+            {shownScore > 0 ? <span className="rate-star-hint">{STAR_HINTS[shownScore - 1]}</span> : null}
           </div>
           <textarea
             value={comment}

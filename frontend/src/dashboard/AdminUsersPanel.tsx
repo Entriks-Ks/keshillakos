@@ -4,6 +4,8 @@ import {
   deleteAdminUser,
   fetchAdminUsers,
   fetchAdminUsersMeta,
+  fetchPendingRoleRequests,
+  reviewRoleRequest,
   updateAdminUser,
   type AdminUser,
 } from '../api/adminUsers'
@@ -41,17 +43,21 @@ export default function AdminUsersPanel() {
   const [editingUid, setEditingUid] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', email: '', role: 'user' as UserRole })
   const [saving, setSaving] = useState(false)
+  const [pending, setPending] = useState<AdminUser[]>([])
+  const [reviewingUid, setReviewingUid] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const [list, meta] = await Promise.all([
+      const [list, meta, roleRequests] = await Promise.all([
         fetchAdminUsers({ role: roleFilter, q: query }),
         fetchAdminUsersMeta(),
+        fetchPendingRoleRequests(),
       ])
       setUsers(list)
       setCounts(meta.counts)
+      setPending(roleRequests)
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -105,6 +111,22 @@ export default function AdminUsersPanel() {
     }
   }
 
+  async function onReview(user: AdminUser, action: 'accept' | 'reject') {
+    setReviewingUid(user.uid)
+    setError('')
+    setSuccess('')
+    try {
+      const requestedLabel = ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? 'rol i ri'
+      await reviewRoleRequest(user.uid, action)
+      setSuccess(action === 'accept' ? `${user.name} u bë ${requestedLabel.toLowerCase()}.` : `Kërkesa e ${user.name} u refuzua.`)
+      await load()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setReviewingUid('')
+    }
+  }
+
   async function onDelete(user: AdminUser) {
     if (user.uid === me?.uid) {
       setError('Nuk mund ta fshish llogarinë tënde.')
@@ -128,8 +150,42 @@ export default function AdminUsersPanel() {
     <section className="provider-section">
       <DashPageHeader
         title="Menaxhimi i përdoruesve"
-        description="Shiko dhe menaxho të gjitha rolet: user, provider, company, admin."
+        description="Shiko dhe menaxho të gjitha rolet: user, provider, company, admin. Kërkesat për ofrues ose kompani shfaqen këtu për shqyrtim."
       />
+
+      {pending.length ? (
+        <div className="admin-role-requests">
+          <h3>Kërkesa për rol ({pending.length})</h3>
+          <ul>
+            {pending.map((user) => (
+              <li key={user.uid} className="admin-role-request">
+                <div>
+                  <strong>{user.name}</strong>
+                  <span className="muted">{user.email}</span>
+                  <span className="role-pending-pill">Pending · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? user.requestedRole}</span>
+                </div>
+                <div className="admin-row-actions">
+                  <button
+                    type="button"
+                    disabled={reviewingUid === user.uid}
+                    onClick={() => void onReview(user, 'accept')}
+                  >
+                    {reviewingUid === user.uid ? 'Duke ruajtur…' : 'Prano'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={reviewingUid === user.uid}
+                    onClick={() => void onReview(user, 'reject')}
+                  >
+                    Refuzo
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {counts ? (
         <ul className="admin-role-stats">
@@ -291,6 +347,9 @@ export default function AdminUsersPanel() {
                     <td>{user.email}</td>
                     <td>
                       <span className="role-pill">{ROLE_OPTIONS.find((r) => r.value === user.role)?.label}</span>
+                      {user.requestedRole && user.requestedRole !== user.role ? (
+                        <span className="role-pending-pill">Pending · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label}</span>
+                      ) : null}
                     </td>
                     <td className="mono">{user.uid}</td>
                     <td>

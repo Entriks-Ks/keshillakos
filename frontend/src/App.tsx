@@ -18,10 +18,10 @@ import {
 } from './dashboard/RequestPanels'
 import MessagesPage from './dashboard/MessagesPage'
 import {
-  AdminDomainsPanel,
   CompanyExpertsPanel,
   ProviderServicesPanel,
 } from './dashboard/panels'
+import AdminRatingsPanel from './dashboard/AdminRatingsPanel'
 import DashboardRedirect from './pages/DashboardRedirect'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
@@ -64,6 +64,7 @@ export default function App() {
             <Route path="/dashboard/provider" element={<DashboardShell />}>
               <Route index element={<ProviderOverviewPage />} />
               <Route path="inbox" element={<ProviderInboxPanel />} />
+              <Route path="my-requests" element={<UserRequestsPanel />} />
               <Route path="messages" element={<MessagesPage />} />
               <Route path="services" element={<ProviderServicesPanel />} />
               <Route path="availability" element={<AvailabilityPanel />} />
@@ -77,6 +78,7 @@ export default function App() {
             <Route path="/dashboard/company" element={<DashboardShell />}>
               <Route index element={<CompanyOverviewPage />} />
               <Route path="inbox" element={<ProviderInboxPanel />} />
+              <Route path="my-requests" element={<UserRequestsPanel />} />
               <Route path="messages" element={<MessagesPage />} />
               <Route path="experts" element={<CompanyExpertsPanel />} />
               <Route path="availability" element={<AvailabilityPanel />} />
@@ -93,11 +95,7 @@ export default function App() {
               <Route path="requests" element={<AdminRequestsPanel />} />
               <Route path="inbox" element={<ProviderInboxPanel />} />
               <Route path="messages" element={<MessagesPage />} />
-              <Route path="domains" element={<AdminDomainsPanel />} />
-              <Route path="services" element={<ProviderServicesPanel />} />
-              <Route path="availability" element={<AvailabilityPanel />} />
-              <Route path="experts" element={<CompanyExpertsPanel />} />
-              <Route path="ratings" element={<OwnRatingsPage />} />
+              <Route path="ratings" element={<AdminRatingsPanel />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>

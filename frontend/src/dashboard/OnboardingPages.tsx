@@ -42,14 +42,14 @@ export function ExpertOnboardingPage() {
       await becomeExpert({ displayName, title, description, categories: [category], languages: languages.split(',').map((value) => value.trim()).filter(Boolean), mode,
         location: { countryId: location.country._id, cityId: location.city._id }, serviceAreaCityIds: serviceAreas.map((area) => area.city._id) })
       await refreshUser()
-      navigate('/dashboard/provider', { replace: true })
+      navigate('/dashboard/user/profile', { replace: true })
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setSaving(false) }
   }
 
   return <section className="provider-section">
     <h2>Bëhu Ekspert</h2>
-    <p className="muted">Krijo profilin tënd profesional. Profili pret rishikim para publikimit.</p>
+    <p className="muted">Krijo profilin tënd profesional. Kërkesa shkon te admini; roli ofrues aktivizohet pasi të pranohet.</p>
     <form className="service-form" onSubmit={onSubmit}>
       <label>Emri publik<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required maxLength={160} /></label>
       <label>Kategoria<select value={category} onChange={(e) => setCategory(e.target.value)} required>
@@ -84,14 +84,14 @@ export function CompanyOnboardingPage() {
     try {
       await createCompany({ publicName, legalName })
       await refreshUser()
-      navigate('/dashboard/company/experts', { replace: true })
+      navigate('/dashboard/user/profile', { replace: true })
     } catch (err) { setError(getErrorMessage(err)) }
     finally { setSaving(false) }
   }
 
   return <section className="provider-section">
     <h2>Krijo Kompani / Agjenci</h2>
-    <p className="muted">Krijo kompaninë dhe pastaj fto ekspertët e regjistruar në ekip.</p>
+    <p className="muted">Krijo kompaninë. Kërkesa shkon te admini; roli kompani aktivizohet pasi të pranohet.</p>
     <form className="service-form" onSubmit={onSubmit}>
       <label>Emri publik<input value={publicName} onChange={(e) => setPublicName(e.target.value)} required maxLength={160} /></label>
       <label>Emri ligjor (opsional)<input value={legalName} onChange={(e) => setLegalName(e.target.value)} maxLength={200} /></label>

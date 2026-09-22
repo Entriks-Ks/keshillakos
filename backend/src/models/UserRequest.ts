@@ -17,6 +17,8 @@ export type UserRequestDoc = {
   urgency: 'today' | 'this_week' | 'flexible'
   preferredMode: 'online' | 'on_site' | 'either'
   contactPreference: ContactPreference
+  contactPhone?: string
+  contactEmail?: string
   portal: string
   source: 'web' | 'admin' | 'legacy'
   status: UserRequestStatus
@@ -39,10 +41,19 @@ export const userRequestSchema = new Schema<UserRequestDoc>({
   urgency: { type: String, enum: ['today', 'this_week', 'flexible'], default: 'flexible' },
   preferredMode: { type: String, enum: ['online', 'on_site', 'either'], default: 'either' },
   contactPreference: { type: String, enum: CONTACT_PREFERENCES, required: true },
+  contactPhone: { type: String, trim: true, maxlength: 32 },
+  contactEmail: { type: String, trim: true, lowercase: true, maxlength: 160 },
   portal: { type: String, required: true, trim: true, lowercase: true },
   source: { type: String, enum: ['web', 'admin', 'legacy'], default: 'web' },
   status: { type: String, enum: USER_REQUEST_STATUSES, default: 'draft' },
 }, { timestamps: true })
+
+const PHONE_PATTERN = /^\+?[0-9]{8,15}$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export function normalizeContactPhone(value?: string) {
+  return value?.replace(/[\s()-]/g, '').trim() || undefined
+}
 
 userRequestSchema.pre('validate', function () {
   if (this.budget && this.budget.min !== undefined && this.budget.max !== undefined && this.budget.max < this.budget.min) {
@@ -50,6 +61,16 @@ userRequestSchema.pre('validate', function () {
   }
   if (this.budget && (this.budget.min !== undefined || this.budget.max !== undefined) && !this.budget.currency) {
     this.invalidate('budget.currency', 'Budget currency is required')
+  }
+  const phone = normalizeContactPhone(this.contactPhone)
+  this.contactPhone = phone
+  const email = this.contactEmail?.trim().toLowerCase() || undefined
+  this.contactEmail = email
+  if (!phone) this.invalidate('contactPhone', 'Numri i telefonit është i detyrueshëm')
+  else if (!PHONE_PATTERN.test(phone)) this.invalidate('contactPhone', 'Numri i telefonit nuk është i vlefshëm')
+  if (this.contactPreference === 'email') {
+    if (!email) this.invalidate('contactEmail', 'Email-i është i detyrueshëm')
+    else if (!EMAIL_PATTERN.test(email)) this.invalidate('contactEmail', 'Email-i nuk është i vlefshëm')
   }
 })
 userRequestSchema.index({ user: 1, createdAt: -1 })

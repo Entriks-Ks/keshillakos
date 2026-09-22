@@ -5,20 +5,17 @@ import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight,
   Briefcase,
-  Building2,
   CalendarDays,
   FolderKanban,
   Inbox,
   MessageCircle,
   Search,
   Star,
-  Tags,
   Users,
 } from 'lucide-react'
 import { fetchAdminUsersMeta } from '../api/adminUsers'
 import { fetchMyAvailability } from '../api/availability'
 import { fetchConversations } from '../api/chat'
-import { fetchDomains } from '../api/domains'
 import { fetchMyExperts } from '../api/experts'
 import { fetchBusinessTeam, fetchMyBusinesses } from '../api/onboarding'
 import { fetchProviderRatings } from '../api/ratings'
@@ -594,10 +591,9 @@ export function AdminOverviewPage() {
     Promise.all([
       fetchAdminUsersMeta(),
       fetchAllRequests(),
-      fetchDomains(),
       fetchConversations().catch(() => []),
     ])
-      .then(([meta, requests, domains, conversations]) => {
+      .then(([meta, requests, conversations]) => {
         if (cancelled) return
         const totalUsers =
           (meta.counts.user || 0) +
@@ -627,13 +623,6 @@ export function AdminOverviewPage() {
             hint: pending > 0 ? `${pending} në pritje` : 'Në platformë',
             to: '/dashboard/admin/requests',
             tone: pending > 0 ? 'warn' : 'default',
-          },
-          {
-            label: 'Kategori',
-            value: domains.length,
-            hint: 'Domene aktive',
-            to: '/dashboard/admin/domains',
-            tone: 'success',
           },
           {
             label: 'Mesazhe',
@@ -715,18 +704,11 @@ export function AdminOverviewPage() {
         icon={FolderKanban}
       />
       <OverviewCard
-        title="Kategoritë"
-        description="Menaxho domenet dhe kategoritë."
-        to="/dashboard/admin/domains"
+        title="Vlerësimet"
+        description="Shiko dhe modero vlerësimet e platformës."
+        to="/dashboard/admin/ratings"
         cta="Hap"
-        icon={Tags}
-      />
-      <OverviewCard
-        title="Shërbimet"
-        description="Shiko dhe administro ofertat e publikuara."
-        to="/dashboard/admin/services"
-        cta="Hap"
-        icon={Building2}
+        icon={Star}
       />
     </OverviewShell>
   )

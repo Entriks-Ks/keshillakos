@@ -124,13 +124,49 @@ export async function upsertUser(input: {
 }
 
 export async function grantCapability(uid: string, role: 'provider' | 'company') {
-  const user = await User.findOneAndUpdate(
-    { uid, accountStatus: 'active' },
-    { $addToSet: { roles: { $each: ['user', role] } } },
-    { new: true, runValidators: true },
-  )
-  if (!user) throw new Error('Llogaria nuk u gjet ose nuk është aktive')
-  return toPublicUser(user)
+  const existing = await User.findOne({ uid, accountStatus: 'active' })
+  if (!existing) throw new Error('Llogaria nuk u gjet ose nuk është aktive')
+  existing.roles = [...new Set<UserRole>(['user', ...(existing.roles?.filter(isUserRole) ?? []), role])]
+  if (existing.role !== 'admin') existing.role = role
+  existing.requestedRole = undefined
+  await existing.save()
+  return toPublicUser(existing)
+}
+
+export async function requestRoleChange(uid: string, role: 'provider' | 'company') {
+  const existing = await User.findOne({ uid })
+  if (!existing) throw new Error('Përdoruesi nuk u gjet')
+  if (existing.accountStatus && existing.accountStatus !== 'active') {
+    throw new Error('Llogaria nuk është aktive')
+  }
+  const roles = effectiveRoles(existing)
+  if (roles.includes(role)) throw new Error('Ke tashmë këtë rol')
+  if (existing.requestedRole && existing.requestedRole !== role && !roles.includes(existing.requestedRole)) {
+    throw new Error('Ke tashmë një kërkesë roli në pritje')
+  }
+  existing.requestedRole = role
+  await existing.save()
+  return toPublicUser(existing)
+}
+
+export async function listPendingRoleRequests() {
+  const users = await User.find({ requestedRole: { $in: ['provider', 'company'] } }).sort({ updatedAt: -1 }).lean()
+  return users.map(toPublicUser).filter((user) => user.requestedRole && !user.roles.includes(user.requestedRole))
+}
+
+export async function reviewRoleRequest(uid: string, action: 'accept' | 'reject') {
+  const existing = await User.findOne({ uid })
+  if (!existing) throw new Error('Përdoruesi nuk u gjet')
+  const requested = existing.requestedRole
+  if (requested !== 'provider' && requested !== 'company') {
+    throw new Error('Nuk ka kërkesë në pritje')
+  }
+  if (action === 'reject') {
+    existing.requestedRole = undefined
+    await existing.save()
+    return toPublicUser(existing)
+  }
+  return grantCapability(uid, requested)
 }
 
 export async function findUserByUid(uid: string): Promise<PublicUser | null> {
@@ -310,6 +346,9 @@ export async function updateUserByUid(
   if (input.role && !input.roles) {
     existing.role = input.role
     existing.roles = input.role === 'user' ? ['user'] : ['user', input.role]
+    if (existing.requestedRole && (input.role === existing.requestedRole || input.role === 'user')) {
+      existing.requestedRole = undefined
+    }
   }
   if (input.roles) {
     existing.roles = [...new Set(['user' as UserRole, ...input.roles])]

@@ -4,7 +4,9 @@ import { firebaseSignUp } from '../services/firebaseAuth'
 import {
   countUsersByRole,
   deleteUserByUid,
+  listPendingRoleRequests,
   listUsers,
+  reviewRoleRequest,
   updateUserByUid,
   upsertUser,
 } from '../services/userService'
@@ -45,6 +47,32 @@ router.get('/', async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan përdoruesit',
+    })
+  }
+})
+
+router.get('/role-requests', async (_req, res) => {
+  try {
+    const users = await listPendingRoleRequests()
+    return res.json({ users })
+  } catch (err) {
+    return res.status(500).json({
+      message: err instanceof Error ? err.message : 'Nuk u ngarkuan kërkesat',
+    })
+  }
+})
+
+router.post('/:uid/role-request', async (req, res) => {
+  try {
+    const action = req.body?.action as string | undefined
+    if (action !== 'accept' && action !== 'reject') {
+      return res.status(400).json({ message: 'Zgjidh pranim ose refuzim' })
+    }
+    const user = await reviewRoleRequest(String(req.params.uid), action)
+    return res.json({ user })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Shqyrtimi dështoi',
     })
   }
 })

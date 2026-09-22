@@ -48,7 +48,7 @@ export default function StartChatButton({
   }
 
   const roles = user.roles ?? [user.role]
-  const canMessageAsSeeker = roles.includes('user') || roles.includes('admin')
+  const canMessageAsSeeker = !asProvider
   const canMessageAsProvider =
     asProvider && (roles.includes('provider') || roles.includes('company') || roles.includes('admin'))
 

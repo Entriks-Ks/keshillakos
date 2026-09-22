@@ -1,13 +1,13 @@
 import ChangePasswordPanel from './ChangePasswordPanel'
 import ProfilePanel from './ProfilePanel'
-import { ProviderOwnRatings } from './panels'
+import ProviderRatingsPanel from './ProviderRatingsPanel'
 import { useAuth } from '../auth/AuthContext'
 
 export function OwnRatingsPage() {
   const { user } = useAuth()
   if (!user) return null
   return (
-    <ProviderOwnRatings
+    <ProviderRatingsPanel
       providerUid={user.uid}
       audience={user.role === 'company' ? 'company' : 'provider'}
     />

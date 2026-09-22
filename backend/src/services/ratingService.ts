@@ -11,7 +11,7 @@ import { UserRequest } from '../models/UserRequest'
 import { canManageBusiness, listManagedBusinesses } from './businessService'
 import { DEFAULT_PORTAL } from './domainService'
 import { listMyProviderProfiles } from './providerProfileService'
-import { resolvePolicyRules, resolvePolicySnapshot } from './policyService'
+import { DEFAULT_POLICY_RULES, resolvePolicyRules, resolvePolicySnapshot } from './policyService'
 
 export type ProviderRatingStats = { providerUid: string; average: number; count: number; verifiedCount: number }
 export type InteractionChoice = { kind: 'appointment' | 'request_delivery'; id: string; providerId: string }
@@ -97,6 +97,36 @@ export async function createReview(input: {
   return review
 }
 
+let pendingPublicationBackfill: Promise<void> | null = null
+
+/** Publish leftover pending reviews created under the unmoderated fallback policy. */
+function backfillUnmoderatedPendingReviews() {
+  if (!pendingPublicationBackfill) {
+    pendingPublicationBackfill = (async () => {
+      if (DEFAULT_POLICY_RULES.moderation.reviewRequiresApproval) return
+      const pending = await Review.find({
+        'moderation.status': 'pending',
+        'abuse.status': 'clear',
+        $or: [{ policy: { $exists: false } }, { policy: null }],
+      }).limit(200)
+      const subjects = new Map<string, ReviewDoc & { _id: Types.ObjectId }>()
+      for (const review of pending) {
+        review.moderation.status = 'published'
+        review.publishedAt = review.publishedAt || new Date()
+        await review.save()
+        subjects.set(`${review.portal}:${review.subjectType}:${String(review.subjectId)}`, review)
+      }
+      await Promise.all(
+        [...subjects.values()].map((review) => refreshRatingAggregate(review.portal, review.subjectType, review.subjectId)),
+      )
+    })().catch((err) => {
+      pendingPublicationBackfill = null
+      throw err
+    })
+  }
+  return pendingPublicationBackfill
+}
+
 function dimensionEntries(dimensions: ReviewDoc['dimensions'] | Record<string, number>) {
   return dimensions instanceof Map ? [...dimensions.entries()] : Object.entries(dimensions || {})
 }
@@ -169,6 +199,7 @@ function combinedAverage(aggregates: Array<{ average: number; count: number }>) 
 }
 
 export async function getProviderStats(providerUid: string): Promise<ProviderRatingStats> {
+  await backfillUnmoderatedPendingReviews()
   const [profiles, businesses] = await Promise.all([profilesForUid(providerUid), businessesForUid(providerUid)])
   const aggregates = await RatingAggregate.find({
     portal: DEFAULT_PORTAL,
@@ -200,6 +231,7 @@ async function toLegacyRating(review: ReviewDoc & { _id: Types.ObjectId }, provi
 }
 
 export async function listProviderRatings(providerUid: string, limit = 20) {
+  await backfillUnmoderatedPendingReviews()
   const [profiles, businesses] = await Promise.all([profilesForUid(providerUid), businessesForUid(providerUid)])
   const names = new Map([
     ...profiles.map((profile) => [String(profile._id), profile.publicProfile.displayName] as const),
@@ -247,6 +279,47 @@ export async function eligibleInteractions(uid: string, providerId?: string): Pr
   const reviewed = await Review.find({ reviewer: user._id, 'interaction.ref': { $in: choices.map((choice) => new Types.ObjectId(choice.id)) } }).select('interaction.ref').lean()
   const seen = new Set(reviewed.map((review) => String(review.interaction.ref)))
   return choices.filter((choice) => !seen.has(choice.id) && !ownProfileIds.has(choice.providerId))
+}
+
+export type AdminReviewItem = {
+  id: string
+  stars: number
+  text?: string
+  status: 'pending' | 'published' | 'rejected'
+  subjectName: string
+  reviewerName: string
+  createdAt: Date
+}
+
+async function toAdminReview(review: ReviewDoc & { _id: Types.ObjectId }): Promise<AdminReviewItem> {
+  const [reviewer, profile, business] = await Promise.all([
+    User.findById(review.reviewer).select('firstName lastName').lean(),
+    review.subjectType === 'provider'
+      ? ProviderProfile.findById(review.subjectId).select('publicProfile.displayName').lean()
+      : null,
+    review.subjectType === 'business' ? Business.findById(review.subjectId).select('publicName').lean() : null,
+  ])
+  return {
+    id: String(review._id),
+    stars: review.stars,
+    text: review.text,
+    status: review.moderation.status,
+    subjectName: profile?.publicProfile.displayName || business?.publicName || (review.subjectType === 'business' ? 'Kompani' : 'Ofrues'),
+    reviewerName: [reviewer?.firstName, reviewer?.lastName].filter(Boolean).join(' ') || 'Përdorues',
+    createdAt: review.createdAt,
+  }
+}
+
+export async function listModerationQueue() {
+  await backfillUnmoderatedPendingReviews()
+  const [pending, published] = await Promise.all([
+    Review.find({ 'moderation.status': 'pending' }).sort({ createdAt: 1 }).limit(100),
+    Review.find({ 'moderation.status': 'published' }).sort({ publishedAt: -1 }).limit(40),
+  ])
+  return {
+    pending: await Promise.all(pending.map((review) => toAdminReview(review))),
+    published: await Promise.all(published.map((review) => toAdminReview(review))),
+  }
 }
 
 export async function listRateableProviders(uid: string) {

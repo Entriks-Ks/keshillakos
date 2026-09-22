@@ -7,17 +7,17 @@ import { Review } from '../models/Review'
 import { User } from '../models/User'
 import {
   createReview, eligibleInteractions, findMyRating, getProviderStats, isCanonicalReviewSubmission,
-  listProviderRatings, listRateableProviders, moderateReview, respondToReview,
+  listModerationQueue, listProviderRatings, listRateableProviders, moderateReview, respondToReview,
 } from '../services/ratingService'
 
 const router = Router()
 
-router.get('/providers', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.get('/providers', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try { return res.json({ providers: await listRateableProviders(req.user!.uid) }) }
   catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Nuk u ngarkuan ofruesit' }) }
 })
 
-router.get('/eligible/:providerId', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.get('/eligible/:providerId', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const providerId = String(req.params.providerId)
     if (!Types.ObjectId.isValid(providerId)) return res.status(400).json({ message: 'Provider ID i pavlefshëm' })
@@ -25,7 +25,7 @@ router.get('/eligible/:providerId', requireAuth, requireRole('user', 'admin'), a
   } catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Ndërveprimet nuk u ngarkuan' }) }
 })
 
-router.get('/eligible-uid/:providerUid', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.get('/eligible-uid/:providerUid', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const providerUid = String(req.params.providerUid)
     const owner = await User.findOne({ uid: providerUid }).select('_id').lean()
@@ -71,7 +71,7 @@ router.get('/mine/:providerUid', requireAuth, async (req, res) => {
   catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Nuk u ngarkua vlerësimi' }) }
 })
 
-router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.post('/', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const body = req.body as {
       providerId?: string; businessId?: string; interactionKind?: 'appointment' | 'request_delivery'
@@ -91,7 +91,10 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
 })
 
 router.get('/moderation/pending', requireAuth, requireRole('admin'), async (_req, res) => {
-  try { return res.json({ reviews: await Review.find({ 'moderation.status': 'pending' }).sort({ createdAt: 1 }).limit(100) }) }
+  try {
+    const queue = await listModerationQueue()
+    return res.json({ reviews: queue.pending, published: queue.published })
+  }
   catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Vlerësimet nuk u ngarkuan' }) }
 })
 
