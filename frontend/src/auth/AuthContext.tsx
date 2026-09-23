@@ -14,9 +14,11 @@ import {
   loginUser,
   loginWithGoogleToken,
   registerUser,
+  setActiveContext as setActiveContextRequest,
   updateProfile as updateProfileRequest,
   uploadProfilePhoto as uploadProfilePhotoRequest,
   type AuthUser,
+  type DashboardContext,
   type ProfileUpdatePayload,
 } from '../api/auth'
 import { FirebaseError } from 'firebase/app'
@@ -42,6 +44,7 @@ type AuthContextValue = {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthUser>
   uploadProfilePhoto: (file: File) => Promise<AuthUser>
+  switchContext: (context: DashboardContext) => Promise<AuthUser>
   refreshUser: () => Promise<AuthUser>
   logout: () => void
 }
@@ -127,6 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return next
   }, [])
 
+  const switchContext = useCallback(async (context: DashboardContext) => {
+    const next = await setActiveContextRequest(context)
+    setUser(next)
+    return next
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem('token')
     setUser(null)
@@ -143,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       changePassword,
       updateProfile,
       uploadProfilePhoto,
+      switchContext,
       refreshUser,
       logout,
     }),
@@ -155,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       changePassword,
       updateProfile,
       uploadProfilePhoto,
+      switchContext,
       refreshUser,
       logout,
     ],

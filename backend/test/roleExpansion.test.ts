@@ -23,3 +23,18 @@ test('company invitations remain separate from accepted members', async () => {
   assert.equal(business.invitations.length, 1)
   assert.equal(String(business.invitations[0].user), String(expert))
 })
+
+test('rejecting an invitation removes it without creating membership', async () => {
+  const owner = new Types.ObjectId()
+  const expert = new Types.ObjectId()
+  const business = new Business({
+    publicName: 'Agjencia',
+    owners: [owner],
+    members: [],
+    invitations: [{ user: expert, invitedBy: owner, invitedAt: new Date() }],
+  })
+  business.invitations = business.invitations.filter((item) => !item.user.equals(expert))
+  await business.validate()
+  assert.equal(business.invitations.length, 0)
+  assert.equal(business.members.length, 0)
+})

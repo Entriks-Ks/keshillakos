@@ -7,6 +7,7 @@ const auth_1 = require("../middleware/auth");
 const firebaseAuth_1 = require("../services/firebaseAuth");
 const mediaService_1 = require("../services/mediaService");
 const userService_1 = require("../services/userService");
+const profileCompletionService_1 = require("../services/profileCompletionService");
 const router = (0, express_1.Router)();
 const savedLocationInput = zod_1.z.object({
     countryId: zod_1.z.string().refine(mongoose_1.Types.ObjectId.isValid, 'Invalid country ID'),
@@ -19,6 +20,7 @@ function publicUser(user) {
         name: user.name,
         role: user.role,
         roles: user.roles ?? ['user'],
+        activeContext: user.activeContext || 'user',
         requestedRole: user.requestedRole,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -36,6 +38,7 @@ function publicUser(user) {
         skills: user.skills ?? [],
         languages: user.languages ?? [],
         profilePhoto: user.profilePhoto || '',
+        socialLinks: user.socialLinks || {},
     };
 }
 router.post('/register', async (req, res) => {
@@ -171,7 +174,7 @@ router.post('/change-password', auth_1.requireAuth, async (req, res) => {
 });
 router.patch('/me', auth_1.requireAuth, async (req, res) => {
     try {
-        const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages } = req.body;
+        const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, socialLinks } = req.body;
         // Legacy profile clients still send a free-text `location`; only an object updates the saved selection.
         const locationInput = savedLocation !== undefined ? savedLocation : location && typeof location === 'object' ? location : undefined;
         const parsedLocation = locationInput === undefined ? undefined : savedLocationInput.parse(locationInput);
@@ -189,6 +192,7 @@ router.patch('/me', auth_1.requireAuth, async (req, res) => {
             bio,
             skills,
             languages,
+            socialLinks,
             legacyLocation: typeof location === 'string' ? location : undefined,
         });
         if (user.name !== req.user.name) {
@@ -239,8 +243,35 @@ router.post('/request-role', auth_1.requireAuth, async (req, res) => {
         });
     }
 });
+router.patch('/me/context', auth_1.requireAuth, async (req, res) => {
+    try {
+        const context = req.body?.context;
+        if (context !== 'user' && context !== 'provider' && context !== 'company') {
+            return res.status(400).json({ message: 'Konteksti nuk është i vlefshëm' });
+        }
+        const user = await (0, userService_1.setActiveContext)(req.user.uid, context);
+        return res.json({ user: publicUser(user) });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Ndryshimi i kontekstit dështoi',
+        });
+    }
+});
 router.get('/me', auth_1.requireAuth, async (req, res) => {
     return res.json({ user: req.user });
+});
+router.get('/me/profile-completion', auth_1.requireAuth, async (req, res) => {
+    try {
+        const profileType = (0, profileCompletionService_1.parseProfileType)(req.query.type);
+        const completion = await (0, profileCompletionService_1.getProfileCompletion)(req.user.uid, profileType);
+        return res.json({ completion });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Kompletimi i profilit nuk u ngarkua',
+        });
+    }
 });
 exports.default = router;
 //# sourceMappingURL=auth.routes.js.map

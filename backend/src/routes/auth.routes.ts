@@ -18,10 +18,12 @@ import {
 import {
   findUserByUid,
   requestRoleChange,
+  setActiveContext,
   updateOwnProfile,
   updateProfilePhoto,
   upsertUser,
 } from '../services/userService'
+import { getProfileCompletion, parseProfileType } from '../services/profileCompletionService'
 
 const router = Router()
 const savedLocationInput = z.object({
@@ -35,6 +37,7 @@ function publicUser(user: {
   name: string
   role: string
   roles?: string[]
+  activeContext?: string
   requestedRole?: string
   firstName?: string
   lastName?: string
@@ -52,6 +55,7 @@ function publicUser(user: {
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  socialLinks?: import('../models/socialLinks').SocialLinks
 }) {
   return {
     uid: user.uid,
@@ -59,6 +63,7 @@ function publicUser(user: {
     name: user.name,
     role: user.role,
     roles: user.roles ?? ['user'],
+    activeContext: user.activeContext || 'user',
     requestedRole: user.requestedRole,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -76,6 +81,7 @@ function publicUser(user: {
     skills: user.skills ?? [],
     languages: user.languages ?? [],
     profilePhoto: user.profilePhoto || '',
+    socialLinks: user.socialLinks || {},
   }
 }
 
@@ -238,7 +244,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages } = req.body as {
+    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, socialLinks } = req.body as {
       firstName?: string
       lastName?: string
       phone?: string | null
@@ -253,6 +259,7 @@ router.patch('/me', requireAuth, async (req, res) => {
       bio?: string
       skills?: string[]
       languages?: string[]
+      socialLinks?: Record<string, string | undefined> | null
     }
 
     // Legacy profile clients still send a free-text `location`; only an object updates the saved selection.
@@ -273,6 +280,7 @@ router.patch('/me', requireAuth, async (req, res) => {
       bio,
       skills,
       languages,
+      socialLinks,
       legacyLocation: typeof location === 'string' ? location : undefined,
     })
 
@@ -324,8 +332,35 @@ router.post('/request-role', requireAuth, async (req, res) => {
   }
 })
 
+router.patch('/me/context', requireAuth, async (req, res) => {
+  try {
+    const context = req.body?.context as string | undefined
+    if (context !== 'user' && context !== 'provider' && context !== 'company') {
+      return res.status(400).json({ message: 'Konteksti nuk është i vlefshëm' })
+    }
+    const user = await setActiveContext(req.user!.uid, context)
+    return res.json({ user: publicUser(user) })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Ndryshimi i kontekstit dështoi',
+    })
+  }
+})
+
 router.get('/me', requireAuth, async (req, res) => {
   return res.json({ user: req.user })
+})
+
+router.get('/me/profile-completion', requireAuth, async (req, res) => {
+  try {
+    const profileType = parseProfileType(req.query.type)
+    const completion = await getProfileCompletion(req.user!.uid, profileType)
+    return res.json({ completion })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Kompletimi i profilit nuk u ngarkua',
+    })
+  }
 })
 
 export default router

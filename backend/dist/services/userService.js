@@ -4,6 +4,7 @@ exports.effectiveRoles = effectiveRoles;
 exports.toPublicUser = toPublicUser;
 exports.upsertUser = upsertUser;
 exports.grantCapability = grantCapability;
+exports.setActiveContext = setActiveContext;
 exports.requestRoleChange = requestRoleChange;
 exports.listPendingRoleRequests = listPendingRoleRequests;
 exports.reviewRoleRequest = reviewRoleRequest;
@@ -20,6 +21,7 @@ const ProviderProfile_1 = require("../models/ProviderProfile");
 const City_1 = require("../models/City");
 const Country_1 = require("../models/Country");
 const mongoose_1 = require("mongoose");
+const socialLinks_1 = require("../models/socialLinks");
 const roles_1 = require("../types/roles");
 const mediaService_1 = require("./mediaService");
 function effectiveRoles(user) {
@@ -38,12 +40,17 @@ function splitName(name) {
 }
 function toPublicUser(user) {
     const roles = effectiveRoles({ role: user.role ?? 'user', roles: user.roles });
+    const requestedContext = user.activeContext;
+    const activeContext = requestedContext && (requestedContext === 'user' || roles.includes(requestedContext))
+        ? requestedContext
+        : 'user';
     return {
         uid: user.uid,
         email: user.email,
         name: user.name,
-        role: roles.find((role) => role !== 'user') ?? 'user',
+        role: activeContext === 'user' ? (roles.includes('admin') ? 'admin' : 'user') : activeContext,
         roles,
+        activeContext,
         requestedRole: user.requestedRole,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -63,6 +70,7 @@ function toPublicUser(user) {
         skills: user.skills ?? [],
         languages: user.languages ?? [],
         profilePhoto: user.profilePhoto || '',
+        socialLinks: user.socialLinks || {},
         createdAt: user.createdAt ?? new Date(),
         updatedAt: user.updatedAt ?? user.createdAt ?? new Date(),
     };
@@ -96,7 +104,23 @@ async function grantCapability(uid, role) {
     existing.roles = [...new Set(['user', ...(existing.roles?.filter(roles_1.isUserRole) ?? []), role])];
     if (existing.role !== 'admin')
         existing.role = role;
+    existing.activeContext = role;
     existing.requestedRole = undefined;
+    await existing.save();
+    return toPublicUser(existing);
+}
+async function setActiveContext(uid, context) {
+    const existing = await User_1.User.findOne({ uid, accountStatus: 'active' });
+    if (!existing)
+        throw new Error('Llogaria nuk u gjet ose nuk është aktive');
+    const roles = effectiveRoles(existing);
+    if (context !== 'user' && !roles.includes(context)) {
+        throw new Error('Nuk ke këtë kontekst ende. Krijo profilin përkatës.');
+    }
+    existing.activeContext = context;
+    if (existing.role !== 'admin') {
+        existing.role = context === 'user' ? 'user' : context;
+    }
     await existing.save();
     return toPublicUser(existing);
 }
@@ -198,8 +222,13 @@ async function updateOwnProfile(uid, input) {
         // Retain the legacy display name for existing consumers; the profile API uses separate fields.
         existing.name = [existing.firstName, existing.lastName].filter(Boolean).join(' ');
     }
-    if (input.phone !== undefined)
-        existing.phone = cleanOptional(input.phone ?? undefined);
+    if (input.phone !== undefined) {
+        const phone = cleanOptional(input.phone ?? undefined);
+        if (phone && !/^\+[1-9]\d{1,14}$/.test(phone)) {
+            throw new Error('Numri i telefonit duhet të jetë në formatin ndërkombëtar (+383…)');
+        }
+        existing.phone = phone;
+    }
     if (input.locale !== undefined)
         existing.locale = cleanOptional(input.locale);
     if (input.country !== undefined)
@@ -249,8 +278,15 @@ async function updateOwnProfile(uid, input) {
         existing.languages = cleanStringList(input.languages, 12, 40);
     if (input.legacyLocation !== undefined)
         existing.legacyLocation = cleanOptional(input.legacyLocation);
+    if (input.socialLinks !== undefined) {
+        const normalized = (0, socialLinks_1.normalizeSocialLinks)(input.socialLinks);
+        existing.socialLinks = (0, socialLinks_1.applySocialLinks)(existing.socialLinks, normalized || {});
+    }
     await existing.save();
     const publicFields = {};
+    if (input.firstName !== undefined || input.lastName !== undefined) {
+        publicFields['publicProfile.displayName'] = existing.name;
+    }
     if (input.headline !== undefined)
         publicFields['publicProfile.title'] = existing.headline || '';
     if (input.bio !== undefined) {
@@ -260,7 +296,7 @@ async function updateOwnProfile(uid, input) {
     if (input.languages !== undefined)
         publicFields.languages = existing.languages || [];
     if (Object.keys(publicFields).length) {
-        await ProviderProfile_1.ProviderProfile.updateMany({ ownerUser: existing._id }, { $set: publicFields });
+        await ProviderProfile_1.ProviderProfile.updateMany({ ownerUser: existing._id, providerType: 'individual' }, { $set: publicFields });
     }
     return toPublicUser(existing);
 }

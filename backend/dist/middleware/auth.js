@@ -19,6 +19,7 @@ async function requireAuth(req, res, next) {
             name: dbUser?.name || firebaseUser.displayName || 'User',
             role: dbUser?.role ?? 'user',
             roles: dbUser?.roles,
+            activeContext: dbUser?.activeContext,
             requestedRole: dbUser?.requestedRole,
             firstName: dbUser?.firstName,
             lastName: dbUser?.lastName,
@@ -36,6 +37,7 @@ async function requireAuth(req, res, next) {
             skills: dbUser?.skills,
             languages: dbUser?.languages,
             profilePhoto: dbUser?.profilePhoto,
+            socialLinks: dbUser?.socialLinks,
             createdAt: dbUser?.createdAt,
         });
         if (publicUser.accountStatus !== 'active') {
@@ -55,6 +57,7 @@ async function requireAuth(req, res, next) {
             privacy: publicUser.privacy,
             role: publicUser.role,
             roles: publicUser.roles ?? ['user'],
+            activeContext: publicUser.activeContext,
             requestedRole: publicUser.requestedRole,
             accountStatus: publicUser.accountStatus ?? 'active',
             headline: publicUser.headline || '',
@@ -64,6 +67,7 @@ async function requireAuth(req, res, next) {
             skills: publicUser.skills ?? [],
             languages: publicUser.languages ?? [],
             profilePhoto: publicUser.profilePhoto || '',
+            socialLinks: publicUser.socialLinks || {},
         };
         next();
     }

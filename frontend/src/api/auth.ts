@@ -16,6 +16,7 @@ api.interceptors.request.use((config) => {
 })
 
 export type UserRole = 'user' | 'provider' | 'company' | 'admin'
+export type DashboardContext = 'user' | 'provider' | 'company'
 
 export type AuthUser = {
   uid: string
@@ -26,6 +27,7 @@ export type AuthUser = {
   lastName?: string
   role: UserRole
   roles?: UserRole[]
+  activeContext?: DashboardContext
   requestedRole?: UserRole
   headline?: string
   bio?: string
@@ -34,17 +36,20 @@ export type AuthUser = {
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  socialLinks?: import('./socialLinks').SocialLinks
 }
 
 export type ProfileUpdatePayload = {
   firstName?: string
   lastName?: string
+  phone?: string | null
   headline?: string
   bio?: string
   location?: string
   skills?: string[]
   languages?: string[]
   savedLocation?: { countryId: string; cityId: string } | null
+  socialLinks?: import('./socialLinks').SocialLinks | null
 }
 
 type AuthResponse = {
@@ -102,6 +107,11 @@ export async function changePassword(payload: {
 
 export async function requestRoleChange(role: 'provider' | 'company') {
   const { data } = await api.post<{ user: AuthUser }>('/api/auth/request-role', { role })
+  return data.user
+}
+
+export async function setActiveContext(context: DashboardContext) {
+  const { data } = await api.patch<{ user: AuthUser }>('/api/auth/me/context', { context })
   return data.user
 }
 

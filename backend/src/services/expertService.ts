@@ -1,6 +1,6 @@
 import { Expert, type ExpertDoc } from '../models/Expert'
 import { findDomainById } from './domainService'
-import { createBusiness, listManagedBusinesses } from './businessService'
+import { listManagedBusinesses } from './businessService'
 import { createProviderProfile, listMyProviderProfiles, listPublishedProviderProfiles, providerProfilesToLegacyExperts } from './providerProfileService'
 
 export type CreateExpertInput = {
@@ -61,10 +61,10 @@ export async function createExpert(input: CreateExpertInput) {
     throw new Error('Zgjidh Online / Fizikisht / Grup')
   }
 
-  // Compatibility endpoint: create a real Business ID before a managed individual profile.
-  // The account name is only an initial public label, never the canonical identity.
+  // Compatibility endpoint: attach to an existing managed Business — never invent a new company here.
   const businesses = await listManagedBusinesses(input.ownerUid)
-  const business = businesses[0] ?? await createBusiness({ ownerUid: input.ownerUid, publicName: input.ownerName })
+  const business = businesses[0]
+  if (!business) throw new Error('Krijo kompaninë para se të përdorësh këtë endpoint')
   const profile = await createProviderProfile({
     ownerUid: input.ownerUid,
     providerType: 'individual',

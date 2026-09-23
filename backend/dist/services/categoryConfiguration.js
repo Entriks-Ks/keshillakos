@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REMOVED_DETAIL_KEYS = exports.UNIVERSAL_DETAIL_KEYS = void 0;
+exports.REMOVED_FROM_UNIVERSAL_FORM = exports.UNIVERSAL_DETAIL_KEYS = void 0;
 exports.categorySpecificExtensionFields = categorySpecificExtensionFields;
+exports.universalFormExtensionFields = universalFormExtensionFields;
 exports.legacyExtensionFields = legacyExtensionFields;
 exports.validateExtensions = validateExtensions;
 const domains_1 = require("../data/domains");
@@ -18,10 +19,13 @@ exports.UNIVERSAL_DETAIL_KEYS = new Set([
     'priceTo',
     'photos',
 ]);
-/** Removed from the universal form; never required via category extension fields. */
-exports.REMOVED_DETAIL_KEYS = new Set(['languageFrom', 'languageTo', 'certifiedTranslation']);
+/** Hidden on the universal service form even if present on a domain category. */
+exports.REMOVED_FROM_UNIVERSAL_FORM = new Set(['languageFrom', 'languageTo', 'certifiedTranslation']);
 function categorySpecificExtensionFields(fields = []) {
-    return fields.filter((field) => !exports.UNIVERSAL_DETAIL_KEYS.has(field.key) && !exports.REMOVED_DETAIL_KEYS.has(field.key));
+    return fields.filter((field) => !exports.UNIVERSAL_DETAIL_KEYS.has(field.key));
+}
+function universalFormExtensionFields(fields = []) {
+    return categorySpecificExtensionFields(fields).filter((field) => !exports.REMOVED_FROM_UNIVERSAL_FORM.has(field.key));
 }
 // One-time import mapping for historical KeshillaKos rules. Runtime validation reads Category.extensionFields.
 function legacyExtensionFields(requirements) {
@@ -63,13 +67,16 @@ function legacyExtensionFields(requirements) {
     return fields;
 }
 function validateExtensions(fields, raw = {}) {
-    const specificFields = categorySpecificExtensionFields(fields);
-    const allowed = new Set(specificFields.map((field) => field.key));
-    const passthrough = Object.fromEntries(Object.entries(raw).filter(([key]) => exports.UNIVERSAL_DETAIL_KEYS.has(key) && !exports.REMOVED_DETAIL_KEYS.has(key)));
-    const specificRaw = Object.fromEntries(Object.entries(raw).filter(([key]) => allowed.has(key)));
-    const value = { ...specificRaw };
+    const allowed = new Set(fields.map((field) => field.key));
+    for (const key of Object.keys(raw)) {
+        if (!allowed.has(key) && !exports.UNIVERSAL_DETAIL_KEYS.has(key)) {
+            throw new Error(`Unsupported category field: ${key}`);
+        }
+    }
+    const passthrough = Object.fromEntries(Object.entries(raw).filter(([key]) => exports.UNIVERSAL_DETAIL_KEYS.has(key) && !allowed.has(key)));
+    const value = { ...Object.fromEntries(Object.entries(raw).filter(([key]) => allowed.has(key))) };
     const groups = new Map();
-    for (const field of specificFields) {
+    for (const field of fields) {
         let entry = value[field.key];
         if (entry === undefined && field.defaultValue !== undefined)
             entry = field.defaultValue;

@@ -17,6 +17,7 @@ export type AuthUser = {
   privacy?: import('../models/User').UserDoc['privacy']
   role: UserRole
   roles: UserRole[]
+  activeContext?: 'user' | 'provider' | 'company'
   requestedRole?: UserRole
   accountStatus: 'active' | 'suspended' | 'closed'
   headline: string
@@ -26,6 +27,7 @@ export type AuthUser = {
   skills: string[]
   languages: string[]
   profilePhoto: string
+  socialLinks?: import('../models/socialLinks').SocialLinks
 }
 
 declare global {
@@ -52,6 +54,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       name: dbUser?.name || firebaseUser.displayName || 'User',
       role: dbUser?.role ?? 'user',
       roles: dbUser?.roles,
+      activeContext: dbUser?.activeContext,
       requestedRole: dbUser?.requestedRole,
       firstName: dbUser?.firstName,
       lastName: dbUser?.lastName,
@@ -69,6 +72,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       skills: dbUser?.skills,
       languages: dbUser?.languages,
       profilePhoto: dbUser?.profilePhoto,
+      socialLinks: dbUser?.socialLinks,
       createdAt: dbUser?.createdAt,
     })
 
@@ -90,6 +94,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       privacy: publicUser.privacy,
       role: publicUser.role,
       roles: publicUser.roles ?? ['user'],
+      activeContext: publicUser.activeContext,
       requestedRole: publicUser.requestedRole,
       accountStatus: publicUser.accountStatus ?? 'active',
       headline: publicUser.headline || '',
@@ -99,6 +104,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       skills: publicUser.skills ?? [],
       languages: publicUser.languages ?? [],
       profilePhoto: publicUser.profilePhoto || '',
+      socialLinks: publicUser.socialLinks || {},
     }
 
     next()

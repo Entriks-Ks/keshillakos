@@ -16,7 +16,6 @@ import {
 import { fetchAdminUsersMeta } from '../api/adminUsers'
 import { fetchMyAvailability } from '../api/availability'
 import { fetchConversations } from '../api/chat'
-import { fetchMyExperts } from '../api/experts'
 import { fetchBusinessTeam, fetchMyBusinesses } from '../api/onboarding'
 import { fetchProviderRatings } from '../api/ratings'
 import {
@@ -436,10 +435,9 @@ export function CompanyOverviewPage() {
     setLoading(true)
 
     async function load() {
-      const [inbox, conversations, experts, slots, businesses] = await Promise.all([
+      const [inbox, conversations, slots, businesses] = await Promise.all([
         fetchRequestInbox(),
         fetchConversations(),
-        fetchMyExperts().catch(() => []),
         fetchMyAvailability().catch(() => []),
         fetchMyBusinesses().catch(() => []),
       ])
@@ -452,10 +450,8 @@ export function CompanyOverviewPage() {
           members = team.members.length
           invitations = team.invitations.length
         } catch {
-          members = experts.length
+          members = 0
         }
-      } else {
-        members = experts.length
       }
 
       if (cancelled) return

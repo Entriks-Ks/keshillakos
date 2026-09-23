@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.servicePhotoUpload = exports.profilePhotoUpload = exports.MAX_SERVICE_PHOTOS = exports.MAX_IMAGE_BYTES = exports.UPLOADS_ROOT = void 0;
+exports.certificationDocumentUpload = exports.servicePhotoUpload = exports.profilePhotoUpload = exports.MAX_SERVICE_PHOTOS = exports.MAX_DOCUMENT_BYTES = exports.MAX_IMAGE_BYTES = exports.UPLOADS_ROOT = void 0;
 exports.toPublicUploadPath = toPublicUploadPath;
 exports.normalizeUploadPath = normalizeUploadPath;
 exports.sanitizeUploadPaths = sanitizeUploadPaths;
@@ -12,13 +12,16 @@ exports.deleteUploads = deleteUploads;
 exports.deleteRemovedUploads = deleteRemovedUploads;
 exports.uploadErrorMessage = uploadErrorMessage;
 exports.withImageUpload = withImageUpload;
+exports.withDocumentUpload = withDocumentUpload;
 exports.requireUploadedImage = requireUploadedImage;
+exports.requireUploadedFile = requireUploadedFile;
 const crypto_1 = __importDefault(require("crypto"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const multer_1 = __importDefault(require("multer"));
 exports.UPLOADS_ROOT = path_1.default.resolve(process.cwd(), 'uploads');
 exports.MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+exports.MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 exports.MAX_SERVICE_PHOTOS = 8;
 const ALLOWED_MIME_TO_EXT = {
     'image/jpeg': '.jpg',
@@ -26,7 +29,12 @@ const ALLOWED_MIME_TO_EXT = {
     'image/webp': '.webp',
     'image/gif': '.gif',
 };
+const ALLOWED_DOCUMENT_MIME_TO_EXT = {
+    ...ALLOWED_MIME_TO_EXT,
+    'application/pdf': '.pdf',
+};
 const ALLOWED_EXTENSIONS = new Set(Object.values(ALLOWED_MIME_TO_EXT));
+const ALLOWED_DOCUMENT_EXTENSIONS = new Set(Object.values(ALLOWED_DOCUMENT_MIME_TO_EXT));
 function ensureDir(dir) {
     fs_1.default.mkdirSync(dir, { recursive: true });
 }
@@ -34,16 +42,18 @@ function safeToken(value, fallback = 'file') {
     const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
     return cleaned || fallback;
 }
-function extensionFor(file) {
-    const fromMime = ALLOWED_MIME_TO_EXT[file.mimetype];
+function extensionFor(file, document = false) {
+    const map = document ? ALLOWED_DOCUMENT_MIME_TO_EXT : ALLOWED_MIME_TO_EXT;
+    const fromMime = map[file.mimetype];
     if (fromMime)
         return fromMime;
     const fromName = path_1.default.extname(file.originalname).toLowerCase();
     if (fromName === '.jpeg')
         return '.jpg';
-    if (ALLOWED_EXTENSIONS.has(fromName))
+    const allowed = document ? ALLOWED_DOCUMENT_EXTENSIONS : ALLOWED_EXTENSIONS;
+    if (allowed.has(fromName))
         return fromName;
-    return '.jpg';
+    return document ? '.pdf' : '.jpg';
 }
 function isSafeFilename(filename) {
     return Boolean(filename)
@@ -63,7 +73,7 @@ function normalizeUploadPath(value) {
     if (typeof value !== 'string')
         return null;
     const trimmed = value.trim();
-    const match = trimmed.match(/^\/uploads\/(profiles|services)\/([^/\\]+)$/);
+    const match = trimmed.match(/^\/uploads\/(profiles|services|documents)\/([^/\\]+)$/);
     if (!match)
         return null;
     const [, kind, filename] = match;
@@ -117,15 +127,20 @@ async function deleteRemovedUploads(previous, next) {
 }
 function uploadErrorMessage(err, fallback = 'Ngarkimi i fotos dështoi') {
     if (err instanceof multer_1.default.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-        return 'Fotoja duhet të jetë më e vogël se 2MB';
+        return fallback.includes('dokument')
+            ? 'Dokumenti duhet të jetë më i vogël se 5MB'
+            : 'Fotoja duhet të jetë më e vogël se 2MB';
     }
     if (err instanceof Error && err.message)
         return err.message;
     return fallback;
 }
-function createDiskUpload(kind, filename) {
+function createDiskUpload(kind, filename, options) {
     const destination = path_1.default.join(exports.UPLOADS_ROOT, kind);
     ensureDir(destination);
+    const documents = Boolean(options?.documents);
+    const maxBytes = options?.maxBytes ?? exports.MAX_IMAGE_BYTES;
+    const mimeMap = documents ? ALLOWED_DOCUMENT_MIME_TO_EXT : ALLOWED_MIME_TO_EXT;
     return (0, multer_1.default)({
         storage: multer_1.default.diskStorage({
             destination: (_req, _file, cb) => cb(null, destination),
@@ -141,10 +156,12 @@ function createDiskUpload(kind, filename) {
                 }
             },
         }),
-        limits: { fileSize: exports.MAX_IMAGE_BYTES },
+        limits: { fileSize: maxBytes },
         fileFilter: (_req, file, cb) => {
-            if (!ALLOWED_MIME_TO_EXT[file.mimetype]) {
-                cb(new Error('Ngarko vetëm foto (JPG, PNG, WEBP, GIF)'));
+            if (!mimeMap[file.mimetype]) {
+                cb(new Error(documents
+                    ? 'Ngarko vetëm PDF ose foto (JPG, PNG, WEBP, GIF)'
+                    : 'Ngarko vetëm foto (JPG, PNG, WEBP, GIF)'));
                 return;
             }
             cb(null, true);
@@ -161,6 +178,11 @@ exports.servicePhotoUpload = createDiskUpload('services', (req, file) => {
     const id = crypto_1.default.randomBytes(8).toString('hex');
     return `${uid}-${Date.now()}-${id}${extensionFor(file)}`;
 });
+exports.certificationDocumentUpload = createDiskUpload('documents', (req, file) => {
+    const uid = safeToken(req.user?.uid || 'user');
+    const id = crypto_1.default.randomBytes(8).toString('hex');
+    return `${uid}-${Date.now()}-${id}${extensionFor(file, true)}`;
+}, { maxBytes: exports.MAX_DOCUMENT_BYTES, documents: true });
 /** Express middleware: run a single-file image upload and map multer errors to 400. */
 function withImageUpload(uploader, field = 'photo') {
     return (req, res, next) => {
@@ -172,7 +194,22 @@ function withImageUpload(uploader, field = 'photo') {
         });
     };
 }
+function withDocumentUpload(uploader, field = 'document') {
+    return (req, res, next) => {
+        uploader.single(field)(req, res, (err) => {
+            if (err) {
+                return res.status(400).json({ message: uploadErrorMessage(err, 'Ngarkimi i dokumentit dështoi') });
+            }
+            return next();
+        });
+    };
+}
 function requireUploadedImage(req, missingMessage) {
+    if (!req.file)
+        throw new Error(missingMessage);
+    return req.file;
+}
+function requireUploadedFile(req, missingMessage) {
     if (!req.file)
         throw new Error(missingMessage);
     return req.file;

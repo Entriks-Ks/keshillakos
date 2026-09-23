@@ -1,6 +1,6 @@
 import { Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { AuthProvider } from './auth/AuthContext'
+import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
 import DashboardShell from './dashboard/DashboardShell'
 import AdminUsersPanel from './dashboard/AdminUsersPanel'
@@ -30,9 +30,28 @@ import HomePage from './pages/HomePage'
 import LegalPage from './pages/LegalPage'
 import LoginPage from './pages/LoginPage'
 import OffersPage from './pages/OffersPage'
+import { CompanyOnboardingPage, ExpertOnboardingPage } from './dashboard/OnboardingPages'
 import RegisterPage from './pages/RegisterPage'
 import ServiceDetailPage from './pages/ServiceDetailPage'
 import ProviderProfilePage from './pages/ProviderProfilePage'
+
+function CompanyOnboardingRedirect() {
+  const { user } = useAuth()
+  const roles = user?.roles ?? (user?.role ? [user.role] : [])
+  if (roles.includes('company')) {
+    return <Navigate to="/dashboard/company/create" replace />
+  }
+  return <Navigate to="/dashboard/user/create-company" replace />
+}
+
+function ExpertOnboardingRedirect() {
+  const { user } = useAuth()
+  const roles = user?.roles ?? (user?.role ? [user.role] : [])
+  if (roles.includes('provider')) {
+    return <Navigate to="/dashboard/provider/create" replace />
+  }
+  return <Navigate to="/dashboard/user/become-expert" replace />
+}
 
 export default function App() {
   return (
@@ -62,6 +81,8 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardRedirect />} />
+            <Route path="/dashboard/onboarding/expert" element={<ExpertOnboardingRedirect />} />
+            <Route path="/dashboard/onboarding/company" element={<CompanyOnboardingRedirect />} />
           </Route>
 
           <Route element={<RoleRoute roles={['user']} />}>
@@ -71,6 +92,8 @@ export default function App() {
               <Route path="messages" element={<MessagesPage />} />
               <Route path="ratings" element={<Navigate to="/dashboard/user/requests" replace />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="become-expert" element={<ExpertOnboardingPage />} />
+              <Route path="create-company" element={<CompanyOnboardingPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>
@@ -85,6 +108,7 @@ export default function App() {
               <Route path="availability" element={<AvailabilityPanel />} />
               <Route path="ratings" element={<OwnRatingsPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="create" element={<ExpertOnboardingPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>
@@ -99,6 +123,7 @@ export default function App() {
               <Route path="availability" element={<AvailabilityPanel />} />
               <Route path="ratings" element={<OwnRatingsPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="create" element={<CompanyOnboardingPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

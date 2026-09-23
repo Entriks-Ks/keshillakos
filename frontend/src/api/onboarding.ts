@@ -1,5 +1,6 @@
 import api, { type AuthUser } from './auth'
 import type { SavedLocationIds } from './locations'
+import type { BusinessProfile } from './businesses'
 
 export async function becomeExpert(payload: {
   displayName: string
@@ -16,18 +17,60 @@ export async function becomeExpert(payload: {
   return data.user
 }
 
-export async function createCompany(payload: { publicName: string; legalName?: string }) {
-  const { data } = await api.post<{ user: AuthUser }>('/api/onboarding/company', payload)
-  return data.user
+export type CreateCompanyPayload = {
+  publicName: string
+  contactEmail: string
+  contactPhone: string
+  description: string
+  categoryIds: string[]
+  location: SavedLocationIds
+  website?: string
+  logoUrl?: string
+  legalName?: string
+  address?: string
 }
 
-export type BusinessSummary = { _id: string; publicName: string }
-export type TeamPerson = { id: string; name: string; email: string }
+export async function fetchOwnedCompany(signal?: AbortSignal) {
+  const { data } = await api.get<{ business: BusinessProfile | null }>('/api/onboarding/company', { signal })
+  return data.business
+}
+
+export async function createCompany(payload: CreateCompanyPayload) {
+  const { data } = await api.post<{ user: AuthUser; business: BusinessProfile }>('/api/onboarding/company', payload)
+  return data
+}
+
+export type BusinessSummary = { _id: string; publicName: string; status?: string }
+
+export type TeamPerson = {
+  id: string
+  uid: string
+  name: string
+  email: string
+  headline?: string
+  photoUrl?: string
+  categories?: string[]
+  languages?: string[]
+  profileStatus?: string | null
+}
+
+export type TeamInvitation = TeamPerson & {
+  invitedAt: string
+  status: 'pending'
+}
+
 export type BusinessTeam = {
   business: { id: string; publicName: string }
   owners: TeamPerson[]
   members: Array<TeamPerson & { role: 'manager' | 'member' }>
-  invitations: Array<TeamPerson & { invitedAt: string }>
+  invitations: TeamInvitation[]
+}
+
+export type MyBusinessInvitation = {
+  id: string
+  publicName: string
+  invitedAt: string | null
+  status: 'pending'
 }
 
 export async function fetchMyBusinesses() {
@@ -45,16 +88,27 @@ export async function inviteExpert(id: string, email: string) {
   return data.team
 }
 
+export async function cancelInvitation(id: string, userId: string) {
+  const { data } = await api.delete<{ team: BusinessTeam }>(
+    `/api/businesses/${id}/invitations/${encodeURIComponent(userId)}`,
+  )
+  return data.team
+}
+
 export async function removeExpert(id: string, userId: string) {
   const { data } = await api.delete<{ team: BusinessTeam }>(`/api/businesses/${id}/members/${userId}`)
   return data.team
 }
 
 export async function fetchMyInvitations() {
-  const { data } = await api.get<{ invitations: Array<{ id: string; publicName: string }> }>('/api/businesses/invitations/mine')
+  const { data } = await api.get<{ invitations: MyBusinessInvitation[] }>('/api/businesses/invitations/mine')
   return data.invitations
 }
 
 export async function acceptInvitation(id: string) {
   await api.post(`/api/businesses/${id}/invitations/accept`)
+}
+
+export async function rejectInvitation(id: string) {
+  await api.post(`/api/businesses/${id}/invitations/reject`)
 }

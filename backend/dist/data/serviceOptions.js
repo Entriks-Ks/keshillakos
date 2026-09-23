@@ -21,12 +21,17 @@ exports.SERVICE_OPTIONS_SEED = [
     { group: 'offer-type', slug: 'project', name: { sq: 'Projekt', en: 'Project' }, order: 2 },
     { group: 'offer-type', slug: 'service', name: { sq: 'Shërbim i thjeshtë', en: 'Simple service' }, order: 3 },
     { group: 'availability', slug: 'request', name: { sq: 'Me kërkesë', en: 'On request' }, order: 1 },
-    { group: 'availability', slug: 'by_arrangement', name: { sq: 'Me marrëveshje', en: 'By arrangement' }, order: 2 },
+    { group: 'availability', slug: 'by-arrangement', name: { sq: 'Me marrëveshje', en: 'By arrangement' }, order: 2 },
     { group: 'availability', slug: 'slots', name: { sq: 'Orare fikse', en: 'Fixed slots' }, order: 3 },
 ];
 /** Stored form/API value: languages keep Albanian labels for legacy data; other groups use slug. */
 function serviceOptionValue(option) {
-    return option.group === 'language' ? option.name.sq : option.slug;
+    if (option.group === 'language')
+        return option.name.sq;
+    // ServiceOffer availability enums use underscores; catalog slugs stay hyphenated.
+    if (option.group === 'availability')
+        return option.slug.replace(/-/g, '_');
+    return option.slug;
 }
 function serviceOptionValues(group) {
     return exports.SERVICE_OPTIONS_SEED.filter((item) => item.group === group).map(serviceOptionValue);

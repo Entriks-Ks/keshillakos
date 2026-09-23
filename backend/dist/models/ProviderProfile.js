@@ -36,6 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProviderProfile = exports.providerProfileSchema = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const location_1 = require("./location");
+const providerCareer_1 = require("./providerCareer");
+const socialLinks_1 = require("./socialLinks");
 const verificationStates = ['unverified', 'pending', 'verified', 'rejected'];
 const baseLocationSchema = new mongoose_1.Schema({
     countryId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Country', required: true },
@@ -46,12 +48,20 @@ exports.providerProfileSchema = new mongoose_1.Schema({
     ownerUser: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
     business: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Business', required: function () { return this.providerType === 'business'; } },
     categories: { type: [{ type: String, trim: true }], required: true, validate: [(value) => value.length > 0 && value.every(Boolean), 'At least one category is required'] },
+    subcategoryIds: { type: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Subcategory' }], default: [] },
     languages: { type: [{ type: String, trim: true }], default: [] },
     locations: { type: [location_1.locationSchema], default: [] },
     serviceAreas: { type: [location_1.locationSchema], default: [] },
     location: { type: baseLocationSchema, default: undefined },
     serviceAreaCityIds: { type: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'City' }], default: [] },
     modes: { type: [{ type: String, enum: ['online', 'on_site'] }], default: [] },
+    yearsOfExperience: { type: Number, min: 0, max: 60 },
+    experience: { type: String, trim: true, maxlength: 2000 },
+    specializations: { type: [{ type: String, trim: true }], default: undefined },
+    socialLinks: { type: (0, socialLinks_1.socialLinksSchemaDefinition)(), default: undefined },
+    workExperience: { type: [new mongoose_1.Schema(providerCareer_1.workExperienceEntrySchema, { _id: false })], default: [] },
+    education: { type: [new mongoose_1.Schema(providerCareer_1.educationEntrySchema, { _id: false })], default: [] },
+    certifications: { type: [new mongoose_1.Schema(providerCareer_1.certificationEntrySchema, { _id: false })], default: [] },
     publicProfile: {
         displayName: { type: String, required: true, trim: true, minlength: 1, maxlength: 160 },
         title: { type: String, trim: true, maxlength: 160 },
@@ -84,12 +94,16 @@ exports.providerProfileSchema.pre('validate', function () {
     }
     if (new Set(this.serviceAreaCityIds.map(String)).size !== this.serviceAreaCityIds.length)
         this.invalidate('serviceAreaCityIds', 'Duplicate service-area cities');
+    if (new Set(this.subcategoryIds.map(String)).size !== this.subcategoryIds.length)
+        this.invalidate('subcategoryIds', 'Duplicate subcategories');
 });
 exports.providerProfileSchema.index({ ownerUser: 1, status: 1 });
 exports.providerProfileSchema.index({ business: 1, status: 1 });
 exports.providerProfileSchema.index({ categories: 1, status: 1 });
 exports.providerProfileSchema.index({ status: 1, 'moderation.status': 1, updatedAt: -1 });
 exports.providerProfileSchema.index({ business: 1, providerType: 1 }, { unique: true, partialFilterExpression: { providerType: 'business' } });
+/** One individual expert profile per user (Company-linked business profiles are separate). */
+exports.providerProfileSchema.index({ ownerUser: 1 }, { unique: true, partialFilterExpression: { providerType: 'individual', business: { $exists: false } } });
 exports.providerProfileSchema.index({ 'location.countryId': 1, 'location.cityId': 1, status: 1 });
 exports.providerProfileSchema.index({ serviceAreaCityIds: 1, status: 1 });
 exports.ProviderProfile = mongoose_1.default.model('ProviderProfile', exports.providerProfileSchema);

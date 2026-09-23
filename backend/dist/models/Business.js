@@ -36,10 +36,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Business = exports.businessSchema = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const location_1 = require("./location");
+const socialLinks_1 = require("./socialLinks");
+const businessLocationSchema = new mongoose_1.Schema({
+    countryId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Country', required: true },
+    cityId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'City', required: true },
+}, { _id: false });
 exports.businessSchema = new mongoose_1.Schema({
     publicName: { type: String, required: true, trim: true, minlength: 1, maxlength: 160 },
     legalName: { type: String, trim: true, maxlength: 200 },
     logoUrl: { type: String, trim: true, maxlength: 500 },
+    description: { type: String, trim: true, maxlength: 3000 },
+    website: { type: String, trim: true, maxlength: 500 },
+    contactEmail: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        maxlength: 160,
+        validate: {
+            validator: (value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+            message: 'Invalid email',
+        },
+    },
+    contactPhone: {
+        type: String,
+        trim: true,
+        maxlength: 32,
+        validate: {
+            validator: (value) => !value || /^\+[1-9]\d{1,14}$/.test(value),
+            message: 'Invalid phone',
+        },
+    },
+    categoryIds: { type: [{ type: String, trim: true }], default: [] },
+    location: { type: businessLocationSchema, default: undefined },
+    socialLinks: { type: (0, socialLinks_1.socialLinksSchemaDefinition)(), default: undefined },
     owners: { type: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true }], required: true, validate: [(value) => value.length > 0 && new Set(value.map(String)).size === value.length, 'At least one distinct owner is required'] },
     members: {
         type: [{ user: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true }, role: { type: String, enum: ['manager', 'member'], required: true } }],

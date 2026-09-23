@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = exports.userSchema = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const roles_1 = require("../types/roles");
+const socialLinks_1 = require("./socialLinks");
 const optionalText = (max) => ({
     type: String,
     trim: true,
@@ -61,6 +62,7 @@ exports.userSchema = new mongoose_1.Schema({
     city: optionalText(120),
     role: { type: String, enum: roles_1.ROLES, required: true, default: 'user' },
     roles: { type: [{ type: String, enum: roles_1.ROLES }], default: undefined },
+    activeContext: { type: String, enum: ['user', 'provider', 'company'], default: 'user' },
     requestedRole: { type: String, enum: roles_1.ROLES },
     verification: {
         email: { type: Boolean, default: false },
@@ -80,6 +82,7 @@ exports.userSchema = new mongoose_1.Schema({
     skills: { type: [String], default: undefined },
     languages: { type: [String], default: undefined },
     profilePhoto: String,
+    socialLinks: { type: (0, socialLinks_1.socialLinksSchemaDefinition)(), default: undefined },
 }, { timestamps: true });
 exports.userSchema.pre('init', (raw) => {
     if (typeof raw.location === 'string') {

@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import type { UserRole } from '../api/auth'
 import { useAuth } from './AuthContext'
-import { getDashboardPath } from '../utils/dashboardPath'
+import { getDashboardPath, resolveActiveContext } from '../utils/dashboardPath'
 
 export function ProtectedRoute() {
   const { user, loading } = useAuth()
@@ -32,7 +32,7 @@ export function RoleRoute({ roles }: { roles: UserRole[] }) {
   if (!user) return <Navigate to="/login" replace />
   const userRoles = user.roles ?? ['user']
   if (!roles.some((role) => userRoles.includes(role))) {
-    return <Navigate to={getDashboardPath(user.role)} replace />
+    return <Navigate to={getDashboardPath(resolveActiveContext(user))} replace />
   }
   return <Outlet />
 }
@@ -48,6 +48,6 @@ export function PublicOnlyRoute() {
     )
   }
 
-  if (user) return <Navigate to={getDashboardPath(user.role)} replace />
+  if (user) return <Navigate to={getDashboardPath(resolveActiveContext(user))} replace />
   return <Outlet />
 }

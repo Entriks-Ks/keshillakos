@@ -43,10 +43,11 @@ async function createExpert(input) {
     if (domain.requirements.includes('delivery_mode') && !input.deliveryModes?.length) {
         throw new Error('Zgjidh Online / Fizikisht / Grup');
     }
-    // Compatibility endpoint: create a real Business ID before a managed individual profile.
-    // The account name is only an initial public label, never the canonical identity.
+    // Compatibility endpoint: attach to an existing managed Business — never invent a new company here.
     const businesses = await (0, businessService_1.listManagedBusinesses)(input.ownerUid);
-    const business = businesses[0] ?? await (0, businessService_1.createBusiness)({ ownerUid: input.ownerUid, publicName: input.ownerName });
+    const business = businesses[0];
+    if (!business)
+        throw new Error('Krijo kompaninë para se të përdorësh këtë endpoint');
     const profile = await (0, providerProfileService_1.createProviderProfile)({
         ownerUid: input.ownerUid,
         providerType: 'individual',

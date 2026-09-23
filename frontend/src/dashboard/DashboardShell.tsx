@@ -1,8 +1,12 @@
 import { useEffect, useId, useState } from 'react'
-import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { toast } from '@heroui/react'
 import { Home, LogOut, MoreHorizontal, X } from 'lucide-react'
+import type { DashboardContext } from '../api/auth'
 import { mediaUrl } from '../api/media'
 import { useAuth } from '../auth/AuthContext'
+import { getErrorMessage } from '../utils/errors'
+import { getDashboardPath, resolveActiveContext } from '../utils/dashboardPath'
 import {
   getDashboardNav,
   getMobilePrimaryNav,
@@ -14,9 +18,11 @@ import {
 } from './nav'
 
 export default function DashboardShell() {
-  const { user, logout } = useAuth()
+  const { user, logout, switchContext } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [switching, setSwitching] = useState(false)
   const moreTitleId = useId()
 
   useEffect(() => {
@@ -34,7 +40,9 @@ export default function DashboardShell() {
 
   if (!user) return null
 
-  const nav = getDashboardNav(user.role)
+  const context = resolveActiveContext(user)
+  const shellRole = context === 'admin' ? 'admin' : context
+  const nav = getDashboardNav(shellRole)
   const { main, manage, account } = groupDashboardNav(nav)
   const mobilePrimary = getMobilePrimaryNav(nav)
   const mobileMore = nav.filter((item) => !mobilePrimary.some((p) => p.to === item.to))
@@ -45,8 +53,28 @@ export default function DashboardShell() {
   )
   const pageTitle = active?.label ?? 'Dashboard'
   const photo = mediaUrl(user.profilePhoto)
-  const profileTo = `/dashboard/${user.role}/profile`
+  const profileTo = `/dashboard/${shellRole === 'admin' ? 'admin' : shellRole}/profile`
   const isOverview = Boolean(active?.end && active.to.startsWith('/dashboard'))
+  const roles = user.roles ?? [user.role]
+  const showContextSwitch = roles.includes('provider') || roles.includes('company')
+  const contextOptions: Array<{ context: DashboardContext; label: string; available: boolean }> = [
+    { context: 'user', label: 'Përdorues privat', available: true },
+    { context: 'provider', label: 'Ekspert', available: roles.includes('provider') },
+    { context: 'company', label: 'Kompani', available: roles.includes('company') },
+  ]
+
+  async function onSwitchContext(next: DashboardContext) {
+    if (next === context || switching) return
+    setSwitching(true)
+    try {
+      await switchContext(next)
+      navigate(getDashboardPath(next), { replace: true })
+    } catch (err) {
+      toast.danger(getErrorMessage(err))
+    } finally {
+      setSwitching(false)
+    }
+  }
 
   function isItemActive(item: DashNavItem) {
     if (item.end) return location.pathname === item.to
@@ -80,8 +108,25 @@ export default function DashboardShell() {
           <Link to="/" className="brand brand-link dash-brand">
             KëshillaKos
           </Link>
-          <span className="dash-role-badge">{ROLE_LABELS[user.role]}</span>
+          <span className="dash-role-badge">{ROLE_LABELS[shellRole]}</span>
         </div>
+
+        {showContextSwitch ? (
+          <label className="dash-context-switch">
+            <span>Konteksti</span>
+            <select
+              value={context === 'admin' ? 'user' : context}
+              disabled={switching}
+              onChange={(e) => void onSwitchContext(e.target.value as DashboardContext)}
+            >
+              {contextOptions.map((item) => (
+                <option key={item.context} value={item.context} disabled={!item.available}>
+                  {item.label}{item.available ? '' : ' (krijo)'}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <nav className="dash-nav" aria-label="Navigimi i dashboard">
           <div className="dash-nav-group">
@@ -130,9 +175,9 @@ export default function DashboardShell() {
       <div className="dash-body">
         <header className={`dash-topbar${isOverview ? ' is-overview' : ''}`}>
           <div className="dash-topbar-title">
-            <p className="dashboard-kicker">{ROLE_LABELS[user.role]}</p>
+            <p className="dashboard-kicker">{ROLE_LABELS[shellRole]}</p>
             <h1>{pageTitle}</h1>
-            {!isOverview ? <p className="dash-topbar-hint">{ROLE_HINTS[user.role]}</p> : null}
+            {!isOverview ? <p className="dash-topbar-hint">{ROLE_HINTS[shellRole]}</p> : null}
           </div>
           <div className="dash-topbar-actions">
             <Link to={profileTo} className="dash-topbar-user" title="Profili">
@@ -193,7 +238,7 @@ export default function DashboardShell() {
           >
             <div className="dash-more-head">
               <div>
-                <p className="dashboard-kicker">{ROLE_LABELS[user.role]}</p>
+                <p className="dashboard-kicker">{ROLE_LABELS[shellRole]}</p>
                 <h2 id={moreTitleId}>Menu e plotë</h2>
               </div>
               <button

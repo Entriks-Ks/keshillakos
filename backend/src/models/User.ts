@@ -1,5 +1,6 @@
 import mongoose, { Schema, Types } from 'mongoose'
 import { ROLES, type UserRole } from '../types/roles'
+import { socialLinksSchemaDefinition, type SocialLinks } from './socialLinks'
 
 export type UserDoc = {
   uid: string // Firebase Authentication identity; never a password store.
@@ -13,7 +14,9 @@ export type UserDoc = {
   city?: string
   role: UserRole // Legacy UI label; never an authorization grant.
   roles?: UserRole[] // Server/admin-granted capabilities.
-  requestedRole?: UserRole // Untrusted registration preference.
+  /** Which dashboard context the user is currently working in (persisted). */
+  activeContext?: 'user' | 'provider' | 'company'
+  requestedRole?: UserRole // Legacy; no longer used for normal Expert/Company creation.
   verification?: { email: boolean; phone: boolean; identity: boolean }
   privacy?: { profileVisibility: 'public' | 'private'; marketingConsent: boolean }
   accountStatus?: 'active' | 'suspended' | 'closed'
@@ -25,6 +28,7 @@ export type UserDoc = {
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  socialLinks?: SocialLinks
   createdAt: Date
   updatedAt: Date
 }
@@ -57,6 +61,7 @@ export const userSchema = new Schema<UserDoc>(
     city: optionalText(120),
     role: { type: String, enum: ROLES, required: true, default: 'user' },
     roles: { type: [{ type: String, enum: ROLES }], default: undefined },
+    activeContext: { type: String, enum: ['user', 'provider', 'company'], default: 'user' },
     requestedRole: { type: String, enum: ROLES },
     verification: {
       email: { type: Boolean, default: false },
@@ -76,6 +81,7 @@ export const userSchema = new Schema<UserDoc>(
     skills: { type: [String], default: undefined },
     languages: { type: [String], default: undefined },
     profilePhoto: String,
+    socialLinks: { type: socialLinksSchemaDefinition(), default: undefined },
   },
   { timestamps: true },
 )

@@ -3,6 +3,7 @@ import { ProviderProfile } from '../models/ProviderProfile'
 import { City } from '../models/City'
 import { Country } from '../models/Country'
 import { Types } from 'mongoose'
+import { applySocialLinks, normalizeSocialLinks, type SocialLinks } from '../models/socialLinks'
 import { isUserRole, type UserRole } from '../types/roles'
 import { deleteUpload, normalizeUploadPath } from './mediaService'
 
@@ -25,12 +26,15 @@ function splitName(name: string) {
   return { firstName: parts.shift() || undefined, lastName: parts.join(' ') || undefined }
 }
 
+export type DashboardContext = 'user' | 'provider' | 'company'
+
 export function toPublicUser(user: {
   uid: string
   email: string
   name: string
   role?: UserRole
   roles?: UserRole[]
+  activeContext?: DashboardContext
   requestedRole?: UserRole
   firstName?: string
   lastName?: string
@@ -49,16 +53,23 @@ export function toPublicUser(user: {
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  socialLinks?: SocialLinks
   createdAt?: Date
   updatedAt?: Date
 }): PublicUser {
   const roles = effectiveRoles({ role: user.role ?? 'user', roles: user.roles })
+  const requestedContext = user.activeContext
+  const activeContext: DashboardContext =
+    requestedContext && (requestedContext === 'user' || roles.includes(requestedContext))
+      ? requestedContext
+      : 'user'
   return {
     uid: user.uid,
     email: user.email,
     name: user.name,
-    role: roles.find((role) => role !== 'user') ?? 'user',
+    role: activeContext === 'user' ? (roles.includes('admin') ? 'admin' : 'user') : activeContext,
     roles,
+    activeContext,
     requestedRole: user.requestedRole,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -78,6 +89,7 @@ export function toPublicUser(user: {
     skills: user.skills ?? [],
     languages: user.languages ?? [],
     profilePhoto: user.profilePhoto || '',
+    socialLinks: user.socialLinks || {},
     createdAt: user.createdAt ?? new Date(),
     updatedAt: user.updatedAt ?? user.createdAt ?? new Date(),
   }
@@ -129,7 +141,23 @@ export async function grantCapability(uid: string, role: 'provider' | 'company')
   if (!existing) throw new Error('Llogaria nuk u gjet ose nuk është aktive')
   existing.roles = [...new Set<UserRole>(['user', ...(existing.roles?.filter(isUserRole) ?? []), role])]
   if (existing.role !== 'admin') existing.role = role
+  existing.activeContext = role
   existing.requestedRole = undefined
+  await existing.save()
+  return toPublicUser(existing)
+}
+
+export async function setActiveContext(uid: string, context: DashboardContext) {
+  const existing = await User.findOne({ uid, accountStatus: 'active' })
+  if (!existing) throw new Error('Llogaria nuk u gjet ose nuk është aktive')
+  const roles = effectiveRoles(existing)
+  if (context !== 'user' && !roles.includes(context)) {
+    throw new Error('Nuk ke këtë kontekst ende. Krijo profilin përkatës.')
+  }
+  existing.activeContext = context
+  if (existing.role !== 'admin') {
+    existing.role = context === 'user' ? 'user' : context
+  }
   await existing.save()
   return toPublicUser(existing)
 }
@@ -232,6 +260,7 @@ export async function updateOwnProfile(
     skills?: string[]
     languages?: string[]
     legacyLocation?: string
+    socialLinks?: SocialLinks | null
   },
 ): Promise<PublicUser> {
   const existing = await User.findOne({ uid })
@@ -251,7 +280,13 @@ export async function updateOwnProfile(
     // Retain the legacy display name for existing consumers; the profile API uses separate fields.
     existing.name = [existing.firstName, existing.lastName].filter(Boolean).join(' ')
   }
-  if (input.phone !== undefined) existing.phone = cleanOptional(input.phone ?? undefined)
+  if (input.phone !== undefined) {
+    const phone = cleanOptional(input.phone ?? undefined)
+    if (phone && !/^\+[1-9]\d{1,14}$/.test(phone)) {
+      throw new Error('Numri i telefonit duhet të jetë në formatin ndërkombëtar (+383…)')
+    }
+    existing.phone = phone
+  }
   if (input.locale !== undefined) existing.locale = cleanOptional(input.locale)
   if (input.country !== undefined) existing.country = cleanOptional(input.country)?.toUpperCase()
   if (input.city !== undefined) existing.city = cleanOptional(input.city)
@@ -289,10 +324,17 @@ export async function updateOwnProfile(
   if (input.skills !== undefined) existing.skills = cleanStringList(input.skills)
   if (input.languages !== undefined) existing.languages = cleanStringList(input.languages, 12, 40)
   if (input.legacyLocation !== undefined) existing.legacyLocation = cleanOptional(input.legacyLocation)
+  if (input.socialLinks !== undefined) {
+    const normalized = normalizeSocialLinks(input.socialLinks)
+    existing.socialLinks = applySocialLinks(existing.socialLinks, normalized || {})
+  }
 
   await existing.save()
 
   const publicFields: Record<string, unknown> = {}
+  if (input.firstName !== undefined || input.lastName !== undefined) {
+    publicFields['publicProfile.displayName'] = existing.name
+  }
   if (input.headline !== undefined) publicFields['publicProfile.title'] = existing.headline || ''
   if (input.bio !== undefined) {
     publicFields['publicProfile.description'] = existing.bio || ''
@@ -300,7 +342,7 @@ export async function updateOwnProfile(
   }
   if (input.languages !== undefined) publicFields.languages = existing.languages || []
   if (Object.keys(publicFields).length) {
-    await ProviderProfile.updateMany({ ownerUser: existing._id }, { $set: publicFields })
+    await ProviderProfile.updateMany({ ownerUser: existing._id, providerType: 'individual' }, { $set: publicFields })
   }
 
   return toPublicUser(existing)
