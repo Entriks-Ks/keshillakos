@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Breadcrumbs } from '@heroui/react'
 import {
   ArrowLeft,
   BadgeCheck,
@@ -43,6 +44,16 @@ const OFFER_LABELS: Record<string, string> = {
   package: 'Paketë',
   project: 'Projekt',
   service: 'Shërbim',
+}
+
+function ofertatPath(filters: { categoryId?: string; subcategoryId?: string } = {}) {
+  const params = new URLSearchParams()
+  const categoryId = filters.categoryId?.trim()
+  const subcategoryId = filters.subcategoryId?.trim()
+  if (categoryId) params.set('categoryId', categoryId)
+  if (subcategoryId) params.set('subcategoryId', subcategoryId)
+  const query = params.toString()
+  return query ? `/ofertat?${query}` : '/ofertat'
 }
 
 function formatPrice(service: ServiceItem) {
@@ -157,7 +168,15 @@ export default function ServiceDetailPage() {
   const rows = service ? detailRows(service) : []
   const rating = provider?.ratingAverage ?? 0
   const ratingCount = provider?.ratingCount ?? 0
-  const categoryLabel = service?.categoryLabel || service?.category || ''
+  const categoryLabel = (service?.categoryLabel || service?.category || '').trim()
+  const subcategoryLabel = service?.subcategory?.trim() || ''
+  const categoryHref = service?.categoryId?.trim()
+    ? ofertatPath({ categoryId: service.categoryId })
+    : undefined
+  const subcategoryHref =
+    service?.categoryId?.trim() && service?.subcategoryId?.trim()
+      ? ofertatPath({ categoryId: service.categoryId, subcategoryId: service.subcategoryId })
+      : undefined
   const cover = service ? catalogImageForLabels(service.subcategory, categoryLabel) : ''
   const uploadedPhotos = (details.photos || []).map((url) => mediaUrl(url)).filter(Boolean)
   const gallery = uploadedPhotos.length ? uploadedPhotos : [cover, photo].filter(Boolean)
@@ -221,11 +240,20 @@ export default function ServiceDetailPage() {
 
             {!loading && service && intake ? (
               <>
-                <nav className="tt-pro-crumbs" aria-label="Breadcrumb">
-                  <Link to="/ofertat">Ofertat</Link>
-                  {categoryLabel ? <span>{categoryLabel}</span> : null}
-                  <span>{service.title}</span>
-                </nav>
+                <Breadcrumbs className="tt-pro-crumbs" aria-label="Breadcrumb">
+                  <Breadcrumbs.Item href="/ofertat">Ofertat</Breadcrumbs.Item>
+                  {categoryLabel ? (
+                    <Breadcrumbs.Item {...(categoryHref ? { href: categoryHref } : {})}>
+                      {categoryLabel}
+                    </Breadcrumbs.Item>
+                  ) : null}
+                  {subcategoryLabel ? (
+                    <Breadcrumbs.Item {...(subcategoryHref ? { href: subcategoryHref } : {})}>
+                      {subcategoryLabel}
+                    </Breadcrumbs.Item>
+                  ) : null}
+                  <Breadcrumbs.Item>{service.title}</Breadcrumbs.Item>
+                </Breadcrumbs>
                 <Link to="/ofertat" className="tt-detail-back">
                   <ArrowLeft size={16} aria-hidden />
                   Shiko më shumë ofrues

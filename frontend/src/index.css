@@ -7404,25 +7404,22 @@ h1 {
 }
 
 .tt-pro-crumbs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
   margin-bottom: 10px;
   color: var(--ink-secondary);
   font-size: 0.82rem;
 }
 
+.tt-pro-crumbs [data-slot='breadcrumbs-item'] a,
 .tt-pro-crumbs a {
   color: var(--accent);
   text-decoration: none;
   font-weight: 650;
 }
 
-.tt-pro-crumbs span::before {
-  content: "›";
-  margin-right: 8px;
-  color: var(--muted);
+.tt-pro-crumbs [data-slot='breadcrumbs-item'][data-current='true'],
+.tt-pro-crumbs [aria-current='page'] {
+  color: var(--ink-secondary);
+  font-weight: 550;
 }
 
 .tt-pro-layout {
