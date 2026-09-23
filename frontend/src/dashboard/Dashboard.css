@@ -1,0 +1,143 @@
+/* Role chrome for the four dashboards. Solid fills only. */
+
+.dash-layout,
+.dash-layout[data-role='user'],
+.dash-layout[data-role='provider'],
+.dash-layout[data-role='company'],
+.dash-layout[data-role='admin'] {
+  --dash-role: var(--accent);
+  --dash-role-soft: color-mix(in srgb, var(--accent) 10%, #fff);
+}
+
+.dash-layout .dash-role-badge {
+  color: #fff;
+  background: var(--dash-role);
+  border-color: transparent;
+}
+
+.dash-layout .dash-nav-link.is-active {
+  background: var(--dash-role-soft);
+  border-color: color-mix(in srgb, var(--dash-role) 22%, transparent);
+  color: var(--dash-role);
+}
+
+.dash-layout .dash-nav-link.is-active .dash-nav-icon {
+  background: var(--dash-role);
+  color: #fff;
+}
+
+.dash-layout .dash-nav-link:hover {
+  color: var(--dash-role);
+}
+
+.dash-layout .dash-nav-link:hover .dash-nav-icon {
+  background: var(--dash-role-soft);
+  color: var(--dash-role);
+}
+
+.dash-layout .dash-bottom-link.is-active {
+  color: var(--dash-role);
+}
+
+.dash-layout .dash-overview-hero,
+.dash-layout .dash-page-head.is-hero {
+  background: var(--dash-role);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--dash-role) 22%, transparent);
+}
+
+.dash-overview-kicker {
+  margin: 0;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #fff 16%, transparent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dash-next-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--dash-role) 16%, var(--border));
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-navy) 4%, transparent);
+}
+
+.dash-next-step:hover {
+  border-color: color-mix(in srgb, var(--dash-role) 36%, var(--border));
+}
+
+.dash-next-step > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dash-next-step p {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dash-role);
+}
+
+.dash-next-step strong {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  letter-spacing: -0.02em;
+  color: var(--brand-navy);
+}
+
+.dash-next-step > div span {
+  color: var(--ink-secondary);
+  font-size: 0.94rem;
+  line-height: 1.4;
+}
+
+.dash-next-step-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--dash-role);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.dash-layout .dash-stat-card {
+  border-top: 3px solid var(--dash-role);
+}
+
+.dash-layout .dash-page-head:not(.is-hero) {
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--dash-role);
+}
+
+.dash-layout .dash-overview-card-icon {
+  background: var(--dash-role-soft);
+  color: var(--dash-role);
+}
+
+.dash-layout .dash-overview-card-cta {
+  color: var(--dash-role);
+}
+
+@media (max-width: 720px) {
+  .dash-next-step {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

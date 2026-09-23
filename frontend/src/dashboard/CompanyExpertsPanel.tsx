@@ -1,19 +1,22 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Input, Label, Modal, TextField, toast } from '@heroui/react'
+import { Button, toast } from '@heroui/react'
 import {
   cancelInvitation,
   fetchBusinessTeam,
   fetchMyBusinesses,
   inviteExpert,
+  lookupExpert,
   removeExpert,
   type BusinessSummary,
   type BusinessTeam,
+  type ExpertLookup,
 } from '../api/onboarding'
 import { mediaUrl } from '../api/media'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
 import DashPageHeader from './DashPageHeader'
+import './CompanyExpertsPanel.css'
 
 function formatInviteDate(value: string) {
   try {
@@ -23,6 +26,14 @@ function formatInviteDate(value: string) {
   }
 }
 
+const LOOKUP_HINT: Record<Exclude<ExpertLookup['status'], 'ready' | 'invalid'>, string> = {
+  missing: 'Ky email nuk është i regjistruar në KëshillaKos.',
+  not_expert: 'Ky përdorues nuk ka profil eksperti. Duhet të regjistrohet si ekspert fillimisht.',
+  member: 'Ky ekspert është tashmë në ekip.',
+  invited: 'Ftesa është dërguar. Pret që eksperti ta pranojë.',
+  owner: 'Ky person e menaxhon kompaninë.',
+}
+
 export default function CompanyExpertsPanel() {
   const { user } = useAuth()
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([])
@@ -30,9 +41,9 @@ export default function CompanyExpertsPanel() {
   const [team, setTeam] = useState<BusinessTeam | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [inviteOpen, setInviteOpen] = useState(false)
   const [email, setEmail] = useState('')
-  const [emailError, setEmailError] = useState('')
+  const [match, setMatch] = useState<ExpertLookup | null>(null)
+  const [checking, setChecking] = useState(false)
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState('')
 
@@ -80,31 +91,42 @@ export default function CompanyExpertsPanel() {
     }
   }, [selected])
 
-  function openInvite() {
-    setEmail('')
-    setEmailError('')
-    setInviteOpen(true)
-  }
+  useEffect(() => {
+    const trimmed = email.trim()
+    if (!selected || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setMatch(null)
+      setChecking(false)
+      return
+    }
+    setMatch(null)
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      setChecking(true)
+      lookupExpert(selected, trimmed)
+        .then((next) => {
+          if (!cancelled) setMatch(next)
+        })
+        .catch(() => {
+          if (!cancelled) setMatch(null)
+        })
+        .finally(() => {
+          if (!cancelled) setChecking(false)
+        })
+    }, 350)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [email, selected])
 
   async function onInvite(event: FormEvent) {
     event.preventDefault()
-    if (!selected) return
-    const trimmed = email.trim()
-    if (!trimmed) {
-      setEmailError('Email i ekspertit është i detyrueshëm')
-      return
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setEmailError('Email i pavlefshëm')
-      return
-    }
-    setEmailError('')
+    if (!selected || match?.status !== 'ready') return
     setSaving(true)
     try {
-      setTeam(await inviteExpert(selected, trimmed))
-      setEmail('')
-      setInviteOpen(false)
-      toast.success('Ftesa u dërgua. Eksperti do ta shohë në llogari.')
+      setTeam(await inviteExpert(selected, email.trim()))
+      setMatch({ ...match, status: 'invited' })
+      toast.success('Ftesa u dërgua. Eksperti e pranon te profili i tij.')
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -132,6 +154,7 @@ export default function CompanyExpertsPanel() {
     setBusyId(userId)
     try {
       setTeam(await cancelInvitation(selected, userId))
+      if (match?.person?.id === userId) setMatch({ ...match, status: 'ready' })
       toast.success('Ftesa u anulua.')
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -144,24 +167,16 @@ export default function CompanyExpertsPanel() {
   const invitations = team?.invitations ?? []
   const selectedBusiness = businesses.find((item) => item._id === selected)
   const canInviteExperts = Boolean(selectedBusiness && selectedBusiness.status !== 'suspended' && selectedBusiness.status !== 'closed')
+  const photo = match?.person ? mediaUrl(match.person.photoUrl) : ''
 
   return (
-    <section className="provider-section">
+    <section className="provider-section company-experts">
       <DashPageHeader
         title="Ekspertët"
-        description="Fto ekspertë të regjistruar. Ata bashkohen vetëm pasi ta pranojnë ftesën në aplikacion."
-        actions={
-          <Button
-            variant="primary"
-            isDisabled={!selected || loading || !canInviteExperts}
-            onPress={openInvite}
-          >
-            Fto ekspert
-          </Button>
-        }
+        description="Shto ekspertë që janë tashmë në KëshillaKos. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë, u shkruajnë dhe caktojnë takim."
       />
 
-      {selectedBusiness && (selectedBusiness.status === 'suspended' || selectedBusiness.status === 'closed') ? (
+      {selectedBusiness && !canInviteExperts ? (
         <p className="muted role-pending-pill" role="status">
           Kompania është pezulluar ose e mbyllur. Ftesat e ekspertëve nuk janë të disponueshme.
         </p>
@@ -186,41 +201,65 @@ export default function CompanyExpertsPanel() {
         <p className="muted">Nuk ke ende një kompani të menaxhueshme. <Link to="/dashboard/company/create">Krijo kompaninë</Link>.</p>
       ) : null}
 
+      {!loading && selected && canInviteExperts ? (
+        <form className="company-invite" onSubmit={onInvite}>
+          <label htmlFor="expert-email">Email i ekspertit</label>
+          <div className="company-invite-row">
+            <input
+              id="expert-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              placeholder="eksperti@email.com"
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Button type="submit" variant="primary" isDisabled={saving || match?.status !== 'ready'}>
+              {saving ? 'Duke ftuar…' : 'Fto'}
+            </Button>
+          </div>
+          {checking ? <p className="company-invite-note">Po kontrollohet…</p> : null}
+          {!checking && match?.status === 'ready' && match.person ? (
+            <div className="company-invite-match">
+              <div className="profile-avatar-sm" aria-hidden>
+                {photo ? <img src={photo} alt="" /> : <span>{match.person.name.slice(0, 1)}</span>}
+              </div>
+              <div>
+                <strong>{match.person.name}</strong>
+                <span>{match.person.headline || match.person.email}</span>
+              </div>
+            </div>
+          ) : null}
+          {!checking && match && match.status !== 'ready' && match.status !== 'invalid' ? (
+            <p className="company-invite-note">{LOOKUP_HINT[match.status]}</p>
+          ) : null}
+        </form>
+      ) : null}
+
       {!loading && selected ? (
         <>
-          <div className="services-list">
-            <h3>Ekspertët e kompanisë</h3>
-            {members.length === 0 ? (
-              <p className="muted">Nuk ka ekspertë në ekip ende. Fto një ekspert me email.</p>
-            ) : null}
+          <div className="company-team">
+            <h3>Në ekip ({members.length})</h3>
+            {members.length === 0 ? <p className="muted">Ende nuk ka ekspertë. Fto të parin me email.</p> : null}
             <ul>
               {members.map((member) => {
-                const photo = mediaUrl(member.photoUrl)
+                const memberPhoto = mediaUrl(member.photoUrl)
                 return (
-                  <li key={member.id} className="company-expert-row">
-                    <div className="company-expert-main">
+                  <li key={member.id}>
+                    <div className="company-person">
                       <div className="profile-avatar-sm" aria-hidden>
-                        {photo ? <img src={photo} alt="" /> : <span>{member.name.slice(0, 1)}</span>}
+                        {memberPhoto ? <img src={memberPhoto} alt="" /> : <span>{member.name.slice(0, 1)}</span>}
                       </div>
                       <div>
                         <strong>{member.name}</strong>
-                        {member.headline ? <span>{member.headline}</span> : null}
-                        <span className="muted">{member.email}</span>
+                        <span>{member.headline || member.email}</span>
                       </div>
                     </div>
-                    <div className="services-list-actions">
+                    <div className="company-person-actions">
                       {member.uid ? (
-                        <Link to={`/providers/${member.uid}`} className="ghost link-btn">
-                          Shiko profilin
-                        </Link>
+                        <Link to={`/providers/${member.uid}`}>Profili</Link>
                       ) : null}
-                      <button
-                        type="button"
-                        className="ghost danger-ghost"
-                        disabled={busyId === member.id}
-                        onClick={() => void onRemove(member.id)}
-                      >
-                        {busyId === member.id ? 'Duke hequr…' : 'Hiq nga kompania'}
+                      <button type="button" disabled={busyId === member.id} onClick={() => void onRemove(member.id)}>
+                        {busyId === member.id ? 'Duke hequr…' : 'Hiq'}
                       </button>
                     </div>
                   </li>
@@ -229,80 +268,33 @@ export default function CompanyExpertsPanel() {
             </ul>
           </div>
 
-          <div className="services-list">
-            <h3>Ftesat në pritje</h3>
-            {invitations.length === 0 ? (
-              <p className="muted">Nuk ka ftesa në pritje.</p>
-            ) : null}
-            <ul>
-              {invitations.map((invite) => (
-                <li key={invite.id} className="company-expert-row">
-                  <div>
-                    <strong>{invite.email}</strong>
-                    <span>
-                      {invite.name}
-                      {invite.invitedAt ? ` · ${formatInviteDate(invite.invitedAt)}` : ''}
-                    </span>
-                    <span className="muted">Statusi: Në pritje</span>
-                  </div>
-                  <div className="services-list-actions">
-                    <button
-                      type="button"
-                      className="ghost"
-                      disabled={busyId === invite.id}
-                      onClick={() => void onCancelInvite(invite.id)}
-                    >
-                      {busyId === invite.id ? 'Duke anuluar…' : 'Anulo ftesën'}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {invitations.length > 0 ? (
+            <div className="company-team">
+              <h3>Në pritje ({invitations.length})</h3>
+              <ul>
+                {invitations.map((invite) => (
+                  <li key={invite.id}>
+                    <div className="company-person">
+                      <div>
+                        <strong>{invite.name || invite.email}</strong>
+                        <span>
+                          {invite.email}
+                          {invite.invitedAt ? ` · ${formatInviteDate(invite.invitedAt)}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="company-person-actions">
+                      <button type="button" disabled={busyId === invite.id} onClick={() => void onCancelInvite(invite.id)}>
+                        {busyId === invite.id ? 'Duke anuluar…' : 'Anulo'}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </>
       ) : null}
-
-      <Modal.Backdrop isOpen={inviteOpen} onOpenChange={setInviteOpen}>
-        <Modal.Container size="sm">
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading>Fto ekspert</Modal.Heading>
-            </Modal.Header>
-            <form onSubmit={onInvite}>
-              <Modal.Body>
-                <TextField
-                  isInvalid={Boolean(emailError)}
-                  validationBehavior="aria"
-                  fullWidth
-                >
-                  <Label>Email i ekspertit</Label>
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value)
-                      setEmailError('')
-                    }}
-                    placeholder="eksperti@email.com"
-                    autoFocus
-                  />
-                  {emailError ? <p className="error">{emailError}</p> : null}
-                </TextField>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button type="button" variant="secondary" slot="close" isDisabled={saving}>
-                  Anulo
-                </Button>
-                <Button type="submit" variant="primary" isDisabled={saving || !selected}>
-                  {saving ? 'Duke ftuar…' : 'Fto ekspertin'}
-                </Button>
-              </Modal.Footer>
-            </form>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
     </section>
   )
 }

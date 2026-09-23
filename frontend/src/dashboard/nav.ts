@@ -154,11 +154,17 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
           mobilePrimary: true,
         },
         {
+          to: '/dashboard/company/services',
+          label: 'Shërbimet',
+          shortLabel: 'Ofertat',
+          icon: Briefcase,
+          mobilePrimary: true,
+        },
+        {
           to: '/dashboard/company/experts',
           label: 'Ekspertët',
           shortLabel: 'Ekipi',
           icon: Users,
-          mobilePrimary: true,
         },
         { to: '/dashboard/company/availability', label: 'Disponueshmëria', icon: CalendarDays },
         { to: '/dashboard/company/ratings', label: 'Vlerësimet', icon: Star },
@@ -189,19 +195,12 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
           icon: FolderKanban,
           mobilePrimary: true,
         },
-        { to: '/dashboard/admin/inbox', label: 'Inbox', icon: Inbox },
         {
           to: '/dashboard/admin/messages',
           label: 'Mesazhet',
           shortLabel: 'Chat',
           icon: MessageCircle,
           mobilePrimary: true,
-        },
-        {
-          to: '/dashboard/admin/ratings',
-          label: 'Vlerësimet',
-          icon: Star,
-          section: 'manage',
         },
         {
           to: '/dashboard/admin/feedback',
@@ -244,5 +243,5 @@ export const ROLE_HINTS: Record<UserRole, string> = {
   user: 'Gjej ndihmë, ndiq kërkesat dhe flit me ofruesit.',
   provider: 'Prano kërkesa, menaxho ofertat dhe oraret.',
   company: 'Koordino ekipin, kërkesat dhe komunikimin.',
-  admin: 'Mbikëqyr përdoruesit, kërkesat, vlerësimet dhe feedback-un.',
+  admin: 'Mbikëqyr përdoruesit, kërkesat dhe feedback-un.',
 }

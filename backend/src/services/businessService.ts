@@ -188,6 +188,62 @@ export async function businessTeam(uid: string, businessId: string) {
   }
 }
 
+export async function publicExpertsForOwner(ownerUid: string) {
+  const owner = await User.findOne({ uid: ownerUid }).select('_id').lean()
+  if (!owner) return []
+  const business = await Business.findOne({ owners: owner._id, status: 'active' }).select('members')
+  if (!business?.members.length) return []
+  const ids = business.members.map((member) => member.user)
+  const [users, profiles] = await Promise.all([
+    User.find({ _id: { $in: ids }, accountStatus: 'active' }).select('uid name firstName lastName email headline profilePhoto').lean(),
+    ProviderProfile.find({ ownerUser: { $in: ids }, providerType: 'individual' }).select('ownerUser publicProfile').lean(),
+  ])
+  const profileByOwner = new Map(profiles.map((profile) => [String(profile.ownerUser), profile]))
+  return users
+    .filter((user) => user.uid)
+    .map((user) => {
+      const profile = profileByOwner.get(String(user._id))
+      const userName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.name
+      return {
+        uid: user.uid,
+        name: userName || profile?.publicProfile?.displayName || 'Ekspert',
+        headline: profile?.publicProfile?.title || user.headline || '',
+        photoUrl: profile?.publicProfile?.photoUrl || user.profilePhoto || '',
+      }
+    })
+}
+
+export async function lookupBusinessExpert(uid: string, businessId: string, email: string) {
+  const { business } = await ownedBusinessById(uid, businessId)
+  const normalized = email.trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return { status: 'invalid' as const }
+
+  const expert = await User.findOne({ email: normalized, accountStatus: 'active' })
+    .select('uid name firstName lastName email headline profilePhoto roles role')
+    .lean()
+  if (!expert) return { status: 'missing' as const }
+  if (!effectiveRoles(expert).includes('provider')) return { status: 'not_expert' as const }
+
+  const profile = await ProviderProfile.findOne({ ownerUser: expert._id, providerType: 'individual' })
+    .select('publicProfile')
+    .lean()
+  if (!profile) return { status: 'not_expert' as const }
+
+  const userName = [expert.firstName, expert.lastName].filter(Boolean).join(' ').trim() || expert.name
+  const person = {
+    id: String(expert._id),
+    uid: expert.uid || '',
+    name: userName || profile.publicProfile?.displayName || 'Ekspert',
+    email: expert.email || normalized,
+    headline: profile.publicProfile?.title || expert.headline || '',
+    photoUrl: profile.publicProfile?.photoUrl || expert.profilePhoto || '',
+  }
+  if (business.owners.some((owner) => owner.equals(expert._id))) return { status: 'owner' as const, person }
+  if (business.members.some((member) => member.user.equals(expert._id))) return { status: 'member' as const, person }
+  if (business.invitations.some((invite) => invite.user.equals(expert._id))) return { status: 'invited' as const, person }
+  return { status: 'ready' as const, person }
+}
+
 export async function inviteBusinessExpert(uid: string, businessId: string, email: string) {
   const { business, userId } = await ownedBusinessById(uid, businessId)
   if (business.status === 'suspended' || business.status === 'closed') {

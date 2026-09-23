@@ -83,6 +83,18 @@ export async function fetchBusinessTeam(id: string) {
   return data.team
 }
 
+export type ExpertLookup = {
+  status: 'invalid' | 'missing' | 'not_expert' | 'ready' | 'member' | 'invited' | 'owner'
+  person?: Pick<TeamPerson, 'id' | 'uid' | 'name' | 'email' | 'headline' | 'photoUrl'>
+}
+
+export async function lookupExpert(id: string, email: string) {
+  const { data } = await api.get<{ match: ExpertLookup }>(`/api/businesses/${id}/expert-lookup`, {
+    params: { email },
+  })
+  return data.match
+}
+
 export async function inviteExpert(id: string, email: string) {
   const { data } = await api.post<{ team: BusinessTeam }>(`/api/businesses/${id}/invitations`, { email })
   return data.team

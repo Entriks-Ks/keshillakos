@@ -15,6 +15,7 @@ import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
 import DashPageHeader from './DashPageHeader'
+import './AdminUsersPanel.css'
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'user', label: 'Përdorues' },
@@ -146,22 +147,24 @@ export default function AdminUsersPanel() {
   }
 
   return (
-    <section className="provider-section">
+    <section className="provider-section admin-users">
       <DashPageHeader
         title="Menaxhimi i përdoruesve"
         description="Shiko dhe menaxho të gjitha rolet: user, provider, company, admin. Kërkesat për ofrues ose kompani shfaqen këtu për shqyrtim."
       />
 
-      {pending.length ? (
-        <div className="admin-role-requests">
-          <h3>Kërkesa për rol ({pending.length})</h3>
+      <div className="admin-role-requests">
+        <h3>Kërkesa për akses ({pending.length})</h3>
+        {pending.length === 0 ? (
+          <p className="muted">Nuk ka kërkesa në pritje. Kur një përdorues kërkon të bëhet ofrues ose kompani, shfaqet këtu.</p>
+        ) : (
           <ul>
             {pending.map((user) => (
               <li key={user.uid} className="admin-role-request">
                 <div>
                   <strong>{user.name}</strong>
                   <span className="muted">{user.email}</span>
-                  <span className="role-pending-pill">Pending · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? user.requestedRole}</span>
+                  <span className="role-pending-pill">Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? user.requestedRole}</span>
                 </div>
                 <div className="admin-row-actions">
                   <button
@@ -183,8 +186,8 @@ export default function AdminUsersPanel() {
               </li>
             ))}
           </ul>
-        </div>
-      ) : null}
+        )}
+      </div>
 
       {counts ? (
         <ul className="admin-role-stats">
@@ -346,7 +349,7 @@ export default function AdminUsersPanel() {
                     <td>
                       <span className="role-pill">{ROLE_OPTIONS.find((r) => r.value === user.role)?.label}</span>
                       {user.requestedRole && user.requestedRole !== user.role ? (
-                        <span className="role-pending-pill">Pending · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label}</span>
+                        <span className="role-pending-pill">Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label}</span>
                       ) : null}
                     </td>
                     <td className="mono">{user.uid}</td>

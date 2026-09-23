@@ -16,6 +16,7 @@ import {
   ROLE_LABELS,
   type DashNavItem,
 } from './nav'
+import './Dashboard.css'
 
 export default function DashboardShell() {
   const { user, logout, switchContext } = useAuth()
@@ -102,7 +103,7 @@ export default function DashboardShell() {
   }
 
   return (
-    <div className="dash-layout">
+    <div className="dash-layout" data-role={shellRole}>
       <aside className="dash-sidebar">
         <div className="dash-sidebar-top">
           <Link to="/" className="brand brand-link dash-brand">

@@ -5,10 +5,9 @@ import { Category, categorySchema } from '../src/models/Category'
 import { Subcategory } from '../src/models/Subcategory'
 import { catalog } from '../src/scripts/seedCategories'
 
-test('seed catalog contains exactly 20 categories and 100 children with the revised legal specialties', () => {
-  assert.equal(catalog.length, 20)
+test('seed catalog keeps only legal and accounting specialties', () => {
+  assert.deepEqual(catalog.map(([en]) => en), ['Legal Services', 'Accounting & Business'])
   assert.ok(catalog.every(([, , children]) => children.length === 5))
-  assert.equal(catalog.reduce((count, [, , children]) => count + children.length, 0), 100)
   assert.deepEqual(catalog.find(([en]) => en === 'Legal Services')?.[2], [
     ['Legal Consultation', 'Këshillim Juridik'],
     ['Criminal Law', 'E Drejta Penale'],

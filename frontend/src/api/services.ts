@@ -1,5 +1,6 @@
 import api from './auth'
 import { postPhotoUpload } from './media'
+import type { PublicExpert } from './providers'
 
 export type ServiceDetails = {
   licenseNumber?: string
@@ -57,6 +58,7 @@ export type ServiceItem = {
   providerUid: string
   providerName: string
   provider?: ServiceProvider
+  experts?: PublicExpert[]
   active: boolean
   createdAt: string
 }

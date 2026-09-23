@@ -6,7 +6,7 @@ import {
   fetchProviderSchedule,
   type AvailabilitySlot,
 } from '../api/availability'
-import { fetchProviderProfile, type PublicProvider } from '../api/providers'
+import { fetchProviderProfile, type PublicExpert, type PublicProvider } from '../api/providers'
 import type { ServiceItem } from '../api/services'
 import type { MatchIntake } from '../api/match'
 import ProviderReviews from '../components/ProviderReviews'
@@ -16,6 +16,7 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { catalogImageForLabels } from '../data/catalogImages'
+import './ProviderProfileExperts.css'
 import { getErrorMessage } from '../utils/errors'
 
 function ratingWord(average: number, count: number) {
@@ -30,6 +31,7 @@ export default function ProviderProfilePage() {
   const { uid } = useParams<{ uid: string }>()
   const [provider, setProvider] = useState<PublicProvider | null>(null)
   const [services, setServices] = useState<ServiceItem[]>([])
+  const [experts, setExperts] = useState<PublicExpert[]>([])
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -50,11 +52,13 @@ export default function ProviderProfilePage() {
         if (cancelled) return
         setProvider(data.provider)
         setServices(data.services)
+        setExperts(data.experts ?? [])
       })
       .catch((err) => {
         if (cancelled) return
         setProvider(null)
         setServices([])
+        setExperts([])
         setError(getErrorMessage(err))
       })
       .finally(() => {
@@ -169,6 +173,7 @@ export default function ProviderProfilePage() {
                     <nav className="tt-pro-tabs" aria-label="Seksionet e profilit">
                       <a href="#rreth">Rreth</a>
                       <a href="#sherbimi">Shërbimet</a>
+                      {experts.length > 0 ? <a href="#ekspertet">Ekspertët</a> : null}
                       <a href="#foto">Foto</a>
                       <a href="#vleresimet">Vlerësimet</a>
                     </nav>
@@ -240,6 +245,46 @@ export default function ProviderProfilePage() {
                         <p className="muted">Ofruesi nuk ka ngarkuar ende foto të punës.</p>
                       )}
                     </section>
+
+                    {experts.length > 0 ? (
+                      <section className="tt-pro-section" id="ekspertet">
+                        <h2>Ekspertët</h2>
+                        <p className="muted">Zgjidh ekspertin, shkruaji ose cakto një takim.</p>
+                        <ul className="tt-company-experts">
+                          {experts.map((expert) => (
+                            <li key={expert.uid}>
+                              <div>
+                                <Link to={`/providers/${expert.uid}`}>{expert.name}</Link>
+                                {expert.headline ? <span>{expert.headline}</span> : null}
+                              </div>
+                              <div className="tt-company-expert-actions">
+                                <StartChatButton
+                                  providerUid={expert.uid}
+                                  providerName={expert.name}
+                                  compact
+                                  hideGuestHint
+                                  label="Shkruaj"
+                                />
+                                <SendRequestButton
+                                  providerUid={expert.uid}
+                                  providerName={expert.name}
+                                  intake={{
+                                    need: expert.headline || `Takim me ${expert.name}`,
+                                    location: provider?.location || 'Online',
+                                    language: 'Albanian',
+                                    urgency: 'flexible',
+                                    contact: 'chat',
+                                  }}
+                                  compact
+                                  ctaLabel="Cakto takim"
+                                  guestLabel="Hyr për takim"
+                                />
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
 
                     <section className="tt-pro-section" id="sherbimi">
                       <h2>Shërbimet</h2>

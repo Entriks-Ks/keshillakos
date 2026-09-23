@@ -10,6 +10,7 @@ import { User } from '../models/User'
 import { validateExtensions } from './categoryConfiguration'
 import { findDomainById } from './domainService'
 import { deleteRemovedUploads, deleteUploads, sanitizeUploadPaths } from './mediaService'
+import { publicExpertsForOwner } from './businessService'
 import { createProviderProfile } from './providerProfileService'
 import { createServiceOffer, deleteServiceOffer, listMyServiceOffers, listPublishedServiceOffers, offersToLegacyServices, updateServiceOffer } from './serviceOfferService'
 import { getProvidersPublicDetails, type ProviderPublicDetails } from './providerPublicService'
@@ -291,13 +292,19 @@ export async function getActiveServiceById(id: string) {
   })
   if (offer) {
     const [enriched] = await offersToLegacyServices([offer], true)
-    if (enriched?.active) return enriched
+    if (enriched?.active) return withCompanyExperts(enriched)
   }
 
   const service = await Service.findOne({ _id: id, active: true })
   if (!service) return null
   const [enriched] = await withLegacyProviders([service])
-  return enriched
+  if (!enriched) return null
+  return withCompanyExperts(enriched)
+}
+
+async function withCompanyExperts<T extends { providerUid?: string }>(service: T) {
+  const experts = service.providerUid ? await publicExpertsForOwner(service.providerUid) : []
+  return { ...service, experts }
 }
 
 export async function listActiveServicesByProvider(providerUid: string) {

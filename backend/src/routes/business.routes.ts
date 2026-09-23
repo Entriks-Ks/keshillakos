@@ -6,7 +6,7 @@ import {
   toPublicUploadPath,
   withImageUpload,
 } from '../services/mediaService'
-import { acceptBusinessInvitation, businessTeam, cancelBusinessInvitation, createBusiness, inviteBusinessExpert, listManagedBusinesses, listMyBusinessInvitations, listMyBusinesses, rejectBusinessInvitation, removeBusinessExpert, reviewBusiness, toPublicBusiness, updateBusiness } from '../services/businessService'
+import { acceptBusinessInvitation, businessTeam, cancelBusinessInvitation, createBusiness, inviteBusinessExpert, listManagedBusinesses, listMyBusinessInvitations, listMyBusinesses, lookupBusinessExpert, rejectBusinessInvitation, removeBusinessExpert, reviewBusiness, toPublicBusiness, updateBusiness } from '../services/businessService'
 import type { Location } from '../models/location'
 
 const router = Router()
@@ -34,6 +34,14 @@ router.post('/:id/invitations/reject', requireAuth, requireRole('provider'), asy
 router.get('/:id/team', requireAuth, requireRole('company', 'admin'), async (req, res) => {
   try { return res.json({ team: await businessTeam(req.user!.uid, String(req.params.id)) }) }
   catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Ekipi nuk u ngarkua' }) }
+})
+
+router.get('/:id/expert-lookup', requireAuth, requireRole('company', 'admin'), async (req, res) => {
+  try {
+    const email = String(req.query.email || '')
+    if (!email.trim()) return res.status(400).json({ message: 'Email i ekspertit është i detyrueshëm' })
+    return res.json({ match: await lookupBusinessExpert(req.user!.uid, String(req.params.id), email) })
+  } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Eksperti nuk u kontrollua' }) }
 })
 
 router.post('/:id/invitations', requireAuth, requireRole('company', 'admin'), async (req, res) => {

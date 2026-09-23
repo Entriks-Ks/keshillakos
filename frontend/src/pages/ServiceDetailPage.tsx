@@ -24,6 +24,7 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { catalogImageForLabels } from '../data/catalogImages'
+import './ProviderProfileExperts.css'
 import { getErrorMessage } from '../utils/errors'
 
 const DELIVERY_LABELS: Record<string, string> = {
@@ -263,6 +264,7 @@ export default function ServiceDetailPage() {
                     <nav className="tt-pro-tabs" aria-label="Seksionet e profilit">
                       <a href="#rreth">Rreth</a>
                       <a href="#sherbimi">Shërbimi</a>
+                      {(service.experts?.length ?? 0) > 0 ? <a href="#ekspertet">Ekspertët</a> : null}
                       <a href="#foto">Foto</a>
                       <a href="#vleresimet">Vlerësimet</a>
                     </nav>
@@ -336,6 +338,36 @@ export default function ServiceDetailPage() {
                         </div>
                       ) : null}
                     </section>
+
+                    {(service.experts?.length ?? 0) > 0 ? (
+                      <section className="tt-pro-section" id="ekspertet">
+                        <h2>Ekspertët e kompanisë</h2>
+                        <p className="muted">Zgjidh ekspertin dhe cakto termin për këtë shërbim.</p>
+                        <ul className="tt-company-experts">
+                          {service.experts?.map((expert) => (
+                            <li key={expert.uid}>
+                              <div>
+                                <Link to={`/providers/${expert.uid}`}>{expert.name}</Link>
+                                {expert.headline ? <span>{expert.headline}</span> : null}
+                              </div>
+                              <div className="tt-company-expert-actions">
+                                <SendRequestButton
+                                  providerUid={expert.uid}
+                                  providerName={expert.name}
+                                  categoryId={service.categoryId}
+                                  serviceId={service.id}
+                                  serviceTitle={service.title}
+                                  intake={intake}
+                                  compact
+                                  ctaLabel="Cakto takim"
+                                  guestLabel="Hyr për takim"
+                                />
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
 
                     <section className="tt-pro-section" id="foto">
                       <h2>Projekte dhe foto</h2>

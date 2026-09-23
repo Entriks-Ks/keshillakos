@@ -333,8 +333,7 @@ export default function HomePage() {
               <p className="brand tt-hero-brand">KëshillaKos</p>
               <h1 id="tt-hero-heading">Për çdo nevojë që ke.</h1>
               <p className="tt-hero-lead">
-                Gjej ofrues lokalë dhe online për ligj, tatime, marketing, IT dhe më shumë —
-                gjithçka në një vend.
+                Gjej avokatë, juristë dhe kontabilistë — lokalë ose online, në një vend.
               </p>
 
               <div className={`tt-search${matching ? ' is-matching' : ''}`}>

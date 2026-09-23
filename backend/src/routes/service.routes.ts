@@ -68,7 +68,7 @@ router.get('/', async (req, res) => {
   }
 })
 
-router.get('/mine', requireAuth, requireRole('provider', 'admin'), async (req, res) => {
+router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
     const services = await listServicesByProvider(req.user!.uid)
     return res.json({ services })
@@ -82,7 +82,7 @@ router.get('/mine', requireAuth, requireRole('provider', 'admin'), async (req, r
 router.post(
   '/photos',
   requireAuth,
-  requireRole('provider', 'admin'),
+  requireRole('provider', 'company', 'admin'),
   withImageUpload(servicePhotoUpload),
   (req, res) => {
     try {
@@ -110,7 +110,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-router.post('/', requireAuth, requireRole('provider', 'admin'), async (req, res) => {
+router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
     const payload = parseServicePayload(req.body)
     const service = await createService({
@@ -127,7 +127,7 @@ router.post('/', requireAuth, requireRole('provider', 'admin'), async (req, res)
   }
 })
 
-router.patch('/:id', requireAuth, requireRole('provider', 'admin'), async (req, res) => {
+router.patch('/:id', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
     const payload = parseServicePayload(req.body)
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
@@ -140,7 +140,7 @@ router.patch('/:id', requireAuth, requireRole('provider', 'admin'), async (req, 
   }
 })
 
-router.delete('/:id', requireAuth, requireRole('provider', 'admin'), async (req, res) => {
+router.delete('/:id', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
     const result = await deleteService(id, req.user!.uid)

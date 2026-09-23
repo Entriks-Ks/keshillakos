@@ -9,11 +9,13 @@ import {
   FolderKanban,
   Inbox,
   MessageCircle,
+  MessageSquarePlus,
   Search,
   Star,
   Users,
 } from 'lucide-react'
 import { fetchAdminUsersMeta } from '../api/adminUsers'
+import { fetchPlatformFeedback } from '../api/feedback'
 import { fetchMyAvailability } from '../api/availability'
 import { fetchConversations } from '../api/chat'
 import { fetchBusinessTeam, fetchMyBusinesses } from '../api/onboarding'
@@ -32,7 +34,8 @@ import {
   requestStatusSlices,
   type OverviewChartsData,
 } from './OverviewCharts'
-import { ROLE_HINTS } from './nav'
+import { ROLE_HINTS, ROLE_LABELS } from './nav'
+import type { UserRole } from '../api/auth'
 
 type StatItem = {
   label: string
@@ -40,6 +43,13 @@ type StatItem = {
   hint?: string
   to?: string
   tone?: 'default' | 'accent' | 'warn' | 'success'
+}
+
+type NextStep = {
+  title: string
+  text: string
+  to: string
+  cta: string
 }
 
 function OverviewCard({
@@ -127,26 +137,44 @@ function OverviewStats({ items, loading }: { items: StatItem[]; loading?: boolea
 }
 
 function OverviewShell({
+  role,
   greeting,
   subtitle,
   stats,
   statsLoading,
   charts,
+  nextStep,
   children,
 }: {
+  role: UserRole
   greeting: string
   subtitle: string
   stats?: StatItem[]
   statsLoading?: boolean
   charts?: OverviewChartsData | null
+  nextStep?: NextStep | null
   children: ReactNode
 }) {
   return (
     <section className="dash-overview">
       <header className="dash-overview-hero">
+        <p className="dash-overview-kicker">{ROLE_LABELS[role]}</p>
         <p className="dash-overview-hello">{greeting}</p>
         <p className="dash-overview-sub">{subtitle}</p>
       </header>
+      {nextStep ? (
+        <Link to={nextStep.to} className="dash-next-step">
+          <div>
+            <p>Hapi i radhës</p>
+            <strong>{nextStep.title}</strong>
+            <span>{nextStep.text}</span>
+          </div>
+          <span className="dash-next-step-cta">
+            {nextStep.cta}
+            <ArrowRight size={16} aria-hidden />
+          </span>
+        </Link>
+      ) : null}
       <OverviewStats items={stats || []} loading={statsLoading} />
       <OverviewCharts data={charts} loading={statsLoading} />
       <div className="dash-overview-section">
@@ -168,6 +196,7 @@ export function UserOverviewPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
+  const [nextStep, setNextStep] = useState<NextStep | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -235,11 +264,41 @@ export function UserOverviewPage() {
             emptyText: 'Aktiviteti do të shfaqet sapo të fillosh.',
           },
         })
+        setNextStep(
+          requests.length === 0
+            ? {
+                title: 'Dërgo kërkesën e parë',
+                text: 'Përshkruaj çfarë të duhet dhe gjej avokat, jurist ose kontabilist.',
+                to: '/',
+                cta: 'Fillo',
+              }
+            : unread > 0
+              ? {
+                  title: 'Ke mesazhe të palexuara',
+                  text: `${unread} biseda presin përgjigjen tënde.`,
+                  to: '/dashboard/user/messages',
+                  cta: 'Hap chat',
+                }
+              : pending > 0
+                ? {
+                    title: 'Kërkesa ende në pritje',
+                    text: `${pending} kërkesa nuk kanë marrë përgjigje ende.`,
+                    to: '/dashboard/user/requests',
+                    cta: 'Shiko',
+                  }
+                : {
+                    title: 'Gjithçka është e qetë',
+                    text: 'Shiko ofertat kur të të duhet ndihmë përsëri.',
+                    to: '/ofertat',
+                    cta: 'Ofertat',
+                  },
+        )
       })
       .catch(() => {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setNextStep(null)
         }
       })
       .finally(() => {
@@ -252,11 +311,13 @@ export function UserOverviewPage() {
 
   return (
     <OverviewShell
+      role="user"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.user}
       stats={stats}
       statsLoading={loading}
       charts={charts}
+      nextStep={loading ? null : nextStep}
     >
       <OverviewCard
         title="Kërko ndihmë"
@@ -287,6 +348,7 @@ export function ProviderOverviewPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
+  const [nextStep, setNextStep] = useState<NextStep | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -369,11 +431,48 @@ export function ProviderOverviewPage() {
             emptyText: 'Shto orë të lira për të parë grafikun.',
           },
         })
+        setNextStep(
+          services.length === 0
+            ? {
+                title: 'Publiko shërbimin e parë',
+                text: 'Pa një ofertë publike, klientët nuk të gjejnë në kërkim.',
+                to: '/dashboard/provider/services',
+                cta: 'Shto',
+              }
+            : inbox.pendingCount > 0
+              ? {
+                  title: 'Përgjigju kërkesave',
+                  text: `${inbox.pendingCount} klientë presin përgjigje.`,
+                  to: '/dashboard/provider/inbox',
+                  cta: 'Hap inbox',
+                }
+              : openSlots === 0
+                ? {
+                    title: 'Vendos orare të lira',
+                    text: 'Klientët rezervojnë vetëm kur sheh termine të hapura.',
+                    to: '/dashboard/provider/availability',
+                    cta: 'Orari',
+                  }
+                : unread > 0
+                  ? {
+                      title: 'Ke mesazhe të palexuara',
+                      text: `${unread} biseda presin përgjigjen tënde.`,
+                      to: '/dashboard/provider/messages',
+                      cta: 'Hap chat',
+                    }
+                  : {
+                      title: 'Profili yt është gati',
+                      text: 'Klientët mund të të gjejnë, të shkruajnë dhe të rezervojnë.',
+                      to: '/dashboard/provider/ratings',
+                      cta: 'Vlerësimet',
+                    },
+        )
       })
       .catch(() => {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setNextStep(null)
         }
       })
       .finally(() => {
@@ -386,11 +485,13 @@ export function ProviderOverviewPage() {
 
   return (
     <OverviewShell
+      role="provider"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.provider}
       stats={stats}
       statsLoading={loading}
       charts={charts}
+      nextStep={loading ? null : nextStep}
     >
       <OverviewCard
         title="Kërkesat"
@@ -428,6 +529,7 @@ export function CompanyOverviewPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
+  const [nextStep, setNextStep] = useState<NextStep | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -510,6 +612,49 @@ export function CompanyOverviewPage() {
           emptyText: 'Shto ekspertë ose orë për të parë grafikun.',
         },
       })
+      setNextStep(
+        businesses.length === 0
+          ? {
+              title: 'Plotëso profilin e kompanisë',
+              text: 'Pa kompani të regjistruar, ekipi dhe kërkesat nuk lidhen me ty.',
+              to: '/dashboard/company/profile',
+              cta: 'Profili',
+            }
+          : members === 0
+            ? {
+                title: 'Shto ekspertin e parë',
+                text: 'Klientët duan të shohin kush punon në ekip.',
+                to: '/dashboard/company/experts',
+                cta: 'Ekipi',
+              }
+            : invitations > 0
+              ? {
+                  title: 'Ke ftesa në pritje',
+                  text: `${invitations} ekspertë ende nuk e kanë pranuar ftesën.`,
+                  to: '/dashboard/company/experts',
+                  cta: 'Ftesat',
+                }
+              : inbox.pendingCount > 0
+                ? {
+                    title: 'Përgjigju kërkesave',
+                    text: `${inbox.pendingCount} kërkesa presin kompaninë.`,
+                    to: '/dashboard/company/inbox',
+                    cta: 'Hap inbox',
+                  }
+                : unread > 0
+                  ? {
+                      title: 'Ke mesazhe të palexuara',
+                      text: `${unread} biseda presin përgjigje.`,
+                      to: '/dashboard/company/messages',
+                      cta: 'Hap chat',
+                    }
+                  : {
+                      title: 'Kompania është në rregull',
+                      text: 'Shiko vlerësimet që kanë lënë klientët për ekipin.',
+                      to: '/dashboard/company/ratings',
+                      cta: 'Vlerësimet',
+                    },
+      )
     }
 
     load()
@@ -517,6 +662,7 @@ export function CompanyOverviewPage() {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setNextStep(null)
         }
       })
       .finally(() => {
@@ -530,11 +676,13 @@ export function CompanyOverviewPage() {
 
   return (
     <OverviewShell
+      role="company"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.company}
       stats={stats}
       statsLoading={loading}
       charts={charts}
+      nextStep={loading ? null : nextStep}
     >
       <OverviewCard
         title="Kërkesat"
@@ -551,8 +699,15 @@ export function CompanyOverviewPage() {
         icon={MessageCircle}
       />
       <OverviewCard
+        title="Shërbimet"
+        description="Publiko çfarë ofron kompania, që klientët ta gjejnë."
+        to="/dashboard/company/services"
+        cta="Hap"
+        icon={Briefcase}
+      />
+      <OverviewCard
         title="Ekspertët"
-        description="Shto dhe menaxho ekspertët e ekipit."
+        description="Shto ekspertët. Klientët u shkruajnë dhe caktojnë takim."
         to="/dashboard/company/experts"
         cta="Hap"
         icon={Users}
@@ -579,6 +734,7 @@ export function AdminOverviewPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
+  const [nextStep, setNextStep] = useState<NextStep | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -588,8 +744,9 @@ export function AdminOverviewPage() {
       fetchAdminUsersMeta(),
       fetchAllRequests(),
       fetchConversations().catch(() => []),
+      fetchPlatformFeedback().catch(() => []),
     ])
-      .then(([meta, requests, conversations]) => {
+      .then(([meta, requests, conversations, feedback]) => {
         if (cancelled) return
         const totalUsers =
           (meta.counts.user || 0) +
@@ -599,6 +756,7 @@ export function AdminOverviewPage() {
         const byStatus = countByStatus(requests)
         const pending = byStatus.pending || 0
         const unread = unreadFromConversations(conversations)
+        const newFeedback = feedback.filter((item) => item.status === 'new').length
         setStats([
           {
             label: 'Përdorues gjithsej',
@@ -625,6 +783,13 @@ export function AdminOverviewPage() {
             value: unread,
             hint: unread > 0 ? 'Të palexuara' : `${conversations.length} biseda`,
             to: '/dashboard/admin/messages',
+          },
+          {
+            label: 'Feedback i ri',
+            value: newFeedback,
+            hint: newFeedback > 0 ? 'Pret lexim' : 'Të gjitha të lexuara',
+            to: '/dashboard/admin/feedback',
+            tone: newFeedback > 0 ? 'warn' : 'success',
           },
         ])
         setCharts({
@@ -662,11 +827,34 @@ export function AdminOverviewPage() {
             emptyText: 'Ende nuk ka kërkesa në platformë.',
           },
         })
+        setNextStep(
+          newFeedback > 0
+            ? {
+                title: 'Lexo feedback-un e ri',
+                text: `${newFeedback} mesazhe nga përdoruesit presin në panel.`,
+                to: '/dashboard/admin/feedback',
+                cta: 'Hap',
+              }
+            : pending > 0
+              ? {
+                  title: 'Kërkesa në pritje',
+                  text: `${pending} kërkesa në platformë ende nuk janë mbyllur.`,
+                  to: '/dashboard/admin/requests',
+                  cta: 'Shiko',
+                }
+              : {
+                  title: 'Platforma është e qetë',
+                  text: 'Shiko llogaritë dhe rolet kur të duash një kontroll të shpejtë.',
+                  to: '/dashboard/admin/users',
+                  cta: 'Përdoruesit',
+                },
+        )
       })
       .catch(() => {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setNextStep(null)
         }
       })
       .finally(() => {
@@ -679,11 +867,13 @@ export function AdminOverviewPage() {
 
   return (
     <OverviewShell
+      role="admin"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.admin}
       stats={stats}
       statsLoading={loading}
       charts={charts}
+      nextStep={loading ? null : nextStep}
     >
       <OverviewCard
         title="Përdoruesit"
@@ -700,11 +890,11 @@ export function AdminOverviewPage() {
         icon={FolderKanban}
       />
       <OverviewCard
-        title="Vlerësimet"
-        description="Shiko dhe modero vlerësimet e platformës."
-        to="/dashboard/admin/ratings"
+        title="Feedback"
+        description="Lexo çfarë shkruajnë përdoruesit për KëshillaKos."
+        to="/dashboard/admin/feedback"
         cta="Hap"
-        icon={Star}
+        icon={MessageSquarePlus}
       />
     </OverviewShell>
   )

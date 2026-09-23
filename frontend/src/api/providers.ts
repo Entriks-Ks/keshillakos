@@ -16,8 +16,15 @@ export type PublicProvider = {
   ratingCount: number
 }
 
+export type PublicExpert = {
+  uid: string
+  name: string
+  headline?: string
+  photoUrl?: string
+}
+
 export async function fetchProviderProfile(uid: string) {
-  const { data } = await api.get<{ provider: PublicProvider; services: ServiceItem[] }>(
+  const { data } = await api.get<{ provider: PublicProvider; services: ServiceItem[]; experts?: PublicExpert[] }>(
     `/api/providers/${uid}`,
   )
   return data

@@ -58,7 +58,8 @@ export default function ExpertInvitationsPanel() {
 
   return (
     <div className="services-list">
-      <h3>Ftesat nga kompanitë</h3>
+      <h3>Ftesa nga kompania</h3>
+      <p className="muted">Pranoje për t’u bashkuar me ekipin, ose refuzoje nëse nuk të përket.</p>
       {error ? <p className="error">{error}</p> : null}
       <ul>
         {invitations.map((invite) => (

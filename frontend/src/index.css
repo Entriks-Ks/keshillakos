@@ -2618,21 +2618,22 @@ h1 {
 .login-form .input-group__suffix .button {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   margin: 0 6px 0 0;
   padding: 0;
   border: 0;
   border-radius: 9999px;
-  background: transparent;
-  color: var(--ink);
-  opacity: 0.7;
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  color: var(--accent);
+  opacity: 1;
 }
 
 .login-form .input-group__suffix .button:hover,
 .login-form .input-group__suffix .button:focus-visible {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
+  color: var(--accent);
   opacity: 1;
 }
 
@@ -4589,22 +4590,25 @@ h1 {
   transform: translateY(-50%);
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 9999px;
-  background: transparent;
-  color: var(--ink);
-  opacity: 0.7;
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  color: var(--accent);
+  opacity: 1;
   cursor: pointer;
+  box-shadow: none;
 }
 
 .auth-form .password-toggle:hover,
 .service-form .password-toggle:hover {
-  background: var(--accent-soft);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
+  color: var(--accent);
   opacity: 1;
 }
 
