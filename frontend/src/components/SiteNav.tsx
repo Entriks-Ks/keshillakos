@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { Button } from '@heroui/react'
 import { LayoutDashboard } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
@@ -14,9 +14,18 @@ export default function SiteNav() {
           KëshillaKos
         </Link>
         <nav className="tt-nav-links" aria-label="Kryesore">
-          <Link to="/ofertat" className="tt-nav-offers">
+          <NavLink
+            to="/ofertat"
+            className={({ isActive }) => `tt-nav-offers${isActive ? ' is-active' : ''}`}
+          >
             Ofertat
-          </Link>
+          </NavLink>
+          <NavLink
+            to="/rreth-nesh"
+            className={({ isActive }) => `tt-nav-about${isActive ? ' is-active' : ''}`}
+          >
+            Rreth nesh
+          </NavLink>
           {!user || user.role === 'user' ? <Link to="/register">Bëhu ofrues</Link> : null}
         </nav>
         <div className="tt-nav-actions">

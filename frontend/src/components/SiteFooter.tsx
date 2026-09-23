@@ -28,7 +28,7 @@ const columns = [
   {
     title: 'Kompania',
     links: [
-      { label: 'Rreth KëshillaKos', to: '/' },
+      { label: 'Rreth KëshillaKos', to: '/rreth-nesh' },
       { label: 'Pse të na zgjedhësh', to: '/#trust' },
     ],
   },
