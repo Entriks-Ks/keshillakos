@@ -21,6 +21,7 @@ import onboardingRoutes from './routes/onboarding.routes'
 import serviceRoutes from './routes/service.routes'
 import serviceOfferRoutes from './routes/serviceOffer.routes'
 import chatRoutes from './routes/chat.routes'
+import feedbackRoutes from './routes/feedback.routes'
 import { attachChatSocket } from './services/chatSocket'
 import { UPLOADS_ROOT } from './services/mediaService'
 
@@ -56,6 +57,7 @@ app.use('/api/ratings', ratingRoutes)
 app.use('/api/requests', requestRoutes)
 app.use('/api/appointments', appointmentRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/feedback', feedbackRoutes)
 
 app.use(
   (

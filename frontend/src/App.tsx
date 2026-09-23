@@ -22,9 +22,12 @@ import {
   CompanyExpertsPanel,
   ProviderServicesPanel,
 } from './dashboard/panels'
+import AdminFeedbackPanel from './dashboard/AdminFeedbackPanel'
 import AdminRatingsPanel from './dashboard/AdminRatingsPanel'
 import DashboardRedirect from './pages/DashboardRedirect'
+import AboutPage from './pages/AboutPage'
 import HomePage from './pages/HomePage'
+import LegalPage from './pages/LegalPage'
 import LoginPage from './pages/LoginPage'
 import OffersPage from './pages/OffersPage'
 import RegisterPage from './pages/RegisterPage'
@@ -44,6 +47,10 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/rreth-nesh" element={<AboutPage />} />
+          <Route path="/kushtet" element={<LegalPage kind="terms" />} />
+          <Route path="/privatesia" element={<LegalPage kind="privacy" />} />
+          <Route path="/cookies" element={<LegalPage kind="cookies" />} />
           <Route path="/ofertat" element={<OffersPage />} />
           <Route path="/services/:id" element={<ServiceDetailPage />} />
           <Route path="/providers/:uid" element={<ProviderProfilePage />} />
@@ -104,6 +111,7 @@ export default function App() {
               <Route path="inbox" element={<ProviderInboxPanel />} />
               <Route path="messages" element={<MessagesPage />} />
               <Route path="ratings" element={<AdminRatingsPanel />} />
+              <Route path="feedback" element={<AdminFeedbackPanel />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>

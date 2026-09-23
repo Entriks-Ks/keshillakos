@@ -7,6 +7,7 @@ import {
   Inbox,
   LayoutDashboard,
   MessageCircle,
+  MessageSquarePlus,
   Search,
   Send,
   Settings,
@@ -202,6 +203,12 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
           icon: Star,
           section: 'manage',
         },
+        {
+          to: '/dashboard/admin/feedback',
+          label: 'Feedback',
+          icon: MessageSquarePlus,
+          section: 'manage',
+        },
         profile('/dashboard/admin'),
         settings('/dashboard/admin'),
       ]
@@ -237,5 +244,5 @@ export const ROLE_HINTS: Record<UserRole, string> = {
   user: 'Gjej ndihmë, ndiq kërkesat dhe flit me ofruesit.',
   provider: 'Prano kërkesa, menaxho ofertat dhe oraret.',
   company: 'Koordino ekipin, kërkesat dhe komunikimin.',
-  admin: 'Mbikëqyr përdoruesit, kërkesat dhe vlerësimet.',
+  admin: 'Mbikëqyr përdoruesit, kërkesat, vlerësimet dhe feedback-un.',
 }

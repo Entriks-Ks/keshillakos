@@ -1,6 +1,7 @@
 import { Link as HeroLink, Separator } from '@heroui/react'
 import { Camera, MessageCircle, UsersRound } from 'lucide-react'
 import { Link as RouterLink } from 'react-router-dom'
+import FooterFeedback from './FooterFeedback'
 
 const columns = [
   {
@@ -49,6 +50,7 @@ export default function SiteFooter() {
               <span title="Facebook — së shpejti"><MessageCircle size={19} aria-hidden /></span>
               <span title="LinkedIn — së shpejti"><UsersRound size={19} aria-hidden /></span>
             </div>
+            <FooterFeedback />
           </div>
 
           <nav className="tt-footer-columns" aria-label="Lidhjet e faqes">
@@ -71,8 +73,9 @@ export default function SiteFooter() {
         <div className="tt-footer-bottom">
           <small>© {new Date().getFullYear()} KëshillaKos. Të gjitha të drejtat e rezervuara.</small>
           <div className="tt-footer-legal" aria-label="Dokumentet ligjore">
-            <span title="Së shpejti"><HeroLink isDisabled className="tt-footer-link">Kushtet e përdorimit</HeroLink></span>
-            <span title="Së shpejti"><HeroLink isDisabled className="tt-footer-link">Privatësia</HeroLink></span>
+            <RouterLink to="/kushtet" className="tt-footer-link">Kushtet e përdorimit</RouterLink>
+            <RouterLink to="/privatesia" className="tt-footer-link">Privatësia</RouterLink>
+            <RouterLink to="/cookies" className="tt-footer-link">Cookies</RouterLink>
           </div>
         </div>
       </div>
