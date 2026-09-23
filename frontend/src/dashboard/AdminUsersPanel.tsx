@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import {
   createAdminUser,
   deleteAdminUser,
@@ -37,7 +38,6 @@ export default function AdminUsersPanel() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [createForm, setCreateForm] = useState(emptyCreate)
   const [creating, setCreating] = useState(false)
   const [editingUid, setEditingUid] = useState<string | null>(null)
@@ -73,14 +73,13 @@ export default function AdminUsersPanel() {
     e.preventDefault()
     setCreating(true)
     setError('')
-    setSuccess('')
     try {
       await createAdminUser(createForm)
       setCreateForm(emptyCreate)
-      setSuccess('Përdoruesi u krijua.')
+      toast.success('Përdoruesi u krijua.')
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setCreating(false)
     }
@@ -89,7 +88,6 @@ export default function AdminUsersPanel() {
   function startEdit(user: AdminUser) {
     setEditingUid(user.uid)
     setEditForm({ name: user.name, email: user.email, role: user.role })
-    setSuccess('')
     setError('')
   }
 
@@ -98,14 +96,13 @@ export default function AdminUsersPanel() {
     if (!editingUid) return
     setSaving(true)
     setError('')
-    setSuccess('')
     try {
       await updateAdminUser(editingUid, editForm)
       setEditingUid(null)
-      setSuccess('Përdoruesi u përditësua.')
+      toast.success('Përdoruesi u përditësua.')
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -114,14 +111,17 @@ export default function AdminUsersPanel() {
   async function onReview(user: AdminUser, action: 'accept' | 'reject') {
     setReviewingUid(user.uid)
     setError('')
-    setSuccess('')
     try {
       const requestedLabel = ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? 'rol i ri'
       await reviewRoleRequest(user.uid, action)
-      setSuccess(action === 'accept' ? `${user.name} u bë ${requestedLabel.toLowerCase()}.` : `Kërkesa e ${user.name} u refuzua.`)
+      toast.success(
+        action === 'accept'
+          ? `${user.name} u bë ${requestedLabel.toLowerCase()}.`
+          : `Kërkesa e ${user.name} u refuzua.`,
+      )
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setReviewingUid('')
     }
@@ -135,14 +135,13 @@ export default function AdminUsersPanel() {
     const ok = window.confirm(`Fshi përdoruesin ${user.name} (${user.email})?`)
     if (!ok) return
     setError('')
-    setSuccess('')
     try {
       await deleteAdminUser(user.uid)
-      setSuccess('Përdoruesi u fshi.')
+      toast.success('Përdoruesi u fshi.')
       if (editingUid === user.uid) setEditingUid(null)
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     }
   }
 
@@ -273,7 +272,6 @@ export default function AdminUsersPanel() {
       </form>
 
       {error ? <p className="error">{error}</p> : null}
-      {success ? <p className="success">{success}</p> : null}
 
       {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
 

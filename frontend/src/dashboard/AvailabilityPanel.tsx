@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import {
   createAvailabilitySlot,
   createAvailabilitySlotsBulk,
@@ -76,7 +77,6 @@ export default function AvailabilityPanel() {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5])
@@ -136,7 +136,6 @@ export default function AvailabilityPanel() {
   async function onWeeklySubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
     if (days.length === 0) {
       setError('Zgjidh të paktën një ditë.')
       return
@@ -163,14 +162,14 @@ export default function AvailabilityPanel() {
         )
       }
       if (result.created.length && result.skipped) {
-        setSuccess(`U publikuan ${result.created.length} orë të lira. ${result.skipped} ekzistonin tashmë.`)
+        toast.success(`U publikuan ${result.created.length} orë të lira. ${result.skipped} ekzistonin tashmë.`)
       } else if (result.created.length) {
-        setSuccess(`U publikuan ${result.created.length} orë të lira.`)
+        toast.success(`U publikuan ${result.created.length} orë të lira.`)
       } else {
         setError('Këto orë ekzistojnë tashmë. Ndrysho ditët ose orët.')
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -179,7 +178,6 @@ export default function AvailabilityPanel() {
   async function onExtraSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
     if (selectedHours.length === 0) {
       setError('Zgjidh të paktën një orë të lirë')
       return
@@ -213,7 +211,7 @@ export default function AvailabilityPanel() {
           [...prev, ...created].sort((a, b) => a.startAt.localeCompare(b.startAt)),
         )
         setSelectedHours([])
-        setSuccess(
+        toast.success(
           created.length === 1
             ? `U shtua ora ${formatSlotTime(created[0].startAt)} si e lirë.`
             : `U shtuan ${created.length} orë të lira.`,
@@ -230,14 +228,13 @@ export default function AvailabilityPanel() {
   async function onDelete(id: string) {
     setBusyId(id)
     setError('')
-    setSuccess('')
     try {
       await deleteAvailabilitySlot(id)
       setSlots((prev) => prev.filter((s) => s.id !== id))
       setSelectedSlotId('')
-      setSuccess('Orari u fshi.')
+      toast.success('Orari u fshi.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setBusyId(null)
     }
@@ -321,7 +318,6 @@ export default function AvailabilityPanel() {
             : 'Zgjidh ditët dhe një interval orësh në të ardhmen.'}
         </p>
         {error ? <p className="error full">{error}</p> : null}
-        {success ? <p className="success full">{success}</p> : null}
         <button type="submit" className="full" disabled={submitting || previewCount === 0 || previewCount > 400}>
           {submitting ? 'Duke publikuar...' : 'Publiko orarin javor'}
         </button>

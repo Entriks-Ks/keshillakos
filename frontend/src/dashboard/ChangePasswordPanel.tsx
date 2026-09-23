@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
@@ -10,13 +11,11 @@ export default function ChangePasswordPanel() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
 
     if (newPassword.length < 6) {
       setError('Fjalëkalimi i ri duhet të ketë të paktën 6 karaktere')
@@ -34,9 +33,9 @@ export default function ChangePasswordPanel() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setSuccess('Fjalëkalimi u ndryshua me sukses.')
+      toast.success('Fjalëkalimi u ndryshua me sukses.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -81,7 +80,6 @@ export default function ChangePasswordPanel() {
         </label>
 
         {error ? <p className="error full">{error}</p> : null}
-        {success ? <p className="success full">{success}</p> : null}
 
         <button type="submit" className="full" disabled={submitting}>
           {submitting ? 'Duke ndryshuar...' : 'Ndrysho fjalëkalimin'}

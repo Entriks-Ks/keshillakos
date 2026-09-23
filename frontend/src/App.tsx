@@ -1,3 +1,4 @@
+import { Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
@@ -33,6 +34,13 @@ import ProviderProfilePage from './pages/ProviderProfilePage'
 export default function App() {
   return (
     <AuthProvider>
+      <Toast.Provider
+        aria-label="Njoftime"
+        className="kk-toast-region"
+        placement="bottom end"
+        maxVisibleToasts={3}
+        width={360}
+      />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />

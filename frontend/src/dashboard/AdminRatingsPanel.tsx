@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { toast } from '@heroui/react'
 import {
   fetchModerationQueue,
   moderateRating,
@@ -64,7 +65,6 @@ export default function AdminRatingsPanel() {
   const [published, setPublished] = useState<AdminReviewItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [busyId, setBusyId] = useState('')
 
   async function load() {
@@ -87,14 +87,12 @@ export default function AdminRatingsPanel() {
 
   async function onModerate(id: string, decision: 'published' | 'rejected') {
     setBusyId(id)
-    setError('')
-    setSuccess('')
     try {
       await moderateRating(id, { decision })
-      setSuccess(decision === 'published' ? 'Vlerësimi u publikua.' : 'Vlerësimi u refuzua.')
+      toast.success(decision === 'published' ? 'Vlerësimi u publikua.' : 'Vlerësimi u refuzua.')
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setBusyId('')
     }
@@ -108,7 +106,6 @@ export default function AdminRatingsPanel() {
       />
       {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
       {error ? <p className="error">{error}</p> : null}
-      {success ? <p className="success">{success}</p> : null}
 
       <div className="services-list">
         <h3>Në pritje të miratimit</h3>

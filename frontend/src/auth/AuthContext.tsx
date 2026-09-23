@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { toast } from '@heroui/react'
 import {
   changePassword as changePasswordRequest,
   fetchMe,
@@ -129,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('token')
     setUser(null)
+    toast.info('U çkyçe me sukses.')
   }, [])
 
   const value = useMemo(

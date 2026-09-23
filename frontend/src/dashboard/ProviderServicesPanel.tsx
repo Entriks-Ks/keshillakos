@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
 import {
   fetchCategories,
@@ -64,7 +65,6 @@ export default function ProviderServicesPanel() {
   const [photos, setPhotos] = useState<string[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState('')
 
@@ -238,7 +238,6 @@ export default function ProviderServicesPanel() {
     setExtensionValues(next)
     setPhotos(details.photos || [])
     setError('')
-    setSuccess('')
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -266,8 +265,9 @@ export default function ProviderServicesPanel() {
     try {
       const url = await uploadServicePhoto(file)
       setPhotos((prev) => [...prev, url].slice(0, MAX_SERVICE_PHOTOS))
+      toast.success(catalogLanguage === 'en' ? 'Photo uploaded.' : 'Fotoja u ngarkua.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setUploadingPhoto(false)
     }
@@ -276,7 +276,6 @@ export default function ProviderServicesPanel() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
     if (!categoryId || !subcategoryId || !selectedSubcategory) {
       setError(catalogLanguage === 'en' ? 'Choose a category and subcategory.' : 'Zgjidh kategorinë dhe nënkategorinë.')
       return
@@ -301,15 +300,15 @@ export default function ProviderServicesPanel() {
         const service = await updateService(editingId, payload)
         setServices((prev) => prev.map((item) => (item.id === service.id ? service : item)))
         resetForm()
-        setSuccess(catalogLanguage === 'en' ? 'Service updated.' : 'Shërbimi u përditësua.')
+        toast.success(catalogLanguage === 'en' ? 'Service updated.' : 'Shërbimi u përditësua.')
       } else {
         const service = await createService(payload)
         setServices((prev) => [service, ...prev])
         resetForm()
-        setSuccess(catalogLanguage === 'en' ? 'Service published and visible in offers.' : 'Shërbimi u publikua dhe shfaqet te ofertat.')
+        toast.success(catalogLanguage === 'en' ? 'Service published and visible in offers.' : 'Shërbimi u publikua dhe shfaqet te ofertat.')
       }
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -318,15 +317,14 @@ export default function ProviderServicesPanel() {
   async function onDelete(id: string) {
     if (!window.confirm(catalogLanguage === 'en' ? 'Delete this service?' : 'A je i sigurt që do ta fshish këtë shërbim?')) return
     setError('')
-    setSuccess('')
     setDeletingId(id)
     try {
       await deleteService(id)
       setServices((prev) => prev.filter((item) => item.id !== id))
       if (editingId === id) resetForm()
-      setSuccess(catalogLanguage === 'en' ? 'Service deleted.' : 'Shërbimi u fshi.')
+      toast.success(catalogLanguage === 'en' ? 'Service deleted.' : 'Shërbimi u fshi.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setDeletingId('')
     }
@@ -518,7 +516,6 @@ export default function ProviderServicesPanel() {
         ) : null}
 
         {error ? <p className="error full">{error}</p> : null}
-        {success ? <p className="success full">{success}</p> : null}
 
         <div className="full form-actions">
           <button type="submit" disabled={submitting || uploadingPhoto}>
@@ -536,7 +533,6 @@ export default function ProviderServicesPanel() {
               className="ghost"
               onClick={() => {
                 resetForm()
-                setSuccess('')
                 setError('')
               }}
             >

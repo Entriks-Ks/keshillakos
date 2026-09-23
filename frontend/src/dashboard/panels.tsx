@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { toast } from '@heroui/react'
 import { createCustomDomain, fetchDomains } from '../api/domains'
 import { createExpert, fetchMyExperts, type ExpertItem } from '../api/experts'
 import {
@@ -131,7 +131,6 @@ export function CompanyExpertsPanel() {
   const [languageTo, setLanguageTo] = useState('')
   const [deliveryModes, setDeliveryModes] = useState<string[]>([])
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const selectedDomain = useMemo(
@@ -176,7 +175,6 @@ export function CompanyExpertsPanel() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
     if (!location) {
       setError('Zgjidh lokacionin nga lista e qyteteve.')
       return
@@ -204,9 +202,9 @@ export function CompanyExpertsPanel() {
       setLocation(null)
       setBio('')
       setLicenseNumber('')
-      setSuccess('Eksperti u shtua.')
+      toast.success('Eksperti u shtua.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -317,7 +315,6 @@ export function CompanyExpertsPanel() {
         </label>
 
         {error ? <p className="error full">{error}</p> : null}
-        {success ? <p className="success full">{success}</p> : null}
 
         <button type="submit" className="full" disabled={submitting}>
           {submitting ? 'Duke shtuar...' : 'Shto ekspertin'}
@@ -365,7 +362,6 @@ export function AdminDomainsPanel() {
   const [examples, setExamples] = useState('')
   const [keywords, setKeywords] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -375,7 +371,6 @@ export function AdminDomainsPanel() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
     setSubmitting(true)
     try {
       const domain = await createCustomDomain({
@@ -399,9 +394,9 @@ export function AdminDomainsPanel() {
       setLabelDe('')
       setExamples('')
       setKeywords('')
-      setSuccess('Kategoria e re u krijua (Ekspertë të tjerë / custom).')
+      toast.success('Kategoria e re u krijua (Ekspertë të tjerë / custom).')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -444,7 +439,6 @@ export function AdminDomainsPanel() {
           <input value={keywords} onChange={(e) => setKeywords(e.target.value)} />
         </label>
         {error ? <p className="error full">{error}</p> : null}
-        {success ? <p className="success full">{success}</p> : null}
         <button type="submit" className="full" disabled={submitting}>
           {submitting ? 'Duke krijuar...' : 'Krijo kategori të re'}
         </button>

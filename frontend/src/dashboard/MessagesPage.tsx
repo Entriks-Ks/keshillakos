@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, Search, Send, UserRound } from 'lucide-react'
-import { Button } from '@heroui/react'
+import { Button, toast } from '@heroui/react'
 import {
   fetchConversations,
   fetchMessages,
@@ -248,7 +248,7 @@ export default function MessagesPage() {
     const result = await socket.sendMessage(activeId, body)
     if (!result.ok || !result.message) {
       setDraft(body)
-      setError(result.error || 'Mesazhi nuk u dërgua')
+      toast.danger(result.error || 'Mesazhi nuk u dërgua')
     } else {
       setMessages((prev) => {
         if (prev.some((m) => m.id === result.message!.id)) return prev

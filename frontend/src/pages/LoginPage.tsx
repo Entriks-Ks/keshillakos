@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Button, FieldError, Input, InputGroup, Label, TextField } from '@heroui/react'
+import { Button, FieldError, Input, InputGroup, Label, TextField, toast } from '@heroui/react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -21,12 +21,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<LoginField, string>>>({})
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    setError('')
     const result = loginSchema.safeParse({ email, password })
     if (!result.success) {
       const next: Partial<Record<LoginField, string>> = {}
@@ -41,9 +39,10 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       await login(email, password)
+      toast.success('Mirë se erdhe! Hyrja u krye me sukses.')
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -99,8 +98,6 @@ export default function LoginPage() {
             </InputGroup>
             <FieldError>{fieldErrors.password}</FieldError>
           </TextField>
-
-          {error ? <p className="error">{error}</p> : null}
 
           <Button type="submit" size="md" className="auth-submit" isDisabled={submitting} fullWidth>
             {submitting ? 'Duke hyrë...' : 'Hyr'}

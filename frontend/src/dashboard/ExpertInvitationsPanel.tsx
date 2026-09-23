@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { toast } from '@heroui/react'
 import { acceptInvitation, fetchMyInvitations } from '../api/onboarding'
 import { getErrorMessage } from '../utils/errors'
 
@@ -10,12 +11,12 @@ export default function ExpertInvitationsPanel() {
   useEffect(() => { fetchMyInvitations().then(setInvitations).catch((err) => setError(getErrorMessage(err))) }, [])
 
   async function accept(id: string) {
-    setError('')
     setAccepting(id)
     try {
       await acceptInvitation(id)
       setInvitations((items) => items.filter((item) => item.id !== id))
-    } catch (err) { setError(getErrorMessage(err)) }
+      toast.success('Ftesa u pranua.')
+    } catch (err) { toast.danger(getErrorMessage(err)) }
     finally { setAccepting(null) }
   }
 

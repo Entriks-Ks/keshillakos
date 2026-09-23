@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from '@heroui/react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MessageCircle } from 'lucide-react'
 import { openConversation } from '../api/chat'
@@ -34,7 +35,6 @@ export default function StartChatButton({
   const { user } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const peerName = seekerUid ? seekerName || 'klientin' : providerName || 'ofruesin'
   const asProvider = Boolean(user && seekerUid && user.uid !== seekerUid)
 
@@ -66,7 +66,6 @@ export default function StartChatButton({
 
   async function startChat() {
     setLoading(true)
-    setError('')
     try {
       const { conversation } = await openConversation(
         asProvider
@@ -76,7 +75,7 @@ export default function StartChatButton({
       const base = getDashboardPath(user!.role)
       navigate(`${base}/messages?c=${conversation.id}`)
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -93,7 +92,6 @@ export default function StartChatButton({
         <MessageCircle size={16} />
         {loading ? 'Duke hapur...' : label || 'Dërgo mesazh'}
       </button>
-      {error ? <p className="error">{error}</p> : null}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Button, FieldError, Input, Label, TextField } from '@heroui/react'
+import { Button, FieldError, Input, Label, TextField, toast } from '@heroui/react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -31,12 +31,10 @@ export default function RegisterPage() {
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<RegisterField, string>>>({})
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    setError('')
     const result = registerSchema.safeParse({ firstName, lastName, email, password, confirmPassword })
     if (!result.success) {
       const next: Partial<Record<RegisterField, string>> = {}
@@ -53,9 +51,10 @@ export default function RegisterPage() {
     setSubmitting(true)
     try {
       await register(result.data.firstName, result.data.lastName, result.data.email, result.data.password)
+      toast.success('Llogaria u krijua. Mirë se erdhe!')
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -149,8 +148,6 @@ export default function RegisterPage() {
             </span>
             <FieldError>{fieldErrors.confirmPassword}</FieldError>
           </TextField>
-
-          {error ? <p className="error">{error}</p> : null}
 
           <Button type="submit" size="md" className="auth-submit" isDisabled={submitting} fullWidth>
             {submitting ? 'Duke u regjistruar...' : 'Regjistrohu'}

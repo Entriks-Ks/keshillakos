@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from '@heroui/react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
@@ -7,16 +8,17 @@ export default function GoogleAuthButton({ disabled }: { disabled?: boolean }) {
   const { loginWithGoogle } = useAuth()
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
 
   async function onClick() {
-    setError('')
     setBusy(true)
     try {
       const signedIn = await loginWithGoogle()
-      if (signedIn) navigate('/dashboard', { replace: true })
+      if (signedIn) {
+        toast.success('Hyrja me Google u krye me sukses.')
+        navigate('/dashboard', { replace: true })
+      }
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setBusy(false)
     }
@@ -36,7 +38,6 @@ export default function GoogleAuthButton({ disabled }: { disabled?: boolean }) {
         </svg>
         {busy ? 'Duke hyrë...' : 'Vazhdo me Google'}
       </button>
-      {error ? <p className="error">{error}</p> : null}
     </div>
   )
 }

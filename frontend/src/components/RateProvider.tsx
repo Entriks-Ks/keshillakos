@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
 import { Star } from 'lucide-react'
 import {
@@ -43,8 +44,7 @@ export default function RateProvider({
   const [comment, setComment] = useState('')
   const [average, setAverage] = useState(initialAverage)
   const [count, setCount] = useState(initialCount)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [rated, setRated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loadingEligible, setLoadingEligible] = useState(false)
   const [providerId, setProviderId] = useState(providerIdProp || '')
@@ -96,8 +96,6 @@ export default function RateProvider({
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!canRate || !selected || !providerId || score < 1) return
-    setError('')
-    setSuccess('')
     setSubmitting(true)
     try {
       const result = await submitRating({
@@ -111,24 +109,25 @@ export default function RateProvider({
       const fresh = await fetchProviderRatings(providerUid)
       setAverage(fresh.stats.average)
       setCount(fresh.stats.count)
-      setSuccess(
+      toast.success(
         published
           ? 'Faleminderit! Vlerësimi u ruajt dhe tani shfaqet te profili i ofruesit.'
           : 'Faleminderit! Vlerësimi u ruajt dhe do të shfaqet pasi të miratohet.',
       )
+      setRated(true)
       setInteractions((prev) => prev.filter((item) => item.id !== selected.id))
       setSelectedId('')
       setComment('')
       setScore(0)
       onRated?.(fresh.stats)
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (quiet && (!canRate || loadingEligible || (!selected && !success))) return null
+  if (quiet && (!canRate || loadingEligible || (!selected && !rated))) return null
 
   const shownScore = hover || score
 
@@ -156,7 +155,7 @@ export default function RateProvider({
 
       {canRate && loadingEligible && !quiet ? <p className="muted">Duke kontrolluar…</p> : null}
 
-      {canRate && !loadingEligible && interactions.length === 0 && !success && !quiet ? (
+      {canRate && !loadingEligible && interactions.length === 0 && !rated && !quiet ? (
         <p className="muted">
           Mund ta vlerësosh <strong>{providerName}</strong> pasi ofruesi të përfundojë shërbimin.
         </p>
@@ -191,11 +190,8 @@ export default function RateProvider({
           <button type="submit" className="primary-btn" disabled={submitting || score < 1}>
             {submitting ? 'Duke ruajtur…' : 'Dërgo vlerësimin'}
           </button>
-          {error ? <p className="error">{error}</p> : null}
         </form>
       ) : null}
-
-      {success ? <p className="success">{success}</p> : null}
     </div>
   )
 }

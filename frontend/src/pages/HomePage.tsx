@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Card, Input, ProgressBar } from '@heroui/react'
+import { Button, Card, Input, ProgressBar, toast } from '@heroui/react'
 import {
   ArrowRight,
   BadgeCheck,
@@ -122,7 +122,6 @@ export default function HomePage() {
   const [intake, setIntake] = useState<IntakeState>(INITIAL)
   const { selectedLocation, changeLocation, locationLoading, locationSaving, locationError } = useSavedLocation()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [matches, setMatches] = useState<MatchedExpert[] | null>(null)
   const [discoveryContext, setDiscoveryContext] = useState<{ categoryId?: string; subcategoryId?: string }>({})
   const [resultMessage, setResultMessage] = useState('')
@@ -226,7 +225,6 @@ export default function HomePage() {
     if (!intake.audience || !intake.language || !intake.urgency || !intake.contact) return
 
     setLoading(true)
-    setError('')
     setMatches(null)
     try {
       const payload: MatchIntake = {
@@ -246,7 +244,7 @@ export default function HomePage() {
       setEngine(result.engine)
       setStep(8)
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -263,7 +261,6 @@ export default function HomePage() {
   }
 
   function onBack() {
-    setError('')
     if (step === 8) {
       setStep(7)
       setMatches(null)
@@ -284,7 +281,6 @@ export default function HomePage() {
     setMatches(null)
     setResultMessage('')
     setEngine('')
-    setError('')
   }
 
   function startGuided() {
@@ -294,7 +290,6 @@ export default function HomePage() {
     setMatches(null)
     setResultMessage('')
     setEngine('')
-    setError('')
     scrollToHero()
     requestAnimationFrame(() => needInputRef.current?.focus())
   }
@@ -304,7 +299,6 @@ export default function HomePage() {
     setMatches(null)
     setResultMessage('')
     setEngine('')
-    setError('')
     scrollToHero()
     requestAnimationFrame(() => needInputRef.current?.focus())
   }
@@ -565,8 +559,6 @@ export default function HomePage() {
                           </div>
                         </fieldset>
                       ) : null}
-
-                      {error ? <p className="error">{error}</p> : null}
 
                       <div className="wizard-actions">
                         <Button type="button" variant="ghost" onPress={onBack} isDisabled={loading}>

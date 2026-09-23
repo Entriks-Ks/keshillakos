@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import { fetchBusinessTeam, fetchMyBusinesses, inviteExpert, removeExpert, type BusinessSummary, type BusinessTeam } from '../api/onboarding'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
@@ -29,19 +30,20 @@ export default function CompanyTeamPanel() {
   async function invite(event: FormEvent) {
     event.preventDefault()
     if (!selected) return
-    setError('')
     setSaving(true)
     try {
       setTeam(await inviteExpert(selected, email))
       setEmail('')
-    } catch (err) { setError(getErrorMessage(err)) }
+      toast.success('Ftesa u dërgua te eksperti.')
+    } catch (err) { toast.danger(getErrorMessage(err)) }
     finally { setSaving(false) }
   }
 
   async function remove(userId: string) {
-    setError('')
-    try { setTeam(await removeExpert(selected, userId)) }
-    catch (err) { setError(getErrorMessage(err)) }
+    try {
+      setTeam(await removeExpert(selected, userId))
+      toast.success('Anëtari u hoq nga ekipi.')
+    } catch (err) { toast.danger(getErrorMessage(err)) }
   }
 
   if (!(user?.roles ?? []).includes('company')) return null

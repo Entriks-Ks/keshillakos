@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { toast } from '@heroui/react'
 import { useAuth } from '../auth/AuthContext'
 import { resolveSavedLocation, type LocationSelection, type SavedLocationIds } from '../api/locations'
 import { getErrorMessage } from '../utils/errors'
@@ -58,15 +59,19 @@ export function useSavedLocation() {
       try {
         if (ids) localStorage.setItem(GUEST_LOCATION_KEY, JSON.stringify(ids))
         else localStorage.removeItem(GUEST_LOCATION_KEY)
-      } catch { setLocationError('Lokacioni nuk mund të ruhet në këtë pajisje.') }
+      } catch {
+        toast.danger('Lokacioni nuk mund të ruhet në këtë pajisje.')
+      }
       return
     }
     setLocationSaving(true)
-    try { await updateProfile({ savedLocation: ids }) }
-    catch (err) {
+    try {
+      await updateProfile({ savedLocation: ids })
+      toast.success(ids ? 'Lokacioni u ruajt.' : 'Lokacioni u hoq.')
+    } catch (err) {
       if (version === changeVersion.current) {
         setSelectedLocation(previous)
-        setLocationError(getErrorMessage(err))
+        toast.danger(getErrorMessage(err))
       }
     } finally { setLocationSaving(false) }
   }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
 import {
   CalendarDays,
@@ -335,15 +336,20 @@ export function ProviderInboxPanel() {
 
   async function setStatus(id: string, status: RequestStatus) {
     setBusyId(id)
-    setError('')
     try {
       await updateRequestStatus(id, {
         status,
         providerNote: notes[id]?.trim() || undefined,
       })
+      const messages: Partial<Record<RequestStatus, string>> = {
+        accepted: 'Kërkesa u pranua.',
+        rejected: 'Kërkesa u refuzua.',
+        completed: 'Kërkesa u shënua si e përfunduar.',
+      }
+      toast.success(messages[status] || 'Statusi u përditësua.')
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setBusyId(null)
     }

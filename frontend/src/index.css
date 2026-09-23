@@ -7499,3 +7499,45 @@ h1 {
     height: 140px;
   }
 }
+
+/* HeroUI Toast — light, clean, match dashboard surfaces */
+.kk-toast-region .toast {
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-navy) 6%, transparent);
+}
+
+.kk-toast-region .toast__title {
+  color: var(--foreground);
+  font-weight: 650;
+}
+
+.kk-toast-region .toast__description {
+  color: var(--ink-secondary);
+}
+
+.kk-toast-region .toast--success .toast__title,
+.kk-toast-region .toast--success .toast__indicator {
+  color: color-mix(in srgb, var(--success) 82%, #000);
+}
+
+.kk-toast-region .toast--warning .toast__title,
+.kk-toast-region .toast--warning .toast__indicator {
+  color: color-mix(in srgb, var(--warning) 82%, #000);
+}
+
+.kk-toast-region .toast--danger .toast__title,
+.kk-toast-region .toast--danger .toast__indicator {
+  color: color-mix(in srgb, var(--danger) 82%, #000);
+}
+
+.kk-toast-region .toast--accent .toast__title,
+.kk-toast-region .toast--accent .toast__indicator {
+  color: var(--accent);
+}
+
+.kk-toast-region .toast__close-button {
+  background: #ffffff;
+  border-color: var(--border);
+}

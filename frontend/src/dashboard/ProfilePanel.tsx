@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
 import { requestRoleChange } from '../api/auth'
 import { IMAGE_ACCEPT, IMAGE_ACCEPT_HINT, mediaUrl, validateImageFile } from '../api/media'
@@ -30,7 +31,6 @@ export default function ProfilePanel() {
   const [languages, setLanguages] = useState<string[]>([])
   const [preview, setPreview] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [requestingRole, setRequestingRole] = useState(false)
@@ -56,7 +56,6 @@ export default function ProfilePanel() {
   async function onSave(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
     setSaving(true)
     try {
       await updateProfile({
@@ -68,9 +67,9 @@ export default function ProfilePanel() {
         skills: parseSkills(skillsText),
         languages,
       })
-      setSuccess('Profili u ruajt.')
+      toast.success('Profili u ruajt.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -79,7 +78,6 @@ export default function ProfilePanel() {
   async function onPhotoChange(file: File | undefined) {
     if (!file) return
     setError('')
-    setSuccess('')
     try {
       validateImageFile(file)
     } catch (err) {
@@ -92,9 +90,9 @@ export default function ProfilePanel() {
     try {
       const next = await uploadProfilePhoto(file)
       setPreview(mediaUrl(next.profilePhoto))
-      setSuccess('Fotoja e profilit u ngarkua.')
+      toast.success('Fotoja e profilit u ngarkua.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
       setPreview(mediaUrl(user?.profilePhoto))
     } finally {
       setUploading(false)
@@ -111,18 +109,17 @@ export default function ProfilePanel() {
 
   async function requestCapability(role: 'provider' | 'company') {
     setError('')
-    setSuccess('')
     setRequestingRole(true)
     try {
       await requestRoleChange(role)
       await refreshUser()
-      setSuccess(
+      toast.success(
         role === 'provider'
           ? 'Kërkesa u dërgua. Admini do ta shqyrtojë para se të bëhesh ofrues.'
           : 'Kërkesa u dërgua. Admini do ta shqyrtojë para se të bëhesh kompani.',
       )
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setRequestingRole(false)
     }
@@ -251,7 +248,6 @@ export default function ProfilePanel() {
         </label>
 
         {error ? <p className="error full">{error}</p> : null}
-        {success ? <p className="success full">{success}</p> : null}
 
         <button type="submit" className="full" disabled={saving}>
           {saving ? 'Duke ruajtur...' : 'Ruaj profilin'}
@@ -290,7 +286,6 @@ function ProviderLocationEditor({ profile }: { profile: ManagedProviderProfile }
   const [restoreFailed, setRestoreFailed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -304,15 +299,14 @@ function ProviderLocationEditor({ profile }: { profile: ManagedProviderProfile }
   async function onSave(event: FormEvent) {
     event.preventDefault()
     setError('')
-    setSuccess('')
     setSaving(true)
     try {
       await updateProviderLocations(profile._id, {
         location: location ? { countryId: location.country._id, cityId: location.city._id } : null,
         serviceAreaCityIds: serviceAreas.map((area) => area.city._id),
       })
-      setSuccess('Lokacioni dhe zonat e shërbimit u ruajtën.')
-    } catch (err) { setError(getErrorMessage(err)) }
+      toast.success('Lokacioni dhe zonat e shërbimit u ruajtën.')
+    } catch (err) { toast.danger(getErrorMessage(err)) }
     finally { setSaving(false) }
   }
 
@@ -320,7 +314,6 @@ function ProviderLocationEditor({ profile }: { profile: ManagedProviderProfile }
     <h4 className="full">{profile.publicProfile.displayName}</h4>
     {loading ? <p className="muted full" role="status">Lokacionet po ngarkohen...</p> : !restoreFailed ? <ProviderLocationFields location={location} serviceAreas={serviceAreas} onLocationChange={setLocation} onServiceAreasChange={setServiceAreas} disabled={saving} /> : null}
     {error ? <p className="error full" role="alert">{error}</p> : null}
-    {success ? <p className="success full" role="status">{success}</p> : null}
     <button type="submit" className="full" disabled={loading || saving || restoreFailed}>{saving ? 'Duke ruajtur...' : 'Ruaj lokacionet'}</button>
   </form>
 }

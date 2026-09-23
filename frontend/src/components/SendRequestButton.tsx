@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, X } from 'lucide-react'
 import type { MatchIntake } from '../api/match'
@@ -47,7 +48,6 @@ export default function SendRequestButton({
   const [freeCount, setFreeCount] = useState(0)
   const [scheduleKey, setScheduleKey] = useState(0)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -84,7 +84,6 @@ export default function SendRequestButton({
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
     if (!slotId) {
       setError(
         freeCount > 0
@@ -120,13 +119,13 @@ export default function SendRequestButton({
         contactEmail: contactMethod === 'email' ? contactEmail.trim() : undefined,
         slotId,
       })
-      setSuccess('Kërkesa u dërgua. Ora pret konfirmimin e ofruesit.')
+      toast.success('Kërkesa u dërgua. Ora pret konfirmimin e ofruesit.')
       setMessage('')
       setSlotId('')
       setScheduleKey((k) => k + 1)
       setOpen(false)
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
       setScheduleKey((k) => k + 1)
       setSlotId('')
     } finally {
@@ -263,7 +262,6 @@ export default function SendRequestButton({
         {ctaLabel}
       </button>
       <p className="muted send-request-hint">Zgjidh orën dhe dërgo kërkesën në një hap.</p>
-      {success ? <p className="success">{success}</p> : null}
       {modal}
     </div>
   )

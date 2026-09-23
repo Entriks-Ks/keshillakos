@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createCompany, becomeExpert } from '../api/onboarding'
 import { fetchDomains } from '../api/domains'
@@ -42,8 +43,9 @@ export function ExpertOnboardingPage() {
       await becomeExpert({ displayName, title, description, categories: [category], languages: languages.split(',').map((value) => value.trim()).filter(Boolean), mode,
         location: { countryId: location.country._id, cityId: location.city._id }, serviceAreaCityIds: serviceAreas.map((area) => area.city._id) })
       await refreshUser()
+      toast.success('Profili i ekspertit u krijua. Kërkesa është në pritje të adminit.')
       navigate('/dashboard/user/profile', { replace: true })
-    } catch (err) { setError(getErrorMessage(err)) }
+    } catch (err) { toast.danger(getErrorMessage(err)) }
     finally { setSaving(false) }
   }
 
@@ -74,18 +76,17 @@ export function CompanyOnboardingPage() {
   const navigate = useNavigate()
   const [publicName, setPublicName] = useState('')
   const [legalName, setLegalName] = useState('')
-  const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    setError('')
     setSaving(true)
     try {
       await createCompany({ publicName, legalName })
       await refreshUser()
+      toast.success('Kompania u krijua. Kërkesa është në pritje të adminit.')
       navigate('/dashboard/user/profile', { replace: true })
-    } catch (err) { setError(getErrorMessage(err)) }
+    } catch (err) { toast.danger(getErrorMessage(err)) }
     finally { setSaving(false) }
   }
 
@@ -95,7 +96,6 @@ export function CompanyOnboardingPage() {
     <form className="service-form" onSubmit={onSubmit}>
       <label>Emri publik<input value={publicName} onChange={(e) => setPublicName(e.target.value)} required maxLength={160} /></label>
       <label>Emri ligjor (opsional)<input value={legalName} onChange={(e) => setLegalName(e.target.value)} maxLength={200} /></label>
-      {error ? <p className="error full">{error}</p> : null}
       <button type="submit" className="full" disabled={saving}>{saving ? 'Duke krijuar...' : 'Krijo kompaninë'}</button>
     </form>
     <p><Link to="/dashboard/user/profile">Kthehu te profili</Link></p>
