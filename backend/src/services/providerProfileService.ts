@@ -438,10 +438,10 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
   }
   if (changes.qualificationClaims !== undefined) profile.qualificationClaims = changes.qualificationClaims
   if (changes.publicProfile !== undefined) {
-    for (const key of ['displayName', 'title', 'shortDescription', 'description', 'photoUrl', 'publicEmail', 'publicPhone'] as const) {
+    for (const key of ['displayName', 'title', 'shortDescription', 'description', 'photoUrl', 'coverUrl', 'publicEmail', 'publicPhone'] as const) {
       if (changes.publicProfile[key] !== undefined) {
         const value = changes.publicProfile[key]
-        if (key === 'photoUrl' && value) {
+        if ((key === 'photoUrl' || key === 'coverUrl') && value) {
           const path = normalizeUploadPath(value)
           if (!path) throw new Error('Fotoja e profilit nuk është e vlefshme')
           profile.set(`publicProfile.${key}`, path)
@@ -461,6 +461,12 @@ export async function updateProviderPhoto(uid: string, id: string, photoUrl: str
   const path = normalizeUploadPath(photoUrl)
   if (!path) throw new Error('Rruga e fotos nuk është e vlefshme')
   return updateProviderProfile(uid, id, { publicProfile: { photoUrl: path } })
+}
+
+export async function updateProviderCover(uid: string, id: string, coverUrl: string) {
+  const path = normalizeUploadPath(coverUrl)
+  if (!path) throw new Error('Rruga e fotos nuk është e vlefshme')
+  return updateProviderProfile(uid, id, { publicProfile: { coverUrl: path } })
 }
 
 export async function moderateProviderProfile(id: string, reviewerUid: string, decision: 'approved' | 'rejected', reason?: string) {

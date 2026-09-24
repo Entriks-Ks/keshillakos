@@ -1,17 +1,18 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { ProgressBar, toast } from '@heroui/react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { fetchMyBusinesses, updateBusinessProfile, uploadBusinessLogo, type BusinessProfile } from '../api/businesses'
+import { fetchMyBusinesses, updateBusinessProfile, uploadBusinessCover, uploadBusinessLogo, type BusinessProfile } from '../api/businesses'
 import { fetchDomains } from '../api/domains'
 import { fetchCategories, fetchSubcategories, type CatalogCategory, type CatalogSubcategory } from '../api/catalog'
 import { IMAGE_ACCEPT, IMAGE_ACCEPT_HINT, mediaUrl, validateImageFile } from '../api/media'
-import { resolveProviderLocations, resolveSavedLocation, type LocationSelection } from '../api/locations'
+import { locationLabel, resolveProviderLocations, resolveSavedLocation, type LocationSelection } from '../api/locations'
 import {
   emptyCertification,
   emptyEducation,
   emptyWorkExperience,
   fetchMyProviderProfiles,
   updateMyProviderProfile,
+  uploadProviderCover,
   uploadProviderPhoto,
   type CertificationEntry,
   type EducationEntry,
@@ -35,7 +36,9 @@ import { domainRequires } from '../data/domains'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { getErrorMessage } from '../utils/errors'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
-import DashPageHeader from './DashPageHeader'
+import { ROLE_LABELS } from './nav'
+import '../pages/ProviderProfilePage.css'
+import './ProfilePanel.css'
 
 function parseSkills(raw: string) {
   return raw.split(',').map((s) => s.trim()).filter(Boolean)
@@ -177,40 +180,56 @@ export default function ProfilePanel() {
       ? 'Emri, logo, email, telefoni, qyteti, përshkrimi dhe kategoria janë të detyrueshme. Website, adresa dhe rrjetet sociale janë opsionale.'
       : 'Emri dhe mbiemri janë të detyrueshme. Fotoja, telefoni, qyteti, gjuhët dhe rrjetet sociale janë opsionale.'
 
+  if (profileType === 'expert') {
+    return (
+      <>
+        <ExpertInvitationsPanel />
+        <ExpertProfileSection onSaved={reloadCompletion} completion={completion} />
+      </>
+    )
+  }
+
+  if (profileType === 'company') {
+    return <CompanyProfileSection onSaved={reloadCompletion} completion={completion} />
+  }
+
+  const photo = mediaUrl(user.profilePhoto)
+  const roleKey = user.role
+
   return (
-    <section className="provider-section">
-      <DashPageHeader title={title} description={description} />
+    <section className="kk-dash-profile">
+      <div className="kk-profile-cover">
+        <img src="/images/login-advice.png" alt="" />
+      </div>
+      <div className="kk-profile-grid">
+        <aside className="kk-profile-card">
+          <div className="kk-profile-avatar">
+            {photo ? <img src={photo} alt="" /> : <span>{user.name.slice(0, 1)}</span>}
+          </div>
+          <h1>{user.name}</h1>
+          <p className="kk-profile-role">{user.headline || ROLE_LABELS[roleKey] || title}</p>
+          {user.location ? <p className="kk-profile-location">{user.location}</p> : null}
+          <div className="profile-role-options">
+              <button type="button" className="ghost link-btn" onClick={() => void openExpertContext()}>
+                {roles.includes('provider') ? 'Profili i ekspertit' : 'Bëhu ekspert'}
+              </button>
+              <button type="button" className="ghost link-btn" onClick={() => void openCompanyContext()}>
+                {roles.includes('company') ? 'Profili i kompanisë' : 'Krijo kompaninë'}
+              </button>
+            </div>
+        </aside>
 
-      {profileType === 'private' ? (
-        <div className="profile-role-options">
-          {roles.includes('provider') ? (
-            <button type="button" className="ghost link-btn" onClick={() => void openExpertContext()}>
-              Profili i ekspertit
-            </button>
-          ) : (
-            <button type="button" className="ghost link-btn" onClick={() => void openExpertContext()}>
-              Bëhu ekspert
-            </button>
-          )}
-          {roles.includes('company') ? (
-            <button type="button" className="ghost link-btn" onClick={() => void openCompanyContext()}>
-              Profili i kompanisë
-            </button>
-          ) : (
-            <button type="button" className="ghost link-btn" onClick={() => void openCompanyContext()}>
-              Krijo kompaninë
-            </button>
-          )}
+        <div className="kk-profile-panel">
+          <div className="kk-profile-tabs" aria-label="Seksionet e profilit">
+            <button type="button" className="is-active">{title}</button>
+          </div>
+          <div className="kk-profile-sections">
+            <p className="kk-dash-lead">{description}</p>
+            <CompletionCard completion={completion} />
+            <PrivateProfileSection onSaved={reloadCompletion} />
+          </div>
         </div>
-      ) : null}
-
-      {profileType === 'expert' ? <ExpertInvitationsPanel /> : null}
-
-      <CompletionCard completion={completion} />
-
-      {profileType === 'private' ? <PrivateProfileSection onSaved={reloadCompletion} /> : null}
-      {profileType === 'expert' ? <ExpertProfileSection onSaved={reloadCompletion} /> : null}
-      {profileType === 'company' ? <CompanyProfileSection onSaved={reloadCompletion} /> : null}
+      </div>
     </section>
   )
 }
@@ -403,11 +422,98 @@ function MonthYearFields({
   )
 }
 
-function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
+function ProfileEditorFrame({
+  cover,
+  photo,
+  name,
+  subtitle,
+  location,
+  skills,
+  uploadingCover,
+  uploadingPhoto,
+  onCover,
+  onPhoto,
+  publicTo,
+  tab,
+  tabs,
+  onTab,
+  children,
+}: {
+  cover: string
+  photo: string
+  name: string
+  subtitle: string
+  location?: string
+  skills: string[]
+  uploadingCover: boolean
+  uploadingPhoto: boolean
+  onCover: (file: File | undefined) => void
+  onPhoto: (file: File | undefined) => void
+  publicTo?: string
+  tab: string
+  tabs: { id: string; label: string }[]
+  onTab: (id: string) => void
+  children: ReactNode
+}) {
+  return (
+    <section className="kk-dash-profile">
+      <div className="kk-profile-cover">
+        <img src={cover || '/images/login-advice.png'} alt="" />
+        <label className="kk-profile-share">
+          {uploadingCover ? 'Duke ngarkuar...' : 'Ndrysho sfondin'}
+          <input type="file" accept={IMAGE_ACCEPT} hidden disabled={uploadingCover} onChange={(e) => onCover(e.target.files?.[0])} />
+        </label>
+      </div>
+      <div className="kk-profile-grid">
+        <aside className="kk-profile-card">
+          <label className="kk-avatar-upload">
+            <div className="kk-profile-avatar">
+              {photo ? <img src={photo} alt="" /> : <span>{name.slice(0, 1) || '?'}</span>}
+            </div>
+            <span>{uploadingPhoto ? 'Duke ngarkuar...' : 'Ndrysho foton'}</span>
+            <input type="file" accept={IMAGE_ACCEPT} hidden disabled={uploadingPhoto} onChange={(e) => onPhoto(e.target.files?.[0])} />
+          </label>
+          <h1>{name || 'Profili'}</h1>
+          {subtitle ? <p className="kk-profile-role">{subtitle}</p> : null}
+          {location ? <p className="kk-profile-location">{location}</p> : null}
+          {publicTo ? <Link to={publicTo} className="kk-dash-public">Shiko profilin publik</Link> : null}
+          {skills.length > 0 ? (
+            <div className="kk-profile-skills">
+              <h2>Ekspert në</h2>
+              <ul className="kk-profile-chips">
+                {skills.map((skill) => <li key={skill}>{skill}</li>)}
+              </ul>
+            </div>
+          ) : null}
+        </aside>
+        <div className="kk-profile-panel">
+          <div className="kk-profile-tabs" role="tablist" aria-label="Seksionet e profilit">
+            {tabs.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.id}
+                className={tab === item.id ? 'is-active' : undefined}
+                onClick={() => onTab(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="kk-profile-sections">{children}</div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ExpertProfileSection({ onSaved, completion }: { onSaved: () => Promise<void>; completion: ProfileCompletion | null }) {
   const { user } = useAuth()
   const [domains, setDomains] = useState<DomainDefinition[]>([])
   const [profile, setProfile] = useState<ManagedProviderProfile | null>(null)
   const [photoPreview, setPhotoPreview] = useState('')
+  const [coverPreview, setCoverPreview] = useState('')
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   const [subcategoryId, setSubcategoryId] = useState('')
@@ -424,8 +530,9 @@ function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
   const [serviceAreas, setServiceAreas] = useState<LocationSelection[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploading] = useState<'photo' | 'cover' | null>(null)
   const [error, setError] = useState('')
+  const [tab, setTab] = useState('overview')
 
   const selectedDomain = useMemo(() => domains.find((domain) => domain.id === category) ?? null, [domains, category])
   const needsLicense = domainRequires(selectedDomain, 'license_verification')
@@ -453,6 +560,7 @@ function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
           setEducation(individual.education?.length ? individual.education : [])
           setCertifications(individual.certifications?.length ? individual.certifications : [])
           setPhotoPreview(mediaUrl(individual.publicProfile.photoUrl))
+          setCoverPreview(mediaUrl(individual.publicProfile.coverUrl))
         }
       })
       .catch((err: unknown) => { if (!controller.signal.aborted) setError(getErrorMessage(err)) })
@@ -502,7 +610,7 @@ function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
       setError(getErrorMessage(err))
       return
     }
-    setUploading(true)
+    setUploading('photo')
     const local = URL.createObjectURL(file)
     setPhotoPreview(local)
     try {
@@ -515,7 +623,33 @@ function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
       toast.danger(getErrorMessage(err))
       setPhotoPreview(mediaUrl(profile.publicProfile.photoUrl))
     } finally {
-      setUploading(false)
+      setUploading(null)
+      URL.revokeObjectURL(local)
+    }
+  }
+
+  async function onCoverChange(file: File | undefined) {
+    if (!file || !profile) return
+    try {
+      validateImageFile(file)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      return
+    }
+    setUploading('cover')
+    const local = URL.createObjectURL(file)
+    setCoverPreview(local)
+    try {
+      const next = await uploadProviderCover(profile._id, file)
+      setProfile(next)
+      setCoverPreview(mediaUrl(next.publicProfile.coverUrl))
+      await onSaved()
+      toast.success('Sfondi u ngarkua.')
+    } catch (err) {
+      toast.danger(getErrorMessage(err))
+      setCoverPreview(mediaUrl(profile.publicProfile.coverUrl))
+    } finally {
+      setUploading(null)
       URL.revokeObjectURL(local)
     }
   }
@@ -583,28 +717,32 @@ function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
     )
   }
 
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || user?.name || profile.publicProfile.displayName
+
   return (
-    <div className="profile-section-block">
-      <p className="muted">
-        Emri publik: <strong>{[user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || user?.name || profile.publicProfile.displayName}</strong>
-        {' · '}ndryshohet nga profili privat.
-      </p>
-      <div className="profile-photo-row">
-        <div className="profile-avatar-lg" aria-hidden>
-          {photoPreview ? <img src={photoPreview} alt="" /> : <span>{title.slice(0, 1) || 'E'}</span>}
-        </div>
-        <div className="profile-photo-actions">
-          <label className="primary-btn profile-upload-btn">
-            {uploading ? 'Duke ngarkuar...' : 'Ngarko foto profili'}
-            <input type="file" accept={IMAGE_ACCEPT} hidden disabled={uploading || saving} onChange={(e) => onPhotoChange(e.target.files?.[0])} />
-          </label>
-          <p className="muted"><FieldHint required /> · {IMAGE_ACCEPT_HINT}</p>
-        </div>
-      </div>
+    <ProfileEditorFrame
+      cover={coverPreview}
+      photo={photoPreview}
+      name={displayName}
+      subtitle={title || 'Ofrues shërbimi'}
+      location={location ? locationLabel(location, 'sq') : ''}
+      skills={parseSkills(skillsText)}
+      uploadingCover={uploading === 'cover'}
+      uploadingPhoto={uploading === 'photo'}
+      onCover={onCoverChange}
+      onPhoto={onPhotoChange}
+      publicTo={user ? `/providers/${user.uid}` : undefined}
+      tab={tab}
+      tabs={[{ id: 'overview', label: 'Përmbledhje' }, { id: 'details', label: 'Detajet' }]}
+      onTab={setTab}
+    >
+      <CompletionCard completion={completion} />
+      <p className="muted">Emri publik ndryshohet nga profili privat. Fotoja, titulli dhe përshkrimi ruhen këtu.</p>
       <form className="service-form" onSubmit={onSave}>
+        <div hidden={tab !== 'overview'}>
         <label>
           Titulli profesional <FieldHint required />
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} placeholder="p.sh. Avokat" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required={tab === 'overview'} maxLength={160} placeholder="p.sh. Avokat" />
         </label>
         <label>
           Kategoria <FieldHint required />
@@ -629,8 +767,10 @@ function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
         </label>
         <label className="full">
           Specializimet <FieldHint required />
-          <input value={skillsText} onChange={(e) => setSkillsText(e.target.value)} required placeholder="p.sh. Kontrata, Tatime" />
+          <input value={skillsText} onChange={(e) => setSkillsText(e.target.value)} required={tab === 'overview'} placeholder="p.sh. Kontrata, Tatime" />
         </label>
+        </div>
+        <div hidden={tab !== 'details'}>
         <label>
           Vitet e përvojës <FieldHint required />
           <input
@@ -865,16 +1005,18 @@ function ExpertProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
           Çmimi dhe verifikimi llogariten nga shërbimet / oferta dhe statusi i verifikimit kur aplikohen.
           Përvoja e punës, arsimi, certifikimet dhe rrjetet sociale janë opsionale.
         </p>
+        </div>
         {error ? <p className="error full">{error}</p> : null}
-        <button type="submit" className="full" disabled={saving || uploading}>
+        <button type="submit" className="full" disabled={saving || uploading !== null}>
           {saving ? 'Duke ruajtur...' : 'Ruaj profilin e ekspertit'}
         </button>
       </form>
-    </div>
+    </ProfileEditorFrame>
   )
 }
 
-function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
+function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise<void>; completion: ProfileCompletion | null }) {
+  const { user } = useAuth()
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [business, setBusiness] = useState<BusinessProfile | null>(null)
   const [publicName, setPublicName] = useState('')
@@ -887,10 +1029,12 @@ function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(socialLinksFrom())
   const [city, setCity] = useState<LocationSelection | null>(null)
   const [logoPreview, setLogoPreview] = useState('')
+  const [coverPreview, setCoverPreview] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null)
   const [error, setError] = useState('')
+  const [tab, setTab] = useState('overview')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -913,6 +1057,7 @@ function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
           setAddress(current.branches?.[0]?.location?.address || '')
           setSocialLinks(socialLinksFrom(current.socialLinks))
           setLogoPreview(mediaUrl(current.logoUrl))
+          setCoverPreview(mediaUrl(current.coverUrl))
         }
       })
       .catch((err: unknown) => { if (!controller.signal.aborted) setError(getErrorMessage(err)) })
@@ -940,7 +1085,7 @@ function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
       setError(getErrorMessage(err))
       return
     }
-    setUploading(true)
+    setUploading('logo')
     const local = URL.createObjectURL(file)
     setLogoPreview(local)
     try {
@@ -953,7 +1098,33 @@ function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
       toast.danger(getErrorMessage(err))
       setLogoPreview(mediaUrl(business.logoUrl))
     } finally {
-      setUploading(false)
+      setUploading(null)
+      URL.revokeObjectURL(local)
+    }
+  }
+
+  async function onCoverChange(file: File | undefined) {
+    if (!file || !business) return
+    try {
+      validateImageFile(file)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      return
+    }
+    setUploading('cover')
+    const local = URL.createObjectURL(file)
+    setCoverPreview(local)
+    try {
+      const next = await uploadBusinessCover(business._id, file)
+      setBusiness(next)
+      setCoverPreview(mediaUrl(next.coverUrl))
+      await onSaved()
+      toast.success('Sfondi u ngarkua.')
+    } catch (err) {
+      toast.danger(getErrorMessage(err))
+      setCoverPreview(mediaUrl(business.coverUrl))
+    } finally {
+      setUploading(null)
       URL.revokeObjectURL(local)
     }
   }
@@ -1031,29 +1202,38 @@ function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
         : 'Draft'
 
   return (
-    <div className="profile-section-block">
+    <ProfileEditorFrame
+      cover={coverPreview}
+      photo={logoPreview}
+      name={publicName || 'Kompania'}
+      subtitle={statusLabel}
+      location={city ? locationLabel(city, 'sq') : address}
+      skills={[]}
+      uploadingCover={uploading === 'cover'}
+      uploadingPhoto={uploading === 'logo'}
+      onCover={onCoverChange}
+      onPhoto={onLogoChange}
+      publicTo={user ? `/providers/${user.uid}` : undefined}
+      tab={tab}
+      tabs={[{ id: 'overview', label: 'Përmbledhje' }, { id: 'details', label: 'Detajet' }]}
+      onTab={setTab}
+    >
+      <CompletionCard completion={completion} />
       <p className="muted profile-company-status">
-        Statusi i kompanisë: <strong>{statusLabel}</strong>
-        {' · '}
         Verifikimi: <strong>{business.verification?.status === 'verified' ? 'I verifikuar' : 'I paverifikuar'}</strong>
       </p>
-      <div className="profile-photo-row">
-        <div className="profile-avatar-lg" aria-hidden>
-          {logoPreview ? <img src={logoPreview} alt="" /> : <span>{publicName.slice(0, 1) || 'K'}</span>}
-        </div>
-        <div className="profile-photo-actions">
-          <label className="primary-btn profile-upload-btn">
-            {uploading ? 'Duke ngarkuar...' : 'Ngarko logo'}
-            <input type="file" accept={IMAGE_ACCEPT} hidden disabled={uploading || saving} onChange={(e) => onLogoChange(e.target.files?.[0])} />
-          </label>
-          <p className="muted"><FieldHint required /> · {IMAGE_ACCEPT_HINT}</p>
-        </div>
-      </div>
       <form className="service-form" onSubmit={onSave}>
+        <div hidden={tab !== 'overview'}>
         <label>
           Emri i kompanisë <FieldHint required />
-          <input value={publicName} onChange={(e) => setPublicName(e.target.value)} required maxLength={160} />
+          <input value={publicName} onChange={(e) => setPublicName(e.target.value)} required={tab === 'overview'} maxLength={160} />
         </label>
+        <label className="full">
+          Përshkrimi <FieldHint required />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} required={tab === 'overview'} rows={4} maxLength={3000} />
+        </label>
+        </div>
+        <div hidden={tab !== 'details'}>
         <label>
           Email i kompanisë <FieldHint required />
           <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required type="email" maxLength={160} />
@@ -1066,10 +1246,6 @@ function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
           <span className="profile-inline-label">Qyteti <FieldHint required /></span>
           <LocationSelector value={city} onChange={setCity} disabled={saving} />
         </div>
-        <label className="full">
-          Përshkrimi <FieldHint required />
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={4} maxLength={3000} />
-        </label>
         <label>
           Kategoria / industria <FieldHint required />
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required disabled={!categories.length}>
@@ -1088,11 +1264,12 @@ function CompanyProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
           <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={240} />
         </label>
         <SocialLinksFields value={socialLinks} onChange={setSocialLinks} disabled={saving} />
+        </div>
         {error ? <p className="error full">{error}</p> : null}
-        <button type="submit" className="full" disabled={saving || uploading || !categories.length}>
+        <button type="submit" className="full" disabled={saving || uploading !== null || !categories.length}>
           {saving ? 'Duke ruajtur...' : 'Ruaj profilin e kompanisë'}
         </button>
       </form>
-    </div>
+    </ProfileEditorFrame>
   )
 }

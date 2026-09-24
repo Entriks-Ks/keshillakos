@@ -40,6 +40,7 @@ export type ProviderProfileDoc = {
     shortDescription?: string
     description?: string
     photoUrl?: string
+    coverUrl?: string
     publicEmail?: string
     publicPhone?: string
   }
@@ -87,6 +88,7 @@ export const providerProfileSchema = new Schema<ProviderProfileDoc>(
       shortDescription: { type: String, trim: true, maxlength: 300 },
       description: { type: String, trim: true, maxlength: 3000 },
       photoUrl: { type: String, trim: true, maxlength: 500 },
+      coverUrl: { type: String, trim: true, maxlength: 500 },
       publicEmail: { type: String, trim: true, lowercase: true },
       publicPhone: { type: String, trim: true },
     },

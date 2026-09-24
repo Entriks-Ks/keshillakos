@@ -43,6 +43,7 @@ export type ManagedProviderProfile = {
     description?: string
     shortDescription?: string
     photoUrl?: string
+    coverUrl?: string
     publicEmail?: string
     publicPhone?: string
   }
@@ -194,6 +195,15 @@ export async function uploadProviderPhoto(id: string, file: File) {
   const data = await postPhotoUpload<{ provider: ManagedProviderProfile }>(
     api,
     `/api/providers/${encodeURIComponent(id)}/photo`,
+    file,
+  )
+  return data.provider
+}
+
+export async function uploadProviderCover(id: string, file: File) {
+  const data = await postPhotoUpload<{ provider: ManagedProviderProfile }>(
+    api,
+    `/api/providers/${encodeURIComponent(id)}/cover`,
     file,
   )
   return data.provider

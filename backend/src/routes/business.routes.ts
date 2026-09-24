@@ -142,6 +142,17 @@ router.post('/:id/logo', requireAuth, requireRole('company', 'admin'), withImage
   }
 })
 
+router.post('/:id/cover', requireAuth, requireRole('company', 'admin'), withImageUpload(profilePhotoUpload), async (req, res) => {
+  try {
+    const file = requireUploadedImage(req, 'Zgjidh një foto për sfondin')
+    const coverUrl = toPublicUploadPath('profiles', file.filename)
+    const business = await updateBusiness(req.user!.uid, String(req.params.id), { coverUrl })
+    return res.json({ business: toPublicBusiness(business) })
+  } catch (err) {
+    return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' })
+  }
+})
+
 router.patch('/:id/review', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { status, verification } = req.body as { status?: 'active' | 'suspended'; verification?: 'unverified' | 'verified' | 'rejected' }

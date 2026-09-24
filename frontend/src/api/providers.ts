@@ -12,6 +12,7 @@ export type PublicProvider = {
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  coverPhoto?: string
   ratingAverage: number
   ratingCount: number
 }

@@ -15,6 +15,7 @@ import {
   listMyProviderProfiles,
   moderateProviderProfile,
   toPublicProvider,
+  updateProviderCover,
   updateProviderPhoto,
   updateProviderProfile,
 } from '../services/providerProfileService'
@@ -186,6 +187,23 @@ router.post(
       return res.json({ provider: toPublicProvider(provider) })
     } catch (err) {
       return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi' })
+    }
+  },
+)
+
+router.post(
+  '/:id/cover',
+  requireAuth,
+  requireRole('provider', 'company', 'admin'),
+  withImageUpload(profilePhotoUpload),
+  async (req, res) => {
+    try {
+      const file = requireUploadedImage(req, 'Zgjidh një foto për sfondin')
+      const coverUrl = toPublicUploadPath('profiles', file.filename)
+      const provider = await updateProviderCover(req.user!.uid, String(req.params.id), coverUrl)
+      return res.json({ provider: toPublicProvider(provider) })
+    } catch (err) {
+      return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' })
     }
   },
 )

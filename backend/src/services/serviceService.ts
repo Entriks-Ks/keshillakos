@@ -85,7 +85,7 @@ function legacyService(doc: ServiceDoc & { _id: { toString(): string } }, provid
     subcategory: doc.subcategory, location: doc.location, priceFrom: doc.priceFrom,
     details: doc.details ?? {}, providerUid: doc.providerUid,
     providerName: provider?.name || doc.providerName,
-    provider: provider ?? { uid: doc.providerUid, name: doc.providerName, email: '', role: 'unknown' as const, roleLabel: 'Ofrues', headline: '', bio: '', location: '', skills: [], languages: [], profilePhoto: '', ratingAverage: 0, ratingCount: 0 },
+    provider: provider ?? { uid: doc.providerUid, name: doc.providerName, email: '', role: 'unknown' as const, roleLabel: 'Ofrues', headline: '', bio: '', location: '', skills: [], languages: [], profilePhoto: '', coverPhoto: '', ratingAverage: 0, ratingCount: 0 },
     active: doc.active, createdAt: doc.createdAt,
   }
 }
