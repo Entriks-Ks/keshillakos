@@ -4,6 +4,10 @@ export type MatchIntake = {
   need: string
   audience: 'individual' | 'business'
   location: string
+  cityId?: string
+  categoryId?: string
+  subcategoryId?: string
+  serviceId?: string
   language: 'Albanian' | 'German' | 'English'
   urgency: 'today' | 'this_week' | 'flexible'
   budget?: string
@@ -14,6 +18,7 @@ export type MatchedExpert = {
   id: string
   source: 'expert' | 'service'
   providerUid: string
+  providerId?: string
   name: string
   title: string
   categoryId?: string

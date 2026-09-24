@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { postPhotoUpload } from './media'
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -15,29 +16,40 @@ api.interceptors.request.use((config) => {
 })
 
 export type UserRole = 'user' | 'provider' | 'company' | 'admin'
+export type DashboardContext = 'user' | 'provider' | 'company'
 
 export type AuthUser = {
   uid: string
   email: string
+  phone?: string
   name: string
+  firstName?: string
+  lastName?: string
   role: UserRole
+  roles?: UserRole[]
+  activeContext?: DashboardContext
+  requestedRole?: UserRole
   headline?: string
   bio?: string
   location?: string
+  savedLocation?: { countryId: string; cityId: string }
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  socialLinks?: import('./socialLinks').SocialLinks
 }
 
-export type PublicRole = 'user' | 'provider' | 'company'
-
 export type ProfileUpdatePayload = {
-  name: string
+  firstName?: string
+  lastName?: string
+  phone?: string | null
   headline?: string
   bio?: string
   location?: string
   skills?: string[]
   languages?: string[]
+  savedLocation?: { countryId: string; cityId: string } | null
+  socialLinks?: import('./socialLinks').SocialLinks | null
 }
 
 type AuthResponse = {
@@ -45,19 +57,13 @@ type AuthResponse = {
   user: AuthUser
 }
 
-export function mediaUrl(path?: string | null) {
-  if (!path) return ''
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) {
-    return path
-  }
-  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
-}
+export { mediaUrl } from './media'
 
 export async function registerUser(payload: {
-  name: string
+  firstName: string
+  lastName: string
   email: string
   password: string
-  role: PublicRole
 }) {
   const { data } = await api.post<AuthResponse>('/api/auth/register', payload)
   return data
@@ -65,6 +71,11 @@ export async function registerUser(payload: {
 
 export async function loginUser(payload: { email: string; password: string }) {
   const { data } = await api.post<AuthResponse>('/api/auth/login', payload)
+  return data
+}
+
+export async function loginWithGoogleToken(idToken: string) {
+  const { data } = await api.post<AuthResponse>('/api/auth/google', { idToken })
   return data
 }
 
@@ -79,11 +90,7 @@ export async function updateProfile(payload: ProfileUpdatePayload) {
 }
 
 export async function uploadProfilePhoto(file: File) {
-  const form = new FormData()
-  form.append('photo', file)
-  const { data } = await api.post<{ user: AuthUser }>('/api/auth/me/photo', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const data = await postPhotoUpload<{ user: AuthUser }>(api, '/api/auth/me/photo', file)
   return data.user
 }
 
@@ -96,6 +103,16 @@ export async function changePassword(payload: {
     payload,
   )
   return data
+}
+
+export async function requestRoleChange(role: 'provider' | 'company') {
+  const { data } = await api.post<{ user: AuthUser }>('/api/auth/request-role', { role })
+  return data.user
+}
+
+export async function setActiveContext(context: DashboardContext) {
+  const { data } = await api.patch<{ user: AuthUser }>('/api/auth/me/context', { context })
+  return data.user
 }
 
 export default api

@@ -3,6 +3,15 @@ import api from './auth'
 export type SlotStatus = 'open' | 'held' | 'booked' | 'cancelled'
 
 export type AvailabilitySlot = {
+  providerId?: string
+  businessId?: string
+  serviceOfferId?: string
+  staffUserId?: string
+  resourceKey?: string
+  timezone?: string
+  mode?: 'online' | 'on_site'
+  capacity?: number
+  remainingCapacity?: number
   id: string
   providerUid: string
   providerName: string
@@ -44,9 +53,30 @@ export async function createAvailabilitySlot(payload: {
   startAt: string
   endAt: string
   note?: string
+  providerId?: string
+  businessId?: string
+  serviceOfferId?: string
+  staffUserId?: string
+  resourceKey?: string
+  timezone?: string
+  mode?: 'online' | 'on_site'
+  capacity?: number
 }) {
   const { data } = await api.post<{ slot: AvailabilitySlot }>('/api/availability', payload)
   return data.slot
+}
+
+export async function createAvailabilitySlotsBulk(payload: {
+  slots: Array<{ startAt: string; endAt: string }>
+  note?: string
+  timezone?: string
+  mode?: 'online' | 'on_site'
+}) {
+  const { data } = await api.post<{ created: AvailabilitySlot[]; skipped: number }>(
+    '/api/availability/bulk',
+    payload,
+  )
+  return data
 }
 
 export async function deleteAvailabilitySlot(id: string) {

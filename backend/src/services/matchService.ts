@@ -1,4 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { Types } from 'mongoose'
+import { Category } from '../models/Category'
+import { Subcategory } from '../models/Subcategory'
 import { listActiveExperts } from './expertService'
 import { getProvidersPublicDetails } from './providerPublicService'
 import { listActiveServices } from './serviceService'
@@ -22,13 +25,30 @@ function languageLabel(code: MatchIntake['language']) {
   }
 }
 
-async function loadCandidates(): Promise<MatchCandidate[]> {
-  const [experts, services] = await Promise.all([listActiveExperts(), listActiveServices()])
+export function filterMatchCandidates<T extends MatchCandidate>(candidates: T[], filters: {
+  categoryId?: string; subcategoryNames?: string[]; serviceId?: string
+}) {
+  const category = filters.categoryId && normalize(filters.categoryId)
+  const names = filters.subcategoryNames?.map(normalize) ?? []
+  return candidates.filter((candidate) => {
+    if (filters.serviceId && (candidate.source !== 'service' || candidate.id !== filters.serviceId)) return false
+    if (category && ![candidate.categoryId || '', candidate.categoryLabel || ''].some((value) => normalize(value) === category)) return false
+    if (names.length && !names.some((name) => normalize(`${candidate.specialty || ''} ${candidate.title}`).includes(name))) return false
+    return true
+  })
+}
+
+async function loadCandidates(intake: MatchIntake): Promise<MatchCandidate[]> {
+  const [experts, services] = await Promise.all([
+    intake.serviceId ? Promise.resolve([]) : listActiveExperts(intake.cityId),
+    listActiveServices({ cityId: intake.cityId, categoryId: intake.categoryId, subcategoryId: intake.subcategoryId, serviceId: intake.serviceId }),
+  ])
 
   const fromExperts: MatchCandidate[] = experts.map((e) => ({
     id: e.id,
     source: 'expert',
     providerUid: e.companyUid,
+    providerId: 'providerId' in e ? e.providerId : undefined,
     name: e.name,
     title: e.title,
     categoryId: e.categoryId,
@@ -36,16 +56,17 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     specialty: e.specialty,
     location: e.location,
     languages: [e.languageFrom, e.languageTo].filter(Boolean) as string[],
-    verified: Boolean(e.licenseVerified || e.licenseNumber),
-    licenseNumber: e.licenseNumber,
+    verified: Boolean(e.licenseVerified),
     bio: e.bio,
     companyName: e.companyName,
+    providerEmail: 'providerId' in e ? e.publicEmail : undefined,
   }))
 
   const fromServices: MatchCandidate[] = services.map((s) => ({
     id: s.id,
     source: 'service',
     providerUid: s.providerUid,
+    providerId: 'providerId' in s ? s.providerId : undefined,
     name: s.provider?.name || s.providerName,
     title: s.title,
     categoryId: s.categoryId,
@@ -55,10 +76,9 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     languages: [
       s.details?.languageFrom,
       s.details?.languageTo,
-      ...(s.details?.supportLanguages ?? []),
-    ].filter(Boolean) as string[],
-    verified: Boolean(s.details?.licenseNumber || s.details?.licenseVerified),
-    licenseNumber: s.details?.licenseNumber,
+      ...(Array.isArray(s.details?.supportLanguages) ? s.details.supportLanguages : []),
+    ].filter((value): value is string => typeof value === 'string'),
+    verified: s.details?.licenseVerified === true,
     bio: s.description,
     priceFrom: s.priceFrom,
     companyName: s.provider?.name || s.providerName,
@@ -69,7 +89,22 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     ratingCount: s.provider?.ratingCount,
   }))
 
-  const all = [...fromExperts, ...fromServices]
+  let categoryId = intake.categoryId
+  if (categoryId && Types.ObjectId.isValid(categoryId)) {
+    const category = await Category.findById(categoryId).select('stableId').lean()
+    categoryId = category?.stableId ?? categoryId
+  }
+  let subcategoryNames: string[] | undefined
+  if (intake.subcategoryId) {
+    const subcategory = await Subcategory.findById(intake.subcategoryId).lean()
+    if (!subcategory?.isActive) return []
+    subcategoryNames = [subcategory.name.sq, subcategory.name.en]
+    if (!categoryId) {
+      const parent = await Category.findById(subcategory.categoryId).select('stableId').lean()
+      categoryId = parent?.stableId
+    }
+  }
+  const all = filterMatchCandidates([...fromExperts, ...fromServices], { categoryId, subcategoryNames, serviceId: intake.serviceId })
   const fallbackNames = new Map(all.map((c) => [c.providerUid, c.companyName || c.name]))
   const providers = await getProvidersPublicDetails(
     all.map((c) => c.providerUid),
@@ -80,10 +115,10 @@ async function loadCandidates(): Promise<MatchCandidate[]> {
     const provider = providers.get(c.providerUid)
     return {
       ...c,
-      companyName: provider?.name || c.companyName,
+      companyName: c.source === 'expert' ? c.companyName : provider?.name || c.companyName,
       ratingAverage: provider?.ratingAverage ?? 0,
       ratingCount: provider?.ratingCount ?? 0,
-      providerEmail: provider?.email || '',
+      providerEmail: c.source === 'expert' && c.providerId ? c.providerEmail || '' : provider?.email || '',
       providerRole: provider?.role || 'unknown',
       providerRoleLabel: provider?.roleLabel || 'Ofrues',
     }
@@ -106,7 +141,9 @@ function heuristicMatch(intake: MatchIntake, candidates: MatchCandidate[]): Matc
         if (hay.includes(token)) score += 2
       }
 
-      if (loc === 'online') {
+      if (intake.cityId) {
+        score += 5 // Candidates were already filtered by provider service-area IDs.
+      } else if (loc === 'online') {
         if (normalize(c.location).includes('online')) score += 4
       } else if (normalize(c.location).includes(loc)) {
         score += 5
@@ -202,6 +239,7 @@ Rregulla:
 - Prefero verified / me licencë për Ligj & Taksa.
 - Prefero ratingAverage më të lartë dhe ratingCount > 0 kur është e mundur.
 - Respekto lokacionin (përfshi Online).
+- Kur cityId është zgjedhur, kandidatët janë filtruar sipas zonave të shërbimit; lokacioni bazë i ofruesit nuk është filtër.
 - Respekto gjuhën.
 - Nëse urgency = today, favorizo përgjigje të shpejtë.
 - Mos invento id që nuk ekzistojnë në listë.
@@ -231,7 +269,7 @@ Rregulla:
 }
 
 export async function matchExperts(intake: MatchIntake) {
-  const candidates = await loadCandidates()
+  const candidates = await loadCandidates(intake)
   if (candidates.length === 0) {
     return {
       engine: 'none' as const,

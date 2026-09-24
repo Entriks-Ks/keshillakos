@@ -1,103 +1,122 @@
 import { Router } from 'express'
-import fs from 'fs'
-import multer from 'multer'
-import path from 'path'
+import { Types } from 'mongoose'
+import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
 import {
   firebaseChangePassword,
   firebaseSignIn,
   firebaseSignUp,
   firebaseUpdateDisplayName,
+  firebaseVerifyIdToken,
 } from '../services/firebaseAuth'
 import {
+  profilePhotoUpload,
+  requireUploadedImage,
+  toPublicUploadPath,
+  withImageUpload,
+} from '../services/mediaService'
+import {
   findUserByUid,
+  requestRoleChange,
+  setActiveContext,
   updateOwnProfile,
   updateProfilePhoto,
   upsertUser,
 } from '../services/userService'
-import { isPublicRole } from '../types/roles'
+import { getProfileCompletion, parseProfileType } from '../services/profileCompletionService'
 
 const router = Router()
-
-const uploadsRoot = path.resolve(process.cwd(), 'uploads')
-const profilesDir = path.join(uploadsRoot, 'profiles')
-fs.mkdirSync(profilesDir, { recursive: true })
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, profilesDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
-      const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg'
-      cb(null, `${req.user!.uid}${safeExt}`)
-    },
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(new Error('Ngarko vetëm foto (JPG, PNG, WEBP)'))
-      return
-    }
-    cb(null, true)
-  },
-})
+const savedLocationInput = z.object({
+  countryId: z.string().refine(Types.ObjectId.isValid, 'Invalid country ID'),
+  cityId: z.string().refine(Types.ObjectId.isValid, 'Invalid city ID'),
+}).nullable()
 
 function publicUser(user: {
   uid: string
   email: string
   name: string
   role: string
+  roles?: string[]
+  activeContext?: string
+  requestedRole?: string
+  firstName?: string
+  lastName?: string
+  phone?: string
+  locale?: string
+  country?: string
+  city?: string
+  verification?: import('../models/User').UserDoc['verification']
+  privacy?: import('../models/User').UserDoc['privacy']
+  accountStatus?: import('../models/User').UserDoc['accountStatus']
   headline?: string
   bio?: string
   location?: string
+  savedLocation?: import('../services/userService').SavedLocation
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  socialLinks?: import('../models/socialLinks').SocialLinks
 }) {
   return {
     uid: user.uid,
     email: user.email,
     name: user.name,
     role: user.role,
+    roles: user.roles ?? ['user'],
+    activeContext: user.activeContext || 'user',
+    requestedRole: user.requestedRole,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    locale: user.locale,
+    country: user.country,
+    city: user.city,
+    verification: user.verification,
+    privacy: user.privacy,
+    accountStatus: user.accountStatus,
     headline: user.headline || '',
     bio: user.bio || '',
     location: user.location || '',
+    savedLocation: user.savedLocation,
     skills: user.skills ?? [],
     languages: user.languages ?? [],
     profilePhoto: user.profilePhoto || '',
+    socialLinks: user.socialLinks || {},
   }
 }
 
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role } = req.body as {
+    const { email, password, firstName, lastName } = req.body as {
       email?: string
       password?: string
-      name?: string
-      role?: string
+      firstName?: string
+      lastName?: string
     }
 
-    if (!email?.trim() || !password || !name?.trim()) {
-      return res.status(400).json({ message: 'Emri, email dhe fjalëkalimi janë të detyrueshme' })
+    if (!email?.trim() || !password || !firstName?.trim() || !lastName?.trim()) {
+      return res.status(400).json({ message: 'Emri, mbiemri, email dhe fjalëkalimi janë të detyrueshme' })
     }
 
     if (password.length < 6) {
       return res.status(400).json({ message: 'Fjalëkalimi duhet të ketë të paktën 6 karaktere' })
     }
 
-    const selectedRole = role ?? 'user'
-    if (!isPublicRole(selectedRole)) {
-      return res.status(400).json({
-        message: 'Roli duhet të jetë user, provider ose company. Admin nuk krijohet nga regjistrimi.',
-      })
+    const givenName = firstName.trim()
+    const familyName = lastName.trim()
+    const name = `${givenName} ${familyName}`
+    if (givenName.length > 80 || familyName.length > 80 || name.length > 160) {
+      return res.status(400).json({ message: 'Emri ose mbiemri është shumë i gjatë' })
     }
 
-    const auth = await firebaseSignUp(email.trim(), password, name.trim())
+    const auth = await firebaseSignUp(email.trim(), password, name)
     const user = await upsertUser({
       uid: auth.localId,
       email: auth.email,
-      name: name.trim(),
-      role: selectedRole,
+      name,
+      firstName: givenName,
+      lastName: familyName,
+      grantedRoles: ['user'],
       updateName: true,
     })
 
@@ -136,6 +155,41 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     return res.status(401).json({
       message: err instanceof Error ? err.message : 'Hyrja dështoi',
+    })
+  }
+})
+
+router.post('/google', async (req, res) => {
+  try {
+    const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken.trim() : ''
+    if (!idToken) {
+      return res.status(400).json({ message: 'Token i Google mungon' })
+    }
+
+    const firebaseUser = await firebaseVerifyIdToken(idToken)
+    if (!firebaseUser.email) {
+      return res.status(400).json({ message: 'Llogaria e Google nuk ka email' })
+    }
+
+    const existing = await findUserByUid(firebaseUser.localId)
+    const displayName = firebaseUser.displayName?.trim() || firebaseUser.email.split('@')[0] || 'User'
+    const [firstName, ...rest] = displayName.split(/\s+/)
+    const user = await upsertUser({
+      uid: firebaseUser.localId,
+      email: firebaseUser.email,
+      name: existing?.name || displayName,
+      firstName: existing?.firstName || firstName,
+      lastName: existing?.lastName || rest.join(' ') || undefined,
+      updateName: !existing,
+    })
+
+    return res.json({
+      token: idToken,
+      user: publicUser(user),
+    })
+  } catch (err) {
+    return res.status(401).json({
+      message: err instanceof Error ? err.message : 'Hyrja me Google dështoi',
     })
   }
 })
@@ -190,30 +244,52 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { name, headline, bio, location, skills, languages } = req.body as {
-      name?: string
+    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, socialLinks } = req.body as {
+      firstName?: string
+      lastName?: string
+      phone?: string | null
+      locale?: string
+      country?: string
+      city?: string
+      profileVisibility?: 'public' | 'private'
+      marketingConsent?: boolean
+      savedLocation?: unknown
+      location?: unknown
       headline?: string
       bio?: string
-      location?: string
       skills?: string[]
       languages?: string[]
+      socialLinks?: Record<string, string | undefined> | null
     }
 
+    // Legacy profile clients still send a free-text `location`; only an object updates the saved selection.
+    const locationInput = savedLocation !== undefined ? savedLocation : location && typeof location === 'object' ? location : undefined
+    const parsedLocation = locationInput === undefined ? undefined : savedLocationInput.parse(locationInput)
+
     const user = await updateOwnProfile(req.user!.uid, {
-      name,
+      firstName,
+      lastName,
+      phone,
+      locale,
+      country,
+      city,
+      profileVisibility,
+      marketingConsent,
+      savedLocation: parsedLocation,
       headline,
       bio,
-      location,
       skills,
       languages,
+      socialLinks,
+      legacyLocation: typeof location === 'string' ? location : undefined,
     })
 
-    if (name?.trim() && name.trim() !== req.user!.name) {
+    if (user.name !== req.user!.name) {
       const header = req.headers.authorization
       const idToken = header?.startsWith('Bearer ') ? header.slice(7).trim() : ''
       if (idToken) {
         try {
-          await firebaseUpdateDisplayName(idToken, name.trim())
+          await firebaseUpdateDisplayName(idToken, user.name)
         } catch {
           // Mongo is source of truth; Firebase displayName sync is best-effort
         }
@@ -228,36 +304,63 @@ router.patch('/me', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/me/photo', requireAuth, (req, res) => {
-  upload.single('photo')(req, res, async (err) => {
-    try {
-      if (err) {
-        const message =
-          err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
-            ? 'Fotoja duhet të jetë më e vogël se 2MB'
-            : err instanceof Error
-              ? err.message
-              : 'Ngarkimi i fotos dështoi'
-        return res.status(400).json({ message })
-      }
+router.post('/me/photo', requireAuth, withImageUpload(profilePhotoUpload), async (req, res) => {
+  try {
+    const file = requireUploadedImage(req, 'Zgjidh një foto për profilin')
+    const profilePhoto = toPublicUploadPath('profiles', file.filename)
+    const user = await updateProfilePhoto(req.user!.uid, profilePhoto)
+    return res.json({ user: publicUser(user) })
+  } catch (error) {
+    return res.status(400).json({
+      message: error instanceof Error ? error.message : 'Ngarkimi i fotos dështoi',
+    })
+  }
+})
 
-      if (!req.file) {
-        return res.status(400).json({ message: 'Zgjidh një foto për profilin' })
-      }
-
-      const profilePhoto = `/uploads/profiles/${req.file.filename}`
-      const user = await updateProfilePhoto(req.user!.uid, profilePhoto)
-      return res.json({ user: publicUser(user) })
-    } catch (error) {
-      return res.status(400).json({
-        message: error instanceof Error ? error.message : 'Ngarkimi i fotos dështoi',
-      })
+router.post('/request-role', requireAuth, async (req, res) => {
+  try {
+    const role = req.body?.role as string | undefined
+    if (role !== 'provider' && role !== 'company') {
+      return res.status(400).json({ message: 'Mund të kërkosh vetëm rolin ofrues ose kompani' })
     }
-  })
+    const user = await requestRoleChange(req.user!.uid, role)
+    return res.json({ user: publicUser(user) })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Kërkesa për rol dështoi',
+    })
+  }
+})
+
+router.patch('/me/context', requireAuth, async (req, res) => {
+  try {
+    const context = req.body?.context as string | undefined
+    if (context !== 'user' && context !== 'provider' && context !== 'company') {
+      return res.status(400).json({ message: 'Konteksti nuk është i vlefshëm' })
+    }
+    const user = await setActiveContext(req.user!.uid, context)
+    return res.json({ user: publicUser(user) })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Ndryshimi i kontekstit dështoi',
+    })
+  }
 })
 
 router.get('/me', requireAuth, async (req, res) => {
   return res.json({ user: req.user })
+})
+
+router.get('/me/profile-completion', requireAuth, async (req, res) => {
+  try {
+    const profileType = parseProfileType(req.query.type)
+    const completion = await getProfileCompletion(req.user!.uid, profileType)
+    return res.json({ completion })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Kompletimi i profilit nuk u ngarkua',
+    })
+  }
 })
 
 export default router

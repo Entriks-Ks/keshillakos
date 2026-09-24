@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import { useAuth } from '../auth/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
 
 export default function ChangePasswordPanel() {
   const { changePassword } = useAuth()
@@ -8,13 +11,11 @@ export default function ChangePasswordPanel() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('')
 
     if (newPassword.length < 6) {
       setError('Fjalëkalimi i ri duhet të ketë të paktën 6 karaktere')
@@ -32,9 +33,9 @@ export default function ChangePasswordPanel() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setSuccess('Fjalëkalimi u ndryshua me sukses.')
+      toast.success('Fjalëkalimi u ndryshua me sukses.')
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -42,14 +43,15 @@ export default function ChangePasswordPanel() {
 
   return (
     <section className="provider-section">
-      <h2>Ndrysho fjalëkalimin</h2>
-      <p className="muted">Vendos fjalëkalimin aktual dhe zgjidh një të ri.</p>
+      <DashPageHeader
+        title="Ndrysho fjalëkalimin"
+        description="Vendos fjalëkalimin aktual dhe zgjidh një të ri."
+      />
 
       <form onSubmit={onSubmit} className="service-form">
         <label>
           Fjalëkalimi aktual
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="current-password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
@@ -58,8 +60,7 @@ export default function ChangePasswordPanel() {
         </label>
         <label>
           Fjalëkalimi i ri
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -69,8 +70,7 @@ export default function ChangePasswordPanel() {
         </label>
         <label className="full">
           Konfirmo fjalëkalimin e ri
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -80,7 +80,6 @@ export default function ChangePasswordPanel() {
         </label>
 
         {error ? <p className="error full">{error}</p> : null}
-        {success ? <p className="success full">{success}</p> : null}
 
         <button type="submit" className="full" disabled={submitting}>
           {submitting ? 'Duke ndryshuar...' : 'Ndrysho fjalëkalimin'}

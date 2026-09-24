@@ -1,4 +1,4 @@
-import { SYSTEM_DOMAINS, type DomainDefinition } from '../data/domains'
+import type { DomainDefinition } from '../data/domains'
 
 export type SuggestedNeed = {
   id: string
@@ -28,7 +28,7 @@ function normalize(text: string) {
 
 export function suggestNeedsFromProblem(
   problem: string,
-  domains: DomainDefinition[] = SYSTEM_DOMAINS,
+  domains: DomainDefinition[] = [],
   limit = 3,
 ): SuggestedNeed[] {
   const text = normalize(problem)

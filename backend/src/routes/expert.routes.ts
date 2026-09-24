@@ -83,8 +83,8 @@ router.post('/', requireAuth, requireRole('company', 'admin'), async (req, res) 
       languageTo,
       deliveryModes,
       crossBorder,
-      companyUid: req.user!.uid,
-      companyName: req.user!.name,
+      ownerUid: req.user!.uid,
+      ownerName: req.user!.name,
     })
 
     return res.status(201).json({ expert })

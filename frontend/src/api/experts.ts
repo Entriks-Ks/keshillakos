@@ -13,7 +13,7 @@ export type ExpertItem = {
   licenseVerified: boolean
   languageFrom?: string
   languageTo?: string
-  deliveryModes?: Array<'online' | 'physical' | 'group'>
+  deliveryModes?: string[]
   crossBorder?: boolean
   companyUid: string
   companyName: string
@@ -31,7 +31,7 @@ export async function createExpert(payload: {
   licenseNumber?: string
   languageFrom?: string
   languageTo?: string
-  deliveryModes?: Array<'online' | 'physical' | 'group'>
+  deliveryModes?: string[]
   crossBorder?: boolean
 }) {
   const { data } = await api.post<{ expert: ExpertItem }>('/api/experts', payload)

@@ -1,0 +1,277 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const mongoose_1 = require("mongoose");
+const zod_1 = require("zod");
+const auth_1 = require("../middleware/auth");
+const firebaseAuth_1 = require("../services/firebaseAuth");
+const mediaService_1 = require("../services/mediaService");
+const userService_1 = require("../services/userService");
+const profileCompletionService_1 = require("../services/profileCompletionService");
+const router = (0, express_1.Router)();
+const savedLocationInput = zod_1.z.object({
+    countryId: zod_1.z.string().refine(mongoose_1.Types.ObjectId.isValid, 'Invalid country ID'),
+    cityId: zod_1.z.string().refine(mongoose_1.Types.ObjectId.isValid, 'Invalid city ID'),
+}).nullable();
+function publicUser(user) {
+    return {
+        uid: user.uid,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        roles: user.roles ?? ['user'],
+        activeContext: user.activeContext || 'user',
+        requestedRole: user.requestedRole,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        locale: user.locale,
+        country: user.country,
+        city: user.city,
+        verification: user.verification,
+        privacy: user.privacy,
+        accountStatus: user.accountStatus,
+        headline: user.headline || '',
+        bio: user.bio || '',
+        location: user.location || '',
+        savedLocation: user.savedLocation,
+        skills: user.skills ?? [],
+        languages: user.languages ?? [],
+        profilePhoto: user.profilePhoto || '',
+        socialLinks: user.socialLinks || {},
+    };
+}
+router.post('/register', async (req, res) => {
+    try {
+        const { email, password, firstName, lastName } = req.body;
+        if (!email?.trim() || !password || !firstName?.trim() || !lastName?.trim()) {
+            return res.status(400).json({ message: 'Emri, mbiemri, email dhe fjalëkalimi janë të detyrueshme' });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ message: 'Fjalëkalimi duhet të ketë të paktën 6 karaktere' });
+        }
+        const givenName = firstName.trim();
+        const familyName = lastName.trim();
+        const name = `${givenName} ${familyName}`;
+        if (givenName.length > 80 || familyName.length > 80 || name.length > 160) {
+            return res.status(400).json({ message: 'Emri ose mbiemri është shumë i gjatë' });
+        }
+        const auth = await (0, firebaseAuth_1.firebaseSignUp)(email.trim(), password, name);
+        const user = await (0, userService_1.upsertUser)({
+            uid: auth.localId,
+            email: auth.email,
+            name,
+            firstName: givenName,
+            lastName: familyName,
+            grantedRoles: ['user'],
+            updateName: true,
+        });
+        return res.status(201).json({
+            token: auth.idToken,
+            user: publicUser(user),
+        });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Regjistrimi dështoi',
+        });
+    }
+});
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email?.trim() || !password) {
+            return res.status(400).json({ message: 'Email dhe fjalëkalimi janë të detyrueshme' });
+        }
+        const auth = await (0, firebaseAuth_1.firebaseSignIn)(email.trim(), password);
+        const existing = await (0, userService_1.findUserByUid)(auth.localId);
+        const user = await (0, userService_1.upsertUser)({
+            uid: auth.localId,
+            email: auth.email,
+            name: existing?.name || auth.displayName || email.split('@')[0] || 'User',
+            updateName: !existing,
+        });
+        return res.json({
+            token: auth.idToken,
+            user: publicUser(user),
+        });
+    }
+    catch (err) {
+        return res.status(401).json({
+            message: err instanceof Error ? err.message : 'Hyrja dështoi',
+        });
+    }
+});
+router.post('/google', async (req, res) => {
+    try {
+        const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken.trim() : '';
+        if (!idToken) {
+            return res.status(400).json({ message: 'Token i Google mungon' });
+        }
+        const firebaseUser = await (0, firebaseAuth_1.firebaseVerifyIdToken)(idToken);
+        if (!firebaseUser.email) {
+            return res.status(400).json({ message: 'Llogaria e Google nuk ka email' });
+        }
+        const existing = await (0, userService_1.findUserByUid)(firebaseUser.localId);
+        const displayName = firebaseUser.displayName?.trim() || firebaseUser.email.split('@')[0] || 'User';
+        const [firstName, ...rest] = displayName.split(/\s+/);
+        const user = await (0, userService_1.upsertUser)({
+            uid: firebaseUser.localId,
+            email: firebaseUser.email,
+            name: existing?.name || displayName,
+            firstName: existing?.firstName || firstName,
+            lastName: existing?.lastName || rest.join(' ') || undefined,
+            updateName: !existing,
+        });
+        return res.json({
+            token: idToken,
+            user: publicUser(user),
+        });
+    }
+    catch (err) {
+        return res.status(401).json({
+            message: err instanceof Error ? err.message : 'Hyrja me Google dështoi',
+        });
+    }
+});
+router.post('/change-password', auth_1.requireAuth, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                message: 'Fjalëkalimi aktual dhe ai i ri janë të detyrueshme',
+            });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                message: 'Fjalëkalimi i ri duhet të ketë të paktën 6 karaktere',
+            });
+        }
+        if (currentPassword === newPassword) {
+            return res.status(400).json({
+                message: 'Fjalëkalimi i ri duhet të jetë i ndryshëm nga ai aktual',
+            });
+        }
+        const email = req.user.email;
+        if (!email) {
+            return res.status(400).json({ message: 'Mungon email i llogarisë' });
+        }
+        const signedIn = await (0, firebaseAuth_1.firebaseSignIn)(email, currentPassword);
+        if (signedIn.localId !== req.user.uid) {
+            return res.status(403).json({ message: 'Nuk lejohet ndryshimi i fjalëkalimit' });
+        }
+        const updated = await (0, firebaseAuth_1.firebaseChangePassword)(signedIn.idToken, newPassword);
+        return res.json({
+            message: 'Fjalëkalimi u ndryshua me sukses',
+            token: updated.idToken,
+        });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Ndryshimi i fjalëkalimit dështoi',
+        });
+    }
+});
+router.patch('/me', auth_1.requireAuth, async (req, res) => {
+    try {
+        const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, socialLinks } = req.body;
+        // Legacy profile clients still send a free-text `location`; only an object updates the saved selection.
+        const locationInput = savedLocation !== undefined ? savedLocation : location && typeof location === 'object' ? location : undefined;
+        const parsedLocation = locationInput === undefined ? undefined : savedLocationInput.parse(locationInput);
+        const user = await (0, userService_1.updateOwnProfile)(req.user.uid, {
+            firstName,
+            lastName,
+            phone,
+            locale,
+            country,
+            city,
+            profileVisibility,
+            marketingConsent,
+            savedLocation: parsedLocation,
+            headline,
+            bio,
+            skills,
+            languages,
+            socialLinks,
+            legacyLocation: typeof location === 'string' ? location : undefined,
+        });
+        if (user.name !== req.user.name) {
+            const header = req.headers.authorization;
+            const idToken = header?.startsWith('Bearer ') ? header.slice(7).trim() : '';
+            if (idToken) {
+                try {
+                    await (0, firebaseAuth_1.firebaseUpdateDisplayName)(idToken, user.name);
+                }
+                catch {
+                    // Mongo is source of truth; Firebase displayName sync is best-effort
+                }
+            }
+        }
+        return res.json({ user: publicUser(user) });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Përditësimi i profilit dështoi',
+        });
+    }
+});
+router.post('/me/photo', auth_1.requireAuth, (0, mediaService_1.withImageUpload)(mediaService_1.profilePhotoUpload), async (req, res) => {
+    try {
+        const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për profilin');
+        const profilePhoto = (0, mediaService_1.toPublicUploadPath)('profiles', file.filename);
+        const user = await (0, userService_1.updateProfilePhoto)(req.user.uid, profilePhoto);
+        return res.json({ user: publicUser(user) });
+    }
+    catch (error) {
+        return res.status(400).json({
+            message: error instanceof Error ? error.message : 'Ngarkimi i fotos dështoi',
+        });
+    }
+});
+router.post('/request-role', auth_1.requireAuth, async (req, res) => {
+    try {
+        const role = req.body?.role;
+        if (role !== 'provider' && role !== 'company') {
+            return res.status(400).json({ message: 'Mund të kërkosh vetëm rolin ofrues ose kompani' });
+        }
+        const user = await (0, userService_1.requestRoleChange)(req.user.uid, role);
+        return res.json({ user: publicUser(user) });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Kërkesa për rol dështoi',
+        });
+    }
+});
+router.patch('/me/context', auth_1.requireAuth, async (req, res) => {
+    try {
+        const context = req.body?.context;
+        if (context !== 'user' && context !== 'provider' && context !== 'company') {
+            return res.status(400).json({ message: 'Konteksti nuk është i vlefshëm' });
+        }
+        const user = await (0, userService_1.setActiveContext)(req.user.uid, context);
+        return res.json({ user: publicUser(user) });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Ndryshimi i kontekstit dështoi',
+        });
+    }
+});
+router.get('/me', auth_1.requireAuth, async (req, res) => {
+    return res.json({ user: req.user });
+});
+router.get('/me/profile-completion', auth_1.requireAuth, async (req, res) => {
+    try {
+        const profileType = (0, profileCompletionService_1.parseProfileType)(req.query.type);
+        const completion = await (0, profileCompletionService_1.getProfileCompletion)(req.user.uid, profileType);
+        return res.json({ completion });
+    }
+    catch (err) {
+        return res.status(400).json({
+            message: err instanceof Error ? err.message : 'Kompletimi i profilit nuk u ngarkua',
+        });
+    }
+});
+exports.default = router;
+//# sourceMappingURL=auth.routes.js.map

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
   createAvailabilitySlot,
+  createAvailabilitySlotsBulk,
   deleteAvailabilitySlot,
   listMyAvailability,
   listOpenAvailabilityForProvider,
@@ -41,10 +42,19 @@ router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), as
 
 router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
-    const { startAt, endAt, note } = req.body as {
+    const { startAt, endAt, note, providerId, businessId, serviceOfferId, staffUserId, resourceKey, timezone, mode, location, capacity } = req.body as {
       startAt?: string
       endAt?: string
       note?: string
+      providerId?: string
+      businessId?: string
+      serviceOfferId?: string
+      staffUserId?: string
+      resourceKey?: string
+      timezone?: string
+      mode?: 'online' | 'on_site'
+      location?: import('../models/location').Location
+      capacity?: number
     }
 
     if (!startAt || !endAt) {
@@ -54,12 +64,41 @@ router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async
     const slot = await createAvailabilitySlot({
       providerUid: req.user!.uid,
       providerName: req.user!.name,
+      providerId, businessId, serviceOfferId, staffUserId, resourceKey,
       startAt,
       endAt,
+      timezone, mode, location, capacity,
       note,
     })
 
     return res.status(201).json({ slot })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Shtimi i orarit dështoi',
+    })
+  }
+})
+
+router.post('/bulk', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
+  try {
+    const { slots, note, timezone, mode, providerId } = req.body as {
+      slots?: Array<{ startAt?: string; endAt?: string }>
+      note?: string
+      timezone?: string
+      mode?: 'online' | 'on_site'
+      providerId?: string
+    }
+    if (!Array.isArray(slots) || !slots.length) {
+      return res.status(400).json({ message: 'Zgjidh të paktën një orë' })
+    }
+    const result = await createAvailabilitySlotsBulk({
+      providerUid: req.user!.uid,
+      providerName: req.user!.name,
+      providerId,
+      slots: slots.filter((slot) => slot.startAt && slot.endAt).map((slot) => ({ startAt: slot.startAt!, endAt: slot.endAt! })),
+      timezone, mode, note,
+    })
+    return res.status(201).json(result)
   } catch (err) {
     return res.status(400).json({
       message: err instanceof Error ? err.message : 'Shtimi i orarit dështoi',
@@ -72,7 +111,7 @@ router.delete('/:id', requireAuth, requireRole('provider', 'company', 'admin'), 
     const result = await deleteAvailabilitySlot({
       id: String(req.params.id),
       providerUid: req.user!.uid,
-      asAdmin: req.user!.role === 'admin',
+      asAdmin: req.user!.roles.includes('admin'),
     })
     return res.json(result)
   } catch (err) {

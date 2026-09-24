@@ -1,0 +1,49 @@
+.tt-company-experts {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.tt-company-experts li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.tt-company-experts li > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tt-company-experts a {
+  color: var(--brand-navy);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tt-company-experts span {
+  color: var(--ink-secondary);
+  font-size: 0.9rem;
+}
+
+.tt-company-expert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .tt-company-experts li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

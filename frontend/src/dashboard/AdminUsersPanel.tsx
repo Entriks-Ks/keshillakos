@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { toast } from '@heroui/react'
 import {
   createAdminUser,
   deleteAdminUser,
   fetchAdminUsers,
   fetchAdminUsersMeta,
+  fetchPendingRoleRequests,
+  reviewRoleRequest,
   updateAdminUser,
   type AdminUser,
 } from '../api/adminUsers'
 import type { UserRole } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 import { getErrorMessage } from '../utils/errors'
+import DashPageHeader from './DashPageHeader'
+import './AdminUsersPanel.css'
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'user', label: 'Përdorues' },
@@ -33,23 +39,26 @@ export default function AdminUsersPanel() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [createForm, setCreateForm] = useState(emptyCreate)
   const [creating, setCreating] = useState(false)
   const [editingUid, setEditingUid] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', email: '', role: 'user' as UserRole })
   const [saving, setSaving] = useState(false)
+  const [pending, setPending] = useState<AdminUser[]>([])
+  const [reviewingUid, setReviewingUid] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const [list, meta] = await Promise.all([
+      const [list, meta, roleRequests] = await Promise.all([
         fetchAdminUsers({ role: roleFilter, q: query }),
         fetchAdminUsersMeta(),
+        fetchPendingRoleRequests(),
       ])
       setUsers(list)
       setCounts(meta.counts)
+      setPending(roleRequests)
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -65,14 +74,13 @@ export default function AdminUsersPanel() {
     e.preventDefault()
     setCreating(true)
     setError('')
-    setSuccess('')
     try {
       await createAdminUser(createForm)
       setCreateForm(emptyCreate)
-      setSuccess('Përdoruesi u krijua.')
+      toast.success('Përdoruesi u krijua.')
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setCreating(false)
     }
@@ -81,7 +89,6 @@ export default function AdminUsersPanel() {
   function startEdit(user: AdminUser) {
     setEditingUid(user.uid)
     setEditForm({ name: user.name, email: user.email, role: user.role })
-    setSuccess('')
     setError('')
   }
 
@@ -90,16 +97,34 @@ export default function AdminUsersPanel() {
     if (!editingUid) return
     setSaving(true)
     setError('')
-    setSuccess('')
     try {
       await updateAdminUser(editingUid, editForm)
       setEditingUid(null)
-      setSuccess('Përdoruesi u përditësua.')
+      toast.success('Përdoruesi u përditësua.')
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function onReview(user: AdminUser, action: 'accept' | 'reject') {
+    setReviewingUid(user.uid)
+    setError('')
+    try {
+      const requestedLabel = ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? 'rol i ri'
+      await reviewRoleRequest(user.uid, action)
+      toast.success(
+        action === 'accept'
+          ? `${user.name} u bë ${requestedLabel.toLowerCase()}.`
+          : `Kërkesa e ${user.name} u refuzua.`,
+      )
+      await load()
+    } catch (err) {
+      toast.danger(getErrorMessage(err))
+    } finally {
+      setReviewingUid('')
     }
   }
 
@@ -111,21 +136,58 @@ export default function AdminUsersPanel() {
     const ok = window.confirm(`Fshi përdoruesin ${user.name} (${user.email})?`)
     if (!ok) return
     setError('')
-    setSuccess('')
     try {
       await deleteAdminUser(user.uid)
-      setSuccess('Përdoruesi u fshi.')
+      toast.success('Përdoruesi u fshi.')
       if (editingUid === user.uid) setEditingUid(null)
       await load()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     }
   }
 
   return (
-    <section className="provider-section">
-      <h2>Menaxhimi i përdoruesve</h2>
-      <p className="muted">Shiko dhe menaxho të gjitha rolet: user, provider, company, admin.</p>
+    <section className="provider-section admin-users">
+      <DashPageHeader
+        title="Menaxhimi i përdoruesve"
+        description="Shiko dhe menaxho të gjitha rolet: user, provider, company, admin. Kërkesat për ofrues ose kompani shfaqen këtu për shqyrtim."
+      />
+
+      <div className="admin-role-requests">
+        <h3>Kërkesa për akses ({pending.length})</h3>
+        {pending.length === 0 ? (
+          <p className="muted">Nuk ka kërkesa në pritje. Kur një përdorues kërkon të bëhet ofrues ose kompani, shfaqet këtu.</p>
+        ) : (
+          <ul>
+            {pending.map((user) => (
+              <li key={user.uid} className="admin-role-request">
+                <div>
+                  <strong>{user.name}</strong>
+                  <span className="muted">{user.email}</span>
+                  <span className="role-pending-pill">Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? user.requestedRole}</span>
+                </div>
+                <div className="admin-row-actions">
+                  <button
+                    type="button"
+                    disabled={reviewingUid === user.uid}
+                    onClick={() => void onReview(user, 'accept')}
+                  >
+                    {reviewingUid === user.uid ? 'Duke ruajtur…' : 'Prano'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={reviewingUid === user.uid}
+                    onClick={() => void onReview(user, 'reject')}
+                  >
+                    Refuzo
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {counts ? (
         <ul className="admin-role-stats">
@@ -187,8 +249,7 @@ export default function AdminUsersPanel() {
         </label>
         <label>
           Fjalëkalimi
-          <input
-            type="password"
+          <PasswordInput
             minLength={6}
             value={createForm.password}
             onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
@@ -214,7 +275,6 @@ export default function AdminUsersPanel() {
       </form>
 
       {error ? <p className="error">{error}</p> : null}
-      {success ? <p className="success">{success}</p> : null}
 
       {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
 
@@ -288,6 +348,9 @@ export default function AdminUsersPanel() {
                     <td>{user.email}</td>
                     <td>
                       <span className="role-pill">{ROLE_OPTIONS.find((r) => r.value === user.role)?.label}</span>
+                      {user.requestedRole && user.requestedRole !== user.role ? (
+                        <span className="role-pending-pill">Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label}</span>
+                      ) : null}
                     </td>
                     <td className="mono">{user.uid}</td>
                     <td>

@@ -4,7 +4,9 @@ import { firebaseSignUp } from '../services/firebaseAuth'
 import {
   countUsersByRole,
   deleteUserByUid,
+  listPendingRoleRequests,
   listUsers,
+  reviewRoleRequest,
   updateUserByUid,
   upsertUser,
 } from '../services/userService'
@@ -49,6 +51,32 @@ router.get('/', async (req, res) => {
   }
 })
 
+router.get('/role-requests', async (_req, res) => {
+  try {
+    const users = await listPendingRoleRequests()
+    return res.json({ users })
+  } catch (err) {
+    return res.status(500).json({
+      message: err instanceof Error ? err.message : 'Nuk u ngarkuan kërkesat',
+    })
+  }
+})
+
+router.post('/:uid/role-request', async (req, res) => {
+  try {
+    const action = req.body?.action as string | undefined
+    if (action !== 'accept' && action !== 'reject') {
+      return res.status(400).json({ message: 'Zgjidh pranim ose refuzim' })
+    }
+    const user = await reviewRoleRequest(String(req.params.uid), action)
+    return res.json({ user })
+  } catch (err) {
+    return res.status(400).json({
+      message: err instanceof Error ? err.message : 'Shqyrtimi dështoi',
+    })
+  }
+})
+
 router.post('/', async (req, res) => {
   try {
     const { name, email, password, role } = req.body as {
@@ -78,7 +106,7 @@ router.post('/', async (req, res) => {
       uid: auth.localId,
       email: auth.email,
       name: name.trim(),
-      role,
+      grantedRoles: role === 'user' ? ['user'] : ['user', role],
     })
     const saved = await updateUserByUid(auth.localId, {
       name: name.trim(),
@@ -96,17 +124,25 @@ router.post('/', async (req, res) => {
 
 router.patch('/:uid', async (req, res) => {
   try {
-    const { name, email, role } = req.body as {
+    const { name, email, role, roles, accountStatus } = req.body as {
       name?: string
       email?: string
       role?: string
+      roles?: string[]
+      accountStatus?: 'active' | 'suspended' | 'closed'
     }
 
     if (role !== undefined && !isUserRole(role)) {
       return res.status(400).json({ message: 'Roli nuk është i vlefshëm' })
     }
+    if (roles !== undefined && (!Array.isArray(roles) || roles.some((value) => !isUserRole(value)))) {
+      return res.status(400).json({ message: 'Rolet nuk janë të vlefshme' })
+    }
+    if (accountStatus !== undefined && !['active', 'suspended', 'closed'].includes(accountStatus)) {
+      return res.status(400).json({ message: 'Statusi nuk është i vlefshëm' })
+    }
 
-    if (req.params.uid === req.user!.uid && role && role !== 'admin') {
+    if (req.params.uid === req.user!.uid && ((role && role !== 'admin') || (roles && !roles.includes('admin')) || (accountStatus && accountStatus !== 'active'))) {
       return res.status(400).json({
         message: 'Nuk mund ta heqësh rolin admin nga llogaria jote',
       })
@@ -116,6 +152,8 @@ router.patch('/:uid', async (req, res) => {
       name,
       email,
       role: role && isUserRole(role) ? role : undefined,
+      roles: roles as import('../types/roles').UserRole[] | undefined,
+      accountStatus,
     })
 
     return res.json({ user })

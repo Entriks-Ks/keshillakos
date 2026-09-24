@@ -1,6 +1,6 @@
 import { ROLE_LABELS, type UserRole } from '../types/roles'
 import { getStatsForProviders } from './ratingService'
-import { findUsersByUids } from './userService'
+import { findUserByUid, findUsersByUids } from './userService'
 
 export type ProviderPublicDetails = {
   uid: string
@@ -17,6 +17,8 @@ export type ProviderPublicDetails = {
   ratingAverage: number
   ratingCount: number
 }
+
+const PUBLIC_PROFILE_ROLES: UserRole[] = ['provider', 'company', 'admin']
 
 export async function getProvidersPublicDetails(
   providerUids: string[],
@@ -53,4 +55,31 @@ export async function getProvidersPublicDetails(
   }
 
   return map
+}
+
+/** Public profile page payload (no email). */
+export async function getPublicProviderProfile(uid: string) {
+  if (!uid?.trim()) return null
+
+  const user = await findUserByUid(uid.trim())
+  if (!user || !PUBLIC_PROFILE_ROLES.includes(user.role)) return null
+
+  const details = await getProvidersPublicDetails([user.uid])
+  const provider = details.get(user.uid)
+  if (!provider) return null
+
+  return {
+    uid: provider.uid,
+    name: provider.name,
+    role: provider.role,
+    roleLabel: provider.roleLabel,
+    headline: provider.headline,
+    bio: provider.bio,
+    location: provider.location,
+    skills: provider.skills,
+    languages: provider.languages,
+    profilePhoto: provider.profilePhoto,
+    ratingAverage: provider.ratingAverage,
+    ratingCount: provider.ratingCount,
+  }
 }

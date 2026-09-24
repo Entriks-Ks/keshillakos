@@ -1,0 +1,174 @@
+.admin-users {
+  gap: 16px;
+}
+
+.admin-users .admin-role-requests,
+.admin-users .admin-users-filters,
+.admin-users .service-form,
+.admin-users .admin-users-table-wrap {
+  box-shadow: none;
+  border-radius: 16px;
+  border-color: var(--border);
+}
+
+.admin-users .admin-role-stats {
+  gap: 12px;
+}
+
+.admin-users .admin-role-stats li {
+  box-shadow: none;
+  border-radius: 16px;
+  padding: 16px;
+  border-top: 3px solid var(--accent);
+  gap: 4px;
+}
+
+.admin-users .admin-role-stats strong {
+  color: var(--accent);
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+}
+
+.admin-users .admin-role-stats span {
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.admin-users .admin-role-requests > .muted {
+  margin: 0;
+}
+
+.admin-users .admin-role-requests h3,
+.admin-users .admin-create-form h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--brand-navy);
+}
+
+.admin-users .admin-role-request {
+  padding: 12px 0;
+}
+
+.admin-users .admin-role-request > div:first-child {
+  gap: 4px;
+}
+
+.admin-users .admin-users-filters {
+  padding: 14px;
+  background: #fff;
+}
+
+.admin-users .admin-users-filters label {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-users .admin-users-filters input,
+.admin-users .admin-users-filters select {
+  border-radius: 12px;
+  border-color: var(--border);
+  min-height: 42px;
+}
+
+.admin-users .admin-users-filters input:focus,
+.admin-users .admin-users-filters select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.admin-users .admin-users-filters > button {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--accent);
+}
+
+.admin-users .service-form {
+  padding: 18px;
+  background: #fff;
+}
+
+.admin-users .service-form button:not(.ghost):not(.password-toggle) {
+  border-radius: 12px;
+  background: var(--accent);
+}
+
+.admin-users .password-control input {
+  border-radius: 12px;
+  padding-right: 46px;
+}
+
+.admin-users .service-form button.password-toggle {
+  top: 50%;
+  right: 6px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  color: var(--accent);
+  opacity: 1;
+  box-shadow: none;
+}
+
+.admin-users .service-form button.password-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
+  color: var(--accent);
+}
+
+.admin-users .admin-users-table th {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+}
+
+.admin-users .admin-users-table td {
+  padding: 14px 16px;
+  border-bottom-color: var(--border);
+}
+
+.admin-users .admin-users-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 4%, #fff);
+}
+
+.admin-users .admin-users-table tbody td:first-child:not([colspan]) {
+  font-weight: 700;
+  color: var(--brand-navy);
+}
+
+.admin-users .admin-users-table .mono {
+  max-width: 180px;
+  color: var(--ink-secondary);
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.admin-users .role-pill,
+.admin-users .role-pending-pill {
+  border-radius: 999px;
+}
+
+.admin-users .admin-row-actions button {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+}
+
+.admin-users .admin-role-request .admin-row-actions button:not(.ghost) {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+

@@ -1,46 +1,60 @@
 import { useState, type FormEvent } from 'react'
+import { Button, FieldError, Input, Label, TextField, toast } from '@heroui/react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import type { PublicRole } from '../api/auth'
+import { z } from 'zod'
 import { useAuth } from '../auth/AuthContext'
+import GoogleAuthButton from '../components/GoogleAuthButton'
 import { getErrorMessage } from '../utils/errors'
 
-const ROLE_OPTIONS: { value: PublicRole; label: string; hint: string }[] = [
-  {
-    value: 'user',
-    label: 'Përdorues',
-    hint: 'Kërkoj ndihmë / ekspert',
-  },
-  {
-    value: 'provider',
-    label: 'Ofrues shërbimi',
-    hint: 'Ofroj këshilla profesionale',
-  },
-  {
-    value: 'company',
-    label: 'Kompani',
-    hint: 'Kam ekspertë të mi në ekip',
-  },
-]
+const registerSchema = z.object({
+  firstName: z.string().trim().min(1, 'Emri është i detyrueshëm').max(80, 'Emri është shumë i gjatë'),
+  lastName: z.string().trim().min(1, 'Mbiemri është i detyrueshëm').max(80, 'Mbiemri është shumë i gjatë'),
+  email: z.string().trim().min(1, 'Email është i detyrueshëm').email('Email i pavlefshëm'),
+  password: z.string().min(6, 'Fjalëkalimi duhet të ketë të paktën 6 karaktere'),
+  confirmPassword: z.string().min(1, 'Konfirmo fjalëkalimin'),
+}).refine((values) => values.password === values.confirmPassword, {
+  path: ['confirmPassword'],
+  message: 'Fjalëkalimi dhe konfirmimi nuk përputhen',
+})
+
+type RegisterField = keyof z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<PublicRole>('user')
-  const [error, setError] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<RegisterField, string>>>({})
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    setError('')
+    const result = registerSchema.safeParse({ firstName, lastName, email, password, confirmPassword })
+    if (!result.success) {
+      const next: Partial<Record<RegisterField, string>> = {}
+      for (const issue of result.error.issues) {
+        const field = issue.path[0]
+        if (typeof field === 'string' && field in registerSchema.shape && !next[field as RegisterField]) {
+          next[field as RegisterField] = issue.message
+        }
+      }
+      setFieldErrors(next)
+      return
+    }
+    setFieldErrors({})
     setSubmitting(true)
     try {
-      await register(name, email, password, role)
+      await register(result.data.firstName, result.data.lastName, result.data.email, result.data.password)
+      toast.success('Llogaria u krijua. Mirë se erdhe!')
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -53,71 +67,94 @@ export default function RegisterPage() {
           KëshillaKos
         </Link>
         <h1>Krijo llogari</h1>
-        <p className="muted">Zgjidh rolin dhe regjistrohu.</p>
 
-        <form onSubmit={onSubmit} className="auth-form">
-          <fieldset className="role-fieldset">
-            <legend>Unë jam</legend>
-            <div className="role-options">
-              {ROLE_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  className={`role-option${role === option.value ? ' is-selected' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="role"
-                    value={option.value}
-                    checked={role === option.value}
-                    onChange={() => setRole(option.value)}
-                  />
-                  <span className="role-option-text">
-                    <strong>{option.label}</strong>
-                    <small>{option.hint}</small>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <label>
-            {role === 'company' ? 'Emri i kompanisë' : 'Emri'}
-            <input
+        <form onSubmit={onSubmit} className="auth-form register-form" noValidate>
+          <TextField isInvalid={Boolean(fieldErrors.firstName)} validationBehavior="aria" fullWidth>
+            <Label>Emri</Label>
+            <Input
               type="text"
-              autoComplete="organization"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => {
+                setFirstName(e.target.value)
+                setFieldErrors((current) => ({ ...current, firstName: undefined }))
+              }}
             />
-          </label>
-          <label>
-            Email
-            <input
+            <FieldError>{fieldErrors.firstName}</FieldError>
+          </TextField>
+          <TextField isInvalid={Boolean(fieldErrors.lastName)} validationBehavior="aria" fullWidth>
+            <Label>Mbiemri</Label>
+            <Input
+              type="text"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => {
+                setLastName(e.target.value)
+                setFieldErrors((current) => ({ ...current, lastName: undefined }))
+              }}
+            />
+            <FieldError>{fieldErrors.lastName}</FieldError>
+          </TextField>
+          <TextField isInvalid={Boolean(fieldErrors.email)} validationBehavior="aria" fullWidth>
+            <Label>Email</Label>
+            <Input
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              onChange={(e) => {
+                setEmail(e.target.value)
+                setFieldErrors((current) => ({ ...current, email: undefined }))
+              }}
             />
-          </label>
-          <label>
-            Fjalëkalimi
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </label>
+            <FieldError>{fieldErrors.email}</FieldError>
+          </TextField>
+          <TextField isInvalid={Boolean(fieldErrors.password)} validationBehavior="aria" fullWidth>
+            <Label>Fjalëkalimi</Label>
+            <span className="password-control">
+              <Input
+                type={passwordVisible ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setFieldErrors((current) => ({ ...current, password: undefined, confirmPassword: undefined }))
+                }}
+              />
+              <Button type="button" variant="ghost" size="sm" isIconOnly className="password-toggle"
+                aria-label={passwordVisible ? 'Fshih fjalëkalimin' : 'Shfaq fjalëkalimin'}
+                aria-pressed={passwordVisible} onPress={() => setPasswordVisible((visible) => !visible)}>
+                {passwordVisible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
+              </Button>
+            </span>
+            <FieldError>{fieldErrors.password}</FieldError>
+          </TextField>
+          <TextField isInvalid={Boolean(fieldErrors.confirmPassword)} validationBehavior="aria" fullWidth>
+            <Label>Konfirmo fjalëkalimin</Label>
+            <span className="password-control">
+              <Input
+                type={confirmPasswordVisible ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value)
+                  setFieldErrors((current) => ({ ...current, confirmPassword: undefined }))
+                }}
+              />
+              <Button type="button" variant="ghost" size="sm" isIconOnly className="password-toggle"
+                aria-label={confirmPasswordVisible ? 'Fshih fjalëkalimin' : 'Shfaq fjalëkalimin'}
+                aria-pressed={confirmPasswordVisible} onPress={() => setConfirmPasswordVisible((visible) => !visible)}>
+                {confirmPasswordVisible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
+              </Button>
+            </span>
+            <FieldError>{fieldErrors.confirmPassword}</FieldError>
+          </TextField>
 
-          {error ? <p className="error">{error}</p> : null}
-
-          <button type="submit" disabled={submitting}>
+          <Button type="submit" size="md" className="auth-submit" isDisabled={submitting} fullWidth>
             {submitting ? 'Duke u regjistruar...' : 'Regjistrohu'}
-          </button>
+          </Button>
         </form>
+
+        <GoogleAuthButton disabled={submitting} />
 
         <p className="switch">
           Ke tashmë llogari? <Link to="/login">Hyr</Link>

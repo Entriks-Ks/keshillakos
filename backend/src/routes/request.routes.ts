@@ -8,16 +8,18 @@ import {
 } from '../models/ServiceRequest'
 import {
   countPendingForProvider,
-  createServiceRequest,
   listAllRequests,
   listRequestsByProvider,
   listRequestsBySeeker,
   updateRequestStatus,
 } from '../services/requestService'
+import { RequestDelivery, DELIVERY_STATUSES, type DeliveryStatus } from '../models/RequestDelivery'
+import { openOrGetConversation } from '../services/chatService'
+import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, listMyUserRequests, listProviderDeliveries, listAllUserRequests, updateDeliveryStatus, countPendingDeliveries } from '../services/userRequestService'
 
 const router = Router()
 
-router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.post('/', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
     const {
       providerUid,
@@ -30,8 +32,26 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
       language,
       urgency,
       contactMethod,
+      contactPhone,
+      contactEmail,
       slotId,
+      providerId,
+      providerIds,
+      categoryId,
+      locationDetail,
+      budget,
+      preferredMode,
+      portal,
+      draft,
     } = req.body as {
+      providerId?: string
+      providerIds?: string[]
+      categoryId?: string
+      locationDetail?: import('../models/location').Location
+      budget?: import('../models/UserRequest').UserRequestDoc['budget']
+      preferredMode?: import('../models/UserRequest').UserRequestDoc['preferredMode']
+      portal?: string
+      draft?: boolean
       providerUid?: string
       providerName?: string
       serviceId?: string
@@ -42,10 +62,12 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
       language?: string
       urgency?: string
       contactMethod?: string
+      contactPhone?: string
+      contactEmail?: string
       slotId?: string
     }
 
-    if (!providerUid?.trim() || !providerName?.trim()) {
+    if (!draft && !providerUid?.trim() && !providerId && !providerIds?.length) {
       return res.status(400).json({ message: 'Ofruesi është i detyrueshëm' })
     }
     if (!need?.trim() || !message?.trim()) {
@@ -54,23 +76,40 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
     if (!contactMethod || !CONTACT_METHODS.includes(contactMethod as ContactMethod)) {
       return res.status(400).json({ message: 'Zgjidh mënyrën e kontaktit' })
     }
+    if (!contactPhone?.trim()) {
+      return res.status(400).json({ message: 'Shkruaj numrin e telefonit' })
+    }
+    if (contactMethod === 'email' && !contactEmail?.trim()) {
+      return res.status(400).json({ message: 'Shkruaj email-in' })
+    }
+    if (!draft && !slotId?.trim()) {
+      return res.status(400).json({ message: 'Zgjidh një orë të lirë për kërkesën' })
+    }
 
-    const request = await createServiceRequest({
-      seekerUid: req.user!.uid,
-      seekerName: req.user!.name,
-      seekerEmail: req.user!.email,
-      providerUid: providerUid.trim(),
-      providerName: providerName.trim(),
-      serviceId,
-      serviceTitle,
-      need,
-      message,
-      location,
-      language,
-      urgency,
-      contactMethod: contactMethod as ContactMethod,
-      slotId,
+    const created = await createUserRequest({
+      uid: req.user!.uid, providerIds: providerIds ?? (providerId ? [providerId] : undefined),
+      providerUid: providerUid?.trim(), categoryId, serviceId,
+      problem: need, description: message,
+      location: locationDetail, legacyLocation: location,
+      language, urgency: urgency as import('../models/UserRequest').UserRequestDoc['urgency'],
+      budget, preferredMode, contactPreference: contactMethod as ContactMethod,
+      contactPhone, contactEmail,
+      portal, slotId, draft,
     })
+    const request = (await listMyUserRequests(req.user!.uid)).find((item) => item.requestId === String(created.request._id))
+    const chatProviderUid = request?.providerUid || providerUid?.trim()
+    if (chatProviderUid) {
+      try {
+        await openOrGetConversation({
+          seekerUid: req.user!.uid,
+          providerUid: chatProviderUid,
+          serviceId,
+          serviceTitle,
+        })
+      } catch {
+        // Request is already saved; chat thread is best-effort.
+      }
+    }
 
     return res.status(201).json({ request })
   } catch (err) {
@@ -80,9 +119,10 @@ router.post('/', requireAuth, requireRole('user', 'admin'), async (req, res) => 
   }
 })
 
-router.get('/mine', requireAuth, requireRole('user', 'admin'), async (req, res) => {
+router.get('/mine', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
-    const requests = await listRequestsBySeeker(req.user!.uid)
+    const [canonical, legacy] = await Promise.all([listMyUserRequests(req.user!.uid), listRequestsBySeeker(req.user!.uid)])
+    const requests = [...canonical, ...legacy]
     return res.json({ requests })
   } catch (err) {
     return res.status(500).json({
@@ -93,10 +133,12 @@ router.get('/mine', requireAuth, requireRole('user', 'admin'), async (req, res) 
 
 router.get('/inbox', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
-    const [requests, pendingCount] = await Promise.all([
-      listRequestsByProvider(req.user!.uid),
-      countPendingForProvider(req.user!.uid),
+    const [canonical, legacy, canonicalPending, legacyPending] = await Promise.all([
+      listProviderDeliveries(req.user!.uid), listRequestsByProvider(req.user!.uid),
+      countPendingDeliveries(req.user!.uid), countPendingForProvider(req.user!.uid),
     ])
+    const requests = [...canonical, ...legacy]
+    const pendingCount = canonicalPending + legacyPending
     return res.json({ requests, pendingCount })
   } catch (err) {
     return res.status(500).json({
@@ -107,7 +149,8 @@ router.get('/inbox', requireAuth, requireRole('provider', 'company', 'admin'), a
 
 router.get('/all', requireAuth, requireRole('admin'), async (_req, res) => {
   try {
-    const requests = await listAllRequests()
+    const [canonical, legacy] = await Promise.all([listAllUserRequests(), listAllRequests()])
+    const requests = [...canonical, ...legacy]
     return res.json({ requests })
   } catch (err) {
     return res.status(500).json({
@@ -116,24 +159,40 @@ router.get('/all', requireAuth, requireRole('admin'), async (_req, res) => {
   }
 })
 
+router.post('/:id/deliver', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
+  try {
+    const { providerIds } = req.body as { providerIds?: string[] }
+    if (!Array.isArray(providerIds) || !providerIds.length) return res.status(400).json({ message: 'Zgjidh të paktën një ofrues' })
+    const requests = await sendExistingRequest(req.user!.uid, String(req.params.id), providerIds)
+    return res.json({ requests })
+  } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Dërgimi dështoi' }) }
+})
+
+router.patch('/:id/lifecycle', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
+  try {
+    const { status } = req.body as { status?: 'closed' | 'cancelled' }
+    if (status !== 'closed' && status !== 'cancelled') return res.status(400).json({ message: 'Status i pavlefshëm' })
+    const requests = await updateUserRequestLifecycle(req.user!.uid, String(req.params.id), status)
+    return res.json({ requests })
+  } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Përditësimi dështoi' }) }
+})
+
 router.patch('/:id/status', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
-    const { status, providerNote } = req.body as {
+    const { status, providerNote, offer } = req.body as {
       status?: string
       providerNote?: string
+      offer?: { description: string; amount?: number; currency?: string }
     }
 
-    if (!status || !REQUEST_STATUSES.includes(status as RequestStatus)) {
+    if (!status || (!REQUEST_STATUSES.includes(status as RequestStatus) && !DELIVERY_STATUSES.includes(status as DeliveryStatus))) {
       return res.status(400).json({ message: 'Status i pavlefshëm' })
     }
-
-    const request = await updateRequestStatus({
-      id: String(req.params.id),
-      providerUid: req.user!.uid,
-      status: status as RequestStatus,
-      providerNote,
-      asAdmin: req.user!.role === 'admin',
-    })
+    const id = String(req.params.id)
+    const isCanonical = await RequestDelivery.exists({ _id: id })
+    const request = isCanonical
+      ? await updateDeliveryStatus(req.user!.uid, id, status as DeliveryStatus, providerNote, req.user!.roles.includes('admin'), offer)
+      : await updateRequestStatus({ id, providerUid: req.user!.uid, status: status as RequestStatus, providerNote, asAdmin: req.user!.roles.includes('admin') })
 
     return res.json({ request })
   } catch (err) {

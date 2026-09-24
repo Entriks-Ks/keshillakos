@@ -1,4 +1,6 @@
 import api from './auth'
+import { postPhotoUpload } from './media'
+import type { PublicExpert } from './providers'
 
 export type ServiceDetails = {
   licenseNumber?: string
@@ -6,19 +8,22 @@ export type ServiceDetails = {
   documentsNote?: string
   deadlineNote?: string
   serviceTypeDetail?: string
-  audience?: 'b2c' | 'b2b' | 'both'
-  deliveryModes?: Array<'online' | 'physical' | 'group'>
+  audience?: string
+  deliveryModes?: string[]
   languageFrom?: string
   languageTo?: string
   certifiedTranslation?: boolean
-  offerType?: 'package' | 'project' | 'service'
+  offerType?: string
   priceTo?: number
   portfolioUrl?: string
   references?: string
+  experience?: string
+  availabilityMode?: 'by_arrangement' | 'request' | 'slots'
   regulatoryNotice?: string
   coachingDisclaimerAccepted?: boolean
   crossBorder?: boolean
   supportLanguages?: string[]
+  photos?: string[]
 }
 
 export type ServiceProvider = {
@@ -39,18 +44,21 @@ export type ServiceProvider = {
 
 export type ServiceItem = {
   id: string
+  providerId?: string
   title: string
   description: string
   categoryId: string
   categoryLabel: string
   category?: string
   subcategory: string
+  subcategoryId?: string
   location: string
   priceFrom?: number
   details?: ServiceDetails
   providerUid: string
   providerName: string
   provider?: ServiceProvider
+  experts?: PublicExpert[]
   active: boolean
   createdAt: string
 }
@@ -60,6 +68,7 @@ export async function createService(payload: {
   description: string
   categoryId: string
   subcategory: string
+  subcategoryId?: string
   location: string
   priceFrom?: number
   details?: ServiceDetails
@@ -73,7 +82,46 @@ export async function fetchMyServices() {
   return data.services
 }
 
-export async function fetchActiveServices() {
-  const { data } = await api.get<{ services: ServiceItem[] }>('/api/services')
+export async function updateService(
+  id: string,
+  payload: {
+    title: string
+    description: string
+    categoryId: string
+    subcategory: string
+    subcategoryId?: string
+    location: string
+    priceFrom?: number
+    details?: ServiceDetails
+  },
+) {
+  const { data } = await api.patch<{ service: ServiceItem }>(`/api/services/${id}`, payload)
+  return data.service
+}
+
+export async function deleteService(id: string) {
+  await api.delete(`/api/services/${id}`)
+}
+
+export async function uploadServicePhoto(file: File) {
+  const data = await postPhotoUpload<{ url: string }>(api, '/api/services/photos', file)
+  return data.url
+}
+
+export type ServiceSearchParams = {
+  cityId?: string
+  categoryId?: string
+  subcategoryId?: string
+  serviceId?: string
+  q?: string
+}
+
+export async function fetchActiveServices(params: ServiceSearchParams = {}, signal?: AbortSignal) {
+  const { data } = await api.get<{ services: ServiceItem[] }>('/api/services', { params, signal })
   return data.services
+}
+
+export async function fetchService(id: string) {
+  const { data } = await api.get<{ service: ServiceItem }>(`/api/services/${id}`)
+  return data.service
 }

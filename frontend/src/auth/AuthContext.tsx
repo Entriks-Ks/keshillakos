@@ -7,31 +7,45 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { toast } from '@heroui/react'
 import {
   changePassword as changePasswordRequest,
   fetchMe,
   loginUser,
+  loginWithGoogleToken,
   registerUser,
+  setActiveContext as setActiveContextRequest,
   updateProfile as updateProfileRequest,
   uploadProfilePhoto as uploadProfilePhotoRequest,
   type AuthUser,
+  type DashboardContext,
   type ProfileUpdatePayload,
-  type PublicRole,
 } from '../api/auth'
+import { FirebaseError } from 'firebase/app'
+import { signInWithPopup } from 'firebase/auth'
+import {
+  firebaseAuth,
+  googleProvider,
+  isFirebaseConfigured,
+  mapFirebaseClientError,
+} from '../firebase'
 
 type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<boolean>
   register: (
-    name: string,
+    firstName: string,
+    lastName: string,
     email: string,
     password: string,
-    role: PublicRole,
   ) => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthUser>
   uploadProfilePhoto: (file: File) => Promise<AuthUser>
+  switchContext: (context: DashboardContext) => Promise<AuthUser>
+  refreshUser: () => Promise<AuthUser>
   logout: () => void
 }
 
@@ -63,9 +77,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
   }, [])
 
+  const loginWithGoogle = useCallback(async () => {
+    if (!isFirebaseConfigured()) {
+      throw new Error('Hyrja me Google nuk është e konfiguruar')
+    }
+    try {
+      const credential = await signInWithPopup(firebaseAuth(), googleProvider)
+      const idToken = await credential.user.getIdToken()
+      const data = await loginWithGoogleToken(idToken)
+      localStorage.setItem('token', data.token)
+      setUser(data.user)
+      return true
+    } catch (err) {
+      if (err instanceof FirebaseError) {
+        const message = mapFirebaseClientError(err.code)
+        if (!message) return false
+        throw new Error(message)
+      }
+      throw err
+    }
+  }, [])
+
   const register = useCallback(
-    async (name: string, email: string, password: string, role: PublicRole) => {
-      const data = await registerUser({ name, email, password, role })
+    async (firstName: string, lastName: string, email: string, password: string) => {
+      const data = await registerUser({ firstName, lastName, email, password })
       localStorage.setItem('token', data.token)
       setUser(data.user)
     },
@@ -89,9 +124,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return next
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const next = await fetchMe()
+    setUser(next)
+    return next
+  }, [])
+
+  const switchContext = useCallback(async (context: DashboardContext) => {
+    const next = await setActiveContextRequest(context)
+    setUser(next)
+    return next
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem('token')
     setUser(null)
+    toast.info('U çkyçe me sukses.')
   }, [])
 
   const value = useMemo(
@@ -99,20 +147,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login,
+      loginWithGoogle,
       register,
       changePassword,
       updateProfile,
       uploadProfilePhoto,
+      switchContext,
+      refreshUser,
       logout,
     }),
     [
       user,
       loading,
       login,
+      loginWithGoogle,
       register,
       changePassword,
       updateProfile,
       uploadProfilePhoto,
+      switchContext,
+      refreshUser,
       logout,
     ],
   )
