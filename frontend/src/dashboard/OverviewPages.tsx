@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, Chip } from '@heroui/react'
+import { Button, Card, Chip, ProgressBar } from '@heroui/react'
 import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight,
@@ -10,28 +10,41 @@ import {
   Inbox,
   MessageCircle,
   MessageSquarePlus,
+  Plus,
   Search,
   Star,
+  TrendingUp,
   Users,
 } from 'lucide-react'
-import { fetchAdminUsersMeta } from '../api/adminUsers'
-import { fetchPlatformFeedback } from '../api/feedback'
+import { fetchAdminUsersMeta, fetchPendingRoleRequests } from '../api/adminUsers'
+import {
+  fetchMyAppointments,
+  fetchProviderAppointments,
+  upcomingAppointments,
+  type AppointmentItem,
+} from '../api/appointments'
 import { fetchMyAvailability } from '../api/availability'
-import { fetchConversations } from '../api/chat'
+import { fetchConversations, type ConversationItem } from '../api/chat'
+import { fetchPlatformFeedback } from '../api/feedback'
 import { fetchBusinessTeam, fetchMyBusinesses } from '../api/onboarding'
+import { fetchProfileCompletion } from '../api/profileCompletion'
 import { fetchProviderRatings } from '../api/ratings'
 import {
   fetchAllRequests,
   fetchMyRequests,
   fetchRequestInbox,
+  type ServiceRequestItem,
 } from '../api/requests'
 import { fetchMyServices } from '../api/services'
 import { useAuth } from '../auth/AuthContext'
+import { getErrorMessage } from '../utils/errors'
 import {
   countByStatus,
   OVERVIEW_CHART_COLORS,
-  OverviewCharts,
+  OverviewBarChart,
+  OverviewDonutChart,
   requestStatusSlices,
+  weekActivitySlices,
   type OverviewChartsData,
 } from './OverviewCharts'
 import { ROLE_HINTS, ROLE_LABELS } from './nav'
@@ -43,6 +56,7 @@ type StatItem = {
   hint?: string
   to?: string
   tone?: 'default' | 'accent' | 'warn' | 'success'
+  featured?: boolean
 }
 
 type NextStep = {
@@ -52,19 +66,122 @@ type NextStep = {
   cta: string
 }
 
-function OverviewCard({
-  title,
-  description,
-  to,
-  cta,
-  icon: Icon,
-}: {
+type QuickAction = {
   title: string
   description: string
   to: string
   cta: string
   icon: LucideIcon
-}) {
+}
+
+type ActivityItem = {
+  id: string
+  title: string
+  meta: string
+  status?: string
+  statusTone?: 'default' | 'success' | 'warning' | 'danger' | 'accent'
+  to?: string
+}
+
+type HeaderAction = {
+  label: string
+  to: string
+  variant?: 'primary' | 'secondary'
+  icon?: LucideIcon
+}
+
+type Reminder = {
+  title: string
+  text: string
+  meta?: string
+  to: string
+  cta: string
+}
+
+function formatWhen(iso: string) {
+  try {
+    return new Date(iso).toLocaleString('sq-AL', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
+
+function statusTone(status: string): ActivityItem['statusTone'] {
+  if (status === 'accepted' || status === 'completed' || status === 'confirmed') return 'success'
+  if (status === 'pending' || status === 'open' || status === 'draft' || status === 'read') return 'warning'
+  if (status === 'rejected' || status === 'cancelled' || status === 'withdrawn') return 'danger'
+  return 'default'
+}
+
+function statusLabel(status: string) {
+  const map: Record<string, string> = {
+    pending: 'Në pritje',
+    accepted: 'Pranuar',
+    completed: 'Përfunduar',
+    rejected: 'Refuzuar',
+    open: 'Hapur',
+    draft: 'Draft',
+    read: 'Lexuar',
+    withdrawn: 'Tërhequr',
+    confirmed: 'Konfirmuar',
+    cancelled: 'Anuluar',
+  }
+  return map[status] || status
+}
+
+function chipColor(tone?: StatItem['tone']): 'default' | 'accent' | 'warning' | 'success' {
+  if (tone === 'warn') return 'warning'
+  if (tone === 'success') return 'success'
+  if (tone === 'accent') return 'accent'
+  return 'default'
+}
+
+function activityChipColor(
+  tone?: ActivityItem['statusTone'],
+): 'default' | 'accent' | 'warning' | 'success' | 'danger' {
+  if (tone === 'warning') return 'warning'
+  if (tone === 'success') return 'success'
+  if (tone === 'danger') return 'danger'
+  if (tone === 'accent') return 'accent'
+  return 'default'
+}
+
+function requestsToActivity(requests: ServiceRequestItem[], basePath: string): ActivityItem[] {
+  return [...requests]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+    .slice(0, 5)
+    .map((item) => ({
+      id: item.id,
+      title: item.need || item.serviceTitle || 'Kërkesë',
+      meta: `${item.providerName || item.seekerName || '—'} · ${formatWhen(item.updatedAt || item.createdAt)}`,
+      status: statusLabel(item.status),
+      statusTone: statusTone(item.status),
+      to: basePath,
+    }))
+}
+
+function appointmentReminder(appointments: AppointmentItem[], to: string): Reminder | null {
+  const next = upcomingAppointments(appointments)[0]
+  if (!next) return null
+  return {
+    title: 'Termini i radhës',
+    text: next.mode === 'online' ? 'Takim online' : 'Takim fizik',
+    meta: formatWhen(next.startAt),
+    to,
+    cta: 'Shiko',
+  }
+}
+
+function unreadFromConversations(conversations: ConversationItem[]) {
+  return conversations.reduce((sum, c) => sum + (c.unread || 0), 0)
+}
+
+function OverviewCard({ title, description, to, cta, icon: Icon }: QuickAction) {
   return (
     <Link to={to} className="dash-overview-card-link">
       <Card className="dash-overview-card">
@@ -86,19 +203,14 @@ function OverviewCard({
   )
 }
 
-function chipColor(tone?: StatItem['tone']): 'default' | 'accent' | 'warning' | 'success' {
-  if (tone === 'warn') return 'warning'
-  if (tone === 'success') return 'success'
-  if (tone === 'accent') return 'accent'
-  return 'default'
-}
-
 function OverviewStats({ items, loading }: { items: StatItem[]; loading?: boolean }) {
   if (loading && items.length === 0) {
     return (
       <div className="dash-stat-grid is-loading" aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="dash-stat-card is-skeleton"><span aria-hidden="true" /></Card>
+          <Card key={i} className="dash-stat-card is-skeleton">
+            <span aria-hidden="true" />
+          </Card>
         ))}
       </div>
     )
@@ -108,16 +220,33 @@ function OverviewStats({ items, loading }: { items: StatItem[]; loading?: boolea
 
   return (
     <div className="dash-stat-grid" aria-label="Statistika">
-      {items.map((item) => {
+      {items.map((item, index) => {
+        const featured = item.featured ?? index === 0
         const body = (
           <Card
-            className={`dash-stat-card${item.tone && item.tone !== 'default' ? ` is-${item.tone}` : ''}`}
+            className={[
+              'dash-stat-card',
+              featured ? 'is-featured' : '',
+              item.tone && item.tone !== 'default' ? `is-${item.tone}` : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
           >
             <Card.Content className="dash-stat-card-body">
-              <span className="dash-stat-label">{item.label}</span>
+              <div className="dash-stat-card-top">
+                <span className="dash-stat-label">{item.label}</span>
+                <span className="dash-stat-trend" aria-hidden>
+                  <TrendingUp size={16} strokeWidth={2.25} />
+                </span>
+              </div>
               <strong className="dash-stat-value">{item.value}</strong>
               {item.hint ? (
-                <Chip size="sm" variant="soft" color={chipColor(item.tone)} className="dash-stat-chip">
+                <Chip
+                  size="sm"
+                  variant="soft"
+                  color={featured ? 'default' : chipColor(item.tone)}
+                  className="dash-stat-chip"
+                >
                   <Chip.Label>{item.hint}</Chip.Label>
                 </Chip>
               ) : null}
@@ -136,33 +265,258 @@ function OverviewStats({ items, loading }: { items: StatItem[]; loading?: boolea
   )
 }
 
+function ActivityPanel({
+  title,
+  subtitle,
+  items,
+  emptyText,
+  loading,
+  viewAllTo,
+}: {
+  title: string
+  subtitle?: string
+  items: ActivityItem[]
+  emptyText: string
+  loading?: boolean
+  viewAllTo?: string
+}) {
+  return (
+    <Card className="dash-panel-card">
+      <Card.Header className="dash-panel-card-head">
+        <div>
+          <Card.Title>{title}</Card.Title>
+          {subtitle ? <Card.Description>{subtitle}</Card.Description> : null}
+        </div>
+        {viewAllTo ? (
+          <Link to={viewAllTo} className="dash-panel-link">
+            Shiko të gjitha
+            <ArrowRight size={14} aria-hidden />
+          </Link>
+        ) : null}
+      </Card.Header>
+      <Card.Content className="dash-panel-card-body">
+        {loading ? (
+          <ul className="dash-activity-list is-loading" aria-busy="true">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <li key={i} className="is-skeleton" />
+            ))}
+          </ul>
+        ) : items.length === 0 ? (
+          <p className="dash-panel-empty">{emptyText}</p>
+        ) : (
+          <ul className="dash-activity-list">
+            {items.map((item) => {
+              const inner = (
+                <>
+                  <span className="dash-activity-dot" aria-hidden />
+                  <div className="dash-activity-copy">
+                    <strong>{item.title}</strong>
+                    <span>{item.meta}</span>
+                  </div>
+                  {item.status ? (
+                    <Chip size="sm" variant="soft" color={activityChipColor(item.statusTone)}>
+                      <Chip.Label>{item.status}</Chip.Label>
+                    </Chip>
+                  ) : null}
+                </>
+              )
+              return (
+                <li key={item.id}>
+                  {item.to ? (
+                    <Link to={item.to} className="dash-activity-row">
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className="dash-activity-row">{inner}</div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Card.Content>
+    </Card>
+  )
+}
+
+function ReminderCard({ reminder, loading }: { reminder: Reminder | null; loading?: boolean }) {
+  if (loading) {
+    return (
+      <Card className="dash-reminder-card is-skeleton" aria-busy="true">
+        <span aria-hidden="true" />
+      </Card>
+    )
+  }
+  if (!reminder) {
+    return (
+      <Card className="dash-reminder-card is-empty">
+        <Card.Content>
+          <p className="dash-reminder-kicker">Kujtesë</p>
+          <strong>Nuk ka termine të ardhshme</strong>
+          <span>Kur të konfirmohen takime, shfaqen këtu.</span>
+        </Card.Content>
+      </Card>
+    )
+  }
+  return (
+    <Card className="dash-reminder-card">
+      <Card.Content className="dash-reminder-body">
+        <p className="dash-reminder-kicker">Kujtesë</p>
+        <strong>{reminder.title}</strong>
+        <span>{reminder.text}</span>
+        {reminder.meta ? <em>{reminder.meta}</em> : null}
+        <Button variant="primary" size="sm" className="dash-reminder-cta">
+          <Link to={reminder.to} className="tt-btn-link">
+            {reminder.cta}
+          </Link>
+        </Button>
+      </Card.Content>
+    </Card>
+  )
+}
+
+function ProfileProgressCard({
+  percent,
+  label,
+  to,
+  loading,
+}: {
+  percent: number | null
+  label: string
+  to: string
+  loading?: boolean
+}) {
+  if (loading) {
+    return (
+      <Card className="dash-progress-card is-skeleton" aria-busy="true">
+        <span aria-hidden="true" />
+      </Card>
+    )
+  }
+  const value = percent == null ? 0 : Math.max(0, Math.min(100, Math.round(percent)))
+  return (
+    <Card className="dash-progress-card">
+      <Card.Header className="dash-panel-card-head">
+        <div>
+          <Card.Title>Plotësimi i profilit</Card.Title>
+          <Card.Description>{label}</Card.Description>
+        </div>
+        <Link to={to} className="dash-panel-link">
+          Plotëso
+          <ArrowRight size={14} aria-hidden />
+        </Link>
+      </Card.Header>
+      <Card.Content className="dash-progress-body">
+        <div className="dash-progress-meter" aria-label={`${value}% i plotësuar`}>
+          <strong>{value}%</strong>
+          <ProgressBar aria-label="Plotësimi i profilit" value={value} className="dash-profile-progress">
+            <ProgressBar.Track>
+              <ProgressBar.Fill />
+            </ProgressBar.Track>
+          </ProgressBar>
+        </div>
+        <p>
+          {percent == null
+            ? 'Profili nuk është krijuar ende.'
+            : value >= 100
+              ? 'Profili është i plotë.'
+              : 'Plotëso fushat e mbetura për më shumë dukshmëri.'}
+        </p>
+      </Card.Content>
+    </Card>
+  )
+}
+
 function OverviewShell({
   role,
   greeting,
   subtitle,
+  actions,
   stats,
   statsLoading,
   charts,
+  activity,
+  activityLoading,
+  reminder,
+  reminderLoading,
+  profilePercent,
+  profileLabel,
+  profileTo,
   nextStep,
+  error,
+  onRetry,
   children,
 }: {
   role: UserRole
   greeting: string
   subtitle: string
+  actions?: HeaderAction[]
   stats?: StatItem[]
   statsLoading?: boolean
   charts?: OverviewChartsData | null
+  activity?: {
+    title: string
+    subtitle?: string
+    items: ActivityItem[]
+    emptyText: string
+    viewAllTo?: string
+  }
+  activityLoading?: boolean
+  reminder?: Reminder | null
+  reminderLoading?: boolean
+  profilePercent?: number | null
+  profileLabel?: string
+  profileTo?: string
   nextStep?: NextStep | null
+  error?: string
+  onRetry?: () => void
   children: ReactNode
 }) {
   return (
     <section className="dash-overview">
-      <header className="dash-overview-hero">
-        <p className="dash-overview-kicker">{ROLE_LABELS[role]}</p>
-        <p className="dash-overview-hello">{greeting}</p>
-        <p className="dash-overview-sub">{subtitle}</p>
+      <header className="dash-overview-head">
+        <div>
+          <p className="dash-overview-kicker">{ROLE_LABELS[role]}</p>
+          <h1 className="dash-overview-title">Dashboard</h1>
+          <p className="dash-overview-hello">{greeting}</p>
+          <p className="dash-overview-sub">{subtitle}</p>
+        </div>
+        {actions && actions.length > 0 ? (
+          <div className="dash-overview-actions">
+            {actions.map((action) => {
+              const Icon = action.icon
+              return (
+                <Button
+                  key={action.to + action.label}
+                  variant={action.variant === 'secondary' ? 'outline' : 'primary'}
+                  className="dash-overview-action-btn"
+                >
+                  <Link to={action.to} className="tt-btn-link">
+                    {Icon ? <Icon size={16} aria-hidden /> : null}
+                    {action.label}
+                  </Link>
+                </Button>
+              )
+            })}
+          </div>
+        ) : null}
       </header>
-      {nextStep ? (
+
+      {error ? (
+        <Card className="dash-overview-error">
+          <Card.Content>
+            <strong>Nuk u ngarkuan të dhënat</strong>
+            <p>{error}</p>
+            {onRetry ? (
+              <Button variant="outline" onPress={onRetry}>
+                Provo përsëri
+              </Button>
+            ) : null}
+          </Card.Content>
+        </Card>
+      ) : null}
+
+      {nextStep && !error ? (
         <Link to={nextStep.to} className="dash-next-step">
           <div>
             <p>Hapi i radhës</p>
@@ -175,8 +529,59 @@ function OverviewShell({
           </span>
         </Link>
       ) : null}
+
       <OverviewStats items={stats || []} loading={statsLoading} />
-      <OverviewCharts data={charts} loading={statsLoading} />
+
+      <div className="dash-overview-board">
+        <div className="dash-overview-main-col">
+          {charts?.bar ? (
+            <OverviewBarChart
+              title={charts.bar.title}
+              subtitle={charts.bar.subtitle}
+              items={charts.bar.items}
+              emptyText={charts.bar.emptyText}
+            />
+          ) : statsLoading ? (
+            <div className="dash-chart-card is-skeleton" aria-busy="true" />
+          ) : null}
+
+          {activity ? (
+            <ActivityPanel
+              title={activity.title}
+              subtitle={activity.subtitle}
+              items={activity.items}
+              emptyText={activity.emptyText}
+              loading={activityLoading}
+              viewAllTo={activity.viewAllTo}
+            />
+          ) : null}
+        </div>
+
+        <aside className="dash-overview-side-col">
+          <ReminderCard reminder={reminder ?? null} loading={reminderLoading} />
+          {charts?.donut ? (
+            <OverviewDonutChart
+              title={charts.donut.title}
+              subtitle={charts.donut.subtitle}
+              items={charts.donut.items}
+              centerLabel={charts.donut.centerLabel}
+              centerValue={charts.donut.centerValue}
+              emptyText={charts.donut.emptyText}
+            />
+          ) : statsLoading ? (
+            <div className="dash-chart-card is-skeleton" aria-busy="true" />
+          ) : null}
+          {profileTo ? (
+            <ProfileProgressCard
+              percent={profilePercent ?? null}
+              label={profileLabel || 'Profili yt'}
+              to={profileTo}
+              loading={statsLoading}
+            />
+          ) : null}
+        </aside>
+      </div>
+
       <div className="dash-overview-section">
         <div className="dash-overview-section-head">
           <h2>Veprime të shpejta</h2>
@@ -188,28 +593,38 @@ function OverviewShell({
   )
 }
 
-function unreadFromConversations(conversations: Awaited<ReturnType<typeof fetchConversations>>) {
-  return conversations.reduce((sum, c) => sum + (c.unread || 0), 0)
-}
-
 export function UserOverviewPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
   const [nextStep, setNextStep] = useState<NextStep | null>(null)
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [reminder, setReminder] = useState<Reminder | null>(null)
+  const [profilePercent, setProfilePercent] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const reload = useCallback(() => setReloadKey((n) => n + 1), [])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([fetchMyRequests(), fetchConversations()])
-      .then(([requests, conversations]) => {
+    setError('')
+    Promise.all([
+      fetchMyRequests(),
+      fetchConversations(),
+      fetchMyAppointments().catch(() => [] as AppointmentItem[]),
+      fetchProfileCompletion('private').catch(() => null),
+    ])
+      .then(([requests, conversations, appointments, completion]) => {
         if (cancelled) return
         const byStatus = countByStatus(requests)
         const pending = byStatus.pending || 0
         const accepted = byStatus.accepted || 0
         const completed = byStatus.completed || 0
         const unread = unreadFromConversations(conversations)
+        const upcoming = upcomingAppointments(appointments).length
         setStats([
           {
             label: 'Kërkesa gjithsej',
@@ -217,6 +632,7 @@ export function UserOverviewPage() {
             hint: pending > 0 ? `${pending} në pritje` : 'Të dërguara',
             to: '/dashboard/user/requests',
             tone: 'accent',
+            featured: true,
           },
           {
             label: 'Pranuara',
@@ -224,6 +640,13 @@ export function UserOverviewPage() {
             hint: completed > 0 ? `${completed} përfunduar` : 'Nga ofruesit',
             to: '/dashboard/user/requests',
             tone: accepted > 0 ? 'success' : 'default',
+          },
+          {
+            label: 'Termine',
+            value: upcoming,
+            hint: upcoming > 0 ? 'Të ardhshme' : 'Asnjë i planifikuar',
+            to: '/dashboard/user/requests',
+            tone: upcoming > 0 ? 'success' : 'default',
           },
           {
             label: 'Mesazhe',
@@ -235,40 +658,27 @@ export function UserOverviewPage() {
         ])
         setCharts({
           bar: {
-            title: 'Kërkesat sipas statusit',
-            subtitle: 'Si po shkojnë kërkesat e tua',
-            items: requestStatusSlices(byStatus),
-            emptyText: 'Dërgo kërkesën e parë për të parë grafikun.',
+            title: 'Aktiviteti i javës',
+            subtitle: 'Kërkesa të dërguara 7 ditët e fundit',
+            items: weekActivitySlices(requests),
+            emptyText: 'Dërgo kërkesën e parë për të parë aktivitetin.',
           },
           donut: {
-            title: 'Aktiviteti yt',
-            subtitle: 'Përmbledhje e shpejtë',
-            centerLabel: 'Ndarje',
-            items: [
-              {
-                label: 'Kërkesa',
-                value: requests.length,
-                color: OVERVIEW_CHART_COLORS.accent,
-              },
-              {
-                label: 'Biseda',
-                value: conversations.length,
-                color: OVERVIEW_CHART_COLORS.info,
-              },
-              {
-                label: 'Përfunduar',
-                value: completed,
-                color: OVERVIEW_CHART_COLORS.success,
-              },
-            ],
+            title: 'Kërkesat sipas statusit',
+            subtitle: 'Si po shkojnë kërkesat e tua',
+            centerLabel: 'Gjithsej',
+            items: requestStatusSlices(byStatus),
             emptyText: 'Aktiviteti do të shfaqet sapo të fillosh.',
           },
         })
+        setActivity(requestsToActivity(requests, '/dashboard/user/requests'))
+        setReminder(appointmentReminder(appointments, '/dashboard/user/requests'))
+        setProfilePercent(completion?.overallPercent ?? null)
         setNextStep(
           requests.length === 0
             ? {
                 title: 'Dërgo kërkesën e parë',
-                text: 'Përshkruaj çfarë të duhet dhe gjej avokat, jurist ose kontabilist.',
+                text: 'Përshkruaj çfarë të duhet dhe gjej ofruesin e duhur.',
                 to: '/',
                 cta: 'Fillo',
               }
@@ -294,11 +704,14 @@ export function UserOverviewPage() {
                   },
         )
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setActivity([])
+          setReminder(null)
           setNextStep(null)
+          setError(getErrorMessage(err))
         }
       })
       .finally(() => {
@@ -307,17 +720,36 @@ export function UserOverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reloadKey])
 
   return (
     <OverviewShell
       role="user"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.user}
+      actions={[
+        { label: 'Kërko ndihmë', to: '/', variant: 'primary', icon: Plus },
+        { label: 'Shiko ofertat', to: '/ofertat', variant: 'secondary', icon: Search },
+      ]}
       stats={stats}
       statsLoading={loading}
       charts={charts}
-      nextStep={loading ? null : nextStep}
+      activity={{
+        title: 'Aktiviteti i fundit',
+        subtitle: 'Kërkesat më të reja',
+        items: activity,
+        emptyText: 'Ende nuk ke dërguar asnjë kërkesë.',
+        viewAllTo: '/dashboard/user/requests',
+      }}
+      activityLoading={loading}
+      reminder={reminder}
+      reminderLoading={loading}
+      profilePercent={profilePercent}
+      profileLabel="Profili privat"
+      profileTo="/dashboard/user/profile"
+      nextStep={loading || error ? null : nextStep}
+      error={error}
+      onRetry={reload}
     >
       <OverviewCard
         title="Kërko ndihmë"
@@ -349,26 +781,35 @@ export function ProviderOverviewPage() {
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
   const [nextStep, setNextStep] = useState<NextStep | null>(null)
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [reminder, setReminder] = useState<Reminder | null>(null)
+  const [profilePercent, setProfilePercent] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+  const reload = useCallback(() => setReloadKey((n) => n + 1), [])
 
   useEffect(() => {
     if (!user?.uid) return
     let cancelled = false
     setLoading(true)
+    setError('')
     Promise.all([
       fetchRequestInbox(),
       fetchConversations(),
       fetchMyServices(),
       fetchMyAvailability(),
       fetchProviderRatings(user.uid),
+      fetchProviderAppointments().catch(() => [] as AppointmentItem[]),
+      fetchProfileCompletion('expert').catch(() => null),
     ])
-      .then(([inbox, conversations, services, slots, ratings]) => {
+      .then(([inbox, conversations, services, slots, ratings, appointments, completion]) => {
         if (cancelled) return
         const unread = unreadFromConversations(conversations)
         const openSlots = slots.filter((s) => s.status === 'open').length
         const booked = slots.filter((s) => s.status === 'booked' || s.status === 'held').length
-        const byStatus = countByStatus(inbox.requests)
         const avg = ratings.stats.count > 0 ? ratings.stats.average.toFixed(1) : '—'
+        const upcoming = upcomingAppointments(appointments).length
         setStats([
           {
             label: 'Në pritje',
@@ -376,6 +817,7 @@ export function ProviderOverviewPage() {
             hint: `${inbox.requests.length} kërkesa gjithsej`,
             to: '/dashboard/provider/inbox',
             tone: inbox.pendingCount > 0 ? 'warn' : 'default',
+            featured: true,
           },
           {
             label: 'Shërbime',
@@ -387,7 +829,7 @@ export function ProviderOverviewPage() {
           {
             label: 'Orë të lira',
             value: openSlots,
-            hint: 'Disponueshmëri',
+            hint: upcoming > 0 ? `${upcoming} termine të ardhshme` : 'Disponueshmëri',
             to: '/dashboard/provider/availability',
             tone: openSlots > 0 ? 'success' : 'default',
           },
@@ -400,19 +842,12 @@ export function ProviderOverviewPage() {
                 : 'Ende pa vlerësime',
             to: '/dashboard/provider/ratings',
           },
-          {
-            label: 'Mesazhe',
-            value: unread,
-            hint: unread > 0 ? 'Të palexuara' : `${conversations.length} biseda`,
-            to: '/dashboard/provider/messages',
-            tone: unread > 0 ? 'warn' : 'default',
-          },
         ])
         setCharts({
           bar: {
-            title: 'Inbox sipas statusit',
-            subtitle: 'Si po trajtohen kërkesat',
-            items: requestStatusSlices(byStatus),
+            title: 'Aktiviteti i javës',
+            subtitle: 'Kërkesa të reja 7 ditët e fundit',
+            items: weekActivitySlices(inbox.requests),
             emptyText: 'Kur të vijnë kërkesa, grafiku mbushët këtu.',
           },
           donut: {
@@ -431,6 +866,9 @@ export function ProviderOverviewPage() {
             emptyText: 'Shto orë të lira për të parë grafikun.',
           },
         })
+        setActivity(requestsToActivity(inbox.requests, '/dashboard/provider/inbox'))
+        setReminder(appointmentReminder(appointments, '/dashboard/provider/availability'))
+        setProfilePercent(completion?.overallPercent ?? null)
         setNextStep(
           services.length === 0
             ? {
@@ -468,11 +906,14 @@ export function ProviderOverviewPage() {
                     },
         )
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setActivity([])
+          setReminder(null)
           setNextStep(null)
+          setError(getErrorMessage(err))
         }
       })
       .finally(() => {
@@ -481,17 +922,41 @@ export function ProviderOverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [user?.uid])
+  }, [user?.uid, reloadKey])
 
   return (
     <OverviewShell
       role="provider"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.provider}
+      actions={[
+        { label: 'Shto shërbim', to: '/dashboard/provider/services', variant: 'primary', icon: Plus },
+        {
+          label: 'Disponueshmëria',
+          to: '/dashboard/provider/availability',
+          variant: 'secondary',
+          icon: CalendarDays,
+        },
+      ]}
       stats={stats}
       statsLoading={loading}
       charts={charts}
-      nextStep={loading ? null : nextStep}
+      activity={{
+        title: 'Kërkesat e fundit',
+        subtitle: 'Inbox i ofruesit',
+        items: activity,
+        emptyText: 'Ende nuk ke marrë asnjë kërkesë.',
+        viewAllTo: '/dashboard/provider/inbox',
+      }}
+      activityLoading={loading}
+      reminder={reminder}
+      reminderLoading={loading}
+      profilePercent={profilePercent}
+      profileLabel="Profili i ekspertit"
+      profileTo="/dashboard/provider/profile"
+      nextStep={loading || error ? null : nextStep}
+      error={error}
+      onRetry={reload}
     >
       <OverviewCard
         title="Kërkesat"
@@ -530,19 +995,30 @@ export function CompanyOverviewPage() {
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
   const [nextStep, setNextStep] = useState<NextStep | null>(null)
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [reminder, setReminder] = useState<Reminder | null>(null)
+  const [profilePercent, setProfilePercent] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+  const reload = useCallback(() => setReloadKey((n) => n + 1), [])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setError('')
 
     async function load() {
-      const [inbox, conversations, slots, businesses] = await Promise.all([
-        fetchRequestInbox(),
-        fetchConversations(),
-        fetchMyAvailability().catch(() => []),
-        fetchMyBusinesses().catch(() => []),
-      ])
+      const [inbox, conversations, slots, businesses, services, appointments, completion] =
+        await Promise.all([
+          fetchRequestInbox(),
+          fetchConversations(),
+          fetchMyAvailability().catch(() => []),
+          fetchMyBusinesses().catch(() => []),
+          fetchMyServices().catch(() => []),
+          fetchProviderAppointments().catch(() => [] as AppointmentItem[]),
+          fetchProfileCompletion('company').catch(() => null),
+        ])
 
       let members = 0
       let invitations = 0
@@ -560,7 +1036,7 @@ export function CompanyOverviewPage() {
       const unread = unreadFromConversations(conversations)
       const openSlots = slots.filter((s) => s.status === 'open').length
       const booked = slots.filter((s) => s.status === 'booked' || s.status === 'held').length
-      const byStatus = countByStatus(inbox.requests)
+      const upcoming = upcomingAppointments(appointments).length
 
       setStats([
         {
@@ -569,6 +1045,7 @@ export function CompanyOverviewPage() {
           hint: `${inbox.requests.length} gjithsej`,
           to: '/dashboard/company/inbox',
           tone: inbox.pendingCount > 0 ? 'warn' : 'default',
+          featured: true,
         },
         {
           label: 'Ekspertë në ekip',
@@ -578,25 +1055,24 @@ export function CompanyOverviewPage() {
           tone: 'accent',
         },
         {
-          label: 'Orë të lira',
-          value: openSlots,
-          hint: 'Për termine',
-          to: '/dashboard/company/availability',
-          tone: openSlots > 0 ? 'success' : 'default',
+          label: 'Shërbime',
+          value: services.length,
+          hint: 'Oferta të kompanisë',
+          to: '/dashboard/company/services',
         },
         {
-          label: 'Mesazhe',
-          value: unread,
-          hint: unread > 0 ? 'Të palexuara' : `${conversations.length} biseda`,
-          to: '/dashboard/company/messages',
-          tone: unread > 0 ? 'warn' : 'default',
+          label: 'Orë të lira',
+          value: openSlots,
+          hint: upcoming > 0 ? `${upcoming} termine të ardhshme` : 'Për termine',
+          to: '/dashboard/company/availability',
+          tone: openSlots > 0 ? 'success' : 'default',
         },
       ])
       setCharts({
         bar: {
-          title: 'Kërkesat e kompanisë',
-          subtitle: 'Statusi i inbox-it',
-          items: requestStatusSlices(byStatus),
+          title: 'Aktiviteti i javës',
+          subtitle: 'Kërkesa të reja 7 ditët e fundit',
+          items: weekActivitySlices(inbox.requests),
           emptyText: 'Kur të vijnë kërkesa, grafiku shfaqet këtu.',
         },
         donut: {
@@ -612,6 +1088,9 @@ export function CompanyOverviewPage() {
           emptyText: 'Shto ekspertë ose orë për të parë grafikun.',
         },
       })
+      setActivity(requestsToActivity(inbox.requests, '/dashboard/company/inbox'))
+      setReminder(appointmentReminder(appointments, '/dashboard/company/availability'))
+      setProfilePercent(completion?.overallPercent ?? null)
       setNextStep(
         businesses.length === 0
           ? {
@@ -658,11 +1137,14 @@ export function CompanyOverviewPage() {
     }
 
     load()
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setActivity([])
+          setReminder(null)
           setNextStep(null)
+          setError(getErrorMessage(err))
         }
       })
       .finally(() => {
@@ -672,17 +1154,36 @@ export function CompanyOverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reloadKey])
 
   return (
     <OverviewShell
       role="company"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.company}
+      actions={[
+        { label: 'Shto ekspert', to: '/dashboard/company/experts', variant: 'primary', icon: Plus },
+        { label: 'Shërbimet', to: '/dashboard/company/services', variant: 'secondary', icon: Briefcase },
+      ]}
       stats={stats}
       statsLoading={loading}
       charts={charts}
-      nextStep={loading ? null : nextStep}
+      activity={{
+        title: 'Kërkesat e fundit',
+        subtitle: 'Inbox i kompanisë',
+        items: activity,
+        emptyText: 'Ende nuk ka kërkesa për kompaninë.',
+        viewAllTo: '/dashboard/company/inbox',
+      }}
+      activityLoading={loading}
+      reminder={reminder}
+      reminderLoading={loading}
+      profilePercent={profilePercent}
+      profileLabel="Profili i kompanisë"
+      profileTo="/dashboard/company/profile"
+      nextStep={loading || error ? null : nextStep}
+      error={error}
+      onRetry={reload}
     >
       <OverviewCard
         title="Kërkesat"
@@ -735,18 +1236,24 @@ export function AdminOverviewPage() {
   const [stats, setStats] = useState<StatItem[]>([])
   const [charts, setCharts] = useState<OverviewChartsData | null>(null)
   const [nextStep, setNextStep] = useState<NextStep | null>(null)
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [reminder, setReminder] = useState<Reminder | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+  const reload = useCallback(() => setReloadKey((n) => n + 1), [])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setError('')
     Promise.all([
       fetchAdminUsersMeta(),
       fetchAllRequests(),
-      fetchConversations().catch(() => []),
       fetchPlatformFeedback().catch(() => []),
+      fetchPendingRoleRequests().catch(() => []),
     ])
-      .then(([meta, requests, conversations, feedback]) => {
+      .then(([meta, requests, feedback, roleRequests]) => {
         if (cancelled) return
         const totalUsers =
           (meta.counts.user || 0) +
@@ -755,8 +1262,8 @@ export function AdminOverviewPage() {
           (meta.counts.admin || 0)
         const byStatus = countByStatus(requests)
         const pending = byStatus.pending || 0
-        const unread = unreadFromConversations(conversations)
         const newFeedback = feedback.filter((item) => item.status === 'new').length
+        const pendingRoles = roleRequests.length
         setStats([
           {
             label: 'Përdorues gjithsej',
@@ -764,6 +1271,7 @@ export function AdminOverviewPage() {
             hint: `${meta.counts.user || 0} klientë · ${meta.counts.provider || 0} ofrues`,
             to: '/dashboard/admin/users',
             tone: 'accent',
+            featured: true,
           },
           {
             label: 'Kompani',
@@ -779,12 +1287,6 @@ export function AdminOverviewPage() {
             tone: pending > 0 ? 'warn' : 'default',
           },
           {
-            label: 'Mesazhe',
-            value: unread,
-            hint: unread > 0 ? 'Të palexuara' : `${conversations.length} biseda`,
-            to: '/dashboard/admin/messages',
-          },
-          {
             label: 'Feedback i ri',
             value: newFeedback,
             hint: newFeedback > 0 ? 'Pret lexim' : 'Të gjitha të lexuara',
@@ -793,10 +1295,17 @@ export function AdminOverviewPage() {
           },
         ])
         setCharts({
+          bar: {
+            title: 'Aktiviteti i javës',
+            subtitle: 'Kërkesa të reja në platformë',
+            items: weekActivitySlices(requests),
+            emptyText: 'Ende nuk ka kërkesa në platformë.',
+          },
           donut: {
             title: 'Përdorues sipas rolit',
             subtitle: 'Shpërndarja në platformë',
             centerLabel: 'Llogari',
+            centerValue: totalUsers,
             items: [
               {
                 label: 'Klientë',
@@ -820,13 +1329,25 @@ export function AdminOverviewPage() {
               },
             ],
           },
-          bar: {
-            title: 'Kërkesat në platformë',
-            subtitle: 'Statusi global',
-            items: requestStatusSlices(byStatus),
-            emptyText: 'Ende nuk ka kërkesa në platformë.',
-          },
         })
+        setActivity(requestsToActivity(requests, '/dashboard/admin/requests'))
+        setReminder(
+          pendingRoles > 0
+            ? {
+                title: 'Kërkesa për role',
+                text: `${pendingRoles} përdorues presin aprovim roli.`,
+                to: '/dashboard/admin/users',
+                cta: 'Shiko',
+              }
+            : newFeedback > 0
+              ? {
+                  title: 'Feedback i ri',
+                  text: `${newFeedback} mesazhe nga përdoruesit.`,
+                  to: '/dashboard/admin/feedback',
+                  cta: 'Hap',
+                }
+              : null,
+        )
         setNextStep(
           newFeedback > 0
             ? {
@@ -835,26 +1356,36 @@ export function AdminOverviewPage() {
                 to: '/dashboard/admin/feedback',
                 cta: 'Hap',
               }
-            : pending > 0
+            : pendingRoles > 0
               ? {
-                  title: 'Kërkesa në pritje',
-                  text: `${pending} kërkesa në platformë ende nuk janë mbyllur.`,
-                  to: '/dashboard/admin/requests',
-                  cta: 'Shiko',
-                }
-              : {
-                  title: 'Platforma është e qetë',
-                  text: 'Shiko llogaritë dhe rolet kur të duash një kontroll të shpejtë.',
+                  title: 'Shqyrto kërkesat e roleve',
+                  text: `${pendingRoles} kërkesa roli janë në pritje.`,
                   to: '/dashboard/admin/users',
-                  cta: 'Përdoruesit',
-                },
+                  cta: 'Hap',
+                }
+              : pending > 0
+                ? {
+                    title: 'Kërkesa në pritje',
+                    text: `${pending} kërkesa në platformë ende nuk janë mbyllur.`,
+                    to: '/dashboard/admin/requests',
+                    cta: 'Shiko',
+                  }
+                : {
+                    title: 'Platforma është e qetë',
+                    text: 'Shiko llogaritë dhe rolet kur të duash një kontroll të shpejtë.',
+                    to: '/dashboard/admin/users',
+                    cta: 'Përdoruesit',
+                  },
         )
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setStats([])
           setCharts(null)
+          setActivity([])
+          setReminder(null)
           setNextStep(null)
+          setError(getErrorMessage(err))
         }
       })
       .finally(() => {
@@ -863,17 +1394,38 @@ export function AdminOverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reloadKey])
 
   return (
     <OverviewShell
       role="admin"
       greeting={`Mirë se erdhe, ${user?.name || ''}`}
       subtitle={ROLE_HINTS.admin}
+      actions={[
+        { label: 'Përdoruesit', to: '/dashboard/admin/users', variant: 'primary', icon: Users },
+        {
+          label: 'Feedback',
+          to: '/dashboard/admin/feedback',
+          variant: 'secondary',
+          icon: MessageSquarePlus,
+        },
+      ]}
       stats={stats}
       statsLoading={loading}
       charts={charts}
-      nextStep={loading ? null : nextStep}
+      activity={{
+        title: 'Kërkesat e fundit',
+        subtitle: 'Aktiviteti global',
+        items: activity,
+        emptyText: 'Ende nuk ka kërkesa në platformë.',
+        viewAllTo: '/dashboard/admin/requests',
+      }}
+      activityLoading={loading}
+      reminder={reminder}
+      reminderLoading={loading}
+      nextStep={loading || error ? null : nextStep}
+      error={error}
+      onRetry={reload}
     >
       <OverviewCard
         title="Përdoruesit"

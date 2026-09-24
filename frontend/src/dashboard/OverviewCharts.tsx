@@ -7,6 +7,7 @@ type ChartSlice = {
 const CHART_COLORS = {
   navy: '#050a44',
   accent: '#0a21c0',
+  accentSoft: '#4b63e8',
   success: '#16a34a',
   warning: '#d97706',
   danger: '#dc2626',
@@ -22,14 +23,16 @@ function ChartPanel({
   subtitle,
   emptyText,
   children,
+  className = '',
 }: {
   title: string
   subtitle?: string
   emptyText?: string
   children?: React.ReactNode
+  className?: string
 }) {
   return (
-    <div className="dash-chart-card">
+    <div className={`dash-chart-card ${className}`.trim()}>
       <div className="dash-chart-card-head">
         <h3>{title}</h3>
         {subtitle ? <p>{subtitle}</p> : null}
@@ -60,7 +63,7 @@ export function OverviewBarChart({
           {items.map((item, index) => {
             const height = Math.max((item.value / max) * 100, item.value > 0 ? 10 : 0)
             return (
-              <div key={item.label} className="dash-bar-col">
+              <div key={`${item.label}-${index}`} className="dash-bar-col">
                 <div className="dash-bar-track">
                   <div
                     className="dash-bar-fill"
@@ -103,12 +106,14 @@ export function OverviewDonutChart({
   subtitle,
   items,
   centerLabel,
+  centerValue,
   emptyText = 'Nuk ka të dhëna ende.',
 }: {
   title: string
   subtitle?: string
   items: ChartSlice[]
   centerLabel?: string
+  centerValue?: string | number
   emptyText?: string
 }) {
   const total = items.reduce((sum, item) => sum + item.value, 0)
@@ -174,7 +179,7 @@ export function OverviewDonutChart({
               />
             ))}
             <text x={cx} y={cy - 6} textAnchor="middle" className="dash-donut-total">
-              {total}
+              {centerValue ?? total}
             </text>
             <text x={cx} y={cy + 16} textAnchor="middle" className="dash-donut-center-label">
               {centerLabel || 'Gjithsej'}
@@ -207,6 +212,7 @@ export type OverviewChartsData = {
     subtitle?: string
     items: ChartSlice[]
     centerLabel?: string
+    centerValue?: string | number
     emptyText?: string
   }
 }
@@ -245,6 +251,7 @@ export function OverviewCharts({
           subtitle={data.donut.subtitle}
           items={data.donut.items}
           centerLabel={data.donut.centerLabel}
+          centerValue={data.donut.centerValue}
           emptyText={data.donut.emptyText}
         />
       ) : null}
@@ -271,4 +278,39 @@ export function countByStatus<T extends { status: string }>(items: T[]) {
     },
     {} as Record<string, number>,
   )
+}
+
+/** Last 7 days of activity from timestamps (today included). */
+export function weekActivitySlices(
+  items: Array<{ createdAt?: string; startAt?: string }>,
+): ChartSlice[] {
+  const dayMs = 24 * 60 * 60 * 1000
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const counts = Array.from({ length: 7 }, () => 0)
+
+  for (const item of items) {
+    const raw = item.createdAt || item.startAt
+    if (!raw) continue
+    const day = new Date(raw)
+    day.setHours(0, 0, 0, 0)
+    const diff = Math.round((today.getTime() - day.getTime()) / dayMs)
+    if (diff >= 0 && diff < 7) counts[6 - diff] += 1
+  }
+
+  return counts.map((value, index) => {
+    const date = new Date(today)
+    date.setDate(today.getDate() - (6 - index))
+    const label = date.toLocaleDateString('sq-AL', { weekday: 'narrow' })
+    const isToday = index === 6
+    return {
+      label,
+      value,
+      color: isToday
+        ? CHART_COLORS.accent
+        : value > 0
+          ? CHART_COLORS.navy
+          : CHART_COLORS.soft,
+    }
+  })
 }
