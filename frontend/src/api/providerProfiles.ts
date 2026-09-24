@@ -128,6 +128,53 @@ export function emptyCertification(): CertificationEntry {
   }
 }
 
+export type MarketplaceFeaturedExpert = {
+  uid: string
+  name: string
+  title?: string
+  photoUrl?: string
+}
+
+export type MarketplaceProvider = {
+  id: string
+  uid: string
+  providerType: 'individual' | 'business'
+  businessId?: string
+  name: string
+  title?: string
+  photoUrl?: string
+  description?: string
+  location?: string
+  languages: string[]
+  modes: Array<'online' | 'on_site'>
+  categories: string[]
+  categoryLabels: string[]
+  specializations: string[]
+  yearsOfExperience?: number
+  experience?: string
+  verification?: {
+    identity?: string
+    business?: string
+    qualification?: string
+  }
+  ratingAverage: number
+  ratingCount: number
+  expertCount?: number
+  serviceCount: number
+  publicPhone?: string
+  publicEmail?: string
+  website?: string
+  companyName?: string
+  featuredExpert?: MarketplaceFeaturedExpert
+  updatedAt?: string
+  createdAt?: string
+}
+
+export async function fetchMarketplaceProviders(params: { cityId?: string } = {}, signal?: AbortSignal) {
+  const { data } = await api.get<{ providers: MarketplaceProvider[] }>('/api/providers', { params, signal })
+  return data.providers
+}
+
 export async function fetchMyProviderProfiles(signal?: AbortSignal) {
   const { data } = await api.get<{ providers: ManagedProviderProfile[] }>('/api/providers/mine', { signal })
   return data.providers

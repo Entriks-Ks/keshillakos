@@ -11,8 +11,8 @@ import {
 } from '../services/mediaService'
 import {
   createProviderProfile,
+  listMarketplaceProviders,
   listMyProviderProfiles,
-  listPublishedProviderProfiles,
   moderateProviderProfile,
   toPublicProvider,
   updateProviderPhoto,
@@ -56,8 +56,11 @@ const certificationsInput = z.array(z.object({
   credentialUrl: z.string().trim().max(500).optional(),
 })).max(30)
 
-router.get('/', async (_req, res) => {
-  try { return res.json({ providers: (await listPublishedProviderProfiles()).map(toPublicProvider) }) }
+router.get('/', async (req, res) => {
+  try {
+    const cityId = typeof req.query.cityId === 'string' ? req.query.cityId : undefined
+    return res.json({ providers: await listMarketplaceProviders(cityId) })
+  }
   catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Profilet nuk u ngarkuan' }) }
 })
 

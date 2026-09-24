@@ -32,6 +32,7 @@ export type ServiceProvider = {
   email: string
   role: string
   roleLabel: string
+  providerType?: 'individual' | 'business'
   headline?: string
   bio?: string
   location?: string
@@ -40,11 +41,35 @@ export type ServiceProvider = {
   profilePhoto?: string
   ratingAverage: number
   ratingCount: number
+  yearsOfExperience?: number
+  experience?: string
+  certifications?: Array<{
+    name: string
+    issuer: string
+    year: number
+    credentialUrl?: string
+  }>
+  verification?: {
+    identity?: string
+    business?: string
+    qualification?: string
+  }
+}
+
+export type ResponsibleExpert = {
+  id: string
+  uid: string
+  name: string
+  headline?: string
+  photoUrl?: string
 }
 
 export type ServiceItem = {
   id: string
   providerId?: string
+  businessId?: string
+  staffUserId?: string
+  responsibleExpert?: ResponsibleExpert
   title: string
   description: string
   categoryId: string
@@ -63,7 +88,7 @@ export type ServiceItem = {
   createdAt: string
 }
 
-export async function createService(payload: {
+export type ServiceWritePayload = {
   title: string
   description: string
   categoryId: string
@@ -72,7 +97,12 @@ export async function createService(payload: {
   location: string
   priceFrom?: number
   details?: ServiceDetails
-}) {
+  providerId?: string
+  businessId?: string
+  staffUserId?: string | null
+}
+
+export async function createService(payload: ServiceWritePayload) {
   const { data } = await api.post<{ service: ServiceItem }>('/api/services', payload)
   return data.service
 }
@@ -82,19 +112,7 @@ export async function fetchMyServices() {
   return data.services
 }
 
-export async function updateService(
-  id: string,
-  payload: {
-    title: string
-    description: string
-    categoryId: string
-    subcategory: string
-    subcategoryId?: string
-    location: string
-    priceFrom?: number
-    details?: ServiceDetails
-  },
-) {
+export async function updateService(id: string, payload: ServiceWritePayload) {
   const { data } = await api.patch<{ service: ServiceItem }>(`/api/services/${id}`, payload)
   return data.service
 }

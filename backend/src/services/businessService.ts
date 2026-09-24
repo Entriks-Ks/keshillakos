@@ -157,7 +157,7 @@ export async function businessTeam(uid: string, businessId: string) {
   const profiles = await ProviderProfile.find({
     ownerUser: { $in: ids },
     providerType: 'individual',
-  }).select('ownerUser publicProfile categories languages status').lean()
+  }).select('_id ownerUser publicProfile categories languages status').lean()
   const byId = new Map(users.map((user) => [String(user._id), user]))
   const profileByOwner = new Map(profiles.map((profile) => [String(profile.ownerUser), profile]))
   const person = (id: Types.ObjectId) => {
@@ -174,6 +174,7 @@ export async function businessTeam(uid: string, businessId: string) {
       categories: profile?.categories ?? [],
       languages: profile?.languages ?? [],
       profileStatus: profile?.status || null,
+      providerProfileId: profile ? String(profile._id) : null,
     }
   }
   return {

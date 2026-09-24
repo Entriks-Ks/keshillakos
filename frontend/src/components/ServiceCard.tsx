@@ -28,6 +28,10 @@ function ratingWord(average: number, count: number) {
   return 'Në përmirësim'
 }
 
+function isCompanyOwned(service: ServiceItem) {
+  return service.provider?.providerType === 'business' || service.provider?.role === 'company'
+}
+
 type Props = {
   service: ServiceItem
   mode?: 'list' | 'compact'
@@ -42,11 +46,18 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
   const price = formatPrice(service)
   const ratingCount = provider?.ratingCount ?? 0
   const rating = provider?.ratingAverage ?? 0
-  const name = provider?.name || service.providerName
+  const companyOwned = isCompanyOwned(service)
+  const providerName = provider?.name || service.providerName
+  const responsibleExpert = companyOwned ? service.responsibleExpert : undefined
+  const providerUid = provider?.uid || service.providerUid
+  const categoryLine = [service.categoryLabel || service.category, service.subcategory]
+    .filter(Boolean)
+    .join(' · ')
   const workPhoto = details.photos?.[0]
     ? mediaUrl(details.photos[0])
     : catalogImageForLabels(service.subcategory, service.categoryLabel || service.category)
   const rounded = ratingCount > 0 ? Math.max(1, Math.round(rating)) : 0
+  const avatarLabel = providerName.slice(0, 1) || service.title.slice(0, 1)
 
   function openDetails() {
     navigate(`/services/${service.id}`)
@@ -72,14 +83,37 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
       onKeyDown={onCardKeyDown}
       role="link"
       tabIndex={0}
-      aria-label={`Shiko profilin e ${name} për ${service.title}`}
+      aria-label={`Shiko shërbimin ${service.title}`}
     >
       <div className="tt-result-avatar" aria-hidden>
-        {photo ? <img src={photo} alt="" /> : <span>{name.slice(0, 1)}</span>}
+        {photo ? <img src={photo} alt="" /> : <span>{avatarLabel}</span>}
       </div>
 
       <div className="tt-result-body">
-        <h3>{name}</h3>
+        <h3>{service.title}</h3>
+
+        {providerName ? (
+          <p className="tt-result-provider">
+            {providerUid ? (
+              <Link to={`/providers/${providerUid}`}>{providerName}</Link>
+            ) : (
+              <span>{providerName}</span>
+            )}
+            {responsibleExpert?.name ? (
+              <>
+                <span className="tt-result-provider-sep" aria-hidden>
+                  ·
+                </span>
+                {responsibleExpert.uid ? (
+                  <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
+                ) : (
+                  <span>{responsibleExpert.name}</span>
+                )}
+              </>
+            ) : null}
+          </p>
+        ) : null}
+
         <p className="tt-pro-rating">
           <strong>{ratingWord(rating, ratingCount)}</strong>
           {ratingCount > 0 ? (
@@ -101,7 +135,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
             </span>
           ) : null}
           {price ? <span>{price}</span> : null}
-          {service.subcategory || service.title ? <span>{service.subcategory || service.title}</span> : null}
+          {categoryLine ? <span>{categoryLine}</span> : null}
           {details.deliveryModes?.[0] ? <span>{DELIVERY_LABELS[details.deliveryModes[0]] || details.deliveryModes[0]}</span> : null}
         </p>
         {service.description ? <p className="service-card-desc">{service.description}</p> : null}
@@ -114,7 +148,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
 
       <div className="tt-result-cta">
         <Link to={`/services/${service.id}`} className="primary-btn tt-result-profile-btn">
-          Shiko profilin
+          Shiko shërbimin
         </Link>
         <span className="tt-result-responds">
           <Clock size={14} aria-hidden />
