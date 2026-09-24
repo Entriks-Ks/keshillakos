@@ -4,8 +4,10 @@ import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useAuth } from '../auth/AuthContext'
+import AuthShowcase from '../components/AuthShowcase'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 import { getErrorMessage } from '../utils/errors'
+import './LoginPage.css'
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email është i detyrueshëm').email('Email i pavlefshëm'),
@@ -50,11 +52,14 @@ export default function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-panel">
+      <div className="login-split">
+        <AuthShowcase />
+        <div className="auth-panel">
         <Link to="/" className="brand brand-link">
           KëshillaKos
         </Link>
-        <h1>Hyr në llogari</h1>
+        <h1>Mirë se erdhe</h1>
+        <p className="auth-lead">Hyr në llogarinë tënde për të vazhduar.</p>
 
         <form onSubmit={onSubmit} className="auth-form login-form" noValidate>
           <TextField isInvalid={Boolean(fieldErrors.email)} validationBehavior="aria" fullWidth>
@@ -109,6 +114,7 @@ export default function LoginPage() {
         <p className="switch">
           Nuk ke llogari? <Link to="/register">Regjistrohu</Link>
         </p>
+        </div>
       </div>
     </div>
   )

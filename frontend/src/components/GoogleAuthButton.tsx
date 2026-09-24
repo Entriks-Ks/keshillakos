@@ -27,7 +27,7 @@ export default function GoogleAuthButton({ disabled }: { disabled?: boolean }) {
   return (
     <div className="auth-google-wrap">
       <p className="auth-divider">
-        <span>ose</span>
+        <span>ose vazhdo me</span>
       </p>
       <button type="button" className="auth-google" disabled={disabled || busy} onClick={() => void onClick()}>
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
