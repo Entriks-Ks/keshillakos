@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
         });
     }
 });
-router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'admin'), async (req, res) => {
+router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
         const services = await (0, serviceService_1.listServicesByProvider)(req.user.uid);
         return res.json({ services });
@@ -57,7 +57,7 @@ router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'adm
         });
     }
 });
-router.post('/photos', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.servicePhotoUpload), (req, res) => {
+router.post('/photos', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.servicePhotoUpload), (req, res) => {
     try {
         const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për shërbimin');
         return res.status(201).json({ url: (0, mediaService_1.toPublicUploadPath)('services', file.filename) });
@@ -82,7 +82,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
-router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'admin'), async (req, res) => {
+router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
         const payload = parseServicePayload(req.body);
         const service = await (0, serviceService_1.createService)({
@@ -99,7 +99,7 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'admin'
         });
     }
 });
-router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'admin'), async (req, res) => {
+router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
         const payload = parseServicePayload(req.body);
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -112,7 +112,7 @@ router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'ad
         return res.status(status).json({ message });
     }
 });
-router.delete('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'admin'), async (req, res) => {
+router.delete('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
         const result = await (0, serviceService_1.deleteService)(id, req.user.uid);

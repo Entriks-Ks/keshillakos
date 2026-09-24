@@ -8,6 +8,8 @@ exports.findOwnedOpenBusiness = findOwnedOpenBusiness;
 exports.listMyBusinesses = listMyBusinesses;
 exports.listManagedBusinesses = listManagedBusinesses;
 exports.businessTeam = businessTeam;
+exports.publicExpertsForOwner = publicExpertsForOwner;
+exports.lookupBusinessExpert = lookupBusinessExpert;
 exports.inviteBusinessExpert = inviteBusinessExpert;
 exports.listMyBusinessInvitations = listMyBusinessInvitations;
 exports.acceptBusinessInvitation = acceptBusinessInvitation;
@@ -186,6 +188,66 @@ async function businessTeam(uid, businessId) {
             status: 'pending',
         })),
     };
+}
+async function publicExpertsForOwner(ownerUid) {
+    const owner = await User_1.User.findOne({ uid: ownerUid }).select('_id').lean();
+    if (!owner)
+        return [];
+    const business = await Business_1.Business.findOne({ owners: owner._id, status: 'active' }).select('members');
+    if (!business?.members.length)
+        return [];
+    const ids = business.members.map((member) => member.user);
+    const [users, profiles] = await Promise.all([
+        User_1.User.find({ _id: { $in: ids }, accountStatus: 'active' }).select('uid name firstName lastName email headline profilePhoto').lean(),
+        ProviderProfile_1.ProviderProfile.find({ ownerUser: { $in: ids }, providerType: 'individual' }).select('ownerUser publicProfile').lean(),
+    ]);
+    const profileByOwner = new Map(profiles.map((profile) => [String(profile.ownerUser), profile]));
+    return users
+        .filter((user) => user.uid)
+        .map((user) => {
+        const profile = profileByOwner.get(String(user._id));
+        const userName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.name;
+        return {
+            uid: user.uid,
+            name: userName || profile?.publicProfile?.displayName || 'Ekspert',
+            headline: profile?.publicProfile?.title || user.headline || '',
+            photoUrl: profile?.publicProfile?.photoUrl || user.profilePhoto || '',
+        };
+    });
+}
+async function lookupBusinessExpert(uid, businessId, email) {
+    const { business } = await ownedBusinessById(uid, businessId);
+    const normalized = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
+        return { status: 'invalid' };
+    const expert = await User_1.User.findOne({ email: normalized, accountStatus: 'active' })
+        .select('uid name firstName lastName email headline profilePhoto roles role')
+        .lean();
+    if (!expert)
+        return { status: 'missing' };
+    if (!(0, userService_1.effectiveRoles)(expert).includes('provider'))
+        return { status: 'not_expert' };
+    const profile = await ProviderProfile_1.ProviderProfile.findOne({ ownerUser: expert._id, providerType: 'individual' })
+        .select('publicProfile')
+        .lean();
+    if (!profile)
+        return { status: 'not_expert' };
+    const userName = [expert.firstName, expert.lastName].filter(Boolean).join(' ').trim() || expert.name;
+    const person = {
+        id: String(expert._id),
+        uid: expert.uid || '',
+        name: userName || profile.publicProfile?.displayName || 'Ekspert',
+        email: expert.email || normalized,
+        headline: profile.publicProfile?.title || expert.headline || '',
+        photoUrl: profile.publicProfile?.photoUrl || expert.profilePhoto || '',
+    };
+    if (business.owners.some((owner) => owner.equals(expert._id)))
+        return { status: 'owner', person };
+    if (business.members.some((member) => member.user.equals(expert._id)))
+        return { status: 'member', person };
+    if (business.invitations.some((invite) => invite.user.equals(expert._id)))
+        return { status: 'invited', person };
+    return { status: 'ready', person };
 }
 async function inviteBusinessExpert(uid, businessId, email) {
     const { business, userId } = await ownedBusinessById(uid, businessId);

@@ -55,6 +55,7 @@ const User_1 = require("../models/User");
 const categoryConfiguration_1 = require("./categoryConfiguration");
 const domainService_1 = require("./domainService");
 const mediaService_1 = require("./mediaService");
+const businessService_1 = require("./businessService");
 const providerProfileService_1 = require("./providerProfileService");
 const serviceOfferService_1 = require("./serviceOfferService");
 const providerPublicService_1 = require("./providerPublicService");
@@ -318,13 +319,19 @@ async function getActiveServiceById(id) {
     if (offer) {
         const [enriched] = await (0, serviceOfferService_1.offersToLegacyServices)([offer], true);
         if (enriched?.active)
-            return enriched;
+            return withCompanyExperts(enriched);
     }
     const service = await Service_1.Service.findOne({ _id: id, active: true });
     if (!service)
         return null;
     const [enriched] = await withLegacyProviders([service]);
-    return enriched;
+    if (!enriched)
+        return null;
+    return withCompanyExperts(enriched);
+}
+async function withCompanyExperts(service) {
+    const experts = service.providerUid ? await (0, businessService_1.publicExpertsForOwner)(service.providerUid) : [];
+    return { ...service, experts };
 }
 async function listActiveServicesByProvider(providerUid) {
     const [legacy, offers] = await Promise.all([

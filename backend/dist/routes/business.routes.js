@@ -45,6 +45,17 @@ router.get('/:id/team', auth_1.requireAuth, (0, auth_1.requireRole)('company', '
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ekipi nuk u ngarkua' });
     }
 });
+router.get('/:id/expert-lookup', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'admin'), async (req, res) => {
+    try {
+        const email = String(req.query.email || '');
+        if (!email.trim())
+            return res.status(400).json({ message: 'Email i ekspertit është i detyrueshëm' });
+        return res.json({ match: await (0, businessService_1.lookupBusinessExpert)(req.user.uid, String(req.params.id), email) });
+    }
+    catch (err) {
+        return res.status(400).json({ message: err instanceof Error ? err.message : 'Eksperti nuk u kontrollua' });
+    }
+});
 router.post('/:id/invitations', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'admin'), async (req, res) => {
     try {
         const email = req.body.email;
