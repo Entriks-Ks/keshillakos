@@ -13,7 +13,9 @@ import {
   Video,
 } from 'lucide-react'
 import { mediaUrl } from '../api/media'
+import { toMatchLanguage } from '../api/match'
 import type { MarketplaceProvider } from '../api/providerProfiles'
+import { humanLabels } from '../utils/displayLabels'
 import SendRequestButton from './SendRequestButton'
 import StartChatButton from './StartChatButton'
 
@@ -38,7 +40,10 @@ export default function CompanyCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
   const ratingCount = provider.ratingCount ?? 0
   const rating = provider.ratingAverage ?? 0
-  const specialties = [...provider.specializations, ...provider.categoryLabels].filter(Boolean)
+  const specialties = humanLabels(
+    [...provider.specializations, ...provider.categoryLabels],
+    provider.categories,
+  )
   const description = (provider.description || '').trim()
   const longDescription = description.length > 160
   const shownDescription = expanded || !longDescription ? description : `${description.slice(0, 160).trim()}…`
@@ -71,7 +76,7 @@ export default function CompanyCard({ provider }: Props) {
   const contactIntake = {
     need: provider.name,
     location: provider.location || '',
-    language: provider.languages[0] || 'Albanian',
+    language: toMatchLanguage(provider.languages[0]),
     urgency: 'flexible' as const,
     contact: 'chat' as const,
   }
@@ -198,19 +203,19 @@ export default function CompanyCard({ provider }: Props) {
         {phone ? (
           <a className="tt-dir-action is-primary" href={`tel:${phone.replace(/\s+/g, '')}`} onClick={(e) => e.stopPropagation()}>
             <Phone size={18} aria-hidden />
-            <span>{phone}</span>
+            <span>Thirr</span>
           </a>
         ) : (
-          <Link className="tt-dir-action is-primary" to={profilePath} onClick={(e) => e.stopPropagation()}>
+          <span className="tt-dir-action is-primary is-disabled" aria-disabled="true">
             <Phone size={18} aria-hidden />
-            <span>Shiko kompaninë</span>
-          </Link>
+            <span>Thirr</span>
+          </span>
         )}
 
         <div className="tt-dir-actions-secondary">
           <div className="tt-dir-action-slot" onClick={(e) => e.stopPropagation()}>
             {email ? (
-              <a className="tt-dir-action is-icon" href={`mailto:${email}`} aria-label="Email">
+              <a className="tt-dir-action is-icon" href={`mailto:${email}`} aria-label="Kontakto">
                 <Mail size={18} aria-hidden />
                 <span className="tt-dir-action-text">Kontakto</span>
               </a>
@@ -222,6 +227,7 @@ export default function CompanyCard({ provider }: Props) {
                 categoryId={provider.categories[0]}
                 compact
                 ctaLabel="Kontakto"
+                ctaIcon="mail"
                 intake={contactIntake}
               />
             )}
@@ -243,11 +249,11 @@ export default function CompanyCard({ provider }: Props) {
             <Link
               className="tt-dir-action is-icon"
               to={profilePath}
-              aria-label="Profili"
+              aria-label="Website"
               onClick={(e) => e.stopPropagation()}
             >
               <Globe size={18} aria-hidden />
-              <span className="tt-dir-action-text">Profili</span>
+              <span className="tt-dir-action-text">Website</span>
             </Link>
           )}
 

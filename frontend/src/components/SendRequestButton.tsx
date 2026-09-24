@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, X } from 'lucide-react'
+import { CalendarDays, Mail, X, type LucideIcon } from 'lucide-react'
 import type { MatchIntake } from '../api/match'
 import {
   sendServiceRequest,
@@ -24,6 +24,8 @@ type Props = {
   openByDefault?: boolean
   ctaLabel?: string
   guestLabel?: string
+  /** Override the CTA icon (defaults to calendar; use mail for Kontakto). */
+  ctaIcon?: 'calendar' | 'mail' | LucideIcon
 }
 
 export default function SendRequestButton({
@@ -37,7 +39,9 @@ export default function SendRequestButton({
   compact = false,
   ctaLabel = 'Dërgo kërkesë',
   guestLabel = 'Hyr për të dërguar kërkesë',
+  ctaIcon = 'calendar',
 }: Props) {
+  const CtaIcon = ctaIcon === 'mail' ? Mail : ctaIcon === 'calendar' ? CalendarDays : ctaIcon
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
@@ -65,6 +69,14 @@ export default function SendRequestButton({
   }, [open, submitting])
 
   if (!user) {
+    if (compact) {
+      return (
+        <Link to="/login" className="primary-btn send-request-cta" aria-label={ctaLabel}>
+          <CtaIcon size={16} aria-hidden />
+          <span className="tt-dir-action-text">{ctaLabel}</span>
+        </Link>
+      )
+    }
     return (
       <Link to="/login" className="primary-btn send-request-login-btn">
         {guestLabel}
@@ -258,8 +270,8 @@ export default function SendRequestButton({
           setOpen(true)
         }}
       >
-        <CalendarDays size={16} aria-hidden />
-        {ctaLabel}
+        <CtaIcon size={16} aria-hidden />
+        <span className={compact ? 'tt-dir-action-text' : undefined}>{ctaLabel}</span>
       </button>
       <p className="muted send-request-hint">Zgjidh orën dhe dërgo kërkesën në një hap.</p>
       {modal}

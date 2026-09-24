@@ -4,6 +4,7 @@ import { Clock, MapPin } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import type { ServiceItem } from '../api/services'
 import { catalogImageForLabels } from '../data/catalogImages'
+import { humanLabels } from '../utils/displayLabels'
 
 const DELIVERY_LABELS: Record<string, string> = {
   online: 'Online',
@@ -50,9 +51,10 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
   const providerName = provider?.name || service.providerName
   const responsibleExpert = companyOwned ? service.responsibleExpert : undefined
   const providerUid = provider?.uid || service.providerUid
-  const categoryLine = [service.categoryLabel || service.category, service.subcategory]
-    .filter(Boolean)
-    .join(' · ')
+  const categoryLine = humanLabels(
+    [service.categoryLabel || service.category, service.subcategory],
+    [service.categoryId, service.category, service.subcategoryId].filter(Boolean) as string[],
+  ).join(' · ')
   const workPhoto = details.photos?.[0]
     ? mediaUrl(details.photos[0])
     : catalogImageForLabels(service.subcategory, service.categoryLabel || service.category)

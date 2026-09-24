@@ -14,6 +14,11 @@ export type MatchIntake = {
   contact: 'chat' | 'phone' | 'email'
 }
 
+export function toMatchLanguage(value?: string): MatchIntake['language'] {
+  if (value === 'German' || value === 'English' || value === 'Albanian') return value
+  return 'Albanian'
+}
+
 export type MatchedExpert = {
   id: string
   source: 'expert' | 'service'

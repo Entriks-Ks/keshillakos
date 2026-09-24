@@ -9,6 +9,7 @@ import {
   ToggleButtonGroup,
 } from '@heroui/react'
 import { Building2, ChevronDown, MapPin, Search, SlidersHorizontal, UserRound, X } from 'lucide-react'
+import { Drawer } from 'vaul'
 import {
   fetchCategories,
   fetchSubcategories,
@@ -16,6 +17,12 @@ import {
   type CatalogSubcategory,
 } from '../api/catalog'
 import { fetchMarketplaceProviders, type MarketplaceProvider } from '../api/providerProfiles'
+import {
+  fetchCities,
+  fetchCountries,
+  locationLabel,
+  type LocationSelection,
+} from '../api/locations'
 import CompanyCard from '../components/CompanyCard'
 import ExpertCard from '../components/ExpertCard'
 import LocationSelector from '../components/LocationSelector'
@@ -89,6 +96,8 @@ export default function OffersPage() {
   const [minRating, setMinRating] = useState('')
   const [verification, setVerification] = useState<VerificationFilter>('all')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [sheetLocations, setSheetLocations] = useState<LocationSelection[]>([])
+  const [sheetLocationsStatus, setSheetLocationsStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const { selectedLocation, changeLocation, locationLoading, locationSaving, locationError } = useSavedLocation()
   const cityId = selectedLocation?.city._id
   const cityName = selectedLocation?.city.name.sq
@@ -152,6 +161,36 @@ export default function OffersPage() {
       cancelled = true
     }
   }, [selectedCategory?._id])
+
+  useEffect(() => {
+    if (!filtersOpen) return
+    if (sheetLocations.length > 0) {
+      setSheetLocationsStatus('ready')
+      return
+    }
+    const controller = new AbortController()
+    setSheetLocationsStatus('loading')
+    fetchCountries(controller.signal)
+      .then(async (countries) => {
+        const active = countries.filter((country) => country.isActive).sort((a, b) => a.order - b.order)
+        const groups = await Promise.all(active.map(async (country) => ({
+          country,
+          cities: await fetchCities(country.slug, controller.signal),
+        })))
+        if (controller.signal.aborted) return
+        setSheetLocations(groups.flatMap(({ country, cities }) => cities
+          .filter((city) => city.isActive)
+          .sort((a, b) => a.order - b.order)
+          .map((city) => ({ city, country }))))
+        setSheetLocationsStatus('ready')
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        setSheetLocations([])
+        setSheetLocationsStatus('error')
+      })
+    return () => controller.abort()
+  }, [filtersOpen, sheetLocations.length])
 
   useEffect(() => {
     if (locationLoading) return
@@ -231,6 +270,12 @@ export default function OffersPage() {
     Boolean(cityId),
   ].filter(Boolean).length
 
+  const sheetLocationOptions = useMemo(() => {
+    if (!selectedLocation) return sheetLocations
+    if (sheetLocations.some((item) => item.city._id === selectedLocation.city._id)) return sheetLocations
+    return [selectedLocation, ...sheetLocations]
+  }, [selectedLocation, sheetLocations])
+
   function clearFilters() {
     setQuery('')
     setCategoryId('all')
@@ -246,6 +291,133 @@ export default function OffersPage() {
     const next = [...keys][0]
     if (next === 'experts' || next === 'companies') setTab(next)
   }
+
+  function onSheetLocationChange(nextCityId: string) {
+    if (!nextCityId) {
+      void changeLocation(null)
+      return
+    }
+    const next = sheetLocationOptions.find((item) => item.city._id === nextCityId) ?? null
+    void changeLocation(next)
+  }
+
+  const filterForm = (
+    <>
+      <label className="tt-offers-sheet-field">
+        <span>Kategoria</span>
+        <select
+          className="tt-offers-select"
+          value={categoryId}
+          onChange={(e) => {
+            setCategoryId(e.target.value)
+            setSubcategoryId('all')
+          }}
+        >
+          <option value="all">Të gjitha</option>
+          {categories.map((category) => (
+            <option key={category._id} value={category._id}>
+              {catalogLabel(category)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="tt-offers-sheet-field">
+        <span>Vlerësimet</span>
+        <select
+          className="tt-offers-select"
+          value={minRating || 'all'}
+          onChange={(e) => setMinRating(e.target.value === 'all' ? '' : e.target.value)}
+        >
+          {RATING_FILTERS.map((item) => (
+            <option key={item.id} value={item.id}>{item.label}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="tt-offers-sheet-field">
+        <span>Lokacioni</span>
+        <select
+          className="tt-offers-select"
+          value={cityId || ''}
+          onChange={(e) => onSheetLocationChange(e.target.value)}
+          disabled={locationLoading || locationSaving || sheetLocationsStatus === 'loading'}
+          data-vaul-no-drag=""
+        >
+          <option value="">
+            {sheetLocationsStatus === 'loading'
+              ? 'Duke ngarkuar…'
+              : sheetLocationsStatus === 'error'
+                ? 'Nuk u ngarkuan lokacionet'
+                : 'Të gjitha'}
+          </option>
+          {sheetLocationOptions.map((item) => (
+            <option key={item.city._id} value={item.city._id}>
+              {locationLabel(item, 'sq')}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {selectedCategory && subcategories.length > 0 ? (
+        <label className="tt-offers-sheet-field">
+          <span>Nënkategoria</span>
+          <select
+            className="tt-offers-select"
+            value={subcategoryId}
+            onChange={(e) => setSubcategoryId(e.target.value)}
+          >
+            <option value="all">Të gjitha</option>
+            {subcategories.map((subcategory) => (
+              <option key={subcategory._id} value={subcategory._id}>
+                {catalogLabel(subcategory)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      {languages.length > 0 ? (
+        <label className="tt-offers-sheet-field">
+          <span>Gjuhët</span>
+          <select
+            className="tt-offers-select"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+          >
+            <option value="all">Të gjitha</option>
+            {languages.map((item) => (
+              <option key={item.id} value={item.value}>{item.label}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      <div className="tt-offers-sheet-toggles" role="group" aria-label="Filtra shtesë">
+        <ToggleButton
+          isSelected={delivery === 'online'}
+          onChange={(selected) => setDelivery(selected ? 'online' : 'all')}
+          className="tt-offers-filter-pill"
+        >
+          Online
+        </ToggleButton>
+        <ToggleButton
+          isSelected={delivery === 'physical'}
+          onChange={(selected) => setDelivery(selected ? 'physical' : 'all')}
+          className="tt-offers-filter-pill"
+        >
+          Fizikisht
+        </ToggleButton>
+        <ToggleButton
+          isSelected={verification === 'verified'}
+          onChange={(selected) => setVerification(selected ? 'verified' : 'all')}
+          className="tt-offers-filter-pill"
+        >
+          Të verifikuara
+        </ToggleButton>
+      </div>
+    </>
+  )
 
   return (
     <div className="tt-shell">
@@ -351,15 +523,48 @@ export default function OffersPage() {
                 </label>
                 <Button
                   variant="outline"
-                  className={`tt-offers-mobile-tool-btn${filtersOpen || hasActiveFilters ? ' is-active' : ''}`}
-                  onPress={() => setFiltersOpen((open) => !open)}
+                  className={`tt-offers-mobile-tool-btn${hasActiveFilters ? ' is-active' : ''}`}
+                  onPress={() => setFiltersOpen(true)}
                 >
                   <SlidersHorizontal size={16} aria-hidden />
                   Filtro
                 </Button>
               </div>
 
-              <div className={`tt-offers-advanced${filtersOpen ? ' is-open' : ''}`} aria-label="Filtra të avancuara">
+              <Drawer.Root open={filtersOpen} onOpenChange={setFiltersOpen} repositionInputs={false}>
+                <Drawer.Portal>
+                  <Drawer.Overlay className="tt-offers-drawer-overlay" />
+                  <Drawer.Content className="tt-offers-drawer-content" aria-describedby={undefined}>
+                    <div className="tt-offers-drawer-handle" aria-hidden />
+                    <div className="tt-offers-drawer-head">
+                      <Drawer.Title className="tt-offers-drawer-title">Filtro</Drawer.Title>
+                      <button
+                        type="button"
+                        className="tt-offers-drawer-close"
+                        aria-label="Mbyll"
+                        onClick={() => setFiltersOpen(false)}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className="tt-offers-drawer-body">
+                      {filterForm}
+                    </div>
+                    <div className="tt-offers-drawer-footer">
+                      {hasActiveFilters ? (
+                        <Button variant="ghost" onPress={clearFilters}>
+                          Pastro
+                        </Button>
+                      ) : <span />}
+                      <Button className="tt-offers-drawer-apply" onPress={() => setFiltersOpen(false)}>
+                        Shiko {resultCount} {resultLabel}
+                      </Button>
+                    </div>
+                  </Drawer.Content>
+                </Drawer.Portal>
+              </Drawer.Root>
+
+              <div className="tt-offers-advanced" aria-label="Filtra të avancuara">
                 <Dropdown>
                   <Dropdown.Trigger>
                     <Button
@@ -557,11 +762,11 @@ export default function OffersPage() {
 
                 {tab === 'experts'
                   ? filteredExperts.map((provider) => (
-                      <ExpertCard key={provider.id} provider={provider} />
-                    ))
+                    <ExpertCard key={provider.id} provider={provider} />
+                  ))
                   : filteredCompanies.map((provider) => (
-                      <CompanyCard key={provider.id} provider={provider} />
-                    ))}
+                    <CompanyCard key={provider.id} provider={provider} />
+                  ))}
               </div>
             </div>
           </div>
