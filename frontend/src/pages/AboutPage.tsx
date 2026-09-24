@@ -39,7 +39,7 @@ const VALUES = [
 
 export default function AboutPage() {
   return (
-    <div className="tt-shell">
+    <div className="tt-shell tt-home">
       <SiteNav />
 
       <main>
@@ -47,7 +47,7 @@ export default function AboutPage() {
           <div className="tt-section-inner">
             <header className="tt-about-intro">
               <p className="tt-about-kicker">Rreth nesh</p>
-              <h1 id="about-heading">Një vend për të gjetur ndihmën <em>profesionale</em> që të duhet.</h1>
+              <h1 id="about-heading">Një vend për të gjetur ndihmën<br /><em>profesionale</em> që të duhet.</h1>
               <p>
                 KëshillaKos lidh njerëzit në Kosovë dhe diasporë me ofrues profesionalë —
                 nga çështjet ligjore dhe kontabiliteti, te IT, marketingu, përkthimi dhe shërbimet e përditshme.
@@ -68,7 +68,9 @@ export default function AboutPage() {
                 </p>
               </div>
               <aside className="tt-about-aside" aria-label="Si e përdorin njerëzit">
-                <ShieldCheck size={22} aria-hidden />
+                <span className="tt-about-mark" aria-hidden>
+                  <ShieldCheck size={22} />
+                </span>
                 <h2>Për klientë dhe ofrues</h2>
                 <p>Klientët kërkojnë dhe rezervojnë. Ofruesit dhe kompanitë publikojnë shërbimet e tyre.</p>
                 <Link to="/ofertat">Shiko ofertat</Link>

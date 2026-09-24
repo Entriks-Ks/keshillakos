@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Card, Input, ProgressBar, toast } from '@heroui/react'
+import { Button, Input, ProgressBar, toast } from '@heroui/react'
 import {
   ArrowRight,
   BadgeCheck,
@@ -39,10 +39,16 @@ import LocationSelector from '../components/LocationSelector'
 import SendRequestButton from '../components/SendRequestButton'
 import SiteNav from '../components/SiteNav'
 import SiteFooter from '../components/SiteFooter'
-import { catalogCardImage } from '../data/catalogImages'
+import { catalogCardImage, catalogCategoryImage } from '../data/catalogImages'
 import { getErrorMessage } from '../utils/errors'
 import { useSavedLocation } from '../hooks/useSavedLocation'
 import heroPlaceholder from '../assets/hero.png'
+import './HomeCategories.css'
+
+const CATEGORY_LEADS: Record<string, string> = {
+  'legal-services': 'Avokatë dhe juristë për çështje civile, penale dhe biznesi.',
+  'accounting-and-business': 'Kontabilistë për tatime, regjistrim biznesi dhe pagat.',
+}
 
 const TOTAL_STEPS = 7
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -318,7 +324,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="tt-shell">
+    <div className="tt-shell tt-home">
       <SiteNav />
 
       <main>
@@ -693,62 +699,75 @@ export default function HomePage() {
             {categoriesLoading ? <p className="muted" role="status">Kategoritë po ngarkohen...</p> : null}
             {catalogError ? <p className="error" role="alert">{catalogError}</p> : null}
             {!categoriesLoading && !catalogError && categories.length === 0 ? <p className="muted">Nuk ka kategori të disponueshme.</p> : null}
-            {categories.length > 0 ? (
-              <>
-                <div className="tt-category-scroll" aria-label="Kategoritë">
-                  {categories.map((category) => {
-                    const Icon = CATEGORY_ICONS[category.slug] ?? BriefcaseBusiness
-                    return (
-                      <Button
-                        key={category._id}
-                        type="button"
-                        variant="ghost"
-                        className={`tt-category-choice${selectedCategoryId === category._id ? ' is-selected' : ''}`}
-                        aria-pressed={selectedCategoryId === category._id}
-                        onPress={() => setSelectedCategoryId(category._id)}
-                      >
-                        <Icon size={36} strokeWidth={1.55} aria-hidden />
-                        <span>{category.name[catalogLanguage] || category.name.sq}</span>
-                      </Button>
-                    )
-                  })}
-                </div>
-                <div className="tt-subcategory-heading">
-                  <h3>{selectedCategory?.name[catalogLanguage] || selectedCategory?.name.sq}</h3>
-                  <p>Zgjidh një shërbim për të parë ofertat.</p>
-                </div>
-                {subcategoriesLoading ? <p className="muted" role="status">Shërbimet po ngarkohen...</p> : null}
-                {subcategoriesError ? <p className="error" role="alert">{subcategoriesError}</p> : null}
-                {!subcategoriesLoading && !subcategoriesError && selectedCategoryId && subcategories.length === 0 ? <p className="muted">Nuk ka shërbime të disponueshme.</p> : null}
-                {!subcategoriesLoading && !subcategoriesError ? (
-                  <div className="tt-subcategory-grid">
-                    {subcategories.map((subcategory) => (
-                      <button
-                        key={subcategory._id}
-                        type="button"
-                        className="tt-subcategory-action"
-                        onClick={() => browseOffers(subcategory.name[catalogLanguage] || subcategory.name.sq, { categoryId: selectedCategoryId, subcategoryId: subcategory._id })}
-                      >
-                        <Card className="tt-subcategory-card">
-                          <img
-                            className="tt-subcategory-image"
-                            src={catalogCardImage(subcategory.slug, selectedCategory?.slug)}
-                            alt=""
-                            loading="lazy"
-                            onError={(event) => { event.currentTarget.src = heroPlaceholder }}
-                          />
-                          <span className="tt-subcategory-shade" aria-hidden />
-                          <span className="tt-subcategory-title">
-                            {subcategory.name[catalogLanguage] || subcategory.name.sq}
-                          </span>
-                        </Card>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </>
-            ) : null}
           </div>
+          {categories.length > 0 ? (
+            <div className="tt-category-split" role="group" aria-label="Kategoritë">
+              {[...categories]
+                .sort((a, b) => Number(a.slug !== 'legal-services') - Number(b.slug !== 'legal-services'))
+                .map((category) => {
+                  const Icon = CATEGORY_ICONS[category.slug] ?? BriefcaseBusiness
+                  const name = category.name[catalogLanguage] || category.name.sq
+                  const selected = selectedCategoryId === category._id
+                  return (
+                    <Button
+                      key={category._id}
+                      type="button"
+                      variant="ghost"
+                      className={`tt-category-panel${selected ? ' is-selected' : ''}`}
+                      aria-pressed={selected}
+                      onPress={() => setSelectedCategoryId(category._id)}
+                    >
+                      <img
+                        className="tt-category-panel-photo"
+                        src={catalogCategoryImage(category.slug)}
+                        alt=""
+                        onError={(event) => { event.currentTarget.src = heroPlaceholder }}
+                      />
+                      <span className="tt-category-panel-copy">
+                        <span className="tt-category-mark" aria-hidden>
+                          <Icon size={22} strokeWidth={1.75} />
+                        </span>
+                        <span className="tt-category-panel-title">{name}</span>
+                        <span className="tt-category-panel-lead">
+                          {CATEGORY_LEADS[category.slug] || 'Zgjidh për të parë shërbimet.'}
+                        </span>
+                      </span>
+                    </Button>
+                  )
+                })}
+            </div>
+          ) : null}
+          {categories.length > 0 ? (
+            <div className="tt-section-inner tt-category-services">
+              <div className="tt-subcategory-heading">
+                <h3>{selectedCategory?.name[catalogLanguage] || selectedCategory?.name.sq}</h3>
+                <p>Zgjidh një shërbim për të parë ofertat.</p>
+              </div>
+              {subcategoriesLoading ? <p className="muted" role="status">Shërbimet po ngarkohen...</p> : null}
+              {subcategoriesError ? <p className="error" role="alert">{subcategoriesError}</p> : null}
+              {!subcategoriesLoading && !subcategoriesError && selectedCategoryId && subcategories.length === 0 ? <p className="muted">Nuk ka shërbime të disponueshme.</p> : null}
+              {!subcategoriesLoading && !subcategoriesError ? (
+                <div className="tt-service-list">
+                  {subcategories.map((subcategory) => (
+                    <button
+                      key={subcategory._id}
+                      type="button"
+                      className="tt-service-tile"
+                      onClick={() => browseOffers(subcategory.name[catalogLanguage] || subcategory.name.sq, { categoryId: selectedCategoryId, subcategoryId: subcategory._id })}
+                    >
+                      <img
+                        src={catalogCardImage(subcategory.slug, selectedCategory?.slug)}
+                        alt=""
+                        loading="lazy"
+                        onError={(event) => { event.currentTarget.src = heroPlaceholder }}
+                      />
+                      <span>{subcategory.name[catalogLanguage] || subcategory.name.sq}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </section>
         ) : null}
 

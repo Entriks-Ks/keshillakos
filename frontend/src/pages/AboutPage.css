@@ -1,3 +1,10 @@
+.tt-home .tt-nav-inner,
+.tt-home .tt-section-inner {
+  width: min(1680px, calc(100% - clamp(40px, 6vw, 96px)));
+  max-width: none;
+  padding-inline: 0;
+}
+
 .tt-about-page {
   padding-top: clamp(32px, 5vh, 52px);
   padding-bottom: 8px;
@@ -5,7 +12,7 @@
 }
 
 .tt-about-block {
-  padding: 8px 0 36px;
+  padding: 20px 0 48px;
   background: var(--background);
 }
 
@@ -21,16 +28,15 @@
 .tt-about-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .tt-about-card {
   margin: 0;
-  padding: 20px 18px 18px;
-  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
-  border-radius: 18px;
+  padding: 26px 24px 24px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
   background: var(--surface);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--brand-navy) 5%, transparent);
 }
 
 .tt-about-card > span,
@@ -38,20 +44,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 14px;
-  border-radius: 10px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.82rem;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
   font-weight: 700;
 }
 
 .tt-about-card h3 {
-  margin: 0 0 6px;
-  font-size: 1.02rem;
-  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
   color: var(--brand-navy);
 }
 
@@ -70,9 +78,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 28px;
-  border-radius: 22px;
+  gap: 24px;
+  padding: clamp(28px, 4vw, 48px);
+  border-radius: 28px;
   background: var(--accent);
   color: #fff;
 }
@@ -121,11 +129,11 @@
 }
 
 .tt-about-intro {
-  max-width: 42rem;
+  max-width: 44rem;
 }
 
 .tt-about-kicker {
-  margin: 0 0 10px;
+  margin: 0;
   color: var(--accent);
   font-size: 0.82rem;
   font-weight: 700;
@@ -134,12 +142,11 @@
 }
 
 .tt-about-intro h1 {
-  margin: 0;
-  max-width: 16ch;
+  margin: 12px 0 0;
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4.2vw, 3.1rem);
-  letter-spacing: -0.048em;
-  line-height: 1.05;
+  font-size: clamp(1.9rem, 3vw, 2.55rem);
+  letter-spacing: -0.045em;
+  line-height: 1.08;
   color: var(--brand-navy);
 }
 
@@ -150,18 +157,22 @@
 
 .tt-about-intro > p:last-child {
   margin: 16px 0 0;
-  max-width: 46rem;
+  max-width: 40rem;
   color: var(--ink-secondary);
-  font-size: 1.08rem;
+  font-size: 1.05rem;
   line-height: 1.6;
 }
 
 .tt-about-story {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.8fr);
-  gap: clamp(28px, 5vw, 64px);
-  margin-top: clamp(36px, 6vh, 56px);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: clamp(28px, 4vw, 56px);
+  margin-top: clamp(48px, 7vh, 72px);
+  align-items: stretch;
+}
+
+.tt-about-story > div {
+  max-width: 40rem;
 }
 
 .tt-about-story h2 {
@@ -180,12 +191,15 @@
 }
 
 .tt-about-aside {
-  padding: 22px 22px 20px;
-  border: 0;
-  border-radius: 18px;
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 16px 36px color-mix(in srgb, var(--accent) 28%, transparent);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 28px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: #fff;
+  color: var(--brand-navy);
 }
 
 .tt-about-aside h2 {
@@ -193,37 +207,43 @@
   font-family: var(--font-display);
   font-size: 1.45rem;
   letter-spacing: -0.03em;
+  color: var(--brand-navy);
+}
+
+.tt-about-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: var(--accent);
   color: #fff;
 }
 
-.tt-about-aside p,
 .tt-about-aside svg {
   color: #fff;
-}
-
-.tt-about-aside svg {
-  margin-bottom: 12px;
 }
 
 .tt-about-aside p {
-  margin-bottom: 16px;
-  color: color-mix(in srgb, #fff 84%, transparent);
+  margin-bottom: 18px;
+  color: var(--ink-secondary);
 }
 
 .tt-about-aside a {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 40px;
+  padding: 0 16px;
   border-radius: 999px;
-  background: #fff;
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
   font-weight: 700;
   text-decoration: none;
 }
 
 .tt-about-aside a:hover {
-  background: color-mix(in srgb, #fff 88%, var(--accent));
+  background: color-mix(in srgb, var(--accent) 82%, var(--brand-navy));
 }
 
 .tt-nav-links a.tt-nav-about.is-active {
@@ -234,6 +254,13 @@
   .tt-nav-links a.tt-nav-about {
     display: inline;
   }
+
+  .tt-home .tt-nav-inner,
+  .tt-home .tt-section-inner {
+    width: auto;
+    max-width: none;
+    margin-inline: 16px;
+  }
 }
 
 @media (max-width: 800px) {
@@ -243,4 +270,5 @@
     grid-template-columns: 1fr;
     display: grid;
   }
+
 }
