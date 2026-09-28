@@ -24,6 +24,7 @@ const registerSchema = accountSchema.extend({
 })
 
 type RegisterField = keyof z.infer<typeof registerSchema>
+type RegisterErrors = Partial<Record<RegisterField | 'terms', string>>
 
 const roles = [
   { label: 'Klient', icon: UserRound },
@@ -43,11 +44,11 @@ export default function RegisterPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<RegisterField | 'terms', string>>>({})
+  const [fieldErrors, setFieldErrors] = useState<RegisterErrors>({})
   const [submitting, setSubmitting] = useState(false)
 
   function collectErrors(error: { issues: { path: PropertyKey[]; message: string }[] }) {
-    const next: Partial<Record<RegisterField, string>> = {}
+    const next: RegisterErrors = {}
     for (const issue of error.issues) {
       const field = issue.path[0]
       if (typeof field === 'string' && !next[field as RegisterField]) {
@@ -71,7 +72,7 @@ export default function RegisterPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     const result = registerSchema.safeParse({ firstName, lastName, email, password, confirmPassword })
-    const next = result.success ? {} : collectErrors(result.error)
+    const next: RegisterErrors = result.success ? {} : collectErrors(result.error)
     if (!acceptedTerms) next.terms = 'Prano kushtet për të vazhduar'
     if (!result.success || next.terms) {
       setFieldErrors(next)
