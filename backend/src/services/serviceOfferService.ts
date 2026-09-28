@@ -33,6 +33,32 @@ export type CreateServiceOfferInput = {
   visibility?: ServiceOfferDoc['visibility']
   extensions?: Record<string, unknown>
   allowCategoryExpansion?: boolean // Only for legacy service form compatibility.
+  /** Company context when publishing under a team expert's individual profile. */
+  businessId?: string
+  /** Optional responsible expert (User id) for company-owned offers. */
+  staffUserId?: string | null
+}
+
+async function managedBusinessesFor(userId: Types.ObjectId) {
+  return Business.find({
+    $or: [{ owners: userId }, { members: { $elemMatch: { user: userId, role: 'manager' } } }],
+    status: { $nin: ['suspended', 'closed'] },
+  })
+}
+
+function isTeamMember(business: { owners: Types.ObjectId[]; members: Array<{ user: Types.ObjectId }> }, userId: Types.ObjectId) {
+  return business.owners.some((id) => id.equals(userId))
+    || business.members.some((member) => member.user.equals(userId))
+}
+
+async function assertStaffOnBusiness(businessId: Types.ObjectId, staffUserId: string) {
+  if (!Types.ObjectId.isValid(staffUserId)) throw new Error('Eksperti përgjegjës nuk është i vlefshëm')
+  const business = await Business.findById(businessId)
+  const staffId = new Types.ObjectId(staffUserId)
+  if (!business || !isTeamMember(business, staffId)) {
+    throw new Error('Eksperti përgjegjës nuk i përket kompanisë')
+  }
+  return staffId
 }
 
 async function managedProfile(ownerUid: string, providerId: string) {
@@ -41,11 +67,39 @@ async function managedProfile(ownerUid: string, providerId: string) {
   const profile = await ProviderProfile.findById(providerId)
   if (!profile || profile.status === 'suspended') throw new Error('Profili nuk u gjet')
   const business = profile.business ? await Business.findById(profile.business) : null
-  if (!profile.ownerUser.equals(userId) && (!business || !canManageBusiness(business, userId))) {
-    throw new Error('Nuk ke leje për këtë profil')
+  if (profile.ownerUser.equals(userId)) {
+    if (business && ['suspended', 'closed'].includes(business.status)) throw new Error('Biznesi nuk është aktiv')
+    return profile
   }
-  if (business && ['suspended', 'closed'].includes(business.status)) throw new Error('Biznesi nuk është aktiv')
-  return profile
+  if (business && canManageBusiness(business, userId)) {
+    if (['suspended', 'closed'].includes(business.status)) throw new Error('Biznesi nuk është aktiv')
+    return profile
+  }
+  // Company managers may publish under team experts' individual profiles.
+  const managed = await managedBusinessesFor(userId)
+  if (managed.some((item) => isTeamMember(item, profile.ownerUser))) {
+    return profile
+  }
+  throw new Error('Nuk ke leje për këtë profil')
+}
+
+async function resolveOfferBusiness(
+  profile: { business?: Types.ObjectId; ownerUser: Types.ObjectId },
+  ownerUid: string,
+  businessId?: string,
+) {
+  if (profile.business) return profile.business
+  if (!businessId) return undefined
+  if (!Types.ObjectId.isValid(businessId)) throw new Error('Business ID i pavlefshëm')
+  const userId = await userIdForUid(ownerUid)
+  const business = await Business.findById(businessId)
+  if (!business || !canManageBusiness(business, userId) || ['suspended', 'closed'].includes(business.status)) {
+    throw new Error('Nuk ke leje për këtë kompani')
+  }
+  if (!isTeamMember(business, profile.ownerUser) && !profile.ownerUser.equals(userId)) {
+    throw new Error('Eksperti nuk i përket kompanisë')
+  }
+  return business._id
 }
 
 export async function createServiceOffer(input: CreateServiceOfferInput) {
@@ -83,10 +137,19 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
     },
   )
 
+  const offerBusiness = await resolveOfferBusiness(profile, input.ownerUid, input.businessId)
+  let staffUser: Types.ObjectId | undefined
+  if (input.staffUserId) {
+    if (!offerBusiness || profile.providerType !== 'business') {
+      throw new Error('Eksperti përgjegjës vlen vetëm për shërbime të kompanisë')
+    }
+    staffUser = await assertStaffOnBusiness(offerBusiness, input.staffUserId)
+  }
+
   const extensions = validateExtensions(category.extensionFields, input.extensions)
   const visibility = input.visibility ?? 'public'
   return ServiceOffer.create({
-    portal, providerProfile: profile._id, business: profile.business,
+    portal, providerProfile: profile._id, business: offerBusiness, staffUser,
     category: category._id, categoryVersion: category.version,
     name: input.name.trim(), subtitle: input.subtitle?.trim(), description: input.description.trim(),
     price: input.price, durationMinutes: input.durationMinutes,
@@ -109,8 +172,17 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
 }
 
 export async function listMyServiceOffers(uid: string) {
-  const profiles = await listMyProviderProfiles(uid)
-  return ServiceOffer.find({ providerProfile: { $in: profiles.map((profile) => profile._id) } }).sort({ createdAt: -1 })
+  const userId = await userIdForUid(uid)
+  const [profiles, managedBusinesses] = await Promise.all([
+    listMyProviderProfiles(uid),
+    managedBusinessesFor(userId),
+  ])
+  return ServiceOffer.find({
+    $or: [
+      { providerProfile: { $in: profiles.map((profile) => profile._id) } },
+      ...(managedBusinesses.length ? [{ business: { $in: managedBusinesses.map((business) => business._id) } }] : []),
+    ],
+  }).sort({ createdAt: -1 })
 }
 
 export async function listPublishedServiceOffers(providerIds?: Types.ObjectId[]) {
@@ -166,7 +238,11 @@ export async function reviewServiceOffer(id: string, reviewerUid: string, decisi
 }
 
 export async function updateServiceOffer(uid: string, id: string, changes: Partial<Pick<ServiceOfferDoc,
-  'name' | 'subtitle' | 'description' | 'price' | 'durationMinutes' | 'formats' | 'modes' | 'languages' | 'serviceAreas' | 'photos' | 'availabilityMode' | 'visibility' | 'extensions'>> & { categoryId?: string; subcategoryId?: string | null }) {
+  'name' | 'subtitle' | 'description' | 'price' | 'durationMinutes' | 'formats' | 'modes' | 'languages' | 'serviceAreas' | 'photos' | 'availabilityMode' | 'visibility' | 'extensions'>> & {
+  categoryId?: string
+  subcategoryId?: string | null
+  staffUserId?: string | null
+}) {
   if (!Types.ObjectId.isValid(id)) throw new Error('Service ID i pavlefshëm')
   const offer = await ServiceOffer.findById(id)
   if (!offer) throw new Error('Shërbimi nuk u gjet')
@@ -193,12 +269,29 @@ export async function updateServiceOffer(uid: string, id: string, changes: Parti
       : undefined
   }
   if (changes.extensions !== undefined) offer.extensions = validateExtensions(category.extensionFields, changes.extensions)
+  let clearStaffUser = false
+  if (changes.staffUserId !== undefined) {
+    if (changes.staffUserId === null || changes.staffUserId === '') {
+      clearStaffUser = true
+      offer.set('staffUser', undefined)
+    } else {
+      const profile = await ProviderProfile.findById(offer.providerProfile).select('providerType').lean()
+      if (!offer.business || profile?.providerType !== 'business') {
+        throw new Error('Eksperti përgjegjës vlen vetëm për shërbime të kompanisë')
+      }
+      offer.staffUser = await assertStaffOnBusiness(offer.business, changes.staffUserId)
+    }
+  }
   offer.categoryVersion = category.version
   if (offer.visibility === 'public') {
     offer.status = 'published'
     offer.moderation = { status: 'approved', reviewedAt: new Date() }
   }
   await offer.save()
+  if (clearStaffUser) {
+    await ServiceOffer.updateOne({ _id: offer._id }, { $unset: { staffUser: 1 } })
+    offer.staffUser = undefined
+  }
   return offer
 }
 
@@ -225,7 +318,11 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
   const cityNameById = new Map(cities.map((city) => [String(city._id), city.name.sq]))
   const categoryById = new Map(categories.map((category) => [String(category._id), category]))
   const businessById = new Map(businesses.map((business) => [String(business._id), business]))
-  const users = await User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid profilePhoto headline bio skills languages').lean()
+  const ownerIds = profiles.map((profile) => profile.ownerUser)
+  const staffIds = offers.map((offer) => offer.staffUser).filter((id): id is Types.ObjectId => Boolean(id))
+  const users = await User.find({ _id: { $in: [...ownerIds, ...staffIds] } })
+    .select('uid firstName lastName name profilePhoto headline bio skills languages')
+    .lean()
   const ownerById = new Map(users.map((user) => [String(user._id), user]))
   const ratings = await getStatsForProviders(users.map((user) => user.uid).filter(Boolean))
   return offers.map((offer) => {
@@ -235,16 +332,30 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
     const owner = profile ? ownerById.get(String(profile.ownerUser)) : undefined
     const uid = owner?.uid || ''
     const rating = ratings.get(uid)
-    const providerName = profile?.publicProfile.displayName || business?.publicName || ''
+    const providerName = profile?.providerType === 'business'
+      ? (business?.publicName || profile.publicProfile.displayName || '')
+      : (profile?.publicProfile.displayName || business?.publicName || '')
     const extensions = { ...offer.extensions }
     if (publicOnly) delete extensions.licenseNumber
     if (offer.photos?.length) extensions.photos = offer.photos
     const area = offer.serviceAreas[0]?.cityName || (profile?.serviceAreaCityIds[0] && cityNameById.get(String(profile.serviceAreaCityIds[0]))) ||
       (profile?.location?.cityId && cityNameById.get(String(profile.location.cityId))) || (offer.modes.includes('online') ? 'Online' : '')
+    const staff = offer.staffUser ? ownerById.get(String(offer.staffUser)) : undefined
+    const staffName = staff
+      ? ([staff.firstName, staff.lastName].filter(Boolean).join(' ').trim() || staff.name || '')
+      : undefined
     return {
       id: String((offer as ServiceOfferDoc & { _id: Types.ObjectId })._id),
       serviceOfferId: String((offer as ServiceOfferDoc & { _id: Types.ObjectId })._id),
       providerId: String(offer.providerProfile), businessId: offer.business ? String(offer.business) : undefined,
+      staffUserId: offer.staffUser ? String(offer.staffUser) : undefined,
+      responsibleExpert: staff ? {
+        id: String(offer.staffUser),
+        uid: staff.uid || '',
+        name: staffName || 'Ekspert',
+        headline: staff.headline || '',
+        photoUrl: staff.profilePhoto || '',
+      } : undefined,
       title: offer.name, description: offer.description,
       categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || category?.name?.sq || '', category: category?.labels.get('sq') || category?.name?.sq || '',
       subcategory: offer.subtitle || '', subcategoryId: offer.subcategoryId ? String(offer.subcategoryId) : undefined, location: area,
@@ -253,10 +364,26 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
       provider: {
         uid, name: providerName, email: profile?.publicProfile.publicEmail || '',
         role: profile?.providerType === 'business' ? 'company' : 'provider', roleLabel: 'Ofrues',
+        providerType: profile?.providerType,
         headline: profile?.publicProfile.title || owner?.headline || '', bio: profile?.publicProfile.description || owner?.bio || '',
         location: area, skills: owner?.skills || [], languages: profile?.languages?.length ? profile.languages : owner?.languages || [],
         profilePhoto: profile?.publicProfile.photoUrl || owner?.profilePhoto || '',
         ratingAverage: rating?.average ?? 0, ratingCount: rating?.count ?? 0,
+        yearsOfExperience: profile?.yearsOfExperience,
+        experience: profile?.experience || '',
+        certifications: (profile?.certifications ?? []).map((item) => ({
+          name: item.name,
+          issuer: item.issuer,
+          year: item.year,
+          credentialUrl: item.credentialUrl,
+        })),
+        verification: profile?.verification
+          ? {
+              identity: profile.verification.identity,
+              business: profile.verification.business,
+              qualification: profile.verification.qualification,
+            }
+          : undefined,
       },
       active: offer.status === 'published' && offer.moderation.status === 'approved',
       createdAt: offer.createdAt,

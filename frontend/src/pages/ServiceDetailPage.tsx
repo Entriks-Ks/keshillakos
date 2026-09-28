@@ -103,8 +103,15 @@ function detailRows(service: ServiceItem) {
   if (details.documentsNote) rows.push({ label: 'Dokumente', value: details.documentsNote })
   if (details.deadlineNote) rows.push({ label: 'Afatet', value: details.deadlineNote })
   if (details.portfolioUrl) rows.push({ label: 'Portfolio', value: details.portfolioUrl })
-  if (details.references) rows.push({ label: 'Referenca', value: details.references })
+  if (details.references) rows.push({ label: 'Shembuj pune', value: details.references })
   return rows
+}
+
+function verificationLabel(status?: string) {
+  if (status === 'verified') return 'I verifikuar'
+  if (status === 'pending') return 'Në verifikim'
+  if (status === 'rejected') return 'I refuzuar'
+  return null
 }
 
 export default function ServiceDetailPage() {
@@ -205,9 +212,36 @@ export default function ServiceDetailPage() {
         details.licenseVerified || details.licenseNumber
           ? { icon: ShieldCheck, label: details.licenseVerified ? 'Licencë e verifikuar' : `Licenca ${details.licenseNumber}` }
           : null,
+        provider?.yearsOfExperience != null
+          ? {
+              icon: BadgeCheck,
+              label:
+                provider.yearsOfExperience === 1
+                  ? '1 vit përvojë'
+                  : `${provider.yearsOfExperience} vite përvojë`,
+            }
+          : null,
+        verificationLabel(provider?.verification?.identity) || verificationLabel(provider?.verification?.qualification)
+          ? {
+              icon: ShieldCheck,
+              label: [
+                verificationLabel(provider?.verification?.identity)
+                  ? `Identiteti: ${verificationLabel(provider?.verification?.identity)}`
+                  : null,
+                verificationLabel(provider?.verification?.qualification)
+                  ? `Kualifikimi: ${verificationLabel(provider?.verification?.qualification)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · '),
+            }
+          : null,
         provider?.languages?.length ? { icon: Languages, label: provider.languages.join(', ') } : null,
         price ? { icon: Wallet, label: price } : null,
         provider?.roleLabel ? { icon: BadgeCheck, label: provider.roleLabel } : null,
+        service.responsibleExpert
+          ? { icon: BadgeCheck, label: `Eksperti përgjegjës: ${service.responsibleExpert.name}` }
+          : null,
         schedule.some((slot) => slot.status === 'open')
           ? { icon: Clock, label: `${schedule.filter((slot) => slot.status === 'open').length} orë të lira` }
           : null,
@@ -308,6 +342,33 @@ export default function ServiceDetailPage() {
                     <section className="tt-pro-section" id="rreth">
                       <h2>Rreth</h2>
                       {aboutText ? <p className="tt-detail-desc">{aboutText}</p> : <p className="muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>}
+                      {provider?.experience ? (
+                        <div className="tt-pro-profile-block">
+                          <h3>Përvoja profesionale</h3>
+                          <p className="tt-detail-desc">{provider.experience}</p>
+                        </div>
+                      ) : null}
+                      {provider?.certifications && provider.certifications.length > 0 ? (
+                        <div className="tt-pro-profile-block">
+                          <h3>Certifikime dhe licenca</h3>
+                          <ul className="tt-pro-cert-list">
+                            {provider.certifications.map((cert) => (
+                              <li key={`${cert.name}-${cert.year}-${cert.issuer}`}>
+                                <strong>{cert.name}</strong>
+                                <span>
+                                  {cert.issuer}
+                                  {cert.year ? ` · ${cert.year}` : ''}
+                                </span>
+                                {cert.credentialUrl ? (
+                                  <a href={cert.credentialUrl} target="_blank" rel="noreferrer">
+                                    Credenciali
+                                  </a>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </section>
 
                     {facts.length > 0 ? (

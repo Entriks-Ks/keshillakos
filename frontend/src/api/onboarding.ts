@@ -52,6 +52,7 @@ export type TeamPerson = {
   categories?: string[]
   languages?: string[]
   profileStatus?: string | null
+  providerProfileId?: string | null
 }
 
 export type TeamInvitation = TeamPerson & {

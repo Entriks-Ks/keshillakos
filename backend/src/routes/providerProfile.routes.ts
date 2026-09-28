@@ -11,10 +11,11 @@ import {
 } from '../services/mediaService'
 import {
   createProviderProfile,
+  listMarketplaceProviders,
   listMyProviderProfiles,
-  listPublishedProviderProfiles,
   moderateProviderProfile,
   toPublicProvider,
+  updateProviderCover,
   updateProviderPhoto,
   updateProviderProfile,
 } from '../services/providerProfileService'
@@ -56,8 +57,11 @@ const certificationsInput = z.array(z.object({
   credentialUrl: z.string().trim().max(500).optional(),
 })).max(30)
 
-router.get('/', async (_req, res) => {
-  try { return res.json({ providers: (await listPublishedProviderProfiles()).map(toPublicProvider) }) }
+router.get('/', async (req, res) => {
+  try {
+    const cityId = typeof req.query.cityId === 'string' ? req.query.cityId : undefined
+    return res.json({ providers: await listMarketplaceProviders(cityId) })
+  }
   catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Profilet nuk u ngarkuan' }) }
 })
 
@@ -183,6 +187,23 @@ router.post(
       return res.json({ provider: toPublicProvider(provider) })
     } catch (err) {
       return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi' })
+    }
+  },
+)
+
+router.post(
+  '/:id/cover',
+  requireAuth,
+  requireRole('provider', 'company', 'admin'),
+  withImageUpload(profilePhotoUpload),
+  async (req, res) => {
+    try {
+      const file = requireUploadedImage(req, 'Zgjidh një foto për sfondin')
+      const coverUrl = toPublicUploadPath('profiles', file.filename)
+      const provider = await updateProviderCover(req.user!.uid, String(req.params.id), coverUrl)
+      return res.json({ provider: toPublicProvider(provider) })
+    } catch (err) {
+      return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' })
     }
   },
 )

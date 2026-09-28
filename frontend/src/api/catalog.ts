@@ -14,6 +14,7 @@ export type ExtensionField = {
 
 export type CatalogCategory = {
   _id: string
+  stableId?: string
   name: CatalogName
   slug: string
   order: number

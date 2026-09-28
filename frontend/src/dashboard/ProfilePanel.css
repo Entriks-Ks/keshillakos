@@ -1,0 +1,55 @@
+.kk-dash-profile .kk-profile-cover {
+  height: 220px;
+}
+
+.kk-dash-profile .kk-profile-card {
+  margin-top: -108px;
+}
+
+.kk-dash-profile .kk-profile-sections {
+  padding-top: 18px;
+}
+
+.kk-dash-lead {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.kk-avatar-upload {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  cursor: pointer;
+}
+
+.kk-avatar-upload span {
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.kk-profile-share input {
+  display: none;
+}
+
+.kk-dash-public {
+  display: inline-flex;
+  margin-top: 14px;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.kk-dash-profile .profile-role-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .kk-dash-profile .kk-profile-card {
+    margin-top: 0;
+  }
+}

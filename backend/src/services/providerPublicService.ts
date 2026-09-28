@@ -1,3 +1,6 @@
+import { Business } from '../models/Business'
+import { ProviderProfile } from '../models/ProviderProfile'
+import { User } from '../models/User'
 import { ROLE_LABELS, type UserRole } from '../types/roles'
 import { getStatsForProviders } from './ratingService'
 import { findUserByUid, findUsersByUids } from './userService'
@@ -14,6 +17,7 @@ export type ProviderPublicDetails = {
   skills: string[]
   languages: string[]
   profilePhoto: string
+  coverPhoto: string
   ratingAverage: number
   ratingCount: number
 }
@@ -49,6 +53,7 @@ export async function getProvidersPublicDetails(
       skills: user?.skills ?? [],
       languages: user?.languages ?? [],
       profilePhoto: user?.profilePhoto || '',
+      coverPhoto: '',
       ratingAverage: rating?.average ?? 0,
       ratingCount: rating?.count ?? 0,
     })
@@ -68,6 +73,18 @@ export async function getPublicProviderProfile(uid: string) {
   const provider = details.get(user.uid)
   if (!provider) return null
 
+  const owner = await User.findOne({ uid: user.uid }).select('_id').lean()
+  let coverPhoto = ''
+  if (owner) {
+    if (user.role === 'company') {
+      const business = await Business.findOne({ owners: owner._id }).select('coverUrl').lean()
+      coverPhoto = business?.coverUrl || ''
+    } else {
+      const profile = await ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile.coverUrl').lean()
+      coverPhoto = profile?.publicProfile?.coverUrl || ''
+    }
+  }
+
   return {
     uid: provider.uid,
     name: provider.name,
@@ -79,6 +96,7 @@ export async function getPublicProviderProfile(uid: string) {
     skills: provider.skills,
     languages: provider.languages,
     profilePhoto: provider.profilePhoto,
+    coverPhoto,
     ratingAverage: provider.ratingAverage,
     ratingCount: provider.ratingCount,
   }

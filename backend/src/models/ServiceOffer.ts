@@ -5,6 +5,8 @@ export type ServiceOfferDoc = {
   portal: string
   providerProfile: Types.ObjectId
   business?: Types.ObjectId
+  /** Optional responsible expert (team member) for company-owned offers. */
+  staffUser?: Types.ObjectId
   category: Types.ObjectId
   categoryVersion: number
   name: string
@@ -36,6 +38,7 @@ export const serviceOfferSchema = new Schema<ServiceOfferDoc>({
   portal: { type: String, required: true, trim: true, lowercase: true },
   providerProfile: { type: Schema.Types.ObjectId, ref: 'ProviderProfile', required: true },
   business: { type: Schema.Types.ObjectId, ref: 'Business' },
+  staffUser: { type: Schema.Types.ObjectId, ref: 'User' },
   category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
   categoryVersion: { type: Number, required: true, min: 1 },
   name: { type: String, required: true, trim: true, minlength: 1, maxlength: 160 },

@@ -39,7 +39,20 @@ export default function StartChatButton({
   const asProvider = Boolean(user && seekerUid && user.uid !== seekerUid)
 
   if (!user) {
-    if (hideGuestHint) return null
+    if (hideGuestHint) {
+      return (
+        <div className="chat-start">
+          <Link
+            to="/login"
+            className={className ? `${className} chat-start-btn` : 'ghost chat-start-btn'}
+            aria-label={label || 'Live Chat'}
+          >
+            <MessageCircle size={16} aria-hidden />
+            <span className="tt-dir-action-text">{label || 'Live Chat'}</span>
+          </Link>
+        </div>
+      )
+    }
     return (
       <p className={`muted${compact ? ' chat-start-hint' : ''}`}>
         <Link to="/login">Hyr</Link> për të dërguar mesazh te {peerName}.
@@ -85,12 +98,12 @@ export default function StartChatButton({
     <div className="chat-start">
       <button
         type="button"
-        className={className || 'ghost chat-start-btn'}
+        className={className ? `${className} chat-start-btn` : 'ghost chat-start-btn'}
         onClick={() => void startChat()}
         disabled={loading}
       >
-        <MessageCircle size={16} />
-        {loading ? 'Duke hapur...' : label || 'Dërgo mesazh'}
+        <MessageCircle size={16} aria-hidden />
+        <span className="tt-dir-action-text">{loading ? 'Duke hapur...' : label || 'Dërgo mesazh'}</span>
       </button>
     </div>
   )

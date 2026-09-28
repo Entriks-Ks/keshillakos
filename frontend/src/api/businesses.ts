@@ -8,6 +8,7 @@ export type BusinessProfile = {
   publicName: string
   legalName?: string
   logoUrl?: string
+  coverUrl?: string
   description?: string
   website?: string
   contactEmail?: string
@@ -57,6 +58,15 @@ export async function uploadBusinessLogo(id: string, file: File) {
   const data = await postPhotoUpload<{ business: BusinessProfile }>(
     api,
     `/api/businesses/${encodeURIComponent(id)}/logo`,
+    file,
+  )
+  return data.business
+}
+
+export async function uploadBusinessCover(id: string, file: File) {
+  const data = await postPhotoUpload<{ business: BusinessProfile }>(
+    api,
+    `/api/businesses/${encodeURIComponent(id)}/cover`,
     file,
   )
   return data.business

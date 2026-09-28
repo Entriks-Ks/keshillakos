@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from '@heroui/react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, BadgeCheck, Clock, Languages, MapPin, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Share2 } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import {
   fetchProviderSchedule,
@@ -16,8 +17,8 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { catalogImageForLabels } from '../data/catalogImages'
-import './ProviderProfileExperts.css'
 import { getErrorMessage } from '../utils/errors'
+import './ProviderProfilePage.css'
 
 function ratingWord(average: number, count: number) {
   if (count <= 0) return 'Ende pa vlerësime'
@@ -35,6 +36,7 @@ export default function ProviderProfilePage() {
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [tab, setTab] = useState<'overview' | 'availability' | 'services' | 'reviews' | 'more'>('overview')
 
   useEffect(() => {
     if (!uid) {
@@ -102,14 +104,52 @@ export default function ProviderProfilePage() {
     contact: 'chat',
   }
   const firstService = services[0]
-  const cover = firstService
+  const uploadedCover = mediaUrl(provider?.coverPhoto)
+  const cover = uploadedCover || (firstService
     ? catalogImageForLabels(firstService.subcategory, firstService.categoryLabel || firstService.category)
-    : catalogImageForLabels(provider?.roleLabel)
+    : catalogImageForLabels(provider?.roleLabel))
   const gallery = (() => {
     const uploaded = services.flatMap((item) => (item.details?.photos || []).map((url) => mediaUrl(url))).filter(Boolean)
     if (uploaded.length) return uploaded.slice(0, 8)
     return [cover, photo].filter(Boolean)
   })()
+  const openDays = useMemo(() => {
+    const groups = new Map<string, AvailabilitySlot[]>()
+    for (const slot of schedule) {
+      if (slot.status !== 'open') continue
+      const key = new Date(slot.startAt).toDateString()
+      const list = groups.get(key) ?? []
+      list.push(slot)
+      groups.set(key, list)
+    }
+    return [...groups.entries()]
+      .sort((a, b) => +new Date(a[1][0].startAt) - +new Date(b[1][0].startAt))
+      .map(([, slots]) => {
+        const date = new Date(slots[0].startAt)
+        return {
+          key: slots[0].id,
+          weekday: date.toLocaleDateString('sq-AL', { weekday: 'short' }),
+          day: date.getDate(),
+          month: date.toLocaleDateString('sq-AL', { month: 'short' }),
+          count: slots.length,
+        }
+      })
+  }, [schedule])
+
+  async function shareProfile() {
+    const url = window.location.href
+    const title = provider?.name || 'Profili'
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url })
+        return
+      }
+    } catch {
+      return
+    }
+    await navigator.clipboard.writeText(url)
+    toast.success('Linku i profilit u kopjua.')
+  }
 
   return (
     <div className="tt-shell">
@@ -130,212 +170,238 @@ export default function ProviderProfilePage() {
             ) : null}
 
             {!loading && provider ? (
-              <>
-                <nav className="tt-pro-crumbs" aria-label="Breadcrumb">
-                  <Link to="/ofertat">Ofertat</Link>
-                  <span>{provider.roleLabel}</span>
-                  <span>{provider.name}</span>
-                </nav>
+              <article className="kk-profile">
                 <Link to="/ofertat" className="tt-detail-back">
                   <ArrowLeft size={16} aria-hidden />
                   Shiko më shumë ofrues
                 </Link>
+                <div className="kk-profile-cover">
+                  {cover ? <img src={cover} alt="" /> : null}
+                  <button type="button" className="kk-profile-share" onClick={() => void shareProfile()}>
+                    <Share2 size={16} aria-hidden />
+                    Ndaj profilin
+                  </button>
+                </div>
 
-                <div className="tt-pro-layout">
-                    <header className="tt-pro-hero">
-                      <div className="tt-pro-avatar" aria-hidden>
-                        {photo ? <img src={photo} alt="" /> : <span>{provider.name.slice(0, 1)}</span>}
-                      </div>
-                      <div className="tt-pro-hero-copy">
-                        <h1>{provider.name}</h1>
-                        <p className="tt-pro-rating">
-                          <strong>{ratingWord(provider.ratingAverage, provider.ratingCount)}</strong>
-                          {provider.ratingCount > 0 ? (
-                            <>
-                              <span className="tt-pro-rating-score">{provider.ratingAverage.toFixed(1)}</span>
-                              <span className="tt-pro-stars" aria-hidden>
-                                {'★'.repeat(Math.max(1, Math.round(provider.ratingAverage)))}
-                                {'☆'.repeat(Math.max(0, 5 - Math.round(provider.ratingAverage)))}
-                              </span>
-                              <a href="#vleresimet">({provider.ratingCount})</a>
-                            </>
-                          ) : null}
-                        </p>
-                        <p className="tt-pro-kicker">
-                          {provider.roleLabel}
-                          {provider.location ? ` · ${provider.location}` : ''}
-                        </p>
-                      </div>
-                    </header>
-
-                  <div className="tt-pro-main">
-
-                    <nav className="tt-pro-tabs" aria-label="Seksionet e profilit">
-                      <a href="#rreth">Rreth</a>
-                      <a href="#sherbimi">Shërbimet</a>
-                      {experts.length > 0 ? <a href="#ekspertet">Ekspertët</a> : null}
-                      <a href="#foto">Foto</a>
-                      <a href="#vleresimet">Vlerësimet</a>
-                    </nav>
-
-                    <div className="tt-pro-why">
-                      <p>
-                        <MessageCircle size={16} aria-hidden />
-                        <strong>Pse ky ofrues?</strong>
-                      </p>
-                      <p>
-                        {provider.headline ||
-                          `${provider.name} ofron shërbime ${provider.roleLabel.toLowerCase()}${
-                            provider.location ? ` në ${provider.location}` : ''
-                          }. Dërgo kërkesë për të marrë një ofertë.`}
-                      </p>
+                <div className="kk-profile-grid">
+                  <aside className="kk-profile-card">
+                    <div className="kk-profile-avatar">
+                      {photo ? <img src={photo} alt="" /> : <span>{provider.name.slice(0, 1)}</span>}
                     </div>
-
-                    <section className="tt-pro-section" id="rreth">
-                      <h2>Rreth</h2>
-                      {provider.bio ? <p className="tt-detail-desc">{provider.bio}</p> : <p className="muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>}
-                      <ul className="tt-pro-facts">
-                        {provider.location ? (
-                          <li>
-                            <MapPin size={18} aria-hidden />
-                            <span>{provider.location}</span>
-                          </li>
-                        ) : null}
-                        {provider.roleLabel ? (
-                          <li>
-                            <BadgeCheck size={18} aria-hidden />
-                            <span>{provider.roleLabel}</span>
-                          </li>
-                        ) : null}
-                        {provider.languages && provider.languages.length > 0 ? (
-                          <li>
-                            <Languages size={18} aria-hidden />
-                            <span>{provider.languages.join(', ')}</span>
-                          </li>
-                        ) : null}
-                        {schedule.some((slot) => slot.status === 'open') ? (
-                          <li>
-                            <Clock size={18} aria-hidden />
-                            <span>{schedule.filter((slot) => slot.status === 'open').length} orë të lira</span>
-                          </li>
-                        ) : null}
-                      </ul>
-                    </section>
-
+                    <h1>{provider.name}</h1>
+                    <p className="kk-profile-role">{provider.headline || provider.roleLabel}</p>
+                    {provider.location ? <p className="kk-profile-location">{provider.location}</p> : null}
+                    <p className="kk-profile-rating">
+                      <strong>{ratingWord(provider.ratingAverage, provider.ratingCount)}</strong>
+                      {provider.ratingCount > 0 ? ` · ${provider.ratingAverage.toFixed(1)} (${provider.ratingCount})` : ''}
+                    </p>
+                    <div className="kk-profile-actions">
+                      <StartChatButton
+                        providerUid={provider.uid}
+                        providerName={provider.name}
+                        hideGuestHint
+                        label=""
+                        className="kk-profile-chat"
+                      />
+                      <SendRequestButton
+                        providerUid={provider.uid}
+                        providerName={provider.name}
+                        intake={intakeDefaults}
+                        compact
+                        ctaLabel="Cakto takim"
+                        guestLabel="Hyr për takim"
+                      />
+                    </div>
                     {provider.skills && provider.skills.length > 0 ? (
-                      <section className="tt-pro-section">
-                        <h2>Aftësitë</h2>
-                        <ul className="service-card-chips">
+                      <div className="kk-profile-skills">
+                        <h2>Ekspert në</h2>
+                        <ul className="kk-profile-chips">
                           {provider.skills.map((skill) => (
                             <li key={skill}>{skill}</li>
                           ))}
                         </ul>
-                      </section>
+                      </div>
                     ) : null}
+                  </aside>
 
-                    <section className="tt-pro-section" id="foto">
-                      <h2>Projekte dhe foto</h2>
-                      {gallery.length > 0 ? (
-                        <div className="tt-pro-gallery">
-                          {gallery.map((src, index) => (
-                            <img key={`${src}-${index}`} src={src} alt="" />
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="muted">Ofruesi nuk ka ngarkuar ende foto të punës.</p>
-                      )}
-                    </section>
-
-                    {experts.length > 0 ? (
-                      <section className="tt-pro-section" id="ekspertet">
-                        <h2>Ekspertët</h2>
-                        <p className="muted">Zgjidh ekspertin, shkruaji ose cakto një takim.</p>
-                        <ul className="tt-company-experts">
-                          {experts.map((expert) => (
-                            <li key={expert.uid}>
-                              <div>
-                                <Link to={`/providers/${expert.uid}`}>{expert.name}</Link>
-                                {expert.headline ? <span>{expert.headline}</span> : null}
-                              </div>
-                              <div className="tt-company-expert-actions">
-                                <StartChatButton
-                                  providerUid={expert.uid}
-                                  providerName={expert.name}
-                                  compact
-                                  hideGuestHint
-                                  label="Shkruaj"
-                                />
-                                <SendRequestButton
-                                  providerUid={expert.uid}
-                                  providerName={expert.name}
-                                  intake={{
-                                    need: expert.headline || `Takim me ${expert.name}`,
-                                    location: provider?.location || 'Online',
-                                    language: 'Albanian',
-                                    urgency: 'flexible',
-                                    contact: 'chat',
-                                  }}
-                                  compact
-                                  ctaLabel="Cakto takim"
-                                  guestLabel="Hyr për takim"
-                                />
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
-
-                    <section className="tt-pro-section" id="sherbimi">
-                      <h2>Shërbimet</h2>
-                      {services.length === 0 ? (
-                        <p className="muted">Ky ofrues nuk ka ende shërbime të publikuara.</p>
-                      ) : (
-                        <div className="tt-offers-grid">
-                          {services.map((service) => (
-                            <ServiceCard key={service.id} service={service} mode="compact" />
-                          ))}
-                        </div>
-                      )}
-                    </section>
-
-                    <div className="tt-pro-contact-row">
-                      <StartChatButton providerUid={provider.uid} providerName={provider.name} hideGuestHint />
+                  <div className="kk-profile-panel">
+                    <div className="kk-profile-tabs" role="tablist" aria-label="Seksionet e profilit">
+                      {([
+                        ['overview', 'Përmbledhje'],
+                        ['availability', 'Disponueshmëria'],
+                        ['services', 'Shërbimet'],
+                        ['reviews', 'Vlerësimet'],
+                        ['more', 'Më shumë'],
+                      ] as const).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          role="tab"
+                          aria-selected={tab === id}
+                          className={tab === id ? 'is-active' : undefined}
+                          onClick={() => setTab(id)}
+                        >
+                          {label}
+                          {id === 'reviews' && provider.ratingCount > 0 ? ` (${provider.ratingCount})` : ''}
+                        </button>
+                      ))}
                     </div>
 
-                    <ProviderReviews
-                      providerUid={provider.uid}
-                      providerName={provider.name}
-                      initialAverage={provider.ratingAverage}
-                      initialCount={provider.ratingCount}
-                      onStatsChange={(stats) => {
-                        setProvider((current) =>
-                          current
-                            ? { ...current, ratingAverage: stats.average, ratingCount: stats.count }
-                            : current,
-                        )
-                      }}
-                    />
-                  </div>
+                    {tab === 'overview' ? (
+                      <div className="kk-profile-sections">
+                        <div className="kk-profile-split">
+                          <section className="kk-profile-block">
+                            <h2>Si e përshkruaj veten</h2>
+                            <p>{provider.bio || 'Ofruesi nuk ka shtuar ende një përshkrim.'}</p>
+                          </section>
+                          <section className="kk-profile-block">
+                            <h2>Orët e lira</h2>
+                            {openDays.length === 0 ? (
+                              <p className="muted">Nuk ka orë të hapura.</p>
+                            ) : (
+                              <div className="kk-profile-days">
+                                {openDays.slice(0, 4).map((day) => (
+                                  <div key={day.key} className="kk-profile-day">
+                                    <span>{day.weekday}</span>
+                                    <strong>{day.day}</strong>
+                                    <span>{day.month}</span>
+                                    <span>{day.count} {day.count === 1 ? 'orë' : 'orë'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </section>
+                        </div>
+                        {provider.headline ? (
+                          <section className="kk-profile-block">
+                            <h2>Çfarë ofroj</h2>
+                            <p>{provider.headline}</p>
+                          </section>
+                        ) : null}
+                        {experts.length > 0 ? (
+                          <section className="kk-profile-block">
+                            <h2>Ekspertët ({experts.length})</h2>
+                            <ul className="kk-profile-experts">
+                              {experts.map((expert) => {
+                                const expertPhoto = mediaUrl(expert.photoUrl)
+                                return (
+                                  <li key={expert.uid}>
+                                    <Link to={`/providers/${expert.uid}`} className="kk-profile-person">
+                                      {expertPhoto ? <img src={expertPhoto} alt="" /> : <span>{expert.name.slice(0, 1)}</span>}
+                                      <span>
+                                        <strong>{expert.name}</strong>
+                                        {expert.headline ? <small>{expert.headline}</small> : null}
+                                      </span>
+                                    </Link>
+                                    <div className="kk-profile-expert-actions">
+                                      <StartChatButton providerUid={expert.uid} providerName={expert.name} compact hideGuestHint label="Shkruaj" />
+                                      <SendRequestButton
+                                        providerUid={expert.uid}
+                                        providerName={expert.name}
+                                        intake={{
+                                          need: expert.headline || `Takim me ${expert.name}`,
+                                          location: provider.location || 'Online',
+                                          language: 'Albanian',
+                                          urgency: 'flexible',
+                                          contact: 'chat',
+                                        }}
+                                        compact
+                                        ctaLabel="Cakto takim"
+                                        guestLabel="Hyr për takim"
+                                      />
+                                    </div>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          </section>
+                        ) : null}
+                      </div>
+                    ) : null}
 
-                  <aside className="tt-pro-quote">
-                    <p className="tt-pro-quote-kicker">{provider.name}</p>
-                    {provider.location ? <p className="muted">{provider.location}</p> : null}
-                    <SendRequestButton
-                      providerUid={provider.uid}
-                      providerName={provider.name}
-                      intake={intakeDefaults}
-                      openByDefault
-                      ctaLabel="Kërko ofertë"
-                      guestLabel="Hyr për të kërkuar ofertë"
-                    />
-                    <p className="tt-pro-responds">
-                      <Clock size={15} aria-hidden />
-                      Zakonisht përgjigjet shpejt
-                    </p>
-                  </aside>
+                    {tab === 'availability' ? (
+                      <div className="kk-profile-sections">
+                        <section className="kk-profile-block">
+                          <h2>Disponueshmëria</h2>
+                          {openDays.length === 0 ? (
+                            <p className="muted">Nuk ka orë të hapura.</p>
+                          ) : (
+                            <div className="kk-profile-days">
+                              {openDays.map((day) => (
+                                <div key={day.key} className="kk-profile-day">
+                                  <span>{day.weekday}</span>
+                                  <strong>{day.day}</strong>
+                                  <span>{day.month}</span>
+                                  <span>{day.count} orë</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+                      </div>
+                    ) : null}
+
+                    {tab === 'services' ? (
+                      <div className="kk-profile-sections">
+                        {services.length === 0 ? (
+                          <p className="muted">Ky ofrues nuk ka ende shërbime të publikuara.</p>
+                        ) : (
+                          <div className="tt-offers-grid">
+                            {services.map((service) => (
+                              <ServiceCard key={service.id} service={service} mode="compact" />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {tab === 'reviews' ? (
+                      <div className="kk-profile-sections">
+                        <ProviderReviews
+                          providerUid={provider.uid}
+                          providerName={provider.name}
+                          initialAverage={provider.ratingAverage}
+                          initialCount={provider.ratingCount}
+                          onStatsChange={(stats) => {
+                            setProvider((current) =>
+                              current
+                                ? { ...current, ratingAverage: stats.average, ratingCount: stats.count }
+                                : current,
+                            )
+                          }}
+                        />
+                      </div>
+                    ) : null}
+
+                    {tab === 'more' ? (
+                      <div className="kk-profile-sections">
+                        <section className="kk-profile-block">
+                          <h2>Gjuhët</h2>
+                          {provider.languages && provider.languages.length > 0 ? (
+                            <ul className="kk-profile-chips">
+                              {provider.languages.map((language) => (
+                                <li key={language}>{language}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="muted">Nuk ka gjuhë të shtuara.</p>
+                          )}
+                        </section>
+                        {gallery.length > 0 ? (
+                          <section className="kk-profile-block">
+                            <h2>Foto</h2>
+                            <div className="tt-pro-gallery">
+                              {gallery.map((src, index) => (
+                                <img key={`${src}-${index}`} src={src} alt="" />
+                              ))}
+                            </div>
+                          </section>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </>
+              </article>
             ) : null}
           </div>
         </section>

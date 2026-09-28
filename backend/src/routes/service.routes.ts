@@ -118,6 +118,12 @@ router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async
       providerUid: req.user!.uid,
       providerName: req.user!.name,
       providerId: typeof req.body.providerId === 'string' ? req.body.providerId : undefined,
+      businessId: typeof req.body.businessId === 'string' ? req.body.businessId : undefined,
+      staffUserId: req.body.staffUserId === null
+        ? null
+        : typeof req.body.staffUserId === 'string'
+          ? req.body.staffUserId
+          : undefined,
     })
     return res.status(201).json({ service })
   } catch (err) {
@@ -131,7 +137,14 @@ router.patch('/:id', requireAuth, requireRole('provider', 'company', 'admin'), a
   try {
     const payload = parseServicePayload(req.body)
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
-    const service = await updateService(id, req.user!.uid, payload)
+    const service = await updateService(id, req.user!.uid, {
+      ...payload,
+      staffUserId: req.body.staffUserId === null
+        ? null
+        : typeof req.body.staffUserId === 'string'
+          ? req.body.staffUserId
+          : undefined,
+    })
     return res.json({ service })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Përditësimi i shërbimit dështoi'
