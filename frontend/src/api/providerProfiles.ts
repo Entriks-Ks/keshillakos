@@ -1,4 +1,5 @@
 import api from './auth'
+import { normalizeMarketplaceProviders } from '../utils/marketplaceProvider'
 import { photoFormData, postPhotoUpload, validateImageFile, MAX_IMAGE_BYTES } from './media'
 import type { SavedLocationIds } from './locations'
 import type { SocialLinks } from './socialLinks'
@@ -172,8 +173,8 @@ export type MarketplaceProvider = {
 }
 
 export async function fetchMarketplaceProviders(params: { cityId?: string } = {}, signal?: AbortSignal) {
-  const { data } = await api.get<{ providers: MarketplaceProvider[] }>('/api/providers', { params, signal })
-  return data.providers
+  const { data } = await api.get<{ providers?: unknown }>('/api/providers', { params, signal })
+  return normalizeMarketplaceProviders(data?.providers)
 }
 
 export async function fetchMyProviderProfiles(signal?: AbortSignal) {
