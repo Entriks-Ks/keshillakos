@@ -9,7 +9,7 @@ import {
   type ChatMessage,
   type ConversationItem,
 } from '../api/chat'
-import { mediaUrl } from '../api/media'
+import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../auth/AuthContext'
 import { useChatSocket } from '../hooks/useChatSocket'
 import { getErrorMessage } from '../utils/errors'
@@ -285,8 +285,6 @@ export default function MessagesPage() {
     }, 1200)
   }
 
-  const peerPhoto = mediaUrl(active?.peer.profilePhoto)
-
   return (
     <div className={`chat-page${activeId ? ' has-active' : ''}`}>
       <div className="chat-layout">
@@ -338,7 +336,6 @@ export default function MessagesPage() {
 
           <ul className="chat-people">
             {filteredConversations.map((c) => {
-              const photo = mediaUrl(c.peer.profilePhoto)
               return (
                 <li key={c.id}>
                   <button
@@ -347,7 +344,7 @@ export default function MessagesPage() {
                     onClick={() => selectConversation(c.id)}
                   >
                     <div className="chat-avatar" aria-hidden>
-                      {photo ? <img src={photo} alt="" /> : <span>{c.peer.name.slice(0, 1)}</span>}
+                      <ProfileAvatar src={c.peer.profilePhoto} seed={c.peer.uid} size="fill" />
                     </div>
                     <div className="chat-list-meta">
                       <div className="chat-list-row">
@@ -386,11 +383,7 @@ export default function MessagesPage() {
                   <ArrowLeft size={18} />
                 </button>
                 <div className="chat-avatar is-md" aria-hidden>
-                  {peerPhoto ? (
-                    <img src={peerPhoto} alt="" />
-                  ) : (
-                    <span>{(active?.peer.name || '?').slice(0, 1)}</span>
-                  )}
+                  <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} size="fill" />
                 </div>
                 <div className="chat-thread-meta">
                   <strong>{active?.peer.name || 'Bisedë'}</strong>

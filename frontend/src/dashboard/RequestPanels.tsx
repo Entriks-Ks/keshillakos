@@ -19,6 +19,7 @@ import {
   type RequestStatus,
   type ServiceRequestItem,
 } from '../api/requests'
+import ProfileAvatar from '../components/ProfileAvatar'
 import StartChatButton from '../components/StartChatButton'
 import RateProvider from '../components/RateProvider'
 import { getErrorMessage } from '../utils/errors'
@@ -56,14 +57,6 @@ function formatDate(value: string) {
   } catch {
     return value
   }
-}
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (!parts.length) return '?'
-  const first = parts[0][0] || ''
-  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : parts[0][1] || ''
-  return `${first}${last}`.toUpperCase()
 }
 
 function isAwaitingProvider(status: RequestStatus) {
@@ -465,7 +458,7 @@ export function ProviderInboxPanel() {
             <li key={r.id} className={`req-card inbox-card${waiting ? ' is-action' : ''}`}>
               <div className="inbox-card-head">
                 <span className="inbox-avatar" aria-hidden>
-                  {initials(r.seekerName)}
+                  <ProfileAvatar seed={r.seekerUid} size="fill" />
                 </span>
                 <div className="req-card-title">
                   <strong>{r.seekerName || 'Klient'}</strong>

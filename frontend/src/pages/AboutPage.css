@@ -246,15 +246,7 @@
   background: color-mix(in srgb, var(--accent) 82%, var(--brand-navy));
 }
 
-.tt-nav-links a.tt-nav-about.is-active {
-  color: var(--accent);
-}
-
 @media (max-width: 900px) {
-  .tt-nav-links a.tt-nav-about {
-    display: inline;
-  }
-
   .tt-home .tt-nav-inner,
   .tt-home .tt-section-inner {
     width: auto;

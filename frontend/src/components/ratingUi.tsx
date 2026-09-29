@@ -16,14 +16,6 @@ export function formatReviewDate(value: string) {
   }
 }
 
-export function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (!parts.length) return '?'
-  const first = parts[0][0] || ''
-  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : ''
-  return `${first}${last}`.toUpperCase()
-}
-
 export function StarRow({ value, size = 16, label }: { value: number; size?: number; label?: string }) {
   const filled = Math.max(0, Math.min(5, Math.round(value)))
   return (

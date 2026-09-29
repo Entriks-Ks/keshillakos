@@ -12,7 +12,7 @@ import {
   type BusinessTeam,
   type ExpertLookup,
 } from '../api/onboarding'
-import { mediaUrl } from '../api/media'
+import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
 import DashPageHeader from './DashPageHeader'
@@ -167,8 +167,6 @@ export default function CompanyExpertsPanel() {
   const invitations = team?.invitations ?? []
   const selectedBusiness = businesses.find((item) => item._id === selected)
   const canInviteExperts = Boolean(selectedBusiness && selectedBusiness.status !== 'suspended' && selectedBusiness.status !== 'closed')
-  const photo = match?.person ? mediaUrl(match.person.photoUrl) : ''
-
   return (
     <section className="provider-section company-experts">
       <DashPageHeader
@@ -221,7 +219,7 @@ export default function CompanyExpertsPanel() {
           {!checking && match?.status === 'ready' && match.person ? (
             <div className="company-invite-match">
               <div className="profile-avatar-sm" aria-hidden>
-                {photo ? <img src={photo} alt="" /> : <span>{match.person.name.slice(0, 1)}</span>}
+                <ProfileAvatar src={match.person.photoUrl} seed={match.person.uid} size="fill" />
               </div>
               <div>
                 <strong>{match.person.name}</strong>
@@ -242,12 +240,11 @@ export default function CompanyExpertsPanel() {
             {members.length === 0 ? <p className="muted">Ende nuk ka ekspertë. Fto të parin me email.</p> : null}
             <ul>
               {members.map((member) => {
-                const memberPhoto = mediaUrl(member.photoUrl)
                 return (
                   <li key={member.id}>
                     <div className="company-person">
                       <div className="profile-avatar-sm" aria-hidden>
-                        {memberPhoto ? <img src={memberPhoto} alt="" /> : <span>{member.name.slice(0, 1)}</span>}
+                        <ProfileAvatar src={member.photoUrl} seed={member.uid} size="fill" />
                       </div>
                       <div>
                         <strong>{member.name}</strong>

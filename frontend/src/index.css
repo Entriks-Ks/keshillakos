@@ -5283,15 +5283,6 @@ h1 {
   color: var(--foreground);
 }
 
-.tt-nav {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  backdrop-filter: blur(16px) saturate(1.2);
-}
-
 .tt-nav-inner {
   max-width: 1120px;
   margin: 0 auto;
@@ -5299,52 +5290,6 @@ h1 {
   display: flex;
   align-items: center;
   gap: 18px;
-}
-
-.tt-nav-brand {
-  font-size: 1.28rem;
-  font-weight: 800;
-  letter-spacing: -0.045em;
-  text-decoration: none;
-  color: var(--brand-navy);
-}
-
-.tt-nav-links {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-left: 4px;
-  flex: 1;
-}
-
-.tt-nav-links a {
-  color: var(--ink-secondary);
-  text-decoration: none;
-  font-size: 0.92rem;
-  font-weight: 600;
-  transition: color 0.15s ease;
-}
-
-.tt-nav-links a:hover {
-  color: var(--accent);
-}
-
-.tt-nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
-
-.tt-nav-login {
-  color: var(--foreground);
-  text-decoration: none;
-  font-weight: 650;
-  font-size: 0.92rem;
-}
-
-.tt-nav-login:hover {
-  color: var(--accent);
 }
 
 .tt-btn-link {
@@ -7869,10 +7814,6 @@ h1 {
 }
 
 @media (max-width: 900px) {
-  .tt-nav-links a:not(.tt-nav-offers) {
-    display: none;
-  }
-
   .tt-how-grid,
   .tt-trust-grid,
   .tt-search-modes {

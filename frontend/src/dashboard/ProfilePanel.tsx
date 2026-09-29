@@ -30,6 +30,7 @@ import {
 } from '../api/socialLinks'
 import { useAuth } from '../auth/AuthContext'
 import LocationSelector from '../components/LocationSelector'
+import ProfileAvatar from '../components/ProfileAvatar'
 import ProviderLocationFields from '../components/ProviderLocationFields'
 import type { DomainDefinition } from '../data/domains'
 import { domainRequires } from '../data/domains'
@@ -193,7 +194,6 @@ export default function ProfilePanel() {
     return <CompanyProfileSection onSaved={reloadCompletion} completion={completion} />
   }
 
-  const photo = mediaUrl(user.profilePhoto)
   const roleKey = user.role
 
   return (
@@ -204,7 +204,7 @@ export default function ProfilePanel() {
       <div className="kk-profile-grid">
         <aside className="kk-profile-card">
           <div className="kk-profile-avatar">
-            {photo ? <img src={photo} alt="" /> : <span>{user.name.slice(0, 1)}</span>}
+            <ProfileAvatar src={user.profilePhoto} seed={user.uid} alt={user.name} size="fill" />
           </div>
           <h1>{user.name}</h1>
           <p className="kk-profile-role">{user.headline || ROLE_LABELS[roleKey] || title}</p>
@@ -330,7 +330,7 @@ function PrivateProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
     <div className="profile-section-block">
       <div className="profile-photo-row">
         <div className="profile-avatar-lg" aria-hidden>
-          {preview ? <img src={preview} alt="" /> : <span>{user.name.slice(0, 1)}</span>}
+          <ProfileAvatar src={preview} seed={user.uid} size="fill" />
         </div>
         <div className="profile-photo-actions">
           <label className="primary-btn profile-upload-btn">
@@ -425,6 +425,7 @@ function MonthYearFields({
 function ProfileEditorFrame({
   cover,
   photo,
+  avatarSeed,
   name,
   subtitle,
   location,
@@ -441,6 +442,7 @@ function ProfileEditorFrame({
 }: {
   cover: string
   photo: string
+  avatarSeed?: string
   name: string
   subtitle: string
   location?: string
@@ -468,7 +470,7 @@ function ProfileEditorFrame({
         <aside className="kk-profile-card">
           <label className="kk-avatar-upload">
             <div className="kk-profile-avatar">
-              {photo ? <img src={photo} alt="" /> : <span>{name.slice(0, 1) || '?'}</span>}
+              <ProfileAvatar src={photo} seed={avatarSeed} alt={name} size="fill" />
             </div>
             <span>{uploadingPhoto ? 'Duke ngarkuar...' : 'Ndrysho foton'}</span>
             <input type="file" accept={IMAGE_ACCEPT} hidden disabled={uploadingPhoto} onChange={(e) => onPhoto(e.target.files?.[0])} />
@@ -723,6 +725,7 @@ function ExpertProfileSection({ onSaved, completion }: { onSaved: () => Promise<
     <ProfileEditorFrame
       cover={coverPreview}
       photo={photoPreview}
+      avatarSeed={user?.uid}
       name={displayName}
       subtitle={title || 'Ofrues shërbimi'}
       location={location ? locationLabel(location, 'sq') : ''}
@@ -1205,6 +1208,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
     <ProfileEditorFrame
       cover={coverPreview}
       photo={logoPreview}
+      avatarSeed={user?.uid}
       name={publicName || 'Kompania'}
       subtitle={statusLabel}
       location={city ? locationLabel(city, 'sq') : address}

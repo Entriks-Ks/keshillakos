@@ -238,7 +238,8 @@ export async function listMarketplaceProviders(cityId?: string) {
     profile.location?.cityId,
     ...profile.serviceAreaCityIds,
   ].filter((id): id is Types.ObjectId => Boolean(id)))
-  const categoryStableIds = [...new Set(profiles.flatMap((profile) => profile.categories))]
+  const categoryKeys = [...new Set(profiles.flatMap((profile) => profile.categories ?? []).filter((id) => typeof id === 'string' && id))]
+  const categoryObjectIds = categoryKeys.filter((id) => Types.ObjectId.isValid(id) && /^[a-f\d]{24}$/i.test(id))
 
   const [users, businesses, cities, categories, offerCounts, teamBusinesses] = await Promise.all([
     User.find({ _id: { $in: ownerIds } }).select('uid').lean(),
@@ -248,8 +249,14 @@ export async function listMarketplaceProviders(cityId?: string) {
         .lean()
       : Promise.resolve([]),
     cityIds.length ? City.find({ _id: { $in: cityIds } }).select('name.sq').lean() : Promise.resolve([]),
-    categoryStableIds.length
-      ? Category.find({ stableId: { $in: categoryStableIds } }).select('stableId name.sq labels').lean()
+    categoryKeys.length
+      ? Category.find({
+        $or: [
+          { stableId: { $in: categoryKeys } },
+          { slug: { $in: categoryKeys } },
+          ...(categoryObjectIds.length ? [{ _id: { $in: categoryObjectIds } }] : []),
+        ],
+      }).select('stableId slug name.sq labels').lean()
       : Promise.resolve([]),
     ServiceOffer.aggregate<{ _id: Types.ObjectId; count: number }>([
       {
@@ -296,11 +303,19 @@ export async function listMarketplaceProviders(cityId?: string) {
   const uidByOwner = new Map(users.map((user) => [String(user._id), user.uid || '']))
   const businessById = new Map(businesses.map((business) => [String(business._id), business]))
   const cityNameById = new Map(cities.map((city) => [String(city._id), city.name.sq]))
-  const categoryLabelById = new Map(categories.map((category) => {
+  const categoryLabelByKey = new Map<string, string>()
+  for (const category of categories) {
     const labels = category.labels as Map<string, string> | Record<string, string> | undefined
     const fromMap = labels instanceof Map ? labels.get('sq') : labels?.sq
-    return [category.stableId, fromMap || category.name?.sq || category.stableId] as const
-  }))
+    const label = fromMap || category.name?.sq
+    if (!label) continue
+    for (const key of [String(category._id), category.stableId, category.slug]) {
+      if (key) categoryLabelByKey.set(key, label)
+    }
+  }
+  const categoryLabelsFor = (ids: string[] | undefined) => [
+    ...new Set((ids ?? []).map((id) => categoryLabelByKey.get(id)).filter((label): label is string => Boolean(label))),
+  ]
   const serviceCountByProfile = new Map(offerCounts.map((row) => [String(row._id), row.count]))
   const companyByMember = new Map<string, { name: string; website?: string; phone?: string }>()
   for (const business of teamBusinesses) {
@@ -355,7 +370,7 @@ export async function listMarketplaceProviders(cityId?: string) {
       languages: profile.languages ?? [],
       modes: profile.modes ?? [],
       categories: profile.categories ?? [],
-      categoryLabels: (profile.categories ?? []).map((id) => categoryLabelById.get(id) || id),
+      categoryLabels: categoryLabelsFor(profile.categories),
       specializations: profile.specializations ?? [],
       yearsOfExperience: profile.yearsOfExperience,
       experience: profile.experience || '',

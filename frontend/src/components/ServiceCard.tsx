@@ -5,6 +5,7 @@ import { mediaUrl } from '../api/media'
 import type { ServiceItem } from '../api/services'
 import { catalogImageForLabels } from '../data/catalogImages'
 import { humanLabels } from '../utils/displayLabels'
+import ProfileAvatar from './ProfileAvatar'
 
 const DELIVERY_LABELS: Record<string, string> = {
   online: 'Online',
@@ -43,7 +44,6 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
   const isCompact = mode === 'compact'
   const details = service.details || {}
   const provider = service.provider
-  const photo = mediaUrl(provider?.profilePhoto)
   const price = formatPrice(service)
   const ratingCount = provider?.ratingCount ?? 0
   const rating = provider?.ratingAverage ?? 0
@@ -59,8 +59,6 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
     ? mediaUrl(details.photos[0])
     : catalogImageForLabels(service.subcategory, service.categoryLabel || service.category)
   const rounded = ratingCount > 0 ? Math.max(1, Math.round(rating)) : 0
-  const avatarLabel = providerName.slice(0, 1) || service.title.slice(0, 1)
-
   function openDetails() {
     navigate(`/services/${service.id}`)
   }
@@ -88,7 +86,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
       aria-label={`Shiko shërbimin ${service.title}`}
     >
       <div className="tt-result-avatar" aria-hidden>
-        {photo ? <img src={photo} alt="" /> : <span>{avatarLabel}</span>}
+        <ProfileAvatar src={provider?.profilePhoto} seed={providerUid} size="fill" />
       </div>
 
       <div className="tt-result-body">

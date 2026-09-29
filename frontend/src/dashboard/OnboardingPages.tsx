@@ -11,6 +11,7 @@ import type { DomainDefinition } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
 import type { LocationSelection } from '../api/locations'
 import LocationSelector from '../components/LocationSelector'
+import ProfileAvatar from '../components/ProfileAvatar'
 import ProviderLocationFields from '../components/ProviderLocationFields'
 import DashPageHeader from './DashPageHeader'
 
@@ -227,7 +228,7 @@ export function CompanyOnboardingPage() {
 
       <div className="profile-photo-row">
         <div className="profile-avatar-lg" aria-hidden>
-          {logoPreview ? <img src={logoPreview} alt="" /> : <span>{publicName.slice(0, 1) || 'K'}</span>}
+          <ProfileAvatar src={logoPreview} seed={user?.uid} size="fill" />
         </div>
         <div className="profile-photo-actions">
           <label className="primary-btn profile-upload-btn">

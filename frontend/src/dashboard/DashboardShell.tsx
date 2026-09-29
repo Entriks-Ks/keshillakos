@@ -3,8 +3,8 @@ import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router-do
 import { toast } from '@heroui/react'
 import { Home, LogOut, MoreHorizontal, X } from 'lucide-react'
 import type { DashboardContext } from '../api/auth'
-import { mediaUrl } from '../api/media'
 import { useAuth } from '../auth/AuthContext'
+import ProfileAvatar from '../components/ProfileAvatar'
 import { getErrorMessage } from '../utils/errors'
 import { getDashboardPath, resolveActiveContext } from '../utils/dashboardPath'
 import {
@@ -53,7 +53,6 @@ export default function DashboardShell() {
       : item.to !== '/' && location.pathname.startsWith(item.to),
   )
   const pageTitle = active?.label ?? 'Dashboard'
-  const photo = mediaUrl(user.profilePhoto)
   const profileTo = `/dashboard/${shellRole === 'admin' ? 'admin' : shellRole}/profile`
   const isOverview = Boolean(active?.end && active.to.startsWith('/dashboard'))
   const roles = user.roles ?? [user.role]
@@ -153,7 +152,7 @@ export default function DashboardShell() {
         <div className="dash-sidebar-foot">
           <Link to={profileTo} className="dash-user-chip">
             <div className="profile-avatar-sm" aria-hidden>
-              {photo ? <img src={photo} alt="" /> : <span>{user.name.slice(0, 1)}</span>}
+              <ProfileAvatar src={user.profilePhoto} seed={user.uid} size="fill" />
             </div>
             <div className="dash-user-meta">
               <strong>{user.name}</strong>
@@ -183,7 +182,7 @@ export default function DashboardShell() {
           <div className="dash-topbar-actions">
             <Link to={profileTo} className="dash-topbar-user" title="Profili">
               <div className="profile-avatar-sm" aria-hidden>
-                {photo ? <img src={photo} alt="" /> : <span>{user.name.slice(0, 1)}</span>}
+                <ProfileAvatar src={user.profilePhoto} seed={user.uid} size="fill" />
               </div>
             </Link>
             <button type="button" className="dash-side-btn is-danger dash-logout-mobile" onClick={logout}>
