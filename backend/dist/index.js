@@ -27,13 +27,13 @@ const service_routes_1 = __importDefault(require("./routes/service.routes"));
 const serviceOffer_routes_1 = __importDefault(require("./routes/serviceOffer.routes"));
 const chat_routes_1 = __importDefault(require("./routes/chat.routes"));
 const feedback_routes_1 = __importDefault(require("./routes/feedback.routes"));
+const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const chatSocket_1 = require("./services/chatSocket");
-const mediaService_1 = require("./services/mediaService");
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 4000;
 app.use((0, cors_1.default)({ origin: true, credentials: true }));
 app.use(express_1.default.json());
-app.use('/uploads', express_1.default.static(mediaService_1.UPLOADS_ROOT));
+app.use('/media', media_routes_1.default);
 app.get('/api/health', (_req, res) => {
     res.json({
         ok: true,

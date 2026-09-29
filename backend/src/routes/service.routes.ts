@@ -3,9 +3,8 @@ import { Types } from 'mongoose'
 import { z } from 'zod'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
-  requireUploadedImage,
-  servicePhotoUpload,
-  toPublicUploadPath,
+  imageUpload,
+  storeUploadedFile,
   withImageUpload,
 } from '../services/mediaService'
 import {
@@ -83,11 +82,11 @@ router.post(
   '/photos',
   requireAuth,
   requireRole('provider', 'company', 'admin'),
-  withImageUpload(servicePhotoUpload),
-  (req, res) => {
+  withImageUpload(imageUpload),
+  async (req, res) => {
     try {
-      const file = requireUploadedImage(req, 'Zgjidh një foto për shërbimin')
-      return res.status(201).json({ url: toPublicUploadPath('services', file.filename) })
+      const url = await storeUploadedFile(req, 'services', req.user!.uid, 'Zgjidh një foto për shërbimin')
+      return res.status(201).json({ url })
     } catch (err) {
       return res.status(400).json({
         message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi',

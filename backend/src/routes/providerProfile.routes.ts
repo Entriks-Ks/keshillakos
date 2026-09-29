@@ -4,9 +4,9 @@ import { z } from 'zod'
 import { requireAuth, requireRole } from '../middleware/auth'
 import type { Location } from '../models/location'
 import {
-  profilePhotoUpload,
-  requireUploadedImage,
-  toPublicUploadPath,
+  deleteUpload,
+  imageUpload,
+  storeUploadedFile,
   withImageUpload,
 } from '../services/mediaService'
 import {
@@ -178,14 +178,15 @@ router.post(
   '/:id/photo',
   requireAuth,
   requireRole('provider', 'company', 'admin'),
-  withImageUpload(profilePhotoUpload),
+  withImageUpload(imageUpload),
   async (req, res) => {
+    let photoUrl: string | undefined
     try {
-      const file = requireUploadedImage(req, 'Zgjidh një foto për profilin e ekspertit')
-      const photoUrl = toPublicUploadPath('profiles', file.filename)
+      photoUrl = await storeUploadedFile(req, 'providers', String(req.params.id), 'Zgjidh një foto për profilin e ekspertit', { label: 'photo' })
       const provider = await updateProviderPhoto(req.user!.uid, String(req.params.id), photoUrl)
       return res.json({ provider: toPublicProvider(provider) })
     } catch (err) {
+      await deleteUpload(photoUrl)
       return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi' })
     }
   },
@@ -195,14 +196,15 @@ router.post(
   '/:id/cover',
   requireAuth,
   requireRole('provider', 'company', 'admin'),
-  withImageUpload(profilePhotoUpload),
+  withImageUpload(imageUpload),
   async (req, res) => {
+    let coverUrl: string | undefined
     try {
-      const file = requireUploadedImage(req, 'Zgjidh një foto për sfondin')
-      const coverUrl = toPublicUploadPath('profiles', file.filename)
+      coverUrl = await storeUploadedFile(req, 'providers', String(req.params.id), 'Zgjidh një foto për sfondin', { label: 'cover' })
       const provider = await updateProviderCover(req.user!.uid, String(req.params.id), coverUrl)
       return res.json({ provider: toPublicProvider(provider) })
     } catch (err) {
+      await deleteUpload(coverUrl)
       return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' })
     }
   },

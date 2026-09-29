@@ -10,9 +10,9 @@ import {
   firebaseVerifyIdToken,
 } from '../services/firebaseAuth'
 import {
-  profilePhotoUpload,
-  requireUploadedImage,
-  toPublicUploadPath,
+  deleteUpload,
+  imageUpload,
+  storeUploadedFile,
   withImageUpload,
 } from '../services/mediaService'
 import {
@@ -304,13 +304,14 @@ router.patch('/me', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/me/photo', requireAuth, withImageUpload(profilePhotoUpload), async (req, res) => {
+router.post('/me/photo', requireAuth, withImageUpload(imageUpload), async (req, res) => {
+  let profilePhoto: string | undefined
   try {
-    const file = requireUploadedImage(req, 'Zgjidh një foto për profilin')
-    const profilePhoto = toPublicUploadPath('profiles', file.filename)
+    profilePhoto = await storeUploadedFile(req, 'profiles', req.user!.uid, 'Zgjidh një foto për profilin')
     const user = await updateProfilePhoto(req.user!.uid, profilePhoto)
     return res.json({ user: publicUser(user) })
   } catch (error) {
+    await deleteUpload(profilePhoto)
     return res.status(400).json({
       message: error instanceof Error ? error.message : 'Ngarkimi i fotos dështoi',
     })

@@ -5,21 +5,13 @@ import { mediaUrl } from '../api/media'
 import type { ServiceItem } from '../api/services'
 import { catalogImageForLabels } from '../data/catalogImages'
 import { humanLabels } from '../utils/displayLabels'
+import { formatServicePrice } from '../utils/serviceDiscovery'
 import ProfileAvatar from './ProfileAvatar'
 
 const DELIVERY_LABELS: Record<string, string> = {
   online: 'Online',
   physical: 'Fizikisht',
   group: 'Grup',
-}
-
-function formatPrice(service: ServiceItem) {
-  const from = service.priceFrom
-  const to = service.details?.priceTo
-  if (from == null && to == null) return null
-  if (from != null && to != null) return `€${from} – €${to}`
-  if (from != null) return `nga €${from}`
-  return `deri €${to}`
 }
 
 function ratingWord(average: number, count: number) {
@@ -44,7 +36,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
   const isCompact = mode === 'compact'
   const details = service.details || {}
   const provider = service.provider
-  const price = formatPrice(service)
+  const price = formatServicePrice(service)
   const ratingCount = provider?.ratingCount ?? 0
   const rating = provider?.ratingAverage ?? 0
   const companyOwned = isCompanyOwned(service)

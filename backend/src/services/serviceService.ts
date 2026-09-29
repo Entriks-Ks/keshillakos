@@ -224,9 +224,10 @@ export async function updateService(id: string, uid: string, input: Omit<CreateS
   service.location = input.location
   service.priceFrom = input.priceFrom
   const nextPhotos = cleanPhotos(input.details?.photos)
-  await deleteRemovedUploads(service.details?.photos, nextPhotos)
+  const previousPhotos = [...(service.details?.photos || [])]
   service.details = { ...extensions, photos: nextPhotos }
   await service.save()
+  await deleteRemovedUploads(previousPhotos, nextPhotos)
   const [result] = await withLegacyProviders([service])
   return result
 }

@@ -15,7 +15,7 @@ function defaultAvatarUrl(seed?: string | null) {
 }
 
 type ProfileAvatarProps = Omit<Avatar['Props'], 'children' | 'size' | 'color' | 'variant'> & {
-  /** Stored `/uploads/...` path, absolute URL or `blob:` preview. */
+  /** Stored `/media/...` path, absolute URL or `blob:` preview. */
   src?: string | null
   alt?: string
   /** Stable id (uid) that picks the default avatar color. */

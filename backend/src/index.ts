@@ -22,15 +22,15 @@ import serviceRoutes from './routes/service.routes'
 import serviceOfferRoutes from './routes/serviceOffer.routes'
 import chatRoutes from './routes/chat.routes'
 import feedbackRoutes from './routes/feedback.routes'
+import mediaRoutes from './routes/media.routes'
 import { attachChatSocket } from './services/chatSocket'
-import { UPLOADS_ROOT } from './services/mediaService'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 4000
 
 app.use(cors({ origin: true, credentials: true }))
 app.use(express.json())
-app.use('/uploads', express.static(UPLOADS_ROOT))
+app.use('/media', mediaRoutes)
 
 app.get('/api/health', (_req, res) => {
   res.json({

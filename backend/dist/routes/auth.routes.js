@@ -215,14 +215,15 @@ router.patch('/me', auth_1.requireAuth, async (req, res) => {
         });
     }
 });
-router.post('/me/photo', auth_1.requireAuth, (0, mediaService_1.withImageUpload)(mediaService_1.profilePhotoUpload), async (req, res) => {
+router.post('/me/photo', auth_1.requireAuth, (0, mediaService_1.withImageUpload)(mediaService_1.imageUpload), async (req, res) => {
+    let profilePhoto;
     try {
-        const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për profilin');
-        const profilePhoto = (0, mediaService_1.toPublicUploadPath)('profiles', file.filename);
+        profilePhoto = await (0, mediaService_1.storeUploadedFile)(req, 'profiles', req.user.uid, 'Zgjidh një foto për profilin');
         const user = await (0, userService_1.updateProfilePhoto)(req.user.uid, profilePhoto);
         return res.json({ user: publicUser(user) });
     }
     catch (error) {
+        await (0, mediaService_1.deleteUpload)(profilePhoto);
         return res.status(400).json({
             message: error instanceof Error ? error.message : 'Ngarkimi i fotos dështoi',
         });

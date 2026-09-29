@@ -391,6 +391,7 @@ async function listMarketplaceProviders(cityId) {
 }
 async function updateProviderProfile(uid, id, changes) {
     const profile = await loadManagedProvider(uid, id);
+    const previousMedia = [profile.publicProfile?.photoUrl, profile.publicProfile?.coverUrl];
     await validateProviderLocations(changes.location, changes.serviceAreaCityIds);
     if (changes.categories !== undefined) {
         const categories = uniqueText(changes.categories);
@@ -465,6 +466,9 @@ async function updateProviderProfile(uid, id, changes) {
     profile.status = 'pending';
     profile.moderation = { status: 'pending' };
     await profile.save();
+    if (changes.publicProfile?.photoUrl !== undefined || changes.publicProfile?.coverUrl !== undefined) {
+        await (0, mediaService_1.deleteUploads)(previousMedia);
+    }
     return profile;
 }
 async function updateProviderPhoto(uid, id, photoUrl) {

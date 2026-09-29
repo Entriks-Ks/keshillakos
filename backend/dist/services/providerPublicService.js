@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.publicProfileRole = publicProfileRole;
 exports.getProvidersPublicDetails = getProvidersPublicDetails;
 exports.getPublicProviderProfile = getPublicProviderProfile;
 const Business_1 = require("../models/Business");
@@ -9,6 +10,17 @@ const roles_1 = require("../types/roles");
 const ratingService_1 = require("./ratingService");
 const userService_1 = require("./userService");
 const PUBLIC_PROFILE_ROLES = ['provider', 'company', 'admin'];
+/**
+ * `role` follows the dashboard context the user last switched to, so an expert
+ * browsing in client mode reports `user`. Public visibility must follow the
+ * granted capabilities in `roles` instead.
+ */
+function publicProfileRole(user) {
+    const granted = user.roles ?? [];
+    if (user.role && granted.includes(user.role) && PUBLIC_PROFILE_ROLES.includes(user.role))
+        return user.role;
+    return PUBLIC_PROFILE_ROLES.find((role) => granted.includes(role)) ?? null;
+}
 async function getProvidersPublicDetails(providerUids, fallbackNames = new Map()) {
     const unique = [...new Set(providerUids.filter(Boolean))];
     const map = new Map();
@@ -46,7 +58,8 @@ async function getPublicProviderProfile(uid) {
     if (!uid?.trim())
         return null;
     const user = await (0, userService_1.findUserByUid)(uid.trim());
-    if (!user || !PUBLIC_PROFILE_ROLES.includes(user.role))
+    const role = user ? publicProfileRole(user) : null;
+    if (!user || !role)
         return null;
     const details = await getProvidersPublicDetails([user.uid]);
     const provider = details.get(user.uid);
@@ -56,7 +69,7 @@ async function getPublicProviderProfile(uid) {
     let coverPhoto = '';
     let profilePhoto = provider.profilePhoto;
     if (owner) {
-        if (user.role === 'company') {
+        if (role === 'company') {
             const business = await Business_1.Business.findOne({ owners: owner._id }).select('coverUrl logoUrl').lean();
             coverPhoto = business?.coverUrl || '';
             profilePhoto = business?.logoUrl || profilePhoto;
@@ -70,8 +83,8 @@ async function getPublicProviderProfile(uid) {
     return {
         uid: provider.uid,
         name: provider.name,
-        role: provider.role,
-        roleLabel: provider.roleLabel,
+        role,
+        roleLabel: roles_1.ROLE_LABELS[role],
         headline: provider.headline,
         bio: provider.bio,
         location: provider.location,

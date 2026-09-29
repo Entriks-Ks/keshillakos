@@ -15,7 +15,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
   'image/gif',
 ])
 
-/** Resolve a stored `/uploads/...` path (or absolute URL) for `<img src>`. */
+/** Resolve a stored `/media/...` path (S3 via the API; legacy `/uploads/...`) or absolute URL for `<img src>`. */
 export function mediaUrl(path?: string | null) {
   if (!path) return ''
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) {

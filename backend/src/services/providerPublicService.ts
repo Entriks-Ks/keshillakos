@@ -24,6 +24,17 @@ export type ProviderPublicDetails = {
 
 const PUBLIC_PROFILE_ROLES: UserRole[] = ['provider', 'company', 'admin']
 
+/**
+ * `role` follows the dashboard context the user last switched to, so an expert
+ * browsing in client mode reports `user`. Public visibility must follow the
+ * granted capabilities in `roles` instead.
+ */
+export function publicProfileRole(user: { role?: UserRole; roles?: UserRole[] }): UserRole | null {
+  const granted = user.roles ?? []
+  if (user.role && granted.includes(user.role) && PUBLIC_PROFILE_ROLES.includes(user.role)) return user.role
+  return PUBLIC_PROFILE_ROLES.find((role) => granted.includes(role)) ?? null
+}
+
 export async function getProvidersPublicDetails(
   providerUids: string[],
   fallbackNames: Map<string, string> = new Map(),
@@ -67,7 +78,8 @@ export async function getPublicProviderProfile(uid: string) {
   if (!uid?.trim()) return null
 
   const user = await findUserByUid(uid.trim())
-  if (!user || !PUBLIC_PROFILE_ROLES.includes(user.role)) return null
+  const role = user ? publicProfileRole(user) : null
+  if (!user || !role) return null
 
   const details = await getProvidersPublicDetails([user.uid])
   const provider = details.get(user.uid)
@@ -77,7 +89,7 @@ export async function getPublicProviderProfile(uid: string) {
   let coverPhoto = ''
   let profilePhoto = provider.profilePhoto
   if (owner) {
-    if (user.role === 'company') {
+    if (role === 'company') {
       const business = await Business.findOne({ owners: owner._id }).select('coverUrl logoUrl').lean()
       coverPhoto = business?.coverUrl || ''
       profilePhoto = business?.logoUrl || profilePhoto
@@ -91,8 +103,8 @@ export async function getPublicProviderProfile(uid: string) {
   return {
     uid: provider.uid,
     name: provider.name,
-    role: provider.role,
-    roleLabel: provider.roleLabel,
+    role,
+    roleLabel: ROLE_LABELS[role],
     headline: provider.headline,
     bio: provider.bio,
     location: provider.location,

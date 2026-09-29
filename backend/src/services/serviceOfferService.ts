@@ -258,11 +258,8 @@ export async function updateServiceOffer(uid: string, id: string, changes: Parti
   for (const key of ['name', 'subtitle', 'description', 'price', 'durationMinutes', 'formats', 'modes', 'languages', 'serviceAreas', 'availabilityMode', 'visibility'] as const) {
     if (changes[key] !== undefined) offer.set(key, changes[key])
   }
-  if (changes.photos !== undefined) {
-    const nextPhotos = sanitizeUploadPaths(changes.photos)
-    await deleteRemovedUploads(offer.photos, nextPhotos)
-    offer.photos = nextPhotos
-  }
+  const previousPhotos = [...(offer.photos || [])]
+  if (changes.photos !== undefined) offer.photos = sanitizeUploadPaths(changes.photos)
   if (changes.subcategoryId !== undefined) {
     offer.subcategoryId = changes.subcategoryId && Types.ObjectId.isValid(String(changes.subcategoryId))
       ? new Types.ObjectId(String(changes.subcategoryId))
@@ -288,6 +285,7 @@ export async function updateServiceOffer(uid: string, id: string, changes: Parti
     offer.moderation = { status: 'approved', reviewedAt: new Date() }
   }
   await offer.save()
+  if (changes.photos !== undefined) await deleteRemovedUploads(previousPhotos, offer.photos)
   if (clearStaffUser) {
     await ServiceOffer.updateOne({ _id: offer._id }, { $unset: { staffUser: 1 } })
     offer.staffUser = undefined

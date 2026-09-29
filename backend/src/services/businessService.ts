@@ -7,7 +7,7 @@ import { ProviderProfile } from '../models/ProviderProfile'
 import type { Location } from '../models/location'
 import { applySocialLinks, normalizeSocialLinks, type SocialLinks } from '../models/socialLinks'
 import { findDomainById } from './domainService'
-import { normalizeUploadPath } from './mediaService'
+import { deleteUploads, normalizeUploadPath } from './mediaService'
 import { effectiveRoles } from './userService'
 
 export async function userIdForUid(uid: string) {
@@ -118,7 +118,7 @@ export async function createBusiness(input: {
   return Business.create({
     publicName,
     legalName: input.legalName?.trim() || undefined,
-    logoUrl: input.logoUrl?.trim() || undefined,
+    logoUrl: normalizeUploadPath(input.logoUrl) || undefined,
     description,
     website,
     contactEmail,
@@ -365,6 +365,7 @@ export async function updateBusiness(uid: string, businessId: string, changes: {
   branches?: Array<{ name: string; location: Location }>
 }) {
   const { business } = await ownedBusinessById(uid, businessId)
+  const previousMedia = [business.logoUrl, business.coverUrl]
   if (changes.publicName !== undefined) business.publicName = changes.publicName.trim()
   if (changes.legalName !== undefined) business.legalName = changes.legalName?.trim() || undefined
   if (changes.logoUrl !== undefined) {
@@ -425,6 +426,7 @@ export async function updateBusiness(uid: string, businessId: string, changes: {
   // Verification is separate from lifecycle status; edits do not demote an active company.
   if (business.verification.status === 'verified') business.verification.status = 'pending'
   await business.save()
+  if (changes.logoUrl !== undefined || changes.coverUrl !== undefined) await deleteUploads(previousMedia)
   return business
 }
 

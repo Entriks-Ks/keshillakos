@@ -124,7 +124,7 @@ async function createBusiness(input) {
     return Business_1.Business.create({
         publicName,
         legalName: input.legalName?.trim() || undefined,
-        logoUrl: input.logoUrl?.trim() || undefined,
+        logoUrl: (0, mediaService_1.normalizeUploadPath)(input.logoUrl) || undefined,
         description,
         website,
         contactEmail,
@@ -352,6 +352,7 @@ async function ownedBusinessById(uid, businessId) {
 }
 async function updateBusiness(uid, businessId, changes) {
     const { business } = await ownedBusinessById(uid, businessId);
+    const previousMedia = [business.logoUrl, business.coverUrl];
     if (changes.publicName !== undefined)
         business.publicName = changes.publicName.trim();
     if (changes.legalName !== undefined)
@@ -426,6 +427,8 @@ async function updateBusiness(uid, businessId, changes) {
     if (business.verification.status === 'verified')
         business.verification.status = 'pending';
     await business.save();
+    if (changes.logoUrl !== undefined || changes.coverUrl !== undefined)
+        await (0, mediaService_1.deleteUploads)(previousMedia);
     return business;
 }
 async function reviewBusiness(id, reviewerUid, status, verification) {

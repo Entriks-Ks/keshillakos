@@ -57,10 +57,10 @@ router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'com
         });
     }
 });
-router.post('/photos', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.servicePhotoUpload), (req, res) => {
+router.post('/photos', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.imageUpload), async (req, res) => {
     try {
-        const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për shërbimin');
-        return res.status(201).json({ url: (0, mediaService_1.toPublicUploadPath)('services', file.filename) });
+        const url = await (0, mediaService_1.storeUploadedFile)(req, 'services', req.user.uid, 'Zgjidh një foto për shërbimin');
+        return res.status(201).json({ url });
     }
     catch (err) {
         return res.status(400).json({

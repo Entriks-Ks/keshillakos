@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
-  profilePhotoUpload,
-  requireUploadedImage,
-  toPublicUploadPath,
+  deleteUpload,
+  imageUpload,
+  storeUploadedFile,
   withImageUpload,
 } from '../services/mediaService'
 import { acceptBusinessInvitation, businessTeam, cancelBusinessInvitation, createBusiness, inviteBusinessExpert, listManagedBusinesses, listMyBusinessInvitations, listMyBusinesses, lookupBusinessExpert, rejectBusinessInvitation, removeBusinessExpert, reviewBusiness, toPublicBusiness, updateBusiness } from '../services/businessService'
@@ -131,24 +131,26 @@ router.patch('/:id', requireAuth, requireRole('company', 'admin'), async (req, r
   } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Biznesi nuk u përditësua' }) }
 })
 
-router.post('/:id/logo', requireAuth, requireRole('company', 'admin'), withImageUpload(profilePhotoUpload), async (req, res) => {
+router.post('/:id/logo', requireAuth, requireRole('company', 'admin'), withImageUpload(imageUpload), async (req, res) => {
+  let logoUrl: string | undefined
   try {
-    const file = requireUploadedImage(req, 'Zgjidh një logo për kompaninë')
-    const logoUrl = toPublicUploadPath('profiles', file.filename)
+    logoUrl = await storeUploadedFile(req, 'companies', String(req.params.id), 'Zgjidh një logo për kompaninë', { label: 'logo' })
     const business = await updateBusiness(req.user!.uid, String(req.params.id), { logoUrl })
     return res.json({ business: toPublicBusiness(business) })
   } catch (err) {
+    await deleteUpload(logoUrl)
     return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i logos dështoi' })
   }
 })
 
-router.post('/:id/cover', requireAuth, requireRole('company', 'admin'), withImageUpload(profilePhotoUpload), async (req, res) => {
+router.post('/:id/cover', requireAuth, requireRole('company', 'admin'), withImageUpload(imageUpload), async (req, res) => {
+  let coverUrl: string | undefined
   try {
-    const file = requireUploadedImage(req, 'Zgjidh një foto për sfondin')
-    const coverUrl = toPublicUploadPath('profiles', file.filename)
+    coverUrl = await storeUploadedFile(req, 'companies', String(req.params.id), 'Zgjidh një foto për sfondin', { label: 'cover' })
     const business = await updateBusiness(req.user!.uid, String(req.params.id), { coverUrl })
     return res.json({ business: toPublicBusiness(business) })
   } catch (err) {
+    await deleteUpload(coverUrl)
     return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' })
   }
 })
