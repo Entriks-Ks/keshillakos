@@ -143,21 +143,7 @@ export function catalogCardImage(subcategorySlug: string, categorySlug?: string)
     ?? DEFAULT_IMAGE
 }
 
-function toImageSlug(value?: string) {
-  return (value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[ëéê]/g, 'e')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
 export function catalogCategoryImage(slug?: string) {
   const src = (slug && CATEGORY_IMAGES[slug]) || DEFAULT_IMAGE
   return src.includes('images.unsplash.com') ? src.replace('w=640&h=800', 'w=1400&h=1000') : src
-}
-
-export function catalogImageForLabels(subcategory?: string, category?: string) {
-  return catalogCardImage(toImageSlug(subcategory), toImageSlug(category) || undefined)
 }

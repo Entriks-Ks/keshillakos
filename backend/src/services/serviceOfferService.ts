@@ -358,6 +358,13 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
       categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || category?.name?.sq || '', category: category?.labels.get('sq') || category?.name?.sq || '',
       subcategory: offer.subtitle || '', subcategoryId: offer.subcategoryId ? String(offer.subcategoryId) : undefined, location: area,
       priceFrom: offer.price.amountFrom, details: extensions,
+      pricing: {
+        model: offer.price.model,
+        amountFrom: offer.price.amountFrom,
+        amountTo: offer.price.amountTo,
+        currency: offer.price.currency,
+      },
+      durationMinutes: offer.durationMinutes,
       providerUid: uid, providerName,
       provider: {
         uid, name: providerName, email: profile?.publicProfile.publicEmail || '',

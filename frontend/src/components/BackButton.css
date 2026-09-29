@@ -1,0 +1,13 @@
+.kk-back-btn {
+  gap: 6px;
+  margin: 0 0 16px -10px;
+  padding-inline: 10px;
+  color: var(--ink-secondary);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.kk-back-btn:hover,
+.kk-back-btn[data-hovered='true'] {
+  color: var(--accent);
+}

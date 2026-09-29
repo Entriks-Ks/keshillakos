@@ -88,11 +88,15 @@ export async function getPublicProviderProfile(uid: string) {
   const owner = await User.findOne({ uid: user.uid }).select('_id').lean()
   let coverPhoto = ''
   let profilePhoto = provider.profilePhoto
+  let name = provider.name
+  let bio = provider.bio
   if (owner) {
     if (role === 'company') {
-      const business = await Business.findOne({ owners: owner._id }).select('coverUrl logoUrl').lean()
+      const business = await Business.findOne({ owners: owner._id }).select('publicName description coverUrl logoUrl').lean()
       coverPhoto = business?.coverUrl || ''
       profilePhoto = business?.logoUrl || profilePhoto
+      name = business?.publicName || name
+      bio = business?.description || bio
     } else {
       const profile = await ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile.coverUrl publicProfile.photoUrl').lean()
       coverPhoto = profile?.publicProfile?.coverUrl || ''
@@ -102,11 +106,11 @@ export async function getPublicProviderProfile(uid: string) {
 
   return {
     uid: provider.uid,
-    name: provider.name,
+    name,
     role,
     roleLabel: ROLE_LABELS[role],
     headline: provider.headline,
-    bio: provider.bio,
+    bio,
     location: provider.location,
     skills: provider.skills,
     languages: provider.languages,

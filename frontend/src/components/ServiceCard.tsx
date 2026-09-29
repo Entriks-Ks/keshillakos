@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Clock, MapPin } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import type { ServiceItem } from '../api/services'
-import { catalogImageForLabels } from '../data/catalogImages'
 import { humanLabels } from '../utils/displayLabels'
 import { formatServicePrice } from '../utils/serviceDiscovery'
 import ProfileAvatar from './ProfileAvatar'
+import ServiceMediaPlaceholder from './ServiceMediaPlaceholder'
 
 const DELIVERY_LABELS: Record<string, string> = {
   online: 'Online',
@@ -47,9 +47,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
     [service.categoryLabel || service.category, service.subcategory],
     [service.categoryId, service.category, service.subcategoryId].filter(Boolean) as string[],
   ).join(' · ')
-  const workPhoto = details.photos?.[0]
-    ? mediaUrl(details.photos[0])
-    : catalogImageForLabels(service.subcategory, service.categoryLabel || service.category)
+  const workPhoto = details.photos?.[0] ? mediaUrl(details.photos[0]) : ''
   const rounded = ratingCount > 0 ? Math.max(1, Math.round(rating)) : 0
   function openDetails() {
     navigate(`/services/${service.id}`)
@@ -131,11 +129,9 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
           {details.deliveryModes?.[0] ? <span>{DELIVERY_LABELS[details.deliveryModes[0]] || details.deliveryModes[0]}</span> : null}
         </p>
         {service.description ? <p className="service-card-desc">{service.description}</p> : null}
-        {workPhoto ? (
-          <div className="tt-result-media" aria-hidden>
-            <img src={workPhoto} alt="" />
-          </div>
-        ) : null}
+        <div className="tt-result-media" aria-hidden>
+          {workPhoto ? <img src={workPhoto} alt="" /> : <ServiceMediaPlaceholder compact />}
+        </div>
       </div>
 
       <div className="tt-result-cta">

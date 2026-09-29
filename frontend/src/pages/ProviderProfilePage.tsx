@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@heroui/react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Share2 } from 'lucide-react'
+import { Share2 } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import {
   fetchProviderSchedule,
@@ -10,6 +10,7 @@ import {
 import { fetchProviderProfile, type PublicExpert, type PublicProvider } from '../api/providers'
 import type { ServiceItem } from '../api/services'
 import type { MatchIntake } from '../api/match'
+import BackButton from '../components/BackButton'
 import ProfileAvatar from '../components/ProfileAvatar'
 import ProviderReviews from '../components/ProviderReviews'
 import SendRequestButton from '../components/SendRequestButton'
@@ -17,8 +18,8 @@ import ServiceCard from '../components/ServiceCard'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
-import { catalogImageForLabels } from '../data/catalogImages'
 import { getErrorMessage } from '../utils/errors'
+import { marketplaceLink } from '../utils/siteNavMenu'
 import './ProviderProfilePage.css'
 
 function ratingWord(average: number, count: number) {
@@ -103,17 +104,11 @@ export default function ProviderProfilePage() {
     urgency: 'flexible',
     contact: 'chat',
   }
-  const firstService = services[0]
-  const photo = mediaUrl(provider?.profilePhoto)
-  const uploadedCover = mediaUrl(provider?.coverPhoto)
-  const cover = uploadedCover || (firstService
-    ? catalogImageForLabels(firstService.subcategory, firstService.categoryLabel || firstService.category)
-    : catalogImageForLabels(provider?.roleLabel))
-  const gallery = (() => {
-    const uploaded = services.flatMap((item) => (item.details?.photos || []).map((url) => mediaUrl(url))).filter(Boolean)
-    if (uploaded.length) return uploaded.slice(0, 8)
-    return [cover, photo].filter(Boolean)
-  })()
+  const cover = mediaUrl(provider?.coverPhoto)
+  const gallery = services
+    .flatMap((item) => (item.details?.photos || []).map((url) => mediaUrl(url)))
+    .filter(Boolean)
+    .slice(0, 8)
   const openDays = useMemo(() => {
     const groups = new Map<string, AvailabilitySlot[]>()
     for (const slot of schedule) {
@@ -137,6 +132,10 @@ export default function ProviderProfilePage() {
       })
   }, [schedule])
 
+  const backFallback = provider
+    ? marketplaceLink(provider.role === 'company' ? 'companies' : 'experts').to
+    : '/ofertat'
+
   async function shareProfile() {
     const url = window.location.href
     const title = provider?.name || 'Profili'
@@ -158,6 +157,7 @@ export default function ProviderProfilePage() {
       <main>
         <section className="tt-section tt-pro-page">
           <div className="tt-section-inner">
+            <BackButton fallback={backFallback} />
             {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
 
             {!loading && error ? (
@@ -172,10 +172,6 @@ export default function ProviderProfilePage() {
 
             {!loading && provider ? (
               <article className="kk-profile">
-                <Link to="/ofertat" className="tt-detail-back">
-                  <ArrowLeft size={16} aria-hidden />
-                  Shiko më shumë ofrues
-                </Link>
                 <div className="kk-profile-cover">
                   {cover ? <img src={cover} alt="" /> : null}
                   <button type="button" className="kk-profile-share" onClick={() => void shareProfile()}>

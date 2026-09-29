@@ -15,6 +15,10 @@ export const MARKETPLACE_LINKS: MarketplaceLink[] = [
   { id: 'companies', label: 'Kompanitë', to: '/ofertat?tab=companies' },
 ]
 
+export function marketplaceLink(id: MarketplaceLinkId): MarketplaceLink {
+  return MARKETPLACE_LINKS.find((link) => link.id === id) ?? { id, label: 'Shërbimet', to: '/ofertat' }
+}
+
 export function activeMarketplaceLink(pathname: string, search: string): MarketplaceLinkId | null {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path.startsWith('/services/')) return 'services'
