@@ -21,6 +21,7 @@ import type { MatchIntake } from '../api/match'
 import { fetchService, type ServiceItem } from '../api/services'
 import ProviderReviews from '../components/ProviderReviews'
 import SendRequestButton from '../components/SendRequestButton'
+import ProfileAvatar from '../components/ProfileAvatar'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
@@ -170,7 +171,6 @@ export default function ServiceDetailPage() {
 
   const details = service?.details || {}
   const provider = service?.provider
-  const photo = mediaUrl(provider?.profilePhoto)
   const price = service ? formatPrice(service) : null
   const rows = service ? detailRows(service) : []
   const rating = provider?.ratingAverage ?? 0
@@ -185,6 +185,7 @@ export default function ServiceDetailPage() {
       ? ofertatPath({ categoryId: service.categoryId, subcategoryId: service.subcategoryId })
       : undefined
   const cover = service ? catalogImageForLabels(service.subcategory, categoryLabel) : ''
+  const photo = mediaUrl(provider?.profilePhoto)
   const uploadedPhotos = (details.photos || []).map((url) => mediaUrl(url)).filter(Boolean)
   const gallery = uploadedPhotos.length ? uploadedPhotos : [cover, photo].filter(Boolean)
   const aboutText = provider?.bio || service?.description || ''
@@ -296,7 +297,7 @@ export default function ServiceDetailPage() {
                 <div className="tt-pro-layout">
                     <header className="tt-pro-hero">
                       <div className="tt-pro-avatar" aria-hidden>
-                        {photo ? <img src={photo} alt="" /> : <span>{(provider?.name || service.providerName).slice(0, 1)}</span>}
+                        <ProfileAvatar src={provider?.profilePhoto} seed={provider?.uid || service.providerUid} size="fill" />
                       </div>
                       <div className="tt-pro-hero-copy">
                         <h1>{provider?.name || service.providerName}</h1>

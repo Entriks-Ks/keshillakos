@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BadgeCheck, MessageSquareReply, Star } from 'lucide-react'
 import { fetchProviderRatings, type ProviderRatingStats, type RatingItem } from '../api/ratings'
+import ProfileAvatar from './ProfileAvatar'
 import RateProvider from './RateProvider'
 import {
   formatReviewDate,
-  initials,
   ratingBuckets,
   ratingWord,
   StarRow,
@@ -109,7 +109,7 @@ export default function ProviderReviews({
             <li key={item.id} className="tt-review-card">
               <div className="tt-review-card-head">
                 <span className="tt-review-avatar" aria-hidden>
-                  {initials(item.raterName)}
+                  <ProfileAvatar seed={item.raterUid} size="fill" />
                 </span>
                 <div className="tt-review-who">
                   <strong>{item.raterName}</strong>

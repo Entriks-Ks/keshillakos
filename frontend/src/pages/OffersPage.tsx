@@ -112,7 +112,13 @@ export default function OffersPage() {
   const [subcategories, setSubcategories] = useState<CatalogSubcategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<MarketplaceTab>(() => parseTab(searchParams.get('tab')))
+  const tabParam = searchParams.get('tab')
+  const [tab, setTab] = useState<MarketplaceTab>(() => parseTab(tabParam))
+  const [syncedTabParam, setSyncedTabParam] = useState(tabParam)
+  if (tabParam !== syncedTabParam) {
+    setSyncedTabParam(tabParam)
+    setTab(parseTab(tabParam))
+  }
   const [sort, setSort] = useState<MarketplaceSort>(() => parseSort(searchParams.get('sort')))
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [categoryId, setCategoryId] = useState(searchParams.get('categoryId') || 'all')
@@ -209,7 +215,7 @@ export default function OffersPage() {
 
   useEffect(() => {
     const next = new URLSearchParams()
-    if (tab !== 'companies') next.set('tab', tab)
+    if (tab !== 'companies' || searchParams.has('tab')) next.set('tab', tab)
     if (sort !== 'relevance') next.set('sort', sort)
     if (query.trim()) next.set('q', query.trim())
     if (categoryId !== 'all') next.set('categoryId', categoryId)

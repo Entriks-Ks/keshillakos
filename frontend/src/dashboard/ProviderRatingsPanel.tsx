@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { BadgeCheck, ExternalLink, MessageSquareReply, Star } from 'lucide-react'
 import { fetchProviderRatings, respondToRating, type RatingItem } from '../api/ratings'
+import ProfileAvatar from '../components/ProfileAvatar'
 import {
   formatReviewDate,
-  initials,
   ratingBuckets,
   ratingWord,
   StarRow,
@@ -129,7 +129,7 @@ export default function ProviderRatingsPanel({
             <li key={item.id} className="tt-review-card">
               <div className="tt-review-card-head">
                 <span className="tt-review-avatar" aria-hidden>
-                  {initials(item.raterName)}
+                  <ProfileAvatar seed={item.raterUid} size="fill" />
                 </span>
                 <div className="tt-review-who">
                   <strong>{item.raterName}</strong>

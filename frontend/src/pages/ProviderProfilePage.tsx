@@ -10,6 +10,7 @@ import {
 import { fetchProviderProfile, type PublicExpert, type PublicProvider } from '../api/providers'
 import type { ServiceItem } from '../api/services'
 import type { MatchIntake } from '../api/match'
+import ProfileAvatar from '../components/ProfileAvatar'
 import ProviderReviews from '../components/ProviderReviews'
 import SendRequestButton from '../components/SendRequestButton'
 import ServiceCard from '../components/ServiceCard'
@@ -92,7 +93,6 @@ export default function ProviderProfilePage() {
     }
   }, [provider?.uid])
 
-  const photo = mediaUrl(provider?.profilePhoto)
   const intakeDefaults: Pick<
     MatchIntake,
     'need' | 'location' | 'language' | 'urgency' | 'contact'
@@ -104,6 +104,7 @@ export default function ProviderProfilePage() {
     contact: 'chat',
   }
   const firstService = services[0]
+  const photo = mediaUrl(provider?.profilePhoto)
   const uploadedCover = mediaUrl(provider?.coverPhoto)
   const cover = uploadedCover || (firstService
     ? catalogImageForLabels(firstService.subcategory, firstService.categoryLabel || firstService.category)
@@ -186,7 +187,7 @@ export default function ProviderProfilePage() {
                 <div className="kk-profile-grid">
                   <aside className="kk-profile-card">
                     <div className="kk-profile-avatar">
-                      {photo ? <img src={photo} alt="" /> : <span>{provider.name.slice(0, 1)}</span>}
+                      <ProfileAvatar src={provider.profilePhoto} seed={provider.uid} alt={provider.name} size="fill" />
                     </div>
                     <h1>{provider.name}</h1>
                     <p className="kk-profile-role">{provider.headline || provider.roleLabel}</p>
@@ -283,11 +284,10 @@ export default function ProviderProfilePage() {
                             <h2>Ekspertët ({experts.length})</h2>
                             <ul className="kk-profile-experts">
                               {experts.map((expert) => {
-                                const expertPhoto = mediaUrl(expert.photoUrl)
                                 return (
                                   <li key={expert.uid}>
                                     <Link to={`/providers/${expert.uid}`} className="kk-profile-person">
-                                      {expertPhoto ? <img src={expertPhoto} alt="" /> : <span>{expert.name.slice(0, 1)}</span>}
+                                      <ProfileAvatar src={expert.photoUrl} seed={expert.uid} size="md" />
                                       <span>
                                         <strong>{expert.name}</strong>
                                         {expert.headline ? <small>{expert.headline}</small> : null}

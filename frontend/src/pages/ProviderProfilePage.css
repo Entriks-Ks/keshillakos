@@ -295,22 +295,8 @@
   text-decoration: none;
 }
 
-.kk-profile-person img,
-.kk-profile-person span {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.kk-profile-person img {
-  object-fit: cover;
+.kk-profile-person > span:not(.kk-avatar) {
+  min-width: 0;
 }
 
 .kk-profile-person strong,

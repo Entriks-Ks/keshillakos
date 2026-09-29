@@ -70,7 +70,7 @@
   border-radius: inherit;
 }
 
-.pc-avatar.is-company img {
+.pc-avatar.is-company .avatar__image {
   object-fit: contain;
   padding: 8px;
   background: #fff;

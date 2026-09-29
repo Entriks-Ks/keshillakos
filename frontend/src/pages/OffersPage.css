@@ -613,7 +613,7 @@
 
   .of-mobile-bar {
     position: sticky;
-    top: 69px;
+    top: 65px;
     z-index: 20;
     display: grid;
     grid-template-columns: 1fr auto;

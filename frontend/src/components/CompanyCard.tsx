@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Building2, ChevronRight, MapPin, Users, Video } from 'lucide-react'
-import { mediaUrl } from '../api/media'
+import { BadgeCheck, Briefcase, ChevronRight, MapPin, Users, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import { humanLabels } from '../utils/displayLabels'
+import ProfileAvatar from './ProfileAvatar'
 import ProviderCardActions from './ProviderCardActions'
 import { ProviderDescription, ProviderRating, ProviderTags } from './ProviderCardParts'
 import { isProviderVerified, useProviderCardLink } from './providerCardUtils'
@@ -14,7 +14,6 @@ type Props = {
 
 export default function CompanyCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const logo = mediaUrl(provider.photoUrl)
   const profilePath = `/providers/${provider.uid}`
   const cardLink = useProviderCardLink(profilePath)
   const specialties = humanLabels(
@@ -25,7 +24,6 @@ export default function CompanyCard({ provider }: Props) {
   const verified = isProviderVerified(provider)
   const expertCount = provider.expertCount ?? 0
   const featured = provider.featuredExpert
-  const featuredPhoto = mediaUrl(featured?.photoUrl)
   const subtitle = specialties[0] || 'Kompani'
 
   return (
@@ -39,7 +37,7 @@ export default function CompanyCard({ provider }: Props) {
     >
       <div className="pc-top">
         <div className="pc-avatar is-company" aria-hidden>
-          {logo ? <img src={logo} alt="" /> : <Building2 size={28} />}
+          <ProfileAvatar src={provider.photoUrl} seed={provider.uid} size="fill" fit="contain" />
           {verified ? (
             <span className="pc-avatar-badge" title="E verifikuar">
               <BadgeCheck size={14} />
@@ -97,7 +95,7 @@ export default function CompanyCard({ provider }: Props) {
         <div className="pc-team">
           <Link to={`/providers/${featured.uid}`} className="pc-team-member" onClick={(e) => e.stopPropagation()}>
             <span className="pc-team-photo" aria-hidden>
-              {featuredPhoto ? <img src={featuredPhoto} alt="" /> : featured.name.slice(0, 1)}
+              <ProfileAvatar src={featured.photoUrl} seed={featured.uid} size="fill" />
             </span>
             <span className="pc-team-copy">
               <strong>{featured.name}</strong>

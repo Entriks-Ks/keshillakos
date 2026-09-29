@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Award, BadgeCheck, Building2, MapPin, Video } from 'lucide-react'
-import { mediaUrl } from '../api/media'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import { humanLabels } from '../utils/displayLabels'
+import ProfileAvatar from './ProfileAvatar'
 import ProviderCardActions from './ProviderCardActions'
 import { ProviderDescription, ProviderRating, ProviderTags } from './ProviderCardParts'
 import { isProviderVerified, useProviderCardLink } from './providerCardUtils'
@@ -14,7 +14,6 @@ type Props = {
 
 export default function ExpertCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const photo = mediaUrl(provider.photoUrl)
   const profilePath = `/providers/${provider.uid}`
   const cardLink = useProviderCardLink(profilePath)
   const specialties = humanLabels(
@@ -41,7 +40,7 @@ export default function ExpertCard({ provider }: Props) {
     >
       <div className="pc-top">
         <div className="pc-avatar" aria-hidden>
-          {photo ? <img src={photo} alt="" /> : <span>{provider.name.slice(0, 1)}</span>}
+          <ProfileAvatar src={provider.photoUrl} seed={provider.uid} size="fill" />
           {verified ? (
             <span className="pc-avatar-badge" title="I verifikuar">
               <BadgeCheck size={14} />

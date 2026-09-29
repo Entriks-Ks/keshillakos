@@ -23,7 +23,7 @@
   cursor: pointer;
 }
 
-.kk-avatar-upload span {
+.kk-avatar-upload > span {
   margin-top: 8px;
   color: var(--accent);
   font-size: 0.82rem;
