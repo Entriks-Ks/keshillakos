@@ -231,11 +231,9 @@ async function updateServiceOffer(uid, id, changes) {
         if (changes[key] !== undefined)
             offer.set(key, changes[key]);
     }
-    if (changes.photos !== undefined) {
-        const nextPhotos = (0, mediaService_1.sanitizeUploadPaths)(changes.photos);
-        await (0, mediaService_1.deleteRemovedUploads)(offer.photos, nextPhotos);
-        offer.photos = nextPhotos;
-    }
+    const previousPhotos = [...(offer.photos || [])];
+    if (changes.photos !== undefined)
+        offer.photos = (0, mediaService_1.sanitizeUploadPaths)(changes.photos);
     if (changes.subcategoryId !== undefined) {
         offer.subcategoryId = changes.subcategoryId && mongoose_1.Types.ObjectId.isValid(String(changes.subcategoryId))
             ? new mongoose_1.Types.ObjectId(String(changes.subcategoryId))
@@ -263,6 +261,8 @@ async function updateServiceOffer(uid, id, changes) {
         offer.moderation = { status: 'approved', reviewedAt: new Date() };
     }
     await offer.save();
+    if (changes.photos !== undefined)
+        await (0, mediaService_1.deleteRemovedUploads)(previousPhotos, offer.photos);
     if (clearStaffUser) {
         await ServiceOffer_1.ServiceOffer.updateOne({ _id: offer._id }, { $unset: { staffUser: 1 } });
         offer.staffUser = undefined;
@@ -337,6 +337,13 @@ async function offersToLegacyServices(offers, publicOnly = false) {
             categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || category?.name?.sq || '', category: category?.labels.get('sq') || category?.name?.sq || '',
             subcategory: offer.subtitle || '', subcategoryId: offer.subcategoryId ? String(offer.subcategoryId) : undefined, location: area,
             priceFrom: offer.price.amountFrom, details: extensions,
+            pricing: {
+                model: offer.price.model,
+                amountFrom: offer.price.amountFrom,
+                amountTo: offer.price.amountTo,
+                currency: offer.price.currency,
+            },
+            durationMinutes: offer.durationMinutes,
             providerUid: uid, providerName,
             provider: {
                 uid, name: providerName, email: profile?.publicProfile.publicEmail || '',

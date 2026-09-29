@@ -64,6 +64,13 @@ export type ResponsibleExpert = {
   photoUrl?: string
 }
 
+export type ServicePricing = {
+  model: 'free' | 'fixed' | 'hourly' | 'starting_at' | 'quote'
+  amountFrom?: number
+  amountTo?: number
+  currency?: string
+}
+
 export type ServiceItem = {
   id: string
   providerId?: string
@@ -79,6 +86,8 @@ export type ServiceItem = {
   subcategoryId?: string
   location: string
   priceFrom?: number
+  pricing?: ServicePricing
+  durationMinutes?: number
   details?: ServiceDetails
   providerUid: string
   providerName: string

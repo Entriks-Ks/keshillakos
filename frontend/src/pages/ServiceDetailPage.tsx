@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Breadcrumbs } from '@heroui/react'
+import { Button, Modal } from '@heroui/react'
 import {
-  ArrowLeft,
   BadgeCheck,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Globe,
   Languages,
+  Mail,
   MapPin,
-  MessageCircle,
-  ShieldCheck,
-  Wallet,
+  Star,
 } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import {
@@ -19,15 +20,16 @@ import {
 } from '../api/availability'
 import type { MatchIntake } from '../api/match'
 import { fetchService, type ServiceItem } from '../api/services'
-import ProviderReviews from '../components/ProviderReviews'
-import SendRequestButton from '../components/SendRequestButton'
+import BackButton from '../components/BackButton'
 import ProfileAvatar from '../components/ProfileAvatar'
+import SendRequestButton from '../components/SendRequestButton'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
-import { catalogImageForLabels } from '../data/catalogImages'
-import './ProviderProfileExperts.css'
 import { getErrorMessage } from '../utils/errors'
+import { formatServicePrice, isVerified } from '../utils/serviceDiscovery'
+import { marketplaceLink } from '../utils/siteNavMenu'
+import './ServiceDetailPage.css'
 
 const DELIVERY_LABELS: Record<string, string> = {
   online: 'Online',
@@ -47,6 +49,18 @@ const OFFER_LABELS: Record<string, string> = {
   service: 'Shërbim',
 }
 
+const AVAILABILITY_LABELS: Record<string, string> = {
+  request: 'Me kërkesë — ofruesi të përgjigjet kur është i lirë',
+  by_arrangement: 'Me marrëveshje — koha caktohet pas kontaktit',
+  slots: 'Me orar — zgjidh një orë të lirë',
+}
+
+const AVAILABILITY_SHORT: Record<string, string> = {
+  request: 'Me kërkesë',
+  by_arrangement: 'Me marrëveshje',
+  slots: 'Me orar',
+}
+
 function ofertatPath(filters: { categoryId?: string; subcategoryId?: string } = {}) {
   const params = new URLSearchParams()
   const categoryId = filters.categoryId?.trim()
@@ -57,68 +71,107 @@ function ofertatPath(filters: { categoryId?: string; subcategoryId?: string } = 
   return query ? `/ofertat?${query}` : '/ofertat'
 }
 
-function formatPrice(service: ServiceItem) {
-  const from = service.priceFrom
-  const to = service.details?.priceTo
-  if (from == null && to == null) return null
-  if (from != null && to != null) return `€${from} – €${to}`
-  if (from != null) return `nga €${from}`
-  return `deri €${to}`
+function money(amount: number, currency?: string) {
+  return !currency || currency === 'EUR' ? `€${amount}` : `${amount} ${currency}`
 }
 
-function ratingWord(average: number, count: number) {
-  if (count <= 0) return 'Ende pa vlerësime'
-  if (average >= 4.8) return 'Shkëlqyeshëm'
-  if (average >= 4) return 'Shumë mirë'
-  if (average >= 3) return 'Mirë'
-  return 'Në përmirësim'
+function priceSummary(service: ServiceItem): { value: string; note: string } {
+  const pricing = service.pricing
+  const to = pricing?.amountTo ?? service.details?.priceTo
+  if (pricing?.model === 'free') return { value: 'Falas', note: 'Pa kosto për klientin' }
+  if (pricing?.model === 'quote' || (!pricing && service.priceFrom == null && to == null)) {
+    return { value: 'Sipas ofertës', note: 'Çmimi caktohet pasi ofruesi sheh kërkesën tënde' }
+  }
+  const from = pricing?.amountFrom ?? service.priceFrom
+  if (pricing?.model === 'hourly' && from != null) {
+    return { value: `${money(from, pricing.currency)} / orë`, note: 'Çmim për orë' }
+  }
+  if (pricing?.model === 'fixed' && from != null) {
+    return { value: money(from, pricing.currency), note: 'Çmim fiks' }
+  }
+  if (from != null && to != null && to !== from) {
+    return { value: `${money(from, pricing?.currency)} – ${money(to, pricing?.currency)}`, note: 'Diapazoni i çmimit' }
+  }
+  if (from != null) return { value: `nga ${money(from, pricing?.currency)}`, note: 'Çmimi fillestar' }
+  return { value: formatServicePrice(service) || 'Sipas ofertës', note: 'Çmimi përfundimtar konfirmohet nga ofruesi' }
 }
 
-function detailRows(service: ServiceItem) {
+function durationLabel(minutes?: number) {
+  if (!minutes) return null
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest ? `${hours} orë ${rest} min` : `${hours} orë`
+}
+
+function includedRows(service: ServiceItem) {
   const details = service.details || {}
   const rows: Array<{ label: string; value: string }> = []
   if (details.serviceTypeDetail) rows.push({ label: 'Lloji', value: details.serviceTypeDetail })
   if (details.offerType) rows.push({ label: 'Oferta', value: OFFER_LABELS[details.offerType] || details.offerType })
   if (details.audience) rows.push({ label: 'Për kë', value: AUDIENCE_LABELS[details.audience] || details.audience })
-  if (details.deliveryModes?.length) {
-    rows.push({
-      label: 'Si ofrohet',
-      value: details.deliveryModes.map((mode) => DELIVERY_LABELS[mode] || mode).join(', '),
-    })
-  }
   if (details.languageFrom && details.languageTo) {
     rows.push({
-      label: 'Gjuhët',
-      value: `${details.languageFrom} → ${details.languageTo}${
-        details.certifiedTranslation ? ' · i certifikuar' : ''
-      }`,
-    })
-  }
-  if (details.supportLanguages?.length) rows.push({ label: 'Mbështetje', value: details.supportLanguages.join(', ') })
-  if (details.licenseNumber) {
-    rows.push({
-      label: 'Licenca',
-      value: `${details.licenseNumber}${details.licenseVerified ? ' · e verifikuar' : ''}`,
+      label: 'Përkthimi',
+      value: `${details.languageFrom} → ${details.languageTo}${details.certifiedTranslation ? ' · i certifikuar' : ''}`,
     })
   }
   if (details.documentsNote) rows.push({ label: 'Dokumente', value: details.documentsNote })
   if (details.deadlineNote) rows.push({ label: 'Afatet', value: details.deadlineNote })
+  if (details.licenseVerified) rows.push({ label: 'Licenca', value: 'E verifikuar' })
   if (details.portfolioUrl) rows.push({ label: 'Portfolio', value: details.portfolioUrl })
   if (details.references) rows.push({ label: 'Shembuj pune', value: details.references })
   return rows
 }
 
-function verificationLabel(status?: string) {
-  if (status === 'verified') return 'I verifikuar'
-  if (status === 'pending') return 'Në verifikim'
-  if (status === 'rejected') return 'I refuzuar'
-  return null
+function keyFacts(service: ServiceItem) {
+  const details = service.details || {}
+  const facts: Array<{ key: string; icon: typeof MapPin; label: string; value: string; hint?: string }> = []
+  facts.push({ key: 'location', icon: MapPin, label: 'Lokacioni', value: service.location || 'Online' })
+  if (details.deliveryModes?.length) {
+    facts.push({
+      key: 'delivery',
+      icon: Globe,
+      label: 'Si ofrohet',
+      value: details.deliveryModes.map((mode) => DELIVERY_LABELS[mode] || mode).join(', '),
+    })
+  }
+  const duration = durationLabel(service.durationMinutes)
+  if (duration) facts.push({ key: 'duration', icon: Clock, label: 'Kohëzgjatja', value: duration })
+  if (details.supportLanguages?.length) {
+    facts.push({ key: 'languages', icon: Languages, label: 'Gjuhët', value: details.supportLanguages.join(', ') })
+  }
+  if (details.availabilityMode) {
+    facts.push({
+      key: 'availability',
+      icon: CalendarClock,
+      label: 'Rezervimi',
+      value: AVAILABILITY_SHORT[details.availabilityMode] || details.availabilityMode,
+      hint: AVAILABILITY_LABELS[details.availabilityMode],
+    })
+  }
+  return facts
+}
+
+function ProviderRatingLine({ average, count }: { average: number; count: number }) {
+  if (count <= 0) return <p className="sd-rating is-empty">Ende pa vlerësime</p>
+  return (
+    <p className="sd-rating">
+      <span className="sd-score">
+        <Star size={13} aria-hidden />
+        {average.toFixed(1)}
+      </span>
+      <span>{count} {count === 1 ? 'vlerësim' : 'vlerësime'}</span>
+    </p>
+  )
 }
 
 export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [service, setService] = useState<ServiceItem | null>(null)
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
+  const [activePhoto, setActivePhoto] = useState(0)
+  const [viewerOpen, setViewerOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -132,6 +185,8 @@ export default function ServiceDetailPage() {
     let cancelled = false
     setLoading(true)
     setError('')
+    setActivePhoto(0)
+    setViewerOpen(false)
     fetchService(id)
       .then((item) => {
         if (!cancelled) setService(item)
@@ -171,29 +226,41 @@ export default function ServiceDetailPage() {
 
   const details = service?.details || {}
   const provider = service?.provider
-  const price = service ? formatPrice(service) : null
-  const rows = service ? detailRows(service) : []
-  const rating = provider?.ratingAverage ?? 0
-  const ratingCount = provider?.ratingCount ?? 0
+  const providerUid = provider?.uid || service?.providerUid || ''
+  const providerName = provider?.name || service?.providerName || ''
+  const providerPath = `/providers/${providerUid}`
+  const companyOwned = provider?.providerType === 'business' || provider?.role === 'company'
+  const responsibleExpert = companyOwned && service?.responsibleExpert?.uid ? service.responsibleExpert : undefined
+  const teamExperts = companyOwned
+    ? (service?.experts ?? []).filter((expert) => expert.uid && expert.uid !== responsibleExpert?.uid)
+    : []
+  const verified = isVerified(provider)
   const categoryLabel = (service?.categoryLabel || service?.category || '').trim()
   const subcategoryLabel = service?.subcategory?.trim() || ''
-  const categoryHref = service?.categoryId?.trim()
-    ? ofertatPath({ categoryId: service.categoryId })
-    : undefined
+  const categoryHref = service?.categoryId?.trim() ? ofertatPath({ categoryId: service.categoryId }) : undefined
   const subcategoryHref =
     service?.categoryId?.trim() && service?.subcategoryId?.trim()
       ? ofertatPath({ categoryId: service.categoryId, subcategoryId: service.subcategoryId })
       : undefined
-  const cover = service ? catalogImageForLabels(service.subcategory, categoryLabel) : ''
-  const photo = mediaUrl(provider?.profilePhoto)
-  const uploadedPhotos = (details.photos || []).map((url) => mediaUrl(url)).filter(Boolean)
-  const gallery = uploadedPhotos.length ? uploadedPhotos : [cover, photo].filter(Boolean)
-  const aboutText = provider?.bio || service?.description || ''
-  const chips = [
-    service?.subcategory,
-    ...(details.deliveryModes?.map((mode) => DELIVERY_LABELS[mode] || mode) || []),
-    ...(provider?.skills?.slice(0, 6) || []),
-  ].filter(Boolean) as string[]
+  const gallery = (details.photos || []).map((url) => mediaUrl(url)).filter(Boolean)
+  const viewerPhoto = gallery[Math.min(activePhoto, gallery.length - 1)]
+  const price = service ? priceSummary(service) : null
+  const rows = service ? includedRows(service) : []
+  const facts = service ? keyFacts(service) : []
+  const openSlots = schedule.filter((slot) => slot.status === 'open').length
+  const duration = durationLabel(service?.durationMinutes)
+  const providerEmail = provider?.email?.trim() || ''
+  const kindLabel = companyOwned ? 'Kompani' : 'Ekspert'
+
+  function openPhoto(index: number) {
+    setActivePhoto(index)
+    setViewerOpen(true)
+  }
+
+  function stepPhoto(delta: number) {
+    setActivePhoto((index) => (index + delta + gallery.length) % gallery.length)
+  }
+
   const intake: Pick<MatchIntake, 'need' | 'location' | 'language' | 'urgency' | 'contact'> | null = service
     ? {
         need: `${service.title}${service.subcategory ? ` — ${service.subcategory}` : ''}`,
@@ -204,63 +271,13 @@ export default function ServiceDetailPage() {
       }
     : null
 
-  const facts = service
-    ? [
-        service.location ? { icon: MapPin, label: service.location } : null,
-        details.deliveryModes?.length
-          ? { icon: Globe, label: details.deliveryModes.map((mode) => DELIVERY_LABELS[mode] || mode).join(', ') }
-          : null,
-        details.licenseVerified || details.licenseNumber
-          ? { icon: ShieldCheck, label: details.licenseVerified ? 'Licencë e verifikuar' : `Licenca ${details.licenseNumber}` }
-          : null,
-        provider?.yearsOfExperience != null
-          ? {
-              icon: BadgeCheck,
-              label:
-                provider.yearsOfExperience === 1
-                  ? '1 vit përvojë'
-                  : `${provider.yearsOfExperience} vite përvojë`,
-            }
-          : null,
-        verificationLabel(provider?.verification?.identity) || verificationLabel(provider?.verification?.qualification)
-          ? {
-              icon: ShieldCheck,
-              label: [
-                verificationLabel(provider?.verification?.identity)
-                  ? `Identiteti: ${verificationLabel(provider?.verification?.identity)}`
-                  : null,
-                verificationLabel(provider?.verification?.qualification)
-                  ? `Kualifikimi: ${verificationLabel(provider?.verification?.qualification)}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(' · '),
-            }
-          : null,
-        provider?.languages?.length ? { icon: Languages, label: provider.languages.join(', ') } : null,
-        price ? { icon: Wallet, label: price } : null,
-        provider?.roleLabel ? { icon: BadgeCheck, label: provider.roleLabel } : null,
-        service.responsibleExpert
-          ? { icon: BadgeCheck, label: `Eksperti përgjegjës: ${service.responsibleExpert.name}` }
-          : null,
-        schedule.some((slot) => slot.status === 'open')
-          ? { icon: Clock, label: `${schedule.filter((slot) => slot.status === 'open').length} orë të lira` }
-          : null,
-      ].filter(Boolean) as Array<{ icon: typeof MapPin; label: string }>
-    : []
-
-  const why = service
-    ? `${provider?.name || service.providerName} ofron ${service.title.toLowerCase()} në ${
-        service.location || 'Kosovë'
-      }. ${provider?.headline || 'Dërgo kërkesë për të marrë një ofertë dhe të fillosh bashkëpunimin.'}`
-    : ''
-
   return (
     <div className="tt-shell">
       <SiteNav />
       <main>
-        <section className="tt-section tt-pro-page">
+        <section className="tt-section tt-pro-page sd-page">
           <div className="tt-section-inner">
+            <BackButton fallback={marketplaceLink('services').to} />
             {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
 
             {!loading && error ? (
@@ -268,179 +285,284 @@ export default function ServiceDetailPage() {
                 <h1>Shërbimi nuk u gjet</h1>
                 <p className="error">{error}</p>
                 <Link className="primary-btn" to="/ofertat">
-                  Shiko ofertat
+                  Shiko shërbimet
                 </Link>
               </div>
             ) : null}
 
-            {!loading && service && intake ? (
-              <>
-                <Breadcrumbs className="tt-pro-crumbs" aria-label="Breadcrumb">
-                  <Breadcrumbs.Item href="/ofertat">Ofertat</Breadcrumbs.Item>
-                  {categoryLabel ? (
-                    <Breadcrumbs.Item {...(categoryHref ? { href: categoryHref } : {})}>
-                      {categoryLabel}
-                    </Breadcrumbs.Item>
+            {!loading && service && intake && price ? (
+              <div className="sd-layout">
+                <header className="sd-head">
+                  {categoryLabel || subcategoryLabel ? (
+                    <ul className="sd-categories" aria-label="Kategoritë">
+                      {categoryLabel ? (
+                        <li>{categoryHref ? <Link to={categoryHref}>{categoryLabel}</Link> : categoryLabel}</li>
+                      ) : null}
+                      {subcategoryLabel ? (
+                        <li>{subcategoryHref ? <Link to={subcategoryHref}>{subcategoryLabel}</Link> : subcategoryLabel}</li>
+                      ) : null}
+                    </ul>
                   ) : null}
-                  {subcategoryLabel ? (
-                    <Breadcrumbs.Item {...(subcategoryHref ? { href: subcategoryHref } : {})}>
-                      {subcategoryLabel}
-                    </Breadcrumbs.Item>
-                  ) : null}
-                  <Breadcrumbs.Item>{service.title}</Breadcrumbs.Item>
-                </Breadcrumbs>
-                <Link to="/ofertat" className="tt-detail-back">
-                  <ArrowLeft size={16} aria-hidden />
-                  Shiko më shumë ofrues
-                </Link>
-
-                <div className="tt-pro-layout">
-                    <header className="tt-pro-hero">
-                      <div className="tt-pro-avatar" aria-hidden>
-                        <ProfileAvatar src={provider?.profilePhoto} seed={provider?.uid || service.providerUid} size="fill" />
-                      </div>
-                      <div className="tt-pro-hero-copy">
-                        <h1>{provider?.name || service.providerName}</h1>
-                        <p className="tt-pro-rating">
-                          <strong>{ratingWord(rating, ratingCount)}</strong>
-                          {ratingCount > 0 ? (
-                            <>
-                              <span className="tt-pro-rating-score">{rating.toFixed(1)}</span>
-                              <span className="tt-pro-stars" aria-hidden>
-                                {'★'.repeat(Math.max(1, Math.round(rating)))}
-                                {'☆'.repeat(Math.max(0, 5 - Math.round(rating)))}
-                              </span>
-                              <a href="#vleresimet">({ratingCount})</a>
-                            </>
-                          ) : null}
-                        </p>
-                        <p className="tt-pro-kicker">
-                          {service.title}
-                          {service.subcategory ? ` · ${service.subcategory}` : ''}
-                          {service.location ? ` · ${service.location}` : ''}
-                        </p>
-                      </div>
-                    </header>
-
-                  <div className="tt-pro-main">
-
-                    <nav className="tt-pro-tabs" aria-label="Seksionet e profilit">
-                      <a href="#rreth">Rreth</a>
-                      <a href="#sherbimi">Shërbimi</a>
-                      {(service.experts?.length ?? 0) > 0 ? <a href="#ekspertet">Ekspertët</a> : null}
-                      <a href="#foto">Foto</a>
-                      <a href="#vleresimet">Vlerësimet</a>
-                    </nav>
-
-                    <div className="tt-pro-why">
-                      <p>
-                        <MessageCircle size={16} aria-hidden />
-                        <strong>Pse ky ofrues?</strong>
+                  <h1>{service.title}</h1>
+                  <div className="sd-byline">
+                    <Link
+                      to={providerPath}
+                      className={`sd-byline-avatar${companyOwned ? ' is-company' : ''}`}
+                      aria-label={`Shiko profilin e ${providerName}`}
+                    >
+                      <ProfileAvatar
+                        src={provider?.profilePhoto}
+                        seed={providerUid}
+                        size="fill"
+                        fit={companyOwned ? 'contain' : 'cover'}
+                      />
+                    </Link>
+                    <div className="sd-byline-copy">
+                      <p className="sd-byline-name">
+                        <Link to={providerPath}>{providerName}</Link>
+                        {verified ? <BadgeCheck size={16} className="sd-verified" aria-label="I verifikuar" /> : null}
+                        {responsibleExpert ? (
+                          <span className="sd-byline-expert">
+                            me <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
+                          </span>
+                        ) : null}
                       </p>
-                      <p>{why}</p>
+                      <div className="sd-byline-meta">
+                        <span>{kindLabel}</span>
+                        <ProviderRatingLine average={provider?.ratingAverage ?? 0} count={provider?.ratingCount ?? 0} />
+                        {service.location ? (
+                          <span className="sd-byline-location">
+                            <MapPin size={14} aria-hidden />
+                            {service.location}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
+                  </div>
+                </header>
 
-                    <section className="tt-pro-section" id="rreth">
-                      <h2>Rreth</h2>
-                      {aboutText ? <p className="tt-detail-desc">{aboutText}</p> : <p className="muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>}
-                      {provider?.experience ? (
-                        <div className="tt-pro-profile-block">
-                          <h3>Përvoja profesionale</h3>
-                          <p className="tt-detail-desc">{provider.experience}</p>
+                <aside className="sd-aside" aria-label="Kërko shërbimin">
+                  <div className="sd-price">
+                    <span>Çmimi</span>
+                    <strong>{price.value}</strong>
+                    <small>{price.note}</small>
+                  </div>
+                  <ul className="sd-aside-facts">
+                    {duration ? (
+                      <li>
+                        <Clock size={15} aria-hidden />
+                        {duration}
+                      </li>
+                    ) : null}
+                    {openSlots > 0 ? (
+                      <li>
+                        <CalendarClock size={15} aria-hidden />
+                        {openSlots === 1 ? '1 orë e lirë' : `${openSlots} orë të lira`}
+                      </li>
+                    ) : null}
+                    <li>
+                      <MapPin size={15} aria-hidden />
+                      {service.location || 'Online'}
+                    </li>
+                  </ul>
+                  <div className="sd-actions">
+                    <SendRequestButton
+                      providerUid={service.providerUid}
+                      providerId={service.providerId}
+                      providerName={providerName}
+                      categoryId={service.categoryId}
+                      serviceId={service.id}
+                      serviceTitle={service.title}
+                      intake={intake}
+                      compact
+                      ctaLabel="Kërko shërbimin"
+                      ctaIcon="mail"
+                    />
+                    <StartChatButton
+                      providerUid={service.providerUid}
+                      providerName={providerName}
+                      serviceId={service.id}
+                      serviceTitle={service.title}
+                      hideGuestHint
+                      label="Live Chat"
+                      className="sd-chat"
+                    />
+                  </div>
+                  <div className="sd-aside-provider">
+                    <Link
+                      to={providerPath}
+                      className={`sd-aside-avatar${companyOwned ? ' is-company' : ''}`}
+                      aria-label={`Shiko profilin e ${providerName}`}
+                    >
+                      <ProfileAvatar
+                        src={provider?.profilePhoto}
+                        seed={providerUid}
+                        size="fill"
+                        fit={companyOwned ? 'contain' : 'cover'}
+                      />
+                    </Link>
+                    <div className="sd-aside-provider-copy">
+                      <span>{kindLabel}</span>
+                      <Link to={providerPath}>{providerName}</Link>
+                    </div>
+                  </div>
+                  {providerEmail ? (
+                    <a className="sd-aside-contact" href={`mailto:${providerEmail}`}>
+                      <Mail size={15} aria-hidden />
+                      {providerEmail}
+                    </a>
+                  ) : null}
+                  <Link to={providerPath} className="sd-provider-link">
+                    {companyOwned ? 'Shiko profilin e kompanisë' : 'Shiko profilin e ekspertit'}
+                    <ChevronRight size={16} aria-hidden />
+                  </Link>
+                </aside>
+
+                <div className="sd-main">
+                  {facts.length > 0 ? (
+                    <dl className="sd-facts">
+                      {facts.map(({ key, icon: Icon, label, value, hint }) => (
+                        <div key={key} title={hint}>
+                          <dt>
+                            <Icon size={15} aria-hidden />
+                            {label}
+                          </dt>
+                          <dd>{value}</dd>
                         </div>
-                      ) : null}
-                      {provider?.certifications && provider.certifications.length > 0 ? (
-                        <div className="tt-pro-profile-block">
-                          <h3>Certifikime dhe licenca</h3>
-                          <ul className="tt-pro-cert-list">
-                            {provider.certifications.map((cert) => (
-                              <li key={`${cert.name}-${cert.year}-${cert.issuer}`}>
-                                <strong>{cert.name}</strong>
-                                <span>
-                                  {cert.issuer}
-                                  {cert.year ? ` · ${cert.year}` : ''}
-                                </span>
-                                {cert.credentialUrl ? (
-                                  <a href={cert.credentialUrl} target="_blank" rel="noreferrer">
-                                    Credenciali
-                                  </a>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
+                      ))}
+                    </dl>
+                  ) : null}
+
+                  <div className="sd-content">
+                    <section className="sd-section">
+                      <h2>Përshkrimi</h2>
+                      {service.description ? (
+                        <p className="sd-description">{service.description}</p>
+                      ) : (
+                        <p className="muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>
+                      )}
                     </section>
 
-                    {facts.length > 0 ? (
-                      <section className="tt-pro-section">
-                        <h2>Përmbledhje</h2>
-                        <ul className="tt-pro-facts">
-                          {facts.map((fact) => {
-                            const Icon = fact.icon
-                            return (
-                              <li key={fact.label}>
-                                <Icon size={18} aria-hidden />
-                                <span>{fact.label}</span>
-                              </li>
-                            )
-                          })}
-                        </ul>
+                    {rows.length > 0 || details.regulatoryNotice || details.coachingDisclaimerAccepted ? (
+                      <section className="sd-section">
+                        <h2>Çfarë përfshin</h2>
+                        {rows.length > 0 ? (
+                          <dl className="sd-included">
+                            {rows.map((row) => (
+                              <div key={row.label}>
+                                <dt>{row.label}</dt>
+                                <dd>
+                                  {row.label === 'Portfolio' && row.value.startsWith('http') ? (
+                                    <a href={row.value} target="_blank" rel="noreferrer">{row.value}</a>
+                                  ) : (
+                                    row.value
+                                  )}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : null}
+                        {details.regulatoryNotice ? <p className="sd-notice">{details.regulatoryNotice}</p> : null}
+                        {details.coachingDisclaimerAccepted ? (
+                          <p className="sd-notice">Coaching nuk është terapi ose trajtim mjekësor.</p>
+                        ) : null}
                       </section>
                     ) : null}
 
-                    <section className="tt-pro-section" id="sherbimi">
-                      <h2>Shërbimi</h2>
-                      {service.description && service.description !== aboutText ? (
-                        <p className="tt-detail-desc">{service.description}</p>
-                      ) : null}
-                      {chips.length > 0 ? (
-                        <ul className="service-card-chips">
-                          {chips.map((chip) => (
-                            <li key={chip}>{chip}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      {rows.length > 0 || details.regulatoryNotice || details.coachingDisclaimerAccepted ? (
-                        <div className="service-card-details">
-                          {rows.length > 0 ? (
-                            <dl>
-                              {rows.map((row) => (
-                                <div key={row.label}>
-                                  <dt>{row.label}</dt>
-                                  <dd>
-                                    {row.label === 'Portfolio' && row.value.startsWith('http') ? (
-                                      <a href={row.value} target="_blank" rel="noreferrer">
-                                        {row.value}
-                                      </a>
-                                    ) : (
-                                      row.value
-                                    )}
-                                  </dd>
-                                </div>
-                              ))}
-                            </dl>
+                    <section className="sd-section">
+                      <h2>Çmimi</h2>
+                      <div className="sd-pricing">
+                        <strong>{price.value}</strong>
+                        <span>{price.note}</span>
+                      </div>
+                      {duration || details.availabilityMode ? (
+                        <dl className="sd-included">
+                          {duration ? (
+                            <div>
+                              <dt>Kohëzgjatja</dt>
+                              <dd>{duration}</dd>
+                            </div>
                           ) : null}
-                          {details.regulatoryNotice ? <p className="service-card-notice">{details.regulatoryNotice}</p> : null}
-                          {details.coachingDisclaimerAccepted ? (
-                            <p className="service-card-notice">Coaching nuk është terapi ose trajtim mjekësor.</p>
+                          {details.availabilityMode ? (
+                            <div>
+                              <dt>Rezervimi</dt>
+                              <dd>{AVAILABILITY_LABELS[details.availabilityMode] || details.availabilityMode}</dd>
+                            </div>
                           ) : null}
-                        </div>
+                        </dl>
                       ) : null}
                     </section>
 
-                    {(service.experts?.length ?? 0) > 0 ? (
-                      <section className="tt-pro-section" id="ekspertet">
-                        <h2>Ekspertët e kompanisë</h2>
-                        <p className="muted">Zgjidh ekspertin dhe cakto termin për këtë shërbim.</p>
-                        <ul className="tt-company-experts">
-                          {service.experts?.map((expert) => (
-                            <li key={expert.uid}>
-                              <div>
-                                <Link to={`/providers/${expert.uid}`}>{expert.name}</Link>
-                                {expert.headline ? <span>{expert.headline}</span> : null}
-                              </div>
-                              <div className="tt-company-expert-actions">
+                    <section className="sd-section" id="ofruesi">
+                      <h2>Kush e ofron këtë shërbim</h2>
+                      <div className="sd-provider">
+                        <Link
+                          to={providerPath}
+                          className={`sd-provider-avatar${companyOwned ? ' is-company' : ''}`}
+                          aria-label={`Shiko profilin e ${providerName}`}
+                        >
+                          <ProfileAvatar
+                            src={provider?.profilePhoto}
+                            seed={providerUid}
+                            size="fill"
+                            fit={companyOwned ? 'contain' : 'cover'}
+                          />
+                        </Link>
+                        <div className="sd-provider-copy">
+                          <span className="sd-provider-kind">{kindLabel}</span>
+                          <h3>
+                            <Link to={providerPath}>{providerName}</Link>
+                            {verified ? <BadgeCheck size={16} className="sd-verified" aria-label="I verifikuar" /> : null}
+                          </h3>
+                          {provider?.headline ? <p className="sd-provider-headline">{provider.headline}</p> : null}
+                          <ProviderRatingLine average={provider?.ratingAverage ?? 0} count={provider?.ratingCount ?? 0} />
+                        </div>
+                        <Link to={providerPath} className="sd-provider-link">
+                          {companyOwned ? 'Profili i kompanisë' : 'Profili i ekspertit'}
+                          <ChevronRight size={16} aria-hidden />
+                        </Link>
+                      </div>
+
+                      {responsibleExpert ? (
+                        <div className="sd-provider is-expert">
+                          <Link
+                            to={`/providers/${responsibleExpert.uid}`}
+                            className="sd-provider-avatar"
+                            aria-label={`Shiko profilin e ${responsibleExpert.name}`}
+                          >
+                            <ProfileAvatar src={responsibleExpert.photoUrl} seed={responsibleExpert.uid} size="fill" />
+                          </Link>
+                          <div className="sd-provider-copy">
+                            <span className="sd-provider-kind">Eksperti përgjegjës</span>
+                            <h3>
+                              <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
+                            </h3>
+                            {responsibleExpert.headline ? (
+                              <p className="sd-provider-headline">{responsibleExpert.headline}</p>
+                            ) : null}
+                          </div>
+                          <Link to={`/providers/${responsibleExpert.uid}`} className="sd-provider-link">
+                            Profili i ekspertit
+                            <ChevronRight size={16} aria-hidden />
+                          </Link>
+                        </div>
+                      ) : null}
+
+                      {teamExperts.length > 0 ? (
+                        <div className="sd-team">
+                          <h3>Ekspertët e kompanisë</h3>
+                          <ul>
+                            {teamExperts.map((expert) => (
+                              <li key={expert.uid}>
+                                <Link to={`/providers/${expert.uid}`} className="sd-team-person">
+                                  <span className="sd-team-photo" aria-hidden>
+                                    <ProfileAvatar src={expert.photoUrl} seed={expert.uid} size="fill" />
+                                  </span>
+                                  <span>
+                                    <strong>{expert.name}</strong>
+                                    {expert.headline ? <small>{expert.headline}</small> : null}
+                                  </span>
+                                </Link>
                                 <SendRequestButton
                                   providerUid={expert.uid}
                                   providerName={expert.name}
@@ -450,87 +572,57 @@ export default function ServiceDetailPage() {
                                   intake={intake}
                                   compact
                                   ctaLabel="Cakto takim"
-                                  guestLabel="Hyr për takim"
                                 />
-                              </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </section>
+
+                    {gallery.length > 0 ? (
+                      <section className="sd-section" aria-labelledby="sd-photos-heading">
+                        <h2 id="sd-photos-heading">Fotot</h2>
+                        <ul className="sd-photos">
+                          {gallery.map((src, index) => (
+                            <li key={`${src}-${index}`}>
+                              <button type="button" onClick={() => openPhoto(index)} aria-label={`Hap foton ${index + 1}`}>
+                                <img src={src} alt="" loading="lazy" />
+                              </button>
                             </li>
                           ))}
                         </ul>
                       </section>
                     ) : null}
-
-                    <section className="tt-pro-section" id="foto">
-                      <h2>Projekte dhe foto</h2>
-                      {gallery.length > 0 ? (
-                        <div className="tt-pro-gallery">
-                          {gallery.map((src, index) => (
-                            <img
-                              key={`${src}-${index}`}
-                              src={src}
-                              alt={index === 0 ? service.subcategory || service.title : `Foto ${index + 1}`}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="muted">Ofruesi nuk ka ngarkuar ende foto të punës.</p>
-                      )}
-                    </section>
-
-                    <div className="tt-pro-contact-row">
-                      <StartChatButton
-                        providerUid={service.providerUid}
-                        providerName={provider?.name || service.providerName}
-                        serviceId={service.id}
-                        serviceTitle={service.title}
-                        hideGuestHint
-                      />
-                    </div>
-
-                    <ProviderReviews
-                      providerUid={service.providerUid}
-                      providerName={provider?.name || service.providerName}
-                      initialAverage={rating}
-                      initialCount={ratingCount}
-                      onStatsChange={(stats) => {
-                        setService((current) =>
-                          current?.provider
-                            ? {
-                                ...current,
-                                provider: {
-                                  ...current.provider,
-                                  ratingAverage: stats.average,
-                                  ratingCount: stats.count,
-                                },
-                              }
-                            : current,
-                        )
-                      }}
-                    />
                   </div>
-
-                  <aside className="tt-pro-quote">
-                    <p className="tt-pro-quote-kicker">{provider?.name || service.providerName}</p>
-                    {price ? <p className="tt-detail-price">{price}</p> : null}
-                    <p className="muted">{service.location || 'Online'}</p>
-                    <SendRequestButton
-                      providerUid={service.providerUid}
-                      providerId={service.providerId}
-                      providerName={provider?.name || service.providerName}
-                      categoryId={service.categoryId}
-                      serviceId={service.id}
-                      serviceTitle={service.title}
-                      intake={intake}
-                      openByDefault
-                      ctaLabel="Kërko ofertë"
-                      guestLabel="Hyr për të kërkuar ofertë"
-                    />
-                    <p className="tt-pro-responds">
-                      <Clock size={15} aria-hidden />
-                      Zakonisht përgjigjet shpejt
-                    </p>
-                  </aside>
                 </div>
-              </>
+
+                {viewerPhoto ? (
+                  <Modal isOpen={viewerOpen} onOpenChange={setViewerOpen}>
+                    <Modal.Backdrop>
+                      <Modal.Container size="lg" placement="center">
+                        <Modal.Dialog className="sd-viewer" aria-label={`Fotot e shërbimit ${service.title}`}>
+                          <Modal.CloseTrigger />
+                          <Modal.Body className="sd-viewer-body">
+                            <img src={viewerPhoto} alt={`${service.title} — foto ${activePhoto + 1}`} />
+                          </Modal.Body>
+                          {gallery.length > 1 ? (
+                            <Modal.Footer className="sd-viewer-nav">
+                              <Button variant="ghost" size="sm" isIconOnly aria-label="Foto e mëparshme" onPress={() => stepPhoto(-1)}>
+                                <ChevronLeft size={18} aria-hidden />
+                              </Button>
+                              <span>{activePhoto + 1} / {gallery.length}</span>
+                              <Button variant="ghost" size="sm" isIconOnly aria-label="Foto tjetër" onPress={() => stepPhoto(1)}>
+                                <ChevronRight size={18} aria-hidden />
+                              </Button>
+                            </Modal.Footer>
+                          ) : null}
+                        </Modal.Dialog>
+                      </Modal.Container>
+                    </Modal.Backdrop>
+                  </Modal>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </section>

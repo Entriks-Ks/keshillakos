@@ -19,7 +19,7 @@ import {
 } from '../models/providerCareer'
 import { DEFAULT_PORTAL, findDomainById } from './domainService'
 import { canManageBusiness, ownedBusinessById, userIdForUid } from './businessService'
-import { normalizeUploadPath } from './mediaService'
+import { deleteUploads, normalizeUploadPath } from './mediaService'
 import { getStatsForProviders } from './ratingService'
 
 export type CreateProviderProfileInput = {
@@ -415,6 +415,7 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
   publicProfile?: Partial<ProviderProfileDoc['publicProfile']>
 }) {
   const profile = await loadManagedProvider(uid, id)
+  const previousMedia = [profile.publicProfile?.photoUrl, profile.publicProfile?.coverUrl]
   await validateProviderLocations(changes.location, changes.serviceAreaCityIds)
   if (changes.categories !== undefined) {
     const categories = uniqueText(changes.categories)
@@ -475,6 +476,9 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
   profile.status = 'pending'
   profile.moderation = { status: 'pending' }
   await profile.save()
+  if (changes.publicProfile?.photoUrl !== undefined || changes.publicProfile?.coverUrl !== undefined) {
+    await deleteUploads(previousMedia)
+  }
   return profile
 }
 

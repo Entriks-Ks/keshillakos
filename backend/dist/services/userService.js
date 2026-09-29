@@ -308,12 +308,12 @@ async function updateProfilePhoto(uid, profilePhoto) {
     if (!nextPhoto)
         throw new Error('Rruga e fotos nuk është e vlefshme');
     const previous = existing.profilePhoto;
+    const previousProviderPhotos = (await ProviderProfile_1.ProviderProfile.find({ ownerUser: existing._id }).select('publicProfile.photoUrl').lean())
+        .map((profile) => profile.publicProfile?.photoUrl);
     existing.profilePhoto = nextPhoto;
     await existing.save();
     await ProviderProfile_1.ProviderProfile.updateMany({ ownerUser: existing._id }, { $set: { 'publicProfile.photoUrl': nextPhoto } });
-    if (previous && previous !== nextPhoto) {
-        await (0, mediaService_1.deleteUpload)(previous);
-    }
+    await (0, mediaService_1.deleteUploads)([previous, ...previousProviderPhotos].filter((photo) => photo !== nextPhoto));
     return toPublicUser(existing);
 }
 async function updateUserByUid(uid, input) {

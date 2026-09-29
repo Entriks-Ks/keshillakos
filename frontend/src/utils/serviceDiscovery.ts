@@ -30,6 +30,15 @@ export function isVerified(provider?: { verification?: { identity?: string; busi
   return v.identity === 'verified' || v.business === 'verified' || v.qualification === 'verified'
 }
 
+export function formatServicePrice(service: ServiceItem) {
+  const from = service.priceFrom
+  const to = service.details?.priceTo
+  if (from == null && to == null) return null
+  if (from != null && to != null) return `€${from} – €${to}`
+  if (from != null) return `nga €${from}`
+  return `deri €${to}`
+}
+
 function matchesQuery(haystack: Array<string | null | undefined>, query: string) {
   if (!query) return true
   return haystack.filter(Boolean).join(' ').toLowerCase().includes(query)

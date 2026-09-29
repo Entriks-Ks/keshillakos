@@ -18,6 +18,7 @@ const RequestDelivery_1 = require("../models/RequestDelivery");
 const ServiceRequest_1 = require("../models/ServiceRequest");
 const User_1 = require("../models/User");
 const UserRequest_1 = require("../models/UserRequest");
+const providerPublicService_1 = require("./providerPublicService");
 const userService_1 = require("./userService");
 const MAX_BODY = 4000;
 function toMessage(doc) {
@@ -78,7 +79,7 @@ async function openOrGetConversation(input) {
     if (!provider) {
         throw Object.assign(new Error('Ofruesi nuk u gjet'), { status: 404 });
     }
-    if (!['provider', 'company', 'admin'].includes(provider.role)) {
+    if (!(0, providerPublicService_1.publicProfileRole)(provider)) {
         throw Object.assign(new Error('Ky përdorues nuk ofron shërbime'), { status: 400 });
     }
     let conversation = await Conversation_1.Conversation.findOne({

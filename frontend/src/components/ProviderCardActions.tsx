@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Globe, Mail, Phone } from 'lucide-react'
+import { Globe, Mail, MessageCircle, Phone } from 'lucide-react'
 import { toMatchLanguage } from '../api/match'
 import type { MarketplaceProvider } from '../api/providerProfiles'
+import { useAuth } from '../auth/AuthContext'
 import SendRequestButton from './SendRequestButton'
 import StartChatButton from './StartChatButton'
+
+const OWN_PROFILE_HINT = 'Ky është profili yt'
 
 type Props = {
   provider: MarketplaceProvider
@@ -12,6 +15,8 @@ type Props = {
 }
 
 export default function ProviderCardActions({ provider, profilePath, need }: Props) {
+  const { user } = useAuth()
+  const isOwn = Boolean(user && user.uid === provider.uid)
   const phone = provider.publicPhone?.trim()
   const email = provider.publicEmail?.trim()
   const website = provider.website?.trim()
@@ -37,6 +42,11 @@ export default function ProviderCardActions({ provider, profilePath, need }: Pro
               <Mail size={18} aria-hidden />
               <span className="tt-dir-action-text">Kontakto</span>
             </a>
+          ) : isOwn ? (
+            <span className="tt-dir-action is-icon" aria-disabled="true" aria-label="Kontakto" title={OWN_PROFILE_HINT}>
+              <Mail size={18} aria-hidden />
+              <span className="tt-dir-action-text">Kontakto</span>
+            </span>
           ) : (
             <SendRequestButton
               providerUid={provider.uid}
@@ -82,14 +92,21 @@ export default function ProviderCardActions({ provider, profilePath, need }: Pro
         )}
 
         <div className="tt-dir-action-slot" onClick={(e) => e.stopPropagation()}>
-          <StartChatButton
-            providerUid={provider.uid}
-            providerName={provider.name}
-            compact
-            hideGuestHint
-            label="Live Chat"
-            className="tt-dir-action is-icon"
-          />
+          {isOwn ? (
+            <span className="tt-dir-action is-icon" aria-disabled="true" aria-label="Live Chat" title={OWN_PROFILE_HINT}>
+              <MessageCircle size={18} aria-hidden />
+              <span className="tt-dir-action-text">Live Chat</span>
+            </span>
+          ) : (
+            <StartChatButton
+              providerUid={provider.uid}
+              providerName={provider.name}
+              compact
+              hideGuestHint
+              label="Live Chat"
+              className="tt-dir-action is-icon"
+            />
+          )}
         </div>
       </div>
     </div>

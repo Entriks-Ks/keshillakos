@@ -28,7 +28,7 @@ import CompanyCard from '../components/CompanyCard'
 import { isProviderVerified } from '../components/providerCardUtils'
 import ExpertCard from '../components/ExpertCard'
 import LocationSelector from '../components/LocationSelector'
-import ServiceCard from '../components/ServiceCard'
+import ServiceOfferCard from '../components/ServiceOfferCard'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
@@ -285,6 +285,10 @@ export default function OffersPage() {
   const labeledProviders = useMemo(
     () => providers.map((provider) => withCategoryLabels(provider, categories)),
     [providers, categories],
+  )
+  const providersByUid = useMemo(
+    () => new Map(providers.map((provider) => [provider.uid, provider])),
+    [providers],
   )
   const filteredExperts = useMemo(
     () => sortProviders(filterMarketplaceProviders(labeledProviders, filters, 'experts'), sort, query),
@@ -720,7 +724,11 @@ export default function OffersPage() {
 
                 {!loading && tab === 'services'
                   ? filteredServices.map((service) => (
-                    <ServiceCard key={service.id} service={service} />
+                    <ServiceOfferCard
+                      key={service.id}
+                      service={service}
+                      provider={providersByUid.get(service.provider?.uid || service.providerUid)}
+                    />
                   ))
                   : null}
                 {!loading && tab === 'experts'

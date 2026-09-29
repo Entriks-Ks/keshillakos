@@ -6,6 +6,7 @@ import { RequestDelivery } from '../models/RequestDelivery'
 import { ServiceRequest } from '../models/ServiceRequest'
 import { User } from '../models/User'
 import { UserRequest } from '../models/UserRequest'
+import { publicProfileRole } from './providerPublicService'
 import { findUserByUid, findUsersByUids } from './userService'
 
 const MAX_BODY = 4000
@@ -110,7 +111,7 @@ export async function openOrGetConversation(input: {
   if (!provider) {
     throw Object.assign(new Error('Ofruesi nuk u gjet'), { status: 404 })
   }
-  if (!['provider', 'company', 'admin'].includes(provider.role)) {
+  if (!publicProfileRole(provider)) {
     throw Object.assign(new Error('Ky përdorues nuk ofron shërbime'), { status: 400 })
   }
 

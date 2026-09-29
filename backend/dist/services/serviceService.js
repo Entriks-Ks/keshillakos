@@ -246,9 +246,10 @@ async function updateService(id, uid, input) {
     service.location = input.location;
     service.priceFrom = input.priceFrom;
     const nextPhotos = cleanPhotos(input.details?.photos);
-    await (0, mediaService_1.deleteRemovedUploads)(service.details?.photos, nextPhotos);
+    const previousPhotos = [...(service.details?.photos || [])];
     service.details = { ...extensions, photos: nextPhotos };
     await service.save();
+    await (0, mediaService_1.deleteRemovedUploads)(previousPhotos, nextPhotos);
     const [result] = await withLegacyProviders([service]);
     return result;
 }

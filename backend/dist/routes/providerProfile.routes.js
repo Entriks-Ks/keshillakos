@@ -154,25 +154,27 @@ router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'co
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Profili nuk u përditësua' });
     }
 });
-router.post('/:id/photo', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.profilePhotoUpload), async (req, res) => {
+router.post('/:id/photo', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.imageUpload), async (req, res) => {
+    let photoUrl;
     try {
-        const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për profilin e ekspertit');
-        const photoUrl = (0, mediaService_1.toPublicUploadPath)('profiles', file.filename);
+        photoUrl = await (0, mediaService_1.storeUploadedFile)(req, 'providers', String(req.params.id), 'Zgjidh një foto për profilin e ekspertit', { label: 'photo' });
         const provider = await (0, providerProfileService_1.updateProviderPhoto)(req.user.uid, String(req.params.id), photoUrl);
         return res.json({ provider: (0, providerProfileService_1.toPublicProvider)(provider) });
     }
     catch (err) {
+        await (0, mediaService_1.deleteUpload)(photoUrl);
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi' });
     }
 });
-router.post('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.profilePhotoUpload), async (req, res) => {
+router.post('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.imageUpload), async (req, res) => {
+    let coverUrl;
     try {
-        const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për sfondin');
-        const coverUrl = (0, mediaService_1.toPublicUploadPath)('profiles', file.filename);
+        coverUrl = await (0, mediaService_1.storeUploadedFile)(req, 'providers', String(req.params.id), 'Zgjidh një foto për sfondin', { label: 'cover' });
         const provider = await (0, providerProfileService_1.updateProviderCover)(req.user.uid, String(req.params.id), coverUrl);
         return res.json({ provider: (0, providerProfileService_1.toPublicProvider)(provider) });
     }
     catch (err) {
+        await (0, mediaService_1.deleteUpload)(coverUrl);
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' });
     }
 });

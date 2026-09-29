@@ -5,7 +5,7 @@ import { Country } from '../models/Country'
 import { Types } from 'mongoose'
 import { applySocialLinks, normalizeSocialLinks, type SocialLinks } from '../models/socialLinks'
 import { isUserRole, type UserRole } from '../types/roles'
-import { deleteUpload, normalizeUploadPath } from './mediaService'
+import { deleteUploads, normalizeUploadPath } from './mediaService'
 
 export type SavedLocation = { countryId: string; cityId: string }
 export type PublicUser = Omit<UserDoc, 'location'> & { location: string; savedLocation?: SavedLocation }
@@ -354,15 +354,15 @@ export async function updateProfilePhoto(uid: string, profilePhoto: string): Pro
   const nextPhoto = normalizeUploadPath(profilePhoto)
   if (!nextPhoto) throw new Error('Rruga e fotos nuk është e vlefshme')
   const previous = existing.profilePhoto
+  const previousProviderPhotos = (await ProviderProfile.find({ ownerUser: existing._id }).select('publicProfile.photoUrl').lean())
+    .map((profile) => profile.publicProfile?.photoUrl)
   existing.profilePhoto = nextPhoto
   await existing.save()
   await ProviderProfile.updateMany(
     { ownerUser: existing._id },
     { $set: { 'publicProfile.photoUrl': nextPhoto } },
   )
-  if (previous && previous !== nextPhoto) {
-    await deleteUpload(previous)
-  }
+  await deleteUploads([previous, ...previousProviderPhotos].filter((photo) => photo !== nextPhoto))
   return toPublicUser(existing)
 }
 
