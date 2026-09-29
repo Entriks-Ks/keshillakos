@@ -260,7 +260,7 @@ async function listMarketplaceProviders(cityId) {
                     'moderation.status': 'approved',
                 },
             },
-            { $group: { _id: '$providerProfile', count: { $sum: 1 } } },
+            { $group: { _id: '$providerProfile', count: { $sum: 1 }, subcategoryIds: { $addToSet: '$subcategoryId' } } },
         ]),
         Business_1.Business.find({
             status: 'active',
@@ -308,6 +308,7 @@ async function listMarketplaceProviders(cityId) {
         ...new Set((ids ?? []).map((id) => categoryLabelByKey.get(id)).filter((label) => Boolean(label))),
     ];
     const serviceCountByProfile = new Map(offerCounts.map((row) => [String(row._id), row.count]));
+    const offerSubcategoriesByProfile = new Map(offerCounts.map((row) => [String(row._id), row.subcategoryIds ?? []]));
     const companyByMember = new Map();
     for (const business of teamBusinesses) {
         for (const owner of business.owners ?? []) {
@@ -360,6 +361,11 @@ async function listMarketplaceProviders(cityId) {
             modes: profile.modes ?? [],
             categories: profile.categories ?? [],
             categoryLabels: categoryLabelsFor(profile.categories),
+            subcategoryIds: [
+                ...new Set([...(profile.subcategoryIds ?? []), ...(offerSubcategoriesByProfile.get(String(profile._id)) ?? [])]
+                    .filter((id) => Boolean(id))
+                    .map(String)),
+            ],
             specializations: profile.specializations ?? [],
             yearsOfExperience: profile.yearsOfExperience,
             experience: profile.experience || '',

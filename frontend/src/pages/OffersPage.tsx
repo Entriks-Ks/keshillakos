@@ -4,6 +4,7 @@ import { Button, Input, ToggleButton, ToggleButtonGroup } from '@heroui/react'
 import {
   ArrowUpDown,
   BadgeCheck,
+  BriefcaseBusiness,
   Building2,
   ChevronDown,
   Globe,
@@ -22,10 +23,12 @@ import {
   type CatalogSubcategory,
 } from '../api/catalog'
 import { fetchMarketplaceProviders, type MarketplaceProvider } from '../api/providerProfiles'
+import { fetchActiveServices, type ServiceItem } from '../api/services'
 import CompanyCard from '../components/CompanyCard'
 import { isProviderVerified } from '../components/providerCardUtils'
 import ExpertCard from '../components/ExpertCard'
 import LocationSelector from '../components/LocationSelector'
+import ServiceCard from '../components/ServiceCard'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
@@ -34,8 +37,11 @@ import { getErrorMessage } from '../utils/errors'
 import { withCategoryLabels } from '../utils/marketplaceProvider'
 import {
   filterMarketplaceProviders,
+  filterVisibleServices,
+  isVerified,
   serviceDiscoveryRequest,
   sortProviders,
+  sortServices,
   type DeliveryFilter,
   type MarketplaceFilters,
   type MarketplaceSort,
@@ -64,8 +70,42 @@ function catalogLabel(item: { name: { sq: string; en: string } }) {
 }
 
 function parseTab(value: string | null): MarketplaceTab {
-  if (value === 'experts') return 'experts'
-  return 'companies'
+  if (value === 'experts' || value === 'companies') return value
+  return 'services'
+}
+
+const TAB_COPY: Record<MarketplaceTab, {
+  placeholder: string
+  total: string
+  verified: string
+  online: string
+  empty: string
+  result: (count: number) => string
+}> = {
+  services: {
+    placeholder: 'Kërko shërbim, fushë ose ofrues…',
+    total: 'shërbime',
+    verified: 'nga ofrues të verifikuar',
+    online: 'ofrohen online',
+    empty: 'Shërbimet do të shfaqen këtu sapo të publikohen.',
+    result: (count) => (count === 1 ? 'shërbim' : 'shërbime'),
+  },
+  companies: {
+    placeholder: 'Kërko kompani ose fushë…',
+    total: 'kompani',
+    verified: 'të verifikuara',
+    online: 'ofrojnë online',
+    empty: 'Profilet do të shfaqen këtu sapo të publikohen.',
+    result: () => 'kompani',
+  },
+  experts: {
+    placeholder: 'Kërko ekspert, profesion ose specialitet…',
+    total: 'ekspertë',
+    verified: 'të verifikuar',
+    online: 'ofrojnë online',
+    empty: 'Profilet do të shfaqen këtu sapo të publikohen.',
+    result: (count) => (count === 1 ? 'ekspert' : 'ekspertë'),
+  },
 }
 
 function parseSort(value: string | null): MarketplaceSort {
@@ -108,10 +148,13 @@ export default function OffersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { languages } = useCatalogOptions()
   const [providers, setProviders] = useState<MarketplaceProvider[]>([])
+  const [services, setServices] = useState<ServiceItem[]>([])
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [subcategories, setSubcategories] = useState<CatalogSubcategory[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [providersLoading, setProvidersLoading] = useState(true)
+  const [providersError, setProvidersError] = useState('')
+  const [servicesLoading, setServicesLoading] = useState(true)
+  const [servicesError, setServicesError] = useState('')
   const tabParam = searchParams.get('tab')
   const [tab, setTab] = useState<MarketplaceTab>(() => parseTab(tabParam))
   const [syncedTabParam, setSyncedTabParam] = useState(tabParam)
@@ -196,26 +239,41 @@ export default function OffersPage() {
   useEffect(() => {
     if (locationLoading) return
     const controller = new AbortController()
-    setLoading(true)
-    setError('')
-    fetchMarketplaceProviders(serviceDiscoveryRequest(cityId), controller.signal)
+    const request = serviceDiscoveryRequest(cityId)
+    setProvidersLoading(true)
+    setProvidersError('')
+    setServicesLoading(true)
+    setServicesError('')
+    fetchMarketplaceProviders(request, controller.signal)
       .then((providerItems) => {
         if (!controller.signal.aborted) setProviders(providerItems)
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return
         setProviders([])
-        setError(getErrorMessage(err))
+        setProvidersError(getErrorMessage(err))
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
+        if (!controller.signal.aborted) setProvidersLoading(false)
+      })
+    fetchActiveServices(request, controller.signal)
+      .then((serviceItems) => {
+        if (!controller.signal.aborted) setServices(Array.isArray(serviceItems) ? serviceItems : [])
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return
+        setServices([])
+        setServicesError(getErrorMessage(err))
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setServicesLoading(false)
       })
     return () => controller.abort()
   }, [cityId, locationLoading])
 
   useEffect(() => {
     const next = new URLSearchParams()
-    if (tab !== 'companies' || searchParams.has('tab')) next.set('tab', tab)
+    if (tab !== 'services' || searchParams.has('tab')) next.set('tab', tab)
     if (sort !== 'relevance') next.set('sort', sort)
     if (query.trim()) next.set('q', query.trim())
     if (categoryId !== 'all') next.set('categoryId', categoryId)
@@ -237,13 +295,27 @@ export default function OffersPage() {
     [labeledProviders, filters, sort, query],
   )
 
-  const results = tab === 'experts' ? filteredExperts : filteredCompanies
-  const resultCount = results.length
-  const resultLabel = tab === 'experts'
-    ? (resultCount === 1 ? 'ekspert' : 'ekspertë')
-    : 'kompani'
+  const filteredServices = useMemo(
+    () => sortServices(filterVisibleServices(services, filters), sort, query),
+    [services, filters, sort, query],
+  )
+
+  const copy = TAB_COPY[tab]
+  const loading = tab === 'services' ? servicesLoading : providersLoading
+  const error = tab === 'services' ? servicesError : providersError
+  const resultCount = tab === 'services'
+    ? filteredServices.length
+    : (tab === 'experts' ? filteredExperts : filteredCompanies).length
+  const resultLabel = copy.result(resultCount)
 
   const tabStats = useMemo(() => {
+    if (tab === 'services') {
+      return {
+        total: services.length,
+        verified: services.filter((item) => isVerified(item.provider)).length,
+        online: services.filter((item) => item.details?.deliveryModes?.includes('online')).length,
+      }
+    }
     const type = tab === 'experts' ? 'individual' : 'business'
     const ofType = providers.filter((item) => item.providerType === type)
     return {
@@ -251,7 +323,7 @@ export default function OffersPage() {
       verified: ofType.filter(isProviderVerified).length,
       online: ofType.filter((item) => item.modes.includes('online')).length,
     }
-  }, [providers, tab])
+  }, [providers, services, tab])
 
   const languageLabel = languages.find((item) => item.value === language)?.label ?? language
   const ratingLabel = RATING_FILTERS.find((item) => item.id === minRating)?.label
@@ -308,7 +380,7 @@ export default function OffersPage() {
 
   function onEntityChange(keys: Set<string | number | bigint>) {
     const next = [...keys][0]
-    if (next === 'experts' || next === 'companies') setTab(next)
+    if (next === 'services' || next === 'experts' || next === 'companies') setTab(next)
   }
 
   const sortSelect = (
@@ -455,7 +527,7 @@ export default function OffersPage() {
               Gjej profesionistin e duhur, <span>pa humbur kohë.</span>
             </h1>
             <p className="of-hero-lead">
-              Krahaso kompani dhe ekspertë sipas fushës, vlerësimeve dhe lokacionit — pastaj kontakto direkt.
+              Krahaso shërbime, kompani dhe ekspertë sipas fushës, vlerësimeve dhe lokacionit — pastaj kontakto direkt.
             </p>
 
             <div className="of-searchbar" role="search">
@@ -464,9 +536,7 @@ export default function OffersPage() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={tab === 'experts'
-                    ? 'Kërko ekspert, profesion ose specialitet…'
-                    : 'Kërko kompani ose fushë…'}
+                  placeholder={copy.placeholder}
                   aria-label="Kërko oferta"
                   fullWidth
                 />
@@ -494,19 +564,21 @@ export default function OffersPage() {
 
             <ul className="of-hero-stats" aria-label="Përmbledhje">
               <li>
-                {tab === 'experts' ? <UserRound size={16} aria-hidden /> : <Building2 size={16} aria-hidden />}
+                {tab === 'services'
+                  ? <BriefcaseBusiness size={16} aria-hidden />
+                  : tab === 'experts' ? <UserRound size={16} aria-hidden /> : <Building2 size={16} aria-hidden />}
                 <strong>{loading ? '—' : tabStats.total}</strong>
-                {tab === 'experts' ? 'ekspertë' : 'kompani'}
+                {copy.total}
               </li>
               <li>
                 <BadgeCheck size={16} aria-hidden />
                 <strong>{loading ? '—' : tabStats.verified}</strong>
-                {tab === 'experts' ? 'të verifikuar' : 'të verifikuara'}
+                {copy.verified}
               </li>
               <li>
                 <Globe size={16} aria-hidden />
                 <strong>{loading ? '—' : tabStats.online}</strong>
-                ofrojnë online
+                {copy.online}
               </li>
             </ul>
 
@@ -543,8 +615,14 @@ export default function OffersPage() {
                   disallowEmptySelection
                   fullWidth
                   size="lg"
-                  aria-label="Filtro sipas kompanive ose ekspertëve"
+                  aria-label="Filtro sipas shërbimeve, kompanive ose ekspertëve"
                 >
+                  <ToggleButton id="services" className="tt-offers-entity-option">
+                    <span>Shërbimet</span>
+                    <span className="tt-offers-entity-icon" aria-hidden>
+                      <BriefcaseBusiness size={18} />
+                    </span>
+                  </ToggleButton>
                   <ToggleButton id="companies" className="tt-offers-entity-option">
                     <span>Kompani</span>
                     <span className="tt-offers-entity-icon" aria-hidden>
@@ -630,7 +708,7 @@ export default function OffersPage() {
                         ? 'Provo të heqësh disa filtra ose të kërkosh me fjalë të tjera.'
                         : cityId
                           ? 'Nuk ka rezultate të publikuara në qytetin e zgjedhur.'
-                          : 'Profilet do të shfaqen këtu sapo të publikohen.'}
+                          : copy.empty}
                     </p>
                     {hasActiveFilters ? (
                       <Button className="of-empty-action" onPress={clearFilters}>
@@ -640,6 +718,11 @@ export default function OffersPage() {
                   </div>
                 ) : null}
 
+                {!loading && tab === 'services'
+                  ? filteredServices.map((service) => (
+                    <ServiceCard key={service.id} service={service} />
+                  ))
+                  : null}
                 {!loading && tab === 'experts'
                   ? filteredExperts.map((provider) => (
                     <ExpertCard key={provider.id} provider={provider} />

@@ -258,7 +258,7 @@ export async function listMarketplaceProviders(cityId?: string) {
         ],
       }).select('stableId slug name.sq labels').lean()
       : Promise.resolve([]),
-    ServiceOffer.aggregate<{ _id: Types.ObjectId; count: number }>([
+    ServiceOffer.aggregate<{ _id: Types.ObjectId; count: number; subcategoryIds: Array<Types.ObjectId | null> }>([
       {
         $match: {
           providerProfile: { $in: profiles.map((profile) => profile._id) },
@@ -267,7 +267,7 @@ export async function listMarketplaceProviders(cityId?: string) {
           'moderation.status': 'approved',
         },
       },
-      { $group: { _id: '$providerProfile', count: { $sum: 1 } } },
+      { $group: { _id: '$providerProfile', count: { $sum: 1 }, subcategoryIds: { $addToSet: '$subcategoryId' } } },
     ]),
     Business.find({
       status: 'active',
@@ -317,6 +317,7 @@ export async function listMarketplaceProviders(cityId?: string) {
     ...new Set((ids ?? []).map((id) => categoryLabelByKey.get(id)).filter((label): label is string => Boolean(label))),
   ]
   const serviceCountByProfile = new Map(offerCounts.map((row) => [String(row._id), row.count]))
+  const offerSubcategoriesByProfile = new Map(offerCounts.map((row) => [String(row._id), row.subcategoryIds ?? []]))
   const companyByMember = new Map<string, { name: string; website?: string; phone?: string }>()
   for (const business of teamBusinesses) {
     for (const owner of business.owners ?? []) {
@@ -371,6 +372,11 @@ export async function listMarketplaceProviders(cityId?: string) {
       modes: profile.modes ?? [],
       categories: profile.categories ?? [],
       categoryLabels: categoryLabelsFor(profile.categories),
+      subcategoryIds: [
+        ...new Set([...(profile.subcategoryIds ?? []), ...(offerSubcategoriesByProfile.get(String(profile._id)) ?? [])]
+          .filter((id): id is Types.ObjectId => Boolean(id))
+          .map(String)),
+      ],
       specializations: profile.specializations ?? [],
       yearsOfExperience: profile.yearsOfExperience,
       experience: profile.experience || '',

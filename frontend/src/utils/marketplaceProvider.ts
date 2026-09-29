@@ -66,6 +66,7 @@ export function normalizeMarketplaceProvider(raw: unknown): MarketplaceProvider 
     modes: textList(raw.modes).filter((mode): mode is 'online' | 'on_site' => mode === 'online' || mode === 'on_site'),
     categories: textList(raw.categories),
     categoryLabels: textList(raw.categoryLabels),
+    subcategoryIds: textList(raw.subcategoryIds),
     specializations: textList(raw.specializations),
     yearsOfExperience: finiteNumber(raw.yearsOfExperience),
     experience: optionalText(raw.experience),

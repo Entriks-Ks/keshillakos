@@ -1,7 +1,7 @@
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import type { ServiceItem, ServiceSearchParams } from '../api/services'
 
-export type MarketplaceTab = 'experts' | 'companies'
+export type MarketplaceTab = 'services' | 'experts' | 'companies'
 export type MarketplaceSort = 'relevance' | 'newest' | 'rating' | 'reviews'
 export type DeliveryFilter = 'all' | 'online' | 'physical'
 export type VerificationFilter = 'all' | 'verified'
@@ -24,7 +24,7 @@ export function serviceDiscoveryRequest(cityId?: string): ServiceSearchParams {
   return cityId ? { cityId } : {}
 }
 
-function isVerified(provider?: { verification?: { identity?: string; business?: string; qualification?: string } } | null) {
+export function isVerified(provider?: { verification?: { identity?: string; business?: string; qualification?: string } } | null) {
   const v = provider?.verification
   if (!v) return false
   return v.identity === 'verified' || v.business === 'verified' || v.qualification === 'verified'
@@ -94,6 +94,7 @@ export function filterMarketplaceProviders(
     if (provider.providerType !== type) return false
     if (filters.categoryId !== 'all' && !provider.categories.includes(filters.categoryId)
       && !provider.categoryLabels.includes(filters.categoryId)) return false
+    if (filters.subcategoryId !== 'all' && !provider.subcategoryIds.includes(filters.subcategoryId)) return false
     if (filters.delivery === 'online' && !provider.modes.includes('online')) return false
     if (filters.delivery === 'physical' && !provider.modes.includes('on_site')) return false
     if (filters.language !== 'all' && !provider.languages.includes(filters.language)) return false
