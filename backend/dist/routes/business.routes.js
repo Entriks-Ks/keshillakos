@@ -144,6 +144,17 @@ router.post('/:id/logo', auth_1.requireAuth, (0, auth_1.requireRole)('company', 
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i logos dështoi' });
     }
 });
+router.post('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.profilePhotoUpload), async (req, res) => {
+    try {
+        const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për sfondin');
+        const coverUrl = (0, mediaService_1.toPublicUploadPath)('profiles', file.filename);
+        const business = await (0, businessService_1.updateBusiness)(req.user.uid, String(req.params.id), { coverUrl });
+        return res.json({ business: (0, businessService_1.toPublicBusiness)(business) });
+    }
+    catch (err) {
+        return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' });
+    }
+});
 router.patch('/:id/review', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
     try {
         const { status, verification } = req.body;

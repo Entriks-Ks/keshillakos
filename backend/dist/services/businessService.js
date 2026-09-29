@@ -46,6 +46,7 @@ function toPublicBusiness(business) {
         publicName: business.publicName,
         legalName: business.legalName,
         logoUrl: business.logoUrl,
+        coverUrl: business.coverUrl,
         description: business.description,
         website: business.website,
         contactEmail: business.contactEmail,
@@ -159,7 +160,7 @@ async function businessTeam(uid, businessId) {
     const profiles = await ProviderProfile_1.ProviderProfile.find({
         ownerUser: { $in: ids },
         providerType: 'individual',
-    }).select('ownerUser publicProfile categories languages status').lean();
+    }).select('_id ownerUser publicProfile categories languages status').lean();
     const byId = new Map(users.map((user) => [String(user._id), user]));
     const profileByOwner = new Map(profiles.map((profile) => [String(profile.ownerUser), profile]));
     const person = (id) => {
@@ -176,6 +177,7 @@ async function businessTeam(uid, businessId) {
             categories: profile?.categories ?? [],
             languages: profile?.languages ?? [],
             profileStatus: profile?.status || null,
+            providerProfileId: profile ? String(profile._id) : null,
         };
     };
     return {
@@ -363,6 +365,17 @@ async function updateBusiness(uid, businessId, changes) {
             if (!path)
                 throw new Error('Logoja nuk është e vlefshme');
             business.logoUrl = path;
+        }
+    }
+    if (changes.coverUrl !== undefined) {
+        if (changes.coverUrl === null || !changes.coverUrl.trim()) {
+            business.coverUrl = undefined;
+        }
+        else {
+            const path = (0, mediaService_1.normalizeUploadPath)(changes.coverUrl);
+            if (!path)
+                throw new Error('Fotoja e sfondit nuk është e vlefshme');
+            business.coverUrl = path;
         }
     }
     if (changes.description !== undefined)

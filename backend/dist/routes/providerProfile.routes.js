@@ -38,9 +38,10 @@ const certificationsInput = zod_1.z.array(zod_1.z.object({
     year: zod_1.z.number().int().min(1950).max(2100),
     credentialUrl: zod_1.z.string().trim().max(500).optional(),
 })).max(30);
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
     try {
-        return res.json({ providers: (await (0, providerProfileService_1.listPublishedProviderProfiles)()).map(providerProfileService_1.toPublicProvider) });
+        const cityId = typeof req.query.cityId === 'string' ? req.query.cityId : undefined;
+        return res.json({ providers: await (0, providerProfileService_1.listMarketplaceProviders)(cityId) });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Profilet nuk u ngarkuan' });
@@ -162,6 +163,17 @@ router.post('/:id/photo', auth_1.requireAuth, (0, auth_1.requireRole)('provider'
     }
     catch (err) {
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi' });
+    }
+});
+router.post('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.profilePhotoUpload), async (req, res) => {
+    try {
+        const file = (0, mediaService_1.requireUploadedImage)(req, 'Zgjidh një foto për sfondin');
+        const coverUrl = (0, mediaService_1.toPublicUploadPath)('profiles', file.filename);
+        const provider = await (0, providerProfileService_1.updateProviderCover)(req.user.uid, String(req.params.id), coverUrl);
+        return res.json({ provider: (0, providerProfileService_1.toPublicProvider)(provider) });
+    }
+    catch (err) {
+        return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' });
     }
 });
 router.patch('/:id/moderation', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {

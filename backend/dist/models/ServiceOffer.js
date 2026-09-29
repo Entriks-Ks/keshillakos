@@ -40,6 +40,7 @@ exports.serviceOfferSchema = new mongoose_1.Schema({
     portal: { type: String, required: true, trim: true, lowercase: true },
     providerProfile: { type: mongoose_1.Schema.Types.ObjectId, ref: 'ProviderProfile', required: true },
     business: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Business' },
+    staffUser: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
     category: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Category', required: true },
     categoryVersion: { type: Number, required: true, min: 1 },
     name: { type: String, required: true, trim: true, minlength: 1, maxlength: 160 },

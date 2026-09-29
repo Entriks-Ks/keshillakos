@@ -19,7 +19,8 @@ const crypto_1 = __importDefault(require("crypto"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const multer_1 = __importDefault(require("multer"));
-exports.UPLOADS_ROOT = path_1.default.resolve(process.cwd(), 'uploads');
+/** Must be a persistent disk in production (e.g. a Render disk mount); the default is wiped on each deploy/restart there. */
+exports.UPLOADS_ROOT = path_1.default.resolve(process.env.UPLOADS_DIR || path_1.default.join(process.cwd(), 'uploads'));
 exports.MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 exports.MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 exports.MAX_SERVICE_PHOTOS = 8;

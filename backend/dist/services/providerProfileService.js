@@ -3,11 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateProviderLocations = validateProviderLocations;
 exports.createProviderProfile = createProviderProfile;
 exports.listMyProviderProfiles = listMyProviderProfiles;
+exports.ensureBusinessProviderProfile = ensureBusinessProviderProfile;
 exports.listPublishedProviderProfiles = listPublishedProviderProfiles;
 exports.assertCanManageProvider = assertCanManageProvider;
 exports.toPublicProvider = toPublicProvider;
+exports.listMarketplaceProviders = listMarketplaceProviders;
 exports.updateProviderProfile = updateProviderProfile;
 exports.updateProviderPhoto = updateProviderPhoto;
+exports.updateProviderCover = updateProviderCover;
 exports.moderateProviderProfile = moderateProviderProfile;
 exports.providerProfilesToLegacyExperts = providerProfilesToLegacyExperts;
 const mongoose_1 = require("mongoose");
@@ -16,6 +19,7 @@ const Category_1 = require("../models/Category");
 const City_1 = require("../models/City");
 const Country_1 = require("../models/Country");
 const ProviderProfile_1 = require("../models/ProviderProfile");
+const ServiceOffer_1 = require("../models/ServiceOffer");
 const Subcategory_1 = require("../models/Subcategory");
 const User_1 = require("../models/User");
 const socialLinks_1 = require("../models/socialLinks");
@@ -23,6 +27,7 @@ const providerCareer_1 = require("../models/providerCareer");
 const domainService_1 = require("./domainService");
 const businessService_1 = require("./businessService");
 const mediaService_1 = require("./mediaService");
+const ratingService_1 = require("./ratingService");
 async function validateSubcategoryIds(categoryStableIds, subcategoryIds) {
     if (subcategoryIds === undefined)
         return;
@@ -84,15 +89,16 @@ async function createProviderProfile(input) {
     const owner = await User_1.User.findById(ownerUser).select('firstName lastName name profilePhoto').lean();
     if (!owner)
         throw new Error('Përdoruesi nuk u gjet');
-    const displayName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim()
-        || owner.name?.trim()
-        || input.publicProfile.displayName?.trim();
+    const personalName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim() || owner.name?.trim();
+    const displayName = input.providerType === 'business'
+        ? (input.publicProfile.displayName?.trim() || personalName)
+        : (personalName || input.publicProfile.displayName?.trim());
     if (!displayName)
         throw new Error('Emri i përdoruesit është i detyrueshëm');
     const publicProfile = {
         ...input.publicProfile,
         displayName,
-        photoUrl: input.publicProfile.photoUrl || owner.profilePhoto,
+        photoUrl: input.publicProfile.photoUrl || (input.providerType === 'business' ? undefined : owner.profilePhoto),
     };
     return ProviderProfile_1.ProviderProfile.create({
         providerType: input.providerType,
@@ -121,6 +127,40 @@ async function listMyProviderProfiles(uid) {
             { ownerUser: userId },
             { business: { $in: managedBusinesses.map((business) => business._id) } },
         ] }).sort({ createdAt: -1 });
+}
+/** Find or create the company ProviderProfile used for company-owned service offers. */
+async function ensureBusinessProviderProfile(uid, businessId, categoryStableId) {
+    if (!mongoose_1.Types.ObjectId.isValid(businessId))
+        throw new Error('Business ID i pavlefshëm');
+    const { business } = await (0, businessService_1.ownedBusinessById)(uid, businessId);
+    const existing = await ProviderProfile_1.ProviderProfile.findOne({ business: business._id, providerType: 'business' });
+    if (existing) {
+        if (existing.status === 'suspended')
+            throw new Error('Profili i kompanisë është pezulluar');
+        if (categoryStableId && !existing.categories.includes(categoryStableId)) {
+            existing.categories.push(categoryStableId);
+            await existing.save();
+        }
+        return existing;
+    }
+    return createProviderProfile({
+        ownerUid: uid,
+        providerType: 'business',
+        businessId: String(business._id),
+        categories: [categoryStableId],
+        languages: [],
+        modes: ['online', 'on_site'],
+        location: business.location
+            ? { countryId: String(business.location.countryId), cityId: String(business.location.cityId) }
+            : undefined,
+        publicProfile: {
+            displayName: business.publicName,
+            description: business.description,
+            photoUrl: business.logoUrl,
+            publicEmail: business.contactEmail,
+            publicPhone: business.contactPhone,
+        },
+    });
 }
 async function listPublishedProviderProfiles(cityId) {
     const profiles = await ProviderProfile_1.ProviderProfile.find({
@@ -181,6 +221,168 @@ function toPublicProvider(profile) {
         updatedAt: profile.updatedAt,
     };
 }
+/** Marketplace directory cards (experts + companies) with owner uid and ratings. */
+async function listMarketplaceProviders(cityId) {
+    const profiles = await listPublishedProviderProfiles(cityId);
+    if (!profiles.length)
+        return [];
+    const ownerIds = profiles.map((profile) => profile.ownerUser);
+    const businessIds = profiles.map((profile) => profile.business).filter((id) => Boolean(id));
+    const cityIds = profiles.flatMap((profile) => [
+        profile.location?.cityId,
+        ...profile.serviceAreaCityIds,
+    ].filter((id) => Boolean(id)));
+    const categoryKeys = [...new Set(profiles.flatMap((profile) => profile.categories ?? []).filter((id) => typeof id === 'string' && id))];
+    const categoryObjectIds = categoryKeys.filter((id) => mongoose_1.Types.ObjectId.isValid(id) && /^[a-f\d]{24}$/i.test(id));
+    const [users, businesses, cities, categories, offerCounts, teamBusinesses] = await Promise.all([
+        User_1.User.find({ _id: { $in: ownerIds } }).select('uid').lean(),
+        businessIds.length
+            ? Business_1.Business.find({ _id: { $in: businessIds } })
+                .select('publicName logoUrl website contactPhone contactEmail members owners status verification')
+                .lean()
+            : Promise.resolve([]),
+        cityIds.length ? City_1.City.find({ _id: { $in: cityIds } }).select('name.sq').lean() : Promise.resolve([]),
+        categoryKeys.length
+            ? Category_1.Category.find({
+                $or: [
+                    { stableId: { $in: categoryKeys } },
+                    { slug: { $in: categoryKeys } },
+                    ...(categoryObjectIds.length ? [{ _id: { $in: categoryObjectIds } }] : []),
+                ],
+            }).select('stableId slug name.sq labels').lean()
+            : Promise.resolve([]),
+        ServiceOffer_1.ServiceOffer.aggregate([
+            {
+                $match: {
+                    providerProfile: { $in: profiles.map((profile) => profile._id) },
+                    status: 'published',
+                    visibility: 'public',
+                    'moderation.status': 'approved',
+                },
+            },
+            { $group: { _id: '$providerProfile', count: { $sum: 1 } } },
+        ]),
+        Business_1.Business.find({
+            status: 'active',
+            $or: [
+                { owners: { $in: ownerIds } },
+                { 'members.user': { $in: ownerIds } },
+            ],
+        }).select('publicName owners members website contactPhone').lean(),
+    ]);
+    const memberIds = [
+        ...new Set(businesses.flatMap((business) => [
+            ...(business.owners ?? []),
+            ...(business.members ?? []).map((member) => member.user),
+        ]).map(String)),
+    ];
+    const featuredProfiles = memberIds.length
+        ? await ProviderProfile_1.ProviderProfile.find({
+            ownerUser: { $in: memberIds },
+            providerType: 'individual',
+            status: 'published',
+            'moderation.status': 'approved',
+        }).select('ownerUser publicProfile').lean()
+        : [];
+    const featuredUsers = featuredProfiles.length
+        ? await User_1.User.find({ _id: { $in: featuredProfiles.map((profile) => profile.ownerUser) } }).select('uid').lean()
+        : [];
+    const featuredUidByOwner = new Map(featuredUsers.map((user) => [String(user._id), user.uid || '']));
+    const featuredByOwner = new Map(featuredProfiles.map((profile) => [String(profile.ownerUser), profile]));
+    const uidByOwner = new Map(users.map((user) => [String(user._id), user.uid || '']));
+    const businessById = new Map(businesses.map((business) => [String(business._id), business]));
+    const cityNameById = new Map(cities.map((city) => [String(city._id), city.name.sq]));
+    const categoryLabelByKey = new Map();
+    for (const category of categories) {
+        const labels = category.labels;
+        const fromMap = labels instanceof Map ? labels.get('sq') : labels?.sq;
+        const label = fromMap || category.name?.sq;
+        if (!label)
+            continue;
+        for (const key of [String(category._id), category.stableId, category.slug]) {
+            if (key)
+                categoryLabelByKey.set(key, label);
+        }
+    }
+    const categoryLabelsFor = (ids) => [
+        ...new Set((ids ?? []).map((id) => categoryLabelByKey.get(id)).filter((label) => Boolean(label))),
+    ];
+    const serviceCountByProfile = new Map(offerCounts.map((row) => [String(row._id), row.count]));
+    const companyByMember = new Map();
+    for (const business of teamBusinesses) {
+        for (const owner of business.owners ?? []) {
+            companyByMember.set(String(owner), {
+                name: business.publicName,
+                website: business.website,
+                phone: business.contactPhone,
+            });
+        }
+        for (const member of business.members ?? []) {
+            companyByMember.set(String(member.user), {
+                name: business.publicName,
+                website: business.website,
+                phone: business.contactPhone,
+            });
+        }
+    }
+    const ratings = await (0, ratingService_1.getStatsForProviders)([...uidByOwner.values()].filter(Boolean));
+    return profiles.map((profile) => {
+        const uid = uidByOwner.get(String(profile.ownerUser)) || '';
+        const business = profile.business ? businessById.get(String(profile.business)) : undefined;
+        const rating = ratings.get(uid);
+        const isCompany = profile.providerType === 'business';
+        const locationLabel = (profile.location?.cityId && cityNameById.get(String(profile.location.cityId)))
+            || (profile.serviceAreaCityIds[0] && cityNameById.get(String(profile.serviceAreaCityIds[0])))
+            || profile.serviceAreas[0]?.cityName
+            || profile.locations[0]?.cityName
+            || (profile.modes.includes('online') ? 'Online' : '');
+        const name = isCompany
+            ? (business?.publicName || profile.publicProfile.displayName)
+            : profile.publicProfile.displayName;
+        const affiliation = !isCompany ? companyByMember.get(String(profile.ownerUser)) : undefined;
+        const featuredMemberId = isCompany
+            ? [...(business?.members ?? []).map((member) => String(member.user)), ...(business?.owners ?? []).map(String)]
+                .find((id) => featuredByOwner.has(id))
+            : undefined;
+        const featured = featuredMemberId ? featuredByOwner.get(featuredMemberId) : undefined;
+        const featuredUid = featuredMemberId ? featuredUidByOwner.get(featuredMemberId) : undefined;
+        return {
+            id: String(profile._id),
+            uid,
+            providerType: profile.providerType,
+            businessId: profile.business ? String(profile.business) : undefined,
+            name,
+            title: profile.publicProfile.title || '',
+            photoUrl: profile.publicProfile.photoUrl || (isCompany ? business?.logoUrl : undefined) || '',
+            description: profile.publicProfile.shortDescription || profile.publicProfile.description || profile.experience || '',
+            location: locationLabel || '',
+            languages: profile.languages ?? [],
+            modes: profile.modes ?? [],
+            categories: profile.categories ?? [],
+            categoryLabels: categoryLabelsFor(profile.categories),
+            specializations: profile.specializations ?? [],
+            yearsOfExperience: profile.yearsOfExperience,
+            experience: profile.experience || '',
+            verification: profile.verification,
+            ratingAverage: rating?.average ?? 0,
+            ratingCount: rating?.count ?? 0,
+            expertCount: isCompany ? (business?.members?.length ?? 0) : undefined,
+            serviceCount: serviceCountByProfile.get(String(profile._id)) ?? 0,
+            publicPhone: profile.publicProfile.publicPhone || business?.contactPhone || affiliation?.phone || '',
+            publicEmail: profile.publicProfile.publicEmail || business?.contactEmail || '',
+            website: business?.website || affiliation?.website || '',
+            companyName: affiliation?.name || '',
+            featuredExpert: featured && featuredUid ? {
+                uid: featuredUid,
+                name: featured.publicProfile.displayName,
+                title: featured.publicProfile.title || '',
+                photoUrl: featured.publicProfile.photoUrl || '',
+            } : undefined,
+            updatedAt: profile.updatedAt,
+            createdAt: profile.createdAt,
+        };
+    }).filter((item) => Boolean(item.uid));
+}
 async function updateProviderProfile(uid, id, changes) {
     const profile = await loadManagedProvider(uid, id);
     await validateProviderLocations(changes.location, changes.serviceAreaCityIds);
@@ -239,10 +441,10 @@ async function updateProviderProfile(uid, id, changes) {
     if (changes.qualificationClaims !== undefined)
         profile.qualificationClaims = changes.qualificationClaims;
     if (changes.publicProfile !== undefined) {
-        for (const key of ['displayName', 'title', 'shortDescription', 'description', 'photoUrl', 'publicEmail', 'publicPhone']) {
+        for (const key of ['displayName', 'title', 'shortDescription', 'description', 'photoUrl', 'coverUrl', 'publicEmail', 'publicPhone']) {
             if (changes.publicProfile[key] !== undefined) {
                 const value = changes.publicProfile[key];
-                if (key === 'photoUrl' && value) {
+                if ((key === 'photoUrl' || key === 'coverUrl') && value) {
                     const path = (0, mediaService_1.normalizeUploadPath)(value);
                     if (!path)
                         throw new Error('Fotoja e profilit nuk është e vlefshme');
@@ -264,6 +466,12 @@ async function updateProviderPhoto(uid, id, photoUrl) {
     if (!path)
         throw new Error('Rruga e fotos nuk është e vlefshme');
     return updateProviderProfile(uid, id, { publicProfile: { photoUrl: path } });
+}
+async function updateProviderCover(uid, id, coverUrl) {
+    const path = (0, mediaService_1.normalizeUploadPath)(coverUrl);
+    if (!path)
+        throw new Error('Rruga e fotos nuk është e vlefshme');
+    return updateProviderProfile(uid, id, { publicProfile: { coverUrl: path } });
 }
 async function moderateProviderProfile(id, reviewerUid, decision, reason) {
     if (!mongoose_1.Types.ObjectId.isValid(id))

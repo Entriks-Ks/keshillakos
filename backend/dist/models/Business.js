@@ -45,6 +45,7 @@ exports.businessSchema = new mongoose_1.Schema({
     publicName: { type: String, required: true, trim: true, minlength: 1, maxlength: 160 },
     legalName: { type: String, trim: true, maxlength: 200 },
     logoUrl: { type: String, trim: true, maxlength: 500 },
+    coverUrl: { type: String, trim: true, maxlength: 500 },
     description: { type: String, trim: true, maxlength: 3000 },
     website: { type: String, trim: true, maxlength: 500 },
     contactEmail: {

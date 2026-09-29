@@ -21,6 +21,26 @@ const domainService_1 = require("./domainService");
 const mediaService_1 = require("./mediaService");
 const providerProfileService_1 = require("./providerProfileService");
 const ratingService_1 = require("./ratingService");
+async function managedBusinessesFor(userId) {
+    return Business_1.Business.find({
+        $or: [{ owners: userId }, { members: { $elemMatch: { user: userId, role: 'manager' } } }],
+        status: { $nin: ['suspended', 'closed'] },
+    });
+}
+function isTeamMember(business, userId) {
+    return business.owners.some((id) => id.equals(userId))
+        || business.members.some((member) => member.user.equals(userId));
+}
+async function assertStaffOnBusiness(businessId, staffUserId) {
+    if (!mongoose_1.Types.ObjectId.isValid(staffUserId))
+        throw new Error('Eksperti përgjegjës nuk është i vlefshëm');
+    const business = await Business_1.Business.findById(businessId);
+    const staffId = new mongoose_1.Types.ObjectId(staffUserId);
+    if (!business || !isTeamMember(business, staffId)) {
+        throw new Error('Eksperti përgjegjës nuk i përket kompanisë');
+    }
+    return staffId;
+}
 async function managedProfile(ownerUid, providerId) {
     if (!mongoose_1.Types.ObjectId.isValid(providerId))
         throw new Error('Provider ID i pavlefshëm');
@@ -29,12 +49,39 @@ async function managedProfile(ownerUid, providerId) {
     if (!profile || profile.status === 'suspended')
         throw new Error('Profili nuk u gjet');
     const business = profile.business ? await Business_1.Business.findById(profile.business) : null;
-    if (!profile.ownerUser.equals(userId) && (!business || !(0, businessService_1.canManageBusiness)(business, userId))) {
-        throw new Error('Nuk ke leje për këtë profil');
+    if (profile.ownerUser.equals(userId)) {
+        if (business && ['suspended', 'closed'].includes(business.status))
+            throw new Error('Biznesi nuk është aktiv');
+        return profile;
     }
-    if (business && ['suspended', 'closed'].includes(business.status))
-        throw new Error('Biznesi nuk është aktiv');
-    return profile;
+    if (business && (0, businessService_1.canManageBusiness)(business, userId)) {
+        if (['suspended', 'closed'].includes(business.status))
+            throw new Error('Biznesi nuk është aktiv');
+        return profile;
+    }
+    // Company managers may publish under team experts' individual profiles.
+    const managed = await managedBusinessesFor(userId);
+    if (managed.some((item) => isTeamMember(item, profile.ownerUser))) {
+        return profile;
+    }
+    throw new Error('Nuk ke leje për këtë profil');
+}
+async function resolveOfferBusiness(profile, ownerUid, businessId) {
+    if (profile.business)
+        return profile.business;
+    if (!businessId)
+        return undefined;
+    if (!mongoose_1.Types.ObjectId.isValid(businessId))
+        throw new Error('Business ID i pavlefshëm');
+    const userId = await (0, businessService_1.userIdForUid)(ownerUid);
+    const business = await Business_1.Business.findById(businessId);
+    if (!business || !(0, businessService_1.canManageBusiness)(business, userId) || ['suspended', 'closed'].includes(business.status)) {
+        throw new Error('Nuk ke leje për këtë kompani');
+    }
+    if (!isTeamMember(business, profile.ownerUser) && !profile.ownerUser.equals(userId)) {
+        throw new Error('Eksperti nuk i përket kompanisë');
+    }
+    return business._id;
 }
 async function createServiceOffer(input) {
     const portal = input.portal || domainService_1.DEFAULT_PORTAL;
@@ -67,10 +114,18 @@ async function createServiceOffer(input) {
             moderation: { status: 'approved', reviewedAt: new Date() },
         },
     });
+    const offerBusiness = await resolveOfferBusiness(profile, input.ownerUid, input.businessId);
+    let staffUser;
+    if (input.staffUserId) {
+        if (!offerBusiness || profile.providerType !== 'business') {
+            throw new Error('Eksperti përgjegjës vlen vetëm për shërbime të kompanisë');
+        }
+        staffUser = await assertStaffOnBusiness(offerBusiness, input.staffUserId);
+    }
     const extensions = (0, categoryConfiguration_1.validateExtensions)(category.extensionFields, input.extensions);
     const visibility = input.visibility ?? 'public';
     return ServiceOffer_1.ServiceOffer.create({
-        portal, providerProfile: profile._id, business: profile.business,
+        portal, providerProfile: profile._id, business: offerBusiness, staffUser,
         category: category._id, categoryVersion: category.version,
         name: input.name.trim(), subtitle: input.subtitle?.trim(), description: input.description.trim(),
         price: input.price, durationMinutes: input.durationMinutes,
@@ -92,8 +147,17 @@ async function createServiceOffer(input) {
     });
 }
 async function listMyServiceOffers(uid) {
-    const profiles = await (0, providerProfileService_1.listMyProviderProfiles)(uid);
-    return ServiceOffer_1.ServiceOffer.find({ providerProfile: { $in: profiles.map((profile) => profile._id) } }).sort({ createdAt: -1 });
+    const userId = await (0, businessService_1.userIdForUid)(uid);
+    const [profiles, managedBusinesses] = await Promise.all([
+        (0, providerProfileService_1.listMyProviderProfiles)(uid),
+        managedBusinessesFor(userId),
+    ]);
+    return ServiceOffer_1.ServiceOffer.find({
+        $or: [
+            { providerProfile: { $in: profiles.map((profile) => profile._id) } },
+            ...(managedBusinesses.length ? [{ business: { $in: managedBusinesses.map((business) => business._id) } }] : []),
+        ],
+    }).sort({ createdAt: -1 });
 }
 async function listPublishedServiceOffers(providerIds) {
     const offers = await ServiceOffer_1.ServiceOffer.find({
@@ -179,12 +243,30 @@ async function updateServiceOffer(uid, id, changes) {
     }
     if (changes.extensions !== undefined)
         offer.extensions = (0, categoryConfiguration_1.validateExtensions)(category.extensionFields, changes.extensions);
+    let clearStaffUser = false;
+    if (changes.staffUserId !== undefined) {
+        if (changes.staffUserId === null || changes.staffUserId === '') {
+            clearStaffUser = true;
+            offer.set('staffUser', undefined);
+        }
+        else {
+            const profile = await ProviderProfile_1.ProviderProfile.findById(offer.providerProfile).select('providerType').lean();
+            if (!offer.business || profile?.providerType !== 'business') {
+                throw new Error('Eksperti përgjegjës vlen vetëm për shërbime të kompanisë');
+            }
+            offer.staffUser = await assertStaffOnBusiness(offer.business, changes.staffUserId);
+        }
+    }
     offer.categoryVersion = category.version;
     if (offer.visibility === 'public') {
         offer.status = 'published';
         offer.moderation = { status: 'approved', reviewedAt: new Date() };
     }
     await offer.save();
+    if (clearStaffUser) {
+        await ServiceOffer_1.ServiceOffer.updateOne({ _id: offer._id }, { $unset: { staffUser: 1 } });
+        offer.staffUser = undefined;
+    }
     return offer;
 }
 async function deleteServiceOffer(uid, id) {
@@ -211,7 +293,11 @@ async function offersToLegacyServices(offers, publicOnly = false) {
     const cityNameById = new Map(cities.map((city) => [String(city._id), city.name.sq]));
     const categoryById = new Map(categories.map((category) => [String(category._id), category]));
     const businessById = new Map(businesses.map((business) => [String(business._id), business]));
-    const users = await User_1.User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid profilePhoto headline bio skills languages').lean();
+    const ownerIds = profiles.map((profile) => profile.ownerUser);
+    const staffIds = offers.map((offer) => offer.staffUser).filter((id) => Boolean(id));
+    const users = await User_1.User.find({ _id: { $in: [...ownerIds, ...staffIds] } })
+        .select('uid firstName lastName name profilePhoto headline bio skills languages')
+        .lean();
     const ownerById = new Map(users.map((user) => [String(user._id), user]));
     const ratings = await (0, ratingService_1.getStatsForProviders)(users.map((user) => user.uid).filter(Boolean));
     return offers.map((offer) => {
@@ -221,7 +307,9 @@ async function offersToLegacyServices(offers, publicOnly = false) {
         const owner = profile ? ownerById.get(String(profile.ownerUser)) : undefined;
         const uid = owner?.uid || '';
         const rating = ratings.get(uid);
-        const providerName = profile?.publicProfile.displayName || business?.publicName || '';
+        const providerName = profile?.providerType === 'business'
+            ? (business?.publicName || profile.publicProfile.displayName || '')
+            : (profile?.publicProfile.displayName || business?.publicName || '');
         const extensions = { ...offer.extensions };
         if (publicOnly)
             delete extensions.licenseNumber;
@@ -229,10 +317,22 @@ async function offersToLegacyServices(offers, publicOnly = false) {
             extensions.photos = offer.photos;
         const area = offer.serviceAreas[0]?.cityName || (profile?.serviceAreaCityIds[0] && cityNameById.get(String(profile.serviceAreaCityIds[0]))) ||
             (profile?.location?.cityId && cityNameById.get(String(profile.location.cityId))) || (offer.modes.includes('online') ? 'Online' : '');
+        const staff = offer.staffUser ? ownerById.get(String(offer.staffUser)) : undefined;
+        const staffName = staff
+            ? ([staff.firstName, staff.lastName].filter(Boolean).join(' ').trim() || staff.name || '')
+            : undefined;
         return {
             id: String(offer._id),
             serviceOfferId: String(offer._id),
             providerId: String(offer.providerProfile), businessId: offer.business ? String(offer.business) : undefined,
+            staffUserId: offer.staffUser ? String(offer.staffUser) : undefined,
+            responsibleExpert: staff ? {
+                id: String(offer.staffUser),
+                uid: staff.uid || '',
+                name: staffName || 'Ekspert',
+                headline: staff.headline || '',
+                photoUrl: staff.profilePhoto || '',
+            } : undefined,
             title: offer.name, description: offer.description,
             categoryId: category?.stableId || '', categoryLabel: category?.labels.get('sq') || category?.name?.sq || '', category: category?.labels.get('sq') || category?.name?.sq || '',
             subcategory: offer.subtitle || '', subcategoryId: offer.subcategoryId ? String(offer.subcategoryId) : undefined, location: area,
@@ -241,10 +341,26 @@ async function offersToLegacyServices(offers, publicOnly = false) {
             provider: {
                 uid, name: providerName, email: profile?.publicProfile.publicEmail || '',
                 role: profile?.providerType === 'business' ? 'company' : 'provider', roleLabel: 'Ofrues',
+                providerType: profile?.providerType,
                 headline: profile?.publicProfile.title || owner?.headline || '', bio: profile?.publicProfile.description || owner?.bio || '',
                 location: area, skills: owner?.skills || [], languages: profile?.languages?.length ? profile.languages : owner?.languages || [],
                 profilePhoto: profile?.publicProfile.photoUrl || owner?.profilePhoto || '',
                 ratingAverage: rating?.average ?? 0, ratingCount: rating?.count ?? 0,
+                yearsOfExperience: profile?.yearsOfExperience,
+                experience: profile?.experience || '',
+                certifications: (profile?.certifications ?? []).map((item) => ({
+                    name: item.name,
+                    issuer: item.issuer,
+                    year: item.year,
+                    credentialUrl: item.credentialUrl,
+                })),
+                verification: profile?.verification
+                    ? {
+                        identity: profile.verification.identity,
+                        business: profile.verification.business,
+                        qualification: profile.verification.qualification,
+                    }
+                    : undefined,
             },
             active: offer.status === 'published' && offer.moderation.status === 'approved',
             createdAt: offer.createdAt,

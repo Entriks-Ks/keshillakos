@@ -68,6 +68,7 @@ exports.providerProfileSchema = new mongoose_1.Schema({
         shortDescription: { type: String, trim: true, maxlength: 300 },
         description: { type: String, trim: true, maxlength: 3000 },
         photoUrl: { type: String, trim: true, maxlength: 500 },
+        coverUrl: { type: String, trim: true, maxlength: 500 },
         publicEmail: { type: String, trim: true, lowercase: true },
         publicPhone: { type: String, trim: true },
     },

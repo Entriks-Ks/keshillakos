@@ -75,13 +75,16 @@ export async function getPublicProviderProfile(uid: string) {
 
   const owner = await User.findOne({ uid: user.uid }).select('_id').lean()
   let coverPhoto = ''
+  let profilePhoto = provider.profilePhoto
   if (owner) {
     if (user.role === 'company') {
-      const business = await Business.findOne({ owners: owner._id }).select('coverUrl').lean()
+      const business = await Business.findOne({ owners: owner._id }).select('coverUrl logoUrl').lean()
       coverPhoto = business?.coverUrl || ''
+      profilePhoto = business?.logoUrl || profilePhoto
     } else {
-      const profile = await ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile.coverUrl').lean()
+      const profile = await ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile.coverUrl publicProfile.photoUrl').lean()
       coverPhoto = profile?.publicProfile?.coverUrl || ''
+      profilePhoto = profilePhoto || profile?.publicProfile?.photoUrl || ''
     }
   }
 
@@ -95,7 +98,7 @@ export async function getPublicProviderProfile(uid: string) {
     location: provider.location,
     skills: provider.skills,
     languages: provider.languages,
-    profilePhoto: provider.profilePhoto,
+    profilePhoto,
     coverPhoto,
     ratingAverage: provider.ratingAverage,
     ratingCount: provider.ratingCount,

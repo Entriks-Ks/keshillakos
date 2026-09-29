@@ -4,7 +4,8 @@ import path from 'path'
 import multer from 'multer'
 import type { NextFunction, Request, Response } from 'express'
 
-export const UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads')
+/** Must be a persistent disk in production (e.g. a Render disk mount); the default is wiped on each deploy/restart there. */
+export const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads'))
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024
 export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
 export const MAX_SERVICE_PHOTOS = 8

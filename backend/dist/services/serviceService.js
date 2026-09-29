@@ -107,7 +107,7 @@ function legacyService(doc, provider) {
         subcategory: doc.subcategory, location: doc.location, priceFrom: doc.priceFrom,
         details: doc.details ?? {}, providerUid: doc.providerUid,
         providerName: provider?.name || doc.providerName,
-        provider: provider ?? { uid: doc.providerUid, name: doc.providerName, email: '', role: 'unknown', roleLabel: 'Ofrues', headline: '', bio: '', location: '', skills: [], languages: [], profilePhoto: '', ratingAverage: 0, ratingCount: 0 },
+        provider: provider ?? { uid: doc.providerUid, name: doc.providerName, email: '', role: 'unknown', roleLabel: 'Ofrues', headline: '', bio: '', location: '', skills: [], languages: [], profilePhoto: '', coverPhoto: '', ratingAverage: 0, ratingCount: 0 },
         active: doc.active, createdAt: doc.createdAt,
     };
 }
@@ -164,7 +164,15 @@ async function createService(input) {
         throw new Error('Kategoria nuk ekziston');
     const resolved = await resolveCatalogSubcategory(input.categoryId, input.subcategoryId, input.subcategory);
     const extensions = await validateServiceDetails(input.categoryId, input.details);
-    const providerId = input.providerId || await resolveLegacyProvider(input.providerUid, input.providerName, input.categoryId, input.location);
+    let providerId = input.providerId;
+    let businessId = input.businessId;
+    if (!providerId && businessId) {
+        const profile = await (0, providerProfileService_1.ensureBusinessProviderProfile)(input.providerUid, businessId, category.id);
+        providerId = String(profile._id);
+    }
+    if (!providerId) {
+        providerId = await resolveLegacyProvider(input.providerUid, input.providerName, input.categoryId, input.location);
+    }
     const modeValues = Array.isArray(extensions.deliveryModes) ? extensions.deliveryModes : [];
     const online = input.location.trim().toLowerCase() === 'online';
     const modes = [...new Set(modeValues.filter((mode) => mode !== 'group').map((mode) => mode === 'physical' ? 'on_site' : 'online'))];
@@ -176,7 +184,8 @@ async function createService(input) {
         ? extensions.availabilityMode
         : 'request';
     const offer = await (0, serviceOfferService_1.createServiceOffer)({
-        ownerUid: input.providerUid, providerId, categoryId: category.id,
+        ownerUid: input.providerUid, providerId, businessId, staffUserId: input.staffUserId,
+        categoryId: category.id,
         name: input.title, subtitle: resolved.subcategory, description: input.description,
         price: input.priceFrom === undefined ? { model: 'quote' } : { model: 'starting_at', amountFrom: input.priceFrom, currency: 'EUR', amountTo: typeof extensions.priceTo === 'number' ? extensions.priceTo : undefined },
         formats: modeValues.includes('group') ? ['group'] : ['individual'],
@@ -218,6 +227,7 @@ async function updateService(id, uid, input) {
             subcategoryId: resolved.subcategoryId,
             availabilityMode,
             extensions,
+            staffUserId: input.staffUserId,
         });
         const [result] = await (0, serviceOfferService_1.offersToLegacyServices)([updated]);
         return result;
