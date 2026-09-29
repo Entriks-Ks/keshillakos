@@ -85,8 +85,8 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
       tabIndex={0}
       aria-label={`Shiko shërbimin ${service.title}`}
     >
-      <div className="tt-result-avatar" aria-hidden>
-        <ProfileAvatar src={provider?.profilePhoto} seed={providerUid} size="fill" />
+      <div className={`tt-result-avatar${companyOwned ? ' is-company' : ''}`} aria-hidden>
+        <ProfileAvatar src={provider?.profilePhoto} seed={providerUid} size="fill" fit={companyOwned ? 'contain' : 'cover'} />
       </div>
 
       <div className="tt-result-body">

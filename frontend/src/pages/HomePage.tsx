@@ -753,7 +753,7 @@ export default function HomePage() {
                       key={subcategory._id}
                       type="button"
                       className="tt-service-tile"
-                      onClick={() => browseOffers(subcategory.name[catalogLanguage] || subcategory.name.sq, { categoryId: selectedCategoryId, subcategoryId: subcategory._id })}
+                      onClick={() => browseOffers('', { categoryId: selectedCategoryId, subcategoryId: subcategory._id })}
                     >
                       <img
                         src={catalogCardImage(subcategory.slug, selectedCategory?.slug)}

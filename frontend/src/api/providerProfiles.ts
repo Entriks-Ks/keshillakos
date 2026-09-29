@@ -151,6 +151,7 @@ export type MarketplaceProvider = {
   modes: Array<'online' | 'on_site'>
   categories: string[]
   categoryLabels: string[]
+  subcategoryIds: string[]
   specializations: string[]
   yearsOfExperience?: number
   experience?: string
