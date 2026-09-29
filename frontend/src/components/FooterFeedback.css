@@ -127,7 +127,7 @@
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--background);
+  background: var(--surface-muted);
   color: var(--foreground);
   font: inherit;
   font-size: 0.95rem;

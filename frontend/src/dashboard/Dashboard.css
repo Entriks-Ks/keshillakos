@@ -374,9 +374,9 @@
   border-radius: 14px;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--background) 40%, var(--surface)) 0%,
+    color-mix(in srgb, var(--surface-muted) 40%, var(--surface)) 0%,
     color-mix(in srgb, var(--accent) 6%, var(--surface)) 50%,
-    color-mix(in srgb, var(--background) 40%, var(--surface)) 100%
+    color-mix(in srgb, var(--surface-muted) 40%, var(--surface)) 100%
   );
   background-size: 200% 100%;
   animation: dash-stat-shimmer 1.2s ease-in-out infinite;
@@ -479,9 +479,9 @@ a.dash-activity-row:hover {
   min-height: 140px;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--background) 40%, var(--surface)) 0%,
+    color-mix(in srgb, var(--surface-muted) 40%, var(--surface)) 0%,
     color-mix(in srgb, var(--accent) 6%, var(--surface)) 50%,
-    color-mix(in srgb, var(--background) 40%, var(--surface)) 100%
+    color-mix(in srgb, var(--surface-muted) 40%, var(--surface)) 100%
   );
   background-size: 200% 100%;
   animation: dash-stat-shimmer 1.2s ease-in-out infinite;
