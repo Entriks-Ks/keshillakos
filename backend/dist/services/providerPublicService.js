@@ -2,6 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getProvidersPublicDetails = getProvidersPublicDetails;
 exports.getPublicProviderProfile = getPublicProviderProfile;
+const Business_1 = require("../models/Business");
+const ProviderProfile_1 = require("../models/ProviderProfile");
+const User_1 = require("../models/User");
 const roles_1 = require("../types/roles");
 const ratingService_1 = require("./ratingService");
 const userService_1 = require("./userService");
@@ -31,6 +34,7 @@ async function getProvidersPublicDetails(providerUids, fallbackNames = new Map()
             skills: user?.skills ?? [],
             languages: user?.languages ?? [],
             profilePhoto: user?.profilePhoto || '',
+            coverPhoto: '',
             ratingAverage: rating?.average ?? 0,
             ratingCount: rating?.count ?? 0,
         });
@@ -48,6 +52,21 @@ async function getPublicProviderProfile(uid) {
     const provider = details.get(user.uid);
     if (!provider)
         return null;
+    const owner = await User_1.User.findOne({ uid: user.uid }).select('_id').lean();
+    let coverPhoto = '';
+    let profilePhoto = provider.profilePhoto;
+    if (owner) {
+        if (user.role === 'company') {
+            const business = await Business_1.Business.findOne({ owners: owner._id }).select('coverUrl logoUrl').lean();
+            coverPhoto = business?.coverUrl || '';
+            profilePhoto = business?.logoUrl || profilePhoto;
+        }
+        else {
+            const profile = await ProviderProfile_1.ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile.coverUrl publicProfile.photoUrl').lean();
+            coverPhoto = profile?.publicProfile?.coverUrl || '';
+            profilePhoto = profilePhoto || profile?.publicProfile?.photoUrl || '';
+        }
+    }
     return {
         uid: provider.uid,
         name: provider.name,
@@ -58,7 +77,8 @@ async function getPublicProviderProfile(uid) {
         location: provider.location,
         skills: provider.skills,
         languages: provider.languages,
-        profilePhoto: provider.profilePhoto,
+        profilePhoto,
+        coverPhoto,
         ratingAverage: provider.ratingAverage,
         ratingCount: provider.ratingCount,
     };

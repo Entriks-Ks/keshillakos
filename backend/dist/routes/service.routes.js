@@ -90,6 +90,12 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'compan
             providerUid: req.user.uid,
             providerName: req.user.name,
             providerId: typeof req.body.providerId === 'string' ? req.body.providerId : undefined,
+            businessId: typeof req.body.businessId === 'string' ? req.body.businessId : undefined,
+            staffUserId: req.body.staffUserId === null
+                ? null
+                : typeof req.body.staffUserId === 'string'
+                    ? req.body.staffUserId
+                    : undefined,
         });
         return res.status(201).json({ service });
     }
@@ -103,7 +109,14 @@ router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'co
     try {
         const payload = parseServicePayload(req.body);
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-        const service = await (0, serviceService_1.updateService)(id, req.user.uid, payload);
+        const service = await (0, serviceService_1.updateService)(id, req.user.uid, {
+            ...payload,
+            staffUserId: req.body.staffUserId === null
+                ? null
+                : typeof req.body.staffUserId === 'string'
+                    ? req.body.staffUserId
+                    : undefined,
+        });
         return res.json({ service });
     }
     catch (err) {

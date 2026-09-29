@@ -165,13 +165,14 @@ async function updateUserRequestLifecycle(uid, id, status) {
     return listMyUserRequests(uid);
 }
 async function view(request, delivery, providerName = '', providerUid = '') {
-    const owner = await User_1.User.findById(request.user).select('uid firstName lastName email').lean();
+    const owner = await User_1.User.findById(request.user).select('uid firstName lastName name email').lean();
+    const seekerName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ').trim() || owner?.name?.trim() || '';
     return {
         id: delivery ? String(delivery._id) : String(request._id), requestId: String(request._id),
         deliveryId: delivery ? String(delivery._id) : undefined,
         providerId: delivery ? String(delivery.providerProfile) : undefined,
         providerUid,
-        seekerUid: owner?.uid || '', seekerName: [owner?.firstName, owner?.lastName].filter(Boolean).join(' '), seekerEmail: owner?.email || '',
+        seekerUid: owner?.uid || '', seekerName, seekerEmail: owner?.email || '',
         providerName, need: request.problem, message: request.description,
         location: request.location?.cityName || '', language: request.language, urgency: request.urgency,
         contactMethod: request.contactPreference,
