@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { ProgressBar, toast } from '@heroui/react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { fetchMyBusinesses, updateBusinessProfile, uploadBusinessCover, uploadBusinessLogo, type BusinessProfile } from '../api/businesses'
 import { fetchDomains } from '../api/domains'
 import { fetchCategories, fetchSubcategories, type CatalogCategory, type CatalogSubcategory } from '../api/catalog'
-import { IMAGE_ACCEPT, IMAGE_ACCEPT_HINT, mediaUrl, validateImageFile } from '../api/media'
+import { IMAGE_ACCEPT, mediaUrl, validateImageFile } from '../api/media'
 import { locationLabel, resolveProviderLocations, resolveSavedLocation, type LocationSelection } from '../api/locations'
 import {
   emptyCertification,
@@ -34,10 +34,9 @@ import ProfileAvatar from '../components/ProfileAvatar'
 import ProviderLocationFields from '../components/ProviderLocationFields'
 import type { DomainDefinition } from '../data/domains'
 import { domainRequires } from '../data/domains'
-import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { getErrorMessage } from '../utils/errors'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
-import { ROLE_LABELS } from './nav'
+import { UserProfile } from './UserProfilePage'
 import '../pages/ProviderProfilePage.css'
 import './ProfilePanel.css'
 
@@ -122,9 +121,8 @@ function SocialLinksFields({
 
 export default function ProfilePanel() {
   const location = useLocation()
-  const navigate = useNavigate()
   const profileType = profileTypeFromPath(location.pathname)
-  const { user, switchContext } = useAuth()
+  const { user } = useAuth()
   const [completion, setCompletion] = useState<ProfileCompletion | null>(null)
 
   const reloadCompletion = useCallback(async (signal?: AbortSignal) => {
@@ -141,45 +139,6 @@ export default function ProfilePanel() {
   }, [reloadCompletion, user?.uid])
 
   if (!user) return null
-  const roles = user.roles ?? [user.role]
-
-  async function openExpertContext() {
-    try {
-      if (roles.includes('provider')) {
-        await switchContext('provider')
-        navigate('/dashboard/provider/profile')
-        return
-      }
-      navigate('/dashboard/user/become-expert')
-    } catch (err) {
-      toast.danger(getErrorMessage(err))
-    }
-  }
-
-  async function openCompanyContext() {
-    try {
-      if (roles.includes('company')) {
-        await switchContext('company')
-        navigate('/dashboard/company/profile')
-        return
-      }
-      navigate('/dashboard/user/create-company')
-    } catch (err) {
-      toast.danger(getErrorMessage(err))
-    }
-  }
-
-  const title = profileType === 'expert'
-    ? 'Profili i ekspertit'
-    : profileType === 'company'
-      ? 'Profili i kompanisë'
-      : 'Profili privat'
-
-  const description = profileType === 'expert'
-    ? 'Fotoja, titulli, kategoria, bio, specializimet, vitet e përvojës dhe zona e shërbimit janë të detyrueshme. Përvoja e punës, arsimi, certifikimet dhe rrjetet sociale janë opsionale. Emri publik vjen nga profili privat.'
-    : profileType === 'company'
-      ? 'Emri, logo, email, telefoni, qyteti, përshkrimi dhe kategoria janë të detyrueshme. Website, adresa dhe rrjetet sociale janë opsionale.'
-      : 'Emri dhe mbiemri janë të detyrueshme. Fotoja, telefoni, qyteti, gjuhët dhe rrjetet sociale janë opsionale.'
 
   if (profileType === 'expert') {
     return (
@@ -194,191 +153,7 @@ export default function ProfilePanel() {
     return <CompanyProfileSection onSaved={reloadCompletion} completion={completion} />
   }
 
-  const roleKey = user.role
-
-  return (
-    <section className="kk-dash-profile">
-      <div className="kk-profile-cover">
-        <img src="/images/login-advice.png" alt="" />
-      </div>
-      <div className="kk-profile-grid">
-        <aside className="kk-profile-card">
-          <div className="kk-profile-avatar">
-            <ProfileAvatar src={user.profilePhoto} seed={user.uid} alt={user.name} size="fill" />
-          </div>
-          <h1>{user.name}</h1>
-          <p className="kk-profile-role">{user.headline || ROLE_LABELS[roleKey] || title}</p>
-          {user.location ? <p className="kk-profile-location">{user.location}</p> : null}
-          <div className="profile-role-options">
-              <button type="button" className="ghost link-btn" onClick={() => void openExpertContext()}>
-                {roles.includes('provider') ? 'Profili i ekspertit' : 'Bëhu ekspert'}
-              </button>
-              <button type="button" className="ghost link-btn" onClick={() => void openCompanyContext()}>
-                {roles.includes('company') ? 'Profili i kompanisë' : 'Krijo kompaninë'}
-              </button>
-            </div>
-        </aside>
-
-        <div className="kk-profile-panel">
-          <div className="kk-profile-tabs" aria-label="Seksionet e profilit">
-            <button type="button" className="is-active">{title}</button>
-          </div>
-          <div className="kk-profile-sections">
-            <p className="kk-dash-lead">{description}</p>
-            <CompletionCard completion={completion} />
-            <PrivateProfileSection onSaved={reloadCompletion} />
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function PrivateProfileSection({ onSaved }: { onSaved: () => Promise<void> }) {
-  const { user, updateProfile, uploadProfilePhoto } = useAuth()
-  const { languages: languageOptions } = useCatalogOptions()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [city, setCity] = useState<LocationSelection | null>(null)
-  const [languages, setLanguages] = useState<string[]>([])
-  const [socialLinks, setSocialLinks] = useState<SocialLinks>(socialLinksFrom())
-  const [preview, setPreview] = useState('')
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
-
-  useEffect(() => {
-    if (!user) return
-    setFirstName(user.firstName || '')
-    setLastName(user.lastName || '')
-    setPhone(user.phone || '')
-    setLanguages(user.languages || [])
-    setSocialLinks(socialLinksFrom(user.socialLinks))
-    setPreview(mediaUrl(user.profilePhoto))
-  }, [user])
-
-  useEffect(() => {
-    if (!user?.savedLocation) {
-      setCity(null)
-      return
-    }
-    const controller = new AbortController()
-    resolveSavedLocation(user.savedLocation, controller.signal)
-      .then((value) => { if (!controller.signal.aborted) setCity(value) })
-      .catch(() => { if (!controller.signal.aborted) setCity(null) })
-    return () => controller.abort()
-  }, [user?.savedLocation])
-
-  function toggleLanguage(lang: string) {
-    setLanguages((prev) => (prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]))
-  }
-
-  async function onSavePrivate(e: FormEvent) {
-    e.preventDefault()
-    setError('')
-    setSaving(true)
-    try {
-      await updateProfile({
-        firstName,
-        lastName,
-        phone: phone.trim() || null,
-        languages,
-        socialLinks,
-        savedLocation: city
-          ? { countryId: city.country._id, cityId: city.city._id }
-          : null,
-      })
-      await onSaved()
-      toast.success('Profili privat u ruajt.')
-    } catch (err) {
-      toast.danger(getErrorMessage(err))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function onPhotoChange(file: File | undefined) {
-    if (!file || !user) return
-    setError('')
-    try {
-      validateImageFile(file)
-    } catch (err) {
-      setError(getErrorMessage(err))
-      return
-    }
-    setUploading(true)
-    const localPreview = URL.createObjectURL(file)
-    setPreview(localPreview)
-    try {
-      const next = await uploadProfilePhoto(file)
-      setPreview(mediaUrl(next.profilePhoto))
-      await onSaved()
-      toast.success('Fotoja e profilit u ngarkua.')
-    } catch (err) {
-      toast.danger(getErrorMessage(err))
-      setPreview(mediaUrl(user.profilePhoto))
-    } finally {
-      setUploading(false)
-      URL.revokeObjectURL(localPreview)
-    }
-  }
-
-  if (!user) return null
-
-  return (
-    <div className="profile-section-block">
-      <div className="profile-photo-row">
-        <div className="profile-avatar-lg" aria-hidden>
-          <ProfileAvatar src={preview} seed={user.uid} size="fill" />
-        </div>
-        <div className="profile-photo-actions">
-          <label className="primary-btn profile-upload-btn">
-            {uploading ? 'Duke ngarkuar...' : 'Ngarko foto'}
-            <input type="file" accept={IMAGE_ACCEPT} hidden disabled={uploading} onChange={(e) => onPhotoChange(e.target.files?.[0])} />
-          </label>
-          <p className="muted"><FieldHint required={false} /> · {IMAGE_ACCEPT_HINT}</p>
-        </div>
-      </div>
-
-      <form onSubmit={onSavePrivate} className="service-form">
-        <label>
-          Emri <FieldHint required />
-          <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required maxLength={80} autoComplete="given-name" />
-        </label>
-        <label>
-          Mbiemri <FieldHint required />
-          <input value={lastName} onChange={(e) => setLastName(e.target.value)} required maxLength={80} autoComplete="family-name" />
-        </label>
-        <label>
-          Numri i telefonit <FieldHint required={false} />
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+38344123456" inputMode="tel" autoComplete="tel" maxLength={32} />
-        </label>
-        <div className="full field">
-          <span className="profile-inline-label">Qyteti <FieldHint required={false} /></span>
-          <LocationSelector value={city} onChange={setCity} disabled={saving} />
-        </div>
-        <label>
-          Email
-          <input value={user.email} disabled />
-        </label>
-        <fieldset className="full checkbox-fieldset">
-          <legend>Gjuhët <FieldHint required={false} /></legend>
-          {languageOptions.map((lang) => (
-            <label key={lang.id} className="check-row">
-              <input type="checkbox" checked={languages.includes(lang.value)} onChange={() => toggleLanguage(lang.value)} />
-              {lang.label}
-            </label>
-          ))}
-        </fieldset>
-        <SocialLinksFields value={socialLinks} onChange={setSocialLinks} disabled={saving} />
-        {error ? <p className="error full">{error}</p> : null}
-        <button type="submit" className="full" disabled={saving}>
-          {saving ? 'Duke ruajtur...' : 'Ruaj profilin privat'}
-        </button>
-      </form>
-    </div>
-  )
+  return <UserProfile completion={completion} onSaved={reloadCompletion} />
 }
 
 function MonthYearFields({

@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Button, Input, ToggleButton, ToggleButtonGroup } from '@heroui/react'
+import { Button, SearchField, Tabs, ToggleButton } from '@heroui/react'
 import {
+  AlertCircle,
   ArrowUpDown,
   BadgeCheck,
   BriefcaseBusiness,
   Building2,
   ChevronDown,
-  Globe,
-  Search,
   SearchX,
   SlidersHorizontal,
   Star,
   UserRound,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import {
@@ -25,9 +25,9 @@ import {
 import { fetchMarketplaceProviders, type MarketplaceProvider } from '../api/providerProfiles'
 import { fetchActiveServices, type ServiceItem } from '../api/services'
 import CompanyCard from '../components/CompanyCard'
-import { isProviderVerified } from '../components/providerCardUtils'
 import ExpertCard from '../components/ExpertCard'
 import LocationSelector from '../components/LocationSelector'
+import { CardSkeleton } from '../components/ProviderCardParts'
 import ServiceOfferCard from '../components/ServiceOfferCard'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
@@ -38,7 +38,6 @@ import { withCategoryLabels } from '../utils/marketplaceProvider'
 import {
   filterMarketplaceProviders,
   filterVisibleServices,
-  isVerified,
   serviceDiscoveryRequest,
   sortProviders,
   sortServices,
@@ -74,36 +73,34 @@ function parseTab(value: string | null): MarketplaceTab {
   return 'services'
 }
 
+const TABS: Array<{ id: MarketplaceTab; label: string; icon: LucideIcon }> = [
+  { id: 'services', label: 'Shërbime', icon: BriefcaseBusiness },
+  { id: 'companies', label: 'Kompani', icon: Building2 },
+  { id: 'experts', label: 'Ekspertë', icon: UserRound },
+]
+
 const TAB_COPY: Record<MarketplaceTab, {
   placeholder: string
-  total: string
-  verified: string
-  online: string
   empty: string
+  error: string
   result: (count: number) => string
 }> = {
   services: {
     placeholder: 'Kërko shërbim, fushë ose ofrues…',
-    total: 'shërbime',
-    verified: 'nga ofrues të verifikuar',
-    online: 'ofrohen online',
     empty: 'Shërbimet do të shfaqen këtu sapo të publikohen.',
+    error: 'Shërbimet nuk u ngarkuan',
     result: (count) => (count === 1 ? 'shërbim' : 'shërbime'),
   },
   companies: {
     placeholder: 'Kërko kompani ose fushë…',
-    total: 'kompani',
-    verified: 'të verifikuara',
-    online: 'ofrojnë online',
-    empty: 'Profilet do të shfaqen këtu sapo të publikohen.',
+    empty: 'Kompanitë do të shfaqen këtu sapo të publikohen.',
+    error: 'Kompanitë nuk u ngarkuan',
     result: () => 'kompani',
   },
   experts: {
     placeholder: 'Kërko ekspert, profesion ose specialitet…',
-    total: 'ekspertë',
-    verified: 'të verifikuar',
-    online: 'ofrojnë online',
-    empty: 'Profilet do të shfaqen këtu sapo të publikohen.',
+    empty: 'Ekspertët do të shfaqen këtu sapo të publikohen.',
+    error: 'Ekspertët nuk u ngarkuan',
     result: (count) => (count === 1 ? 'ekspert' : 'ekspertë'),
   },
 }
@@ -126,18 +123,27 @@ function FilterSection({ title, children }: { title: string; children: ReactNode
   )
 }
 
-function ResultSkeleton() {
+function ResultsState({
+  icon: Icon,
+  tone = 'neutral',
+  title,
+  text,
+  action,
+}: {
+  icon: LucideIcon
+  tone?: 'neutral' | 'danger'
+  title: string
+  text: string
+  action?: ReactNode
+}) {
   return (
-    <div className="of-skeleton" aria-hidden>
-      <div className="of-skeleton-row">
-        <span className="of-skeleton-block is-avatar" />
-        <div className="of-skeleton-lines">
-          <span className="of-skeleton-block is-title" />
-          <span className="of-skeleton-block is-line" />
-          <span className="of-skeleton-block is-line is-short" />
-        </div>
-      </div>
-      <span className="of-skeleton-block is-action" />
+    <div className={`of-state is-${tone}`} role={tone === 'danger' ? 'alert' : undefined}>
+      <span className="of-state-icon" aria-hidden>
+        <Icon size={22} />
+      </span>
+      <h2>{title}</h2>
+      <p>{text}</p>
+      {action}
     </div>
   )
 }
@@ -155,6 +161,7 @@ export default function OffersPage() {
   const [providersError, setProvidersError] = useState('')
   const [servicesLoading, setServicesLoading] = useState(true)
   const [servicesError, setServicesError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
   const tabParam = searchParams.get('tab')
   const [tab, setTab] = useState<MarketplaceTab>(() => parseTab(tabParam))
   const [syncedTabParam, setSyncedTabParam] = useState(tabParam)
@@ -269,7 +276,7 @@ export default function OffersPage() {
         if (!controller.signal.aborted) setServicesLoading(false)
       })
     return () => controller.abort()
-  }, [cityId, locationLoading])
+  }, [cityId, locationLoading, reloadKey])
 
   useEffect(() => {
     const next = new URLSearchParams()
@@ -307,27 +314,13 @@ export default function OffersPage() {
   const copy = TAB_COPY[tab]
   const loading = tab === 'services' ? servicesLoading : providersLoading
   const error = tab === 'services' ? servicesError : providersError
-  const resultCount = tab === 'services'
-    ? filteredServices.length
-    : (tab === 'experts' ? filteredExperts : filteredCompanies).length
+  const tabCounts: Record<MarketplaceTab, number | null> = {
+    services: servicesLoading ? null : filteredServices.length,
+    companies: providersLoading ? null : filteredCompanies.length,
+    experts: providersLoading ? null : filteredExperts.length,
+  }
+  const resultCount = tabCounts[tab] ?? 0
   const resultLabel = copy.result(resultCount)
-
-  const tabStats = useMemo(() => {
-    if (tab === 'services') {
-      return {
-        total: services.length,
-        verified: services.filter((item) => isVerified(item.provider)).length,
-        online: services.filter((item) => item.details?.deliveryModes?.includes('online')).length,
-      }
-    }
-    const type = tab === 'experts' ? 'individual' : 'business'
-    const ofType = providers.filter((item) => item.providerType === type)
-    return {
-      total: ofType.length,
-      verified: ofType.filter(isProviderVerified).length,
-      online: ofType.filter((item) => item.modes.includes('online')).length,
-    }
-  }, [providers, services, tab])
 
   const languageLabel = languages.find((item) => item.value === language)?.label ?? language
   const ratingLabel = RATING_FILTERS.find((item) => item.id === minRating)?.label
@@ -382,22 +375,9 @@ export default function OffersPage() {
     if (selectedLocation) void changeLocation(null)
   }
 
-  function onEntityChange(keys: Set<string | number | bigint>) {
-    const next = [...keys][0]
-    if (next === 'services' || next === 'experts' || next === 'companies') setTab(next)
+  function onTabChange(key: string | number) {
+    if (key === 'services' || key === 'experts' || key === 'companies') setTab(key)
   }
-
-  const sortSelect = (
-    <select
-      value={sort}
-      onChange={(e) => setSort(e.target.value as MarketplaceSort)}
-      aria-label="Rendit rezultatet"
-    >
-      {SORT_OPTIONS.map((item) => (
-        <option key={item.id} value={item.id}>{item.label}</option>
-      ))}
-    </select>
-  )
 
   const filterSections = (
     <>
@@ -461,7 +441,7 @@ export default function OffersPage() {
               isSelected={minRating === item.id}
               onChange={() => setMinRating(item.id)}
             >
-              {item.id ? <Star size={14} aria-hidden className="of-chip-star" /> : null}
+              {item.id ? <Star size={13} aria-hidden className="of-chip-star" /> : null}
               {item.label}
             </ToggleButton>
           ))}
@@ -510,11 +490,83 @@ export default function OffersPage() {
           isSelected={verification === 'verified'}
           onChange={(selected) => setVerification(selected ? 'verified' : 'all')}
         >
-          <BadgeCheck size={16} aria-hidden />
+          <BadgeCheck size={15} aria-hidden />
           Vetëm profilet e verifikuara
         </ToggleButton>
       </FilterSection>
     </>
+  )
+
+  function renderResults(panel: MarketplaceTab) {
+    if (loading) {
+      return (
+        <>
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </>
+      )
+    }
+    if (error) {
+      return (
+        <ResultsState
+          icon={AlertCircle}
+          tone="danger"
+          title={copy.error}
+          text={error}
+          action={(
+            <Button variant="outline" onPress={() => setReloadKey((value) => value + 1)}>
+              Provo përsëri
+            </Button>
+          )}
+        />
+      )
+    }
+    if (resultCount === 0) {
+      return (
+        <ResultsState
+          icon={SearchX}
+          title={hasActiveFilters ? 'Asnjë rezultat me këto filtra' : 'Ende nuk ka rezultate'}
+          text={hasActiveFilters
+            ? 'Provo të heqësh disa filtra ose të kërkosh me fjalë të tjera.'
+            : cityId
+              ? 'Nuk ka rezultate të publikuara në qytetin e zgjedhur.'
+              : copy.empty}
+          action={hasActiveFilters ? (
+            <Button variant="primary" onPress={clearFilters}>Pastro filtrat</Button>
+          ) : undefined}
+        />
+      )
+    }
+    if (panel === 'services') {
+      return filteredServices.map((service) => (
+        <ServiceOfferCard
+          key={service.id}
+          service={service}
+          provider={providersByUid.get(service.provider?.uid || service.providerUid)}
+        />
+      ))
+    }
+    if (panel === 'experts') {
+      return filteredExperts.map((provider) => <ExpertCard key={provider.id} provider={provider} />)
+    }
+    return filteredCompanies.map((provider) => <CompanyCard key={provider.id} provider={provider} />)
+  }
+
+  const sortSelect = (
+    <label className="of-sort">
+      <ArrowUpDown size={15} aria-hidden />
+      <select
+        value={sort}
+        onChange={(e) => setSort(e.target.value as MarketplaceSort)}
+        aria-label="Rendit rezultatet"
+      >
+        {SORT_OPTIONS.map((item) => (
+          <option key={item.id} value={item.id}>{item.label}</option>
+        ))}
+      </select>
+      <ChevronDown size={15} aria-hidden className="of-sort-caret" />
+    </label>
   )
 
   return (
@@ -522,234 +574,126 @@ export default function OffersPage() {
       <SiteNav />
 
       <main className="of-page">
-        <section className="of-hero" aria-labelledby="offers-heading">
-          <div className="of-hero-inner">
-            <p className="of-eyebrow">
-              Ofertat · KëshillaKos
-            </p>
-            <h1 id="offers-heading">
-              Gjej profesionistin e duhur, <span>pa humbur kohë.</span>
-            </h1>
-            <p className="of-hero-lead">
-              Krahaso shërbime, kompani dhe ekspertë sipas fushës, vlerësimeve dhe lokacionit — pastaj kontakto direkt.
-            </p>
+        <Tabs selectedKey={tab} onSelectionChange={onTabChange} className="of-tabs">
+          <header className="of-head">
+            <div className="of-inner">
+              <h1 id="offers-heading">Ofertat</h1>
+              <p className="of-lead">
+                Zbulo shërbime, kompani dhe ekspertë në KëshillaKos. Krahaso sipas fushës, vlerësimeve dhe lokacionit,
+                pastaj kontakto direkt.
+              </p>
+              <Tabs.ListContainer className="of-tabs-bar">
+                <Tabs.List aria-label="Lloji i ofertave">
+                  {TABS.map(({ id, label, icon: Icon }) => (
+                    <Tabs.Tab key={id} id={id} className="of-tab">
+                      <Icon size={16} aria-hidden className="of-tab-icon" />
+                      {label}
+                      {tabCounts[id] != null ? <span className="of-tab-count">{tabCounts[id]}</span> : null}
+                      <Tabs.Indicator className="of-tab-indicator" />
+                    </Tabs.Tab>
+                  ))}
+                </Tabs.List>
+              </Tabs.ListContainer>
+            </div>
+          </header>
 
-            <div className="of-searchbar" role="search">
-              <div className="of-searchbar-field">
-                <Search size={20} aria-hidden />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={copy.placeholder}
-                  aria-label="Kërko oferta"
-                  fullWidth
-                />
-                {query ? (
-                  <button
-                    type="button"
-                    className="of-searchbar-clear"
-                    aria-label="Pastro kërkimin"
-                    onClick={() => setQuery('')}
-                  >
-                    <X size={16} />
-                  </button>
-                ) : null}
-              </div>
-              <span className="of-searchbar-divider" aria-hidden />
-              <div className="of-searchbar-location">
+          <div className="of-inner of-body">
+            <div className="of-search" role="search">
+              <SearchField
+                aria-label="Kërko oferta"
+                value={query}
+                onChange={setQuery}
+                fullWidth
+                className="of-search-field"
+              >
+                <SearchField.Group>
+                  <SearchField.SearchIcon />
+                  <SearchField.Input placeholder={copy.placeholder} />
+                  <SearchField.ClearButton aria-label="Pastro kërkimin" />
+                </SearchField.Group>
+              </SearchField>
+              <div className="of-search-location">
                 <LocationSelector
                   value={selectedLocation}
                   onChange={(value) => { void changeLocation(value) }}
                   disabled={locationLoading || locationSaving}
-                  className="tt-location-selector--hero of-location"
+                  className="of-location"
                 />
               </div>
+              <Button variant="outline" className="of-filter-btn" onPress={() => setFiltersOpen(true)}>
+                <SlidersHorizontal size={16} aria-hidden />
+                Filtrat
+                {sheetFilterCount > 0 ? <span className="of-badge">{sheetFilterCount}</span> : null}
+              </Button>
             </div>
 
-            <ul className="of-hero-stats" aria-label="Përmbledhje">
-              <li>
-                {tab === 'services'
-                  ? <BriefcaseBusiness size={16} aria-hidden />
-                  : tab === 'experts' ? <UserRound size={16} aria-hidden /> : <Building2 size={16} aria-hidden />}
-                <strong>{loading ? '—' : tabStats.total}</strong>
-                {copy.total}
-              </li>
-              <li>
-                <BadgeCheck size={16} aria-hidden />
-                <strong>{loading ? '—' : tabStats.verified}</strong>
-                {copy.verified}
-              </li>
-              <li>
-                <Globe size={16} aria-hidden />
-                <strong>{loading ? '—' : tabStats.online}</strong>
-                {copy.online}
-              </li>
-            </ul>
-
-          </div>
-        </section>
-
-        <section className="of-body">
-          <div className="of-body-inner">
-            <aside className="of-sidebar" aria-label="Filtrat">
-              <div className="of-sidebar-card">
-                <div className="of-sidebar-head">
-                  <h2>
-                    <SlidersHorizontal size={18} aria-hidden />
-                    Filtrat
-                  </h2>
-                  {hasActiveFilters ? (
-                    <button type="button" className="of-link-btn" onClick={clearFilters}>
-                      Pastro
-                    </button>
-                  ) : null}
-                </div>
-                {filterSections}
-              </div>
-            </aside>
-
-            <div className="of-results">
-              <div className="tt-offers-filter-panel">
-                <p className="tt-offers-filter-label">Filtro sipas</p>
-                <ToggleButtonGroup
-                  className="tt-offers-entity-switch"
-                  selectionMode="single"
-                  selectedKeys={new Set([tab])}
-                  onSelectionChange={onEntityChange}
-                  disallowEmptySelection
-                  fullWidth
-                  size="lg"
-                  aria-label="Filtro sipas shërbimeve, kompanive ose ekspertëve"
-                >
-                  <ToggleButton id="services" className="tt-offers-entity-option">
-                    <span>Shërbimet</span>
-                    <span className="tt-offers-entity-icon" aria-hidden>
-                      <BriefcaseBusiness size={18} />
-                    </span>
-                  </ToggleButton>
-                  <ToggleButton id="companies" className="tt-offers-entity-option">
-                    <span>Kompani</span>
-                    <span className="tt-offers-entity-icon" aria-hidden>
-                      <Building2 size={18} />
-                    </span>
-                  </ToggleButton>
-                  <ToggleButton id="experts" className="tt-offers-entity-option">
-                    <span>Ekspertë</span>
-                    <span className="tt-offers-entity-icon" aria-hidden>
-                      <UserRound size={18} />
-                    </span>
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </div>
-
-              <p className="sr-only" aria-live="polite">
-                {loading ? 'Duke kërkuar…' : `${resultCount} ${resultLabel}${cityName ? ` në ${cityName}` : ''}`}
-              </p>
-
-              <div className="of-toolbar">
-                <label className="of-sort">
-                  <ArrowUpDown size={16} aria-hidden />
-                  {sortSelect}
-                  <ChevronDown size={16} aria-hidden className="of-sort-caret" />
-                </label>
-              </div>
-
-              <div className="of-mobile-bar">
-                <label className="of-sort is-mobile">
-                  <ArrowUpDown size={16} aria-hidden />
-                  {sortSelect}
-                  <ChevronDown size={16} aria-hidden className="of-sort-caret" />
-                </label>
-                <Button className="of-mobile-filter" onPress={() => setFiltersOpen(true)}>
-                  <SlidersHorizontal size={16} aria-hidden />
-                  Filtro
-                  {sheetFilterCount > 0 ? <span className="of-badge">{sheetFilterCount}</span> : null}
-                </Button>
-              </div>
-
-              {hasActiveFilters ? (
-                <div className="of-active-chips" aria-label="Filtrat aktivë">
-                  {activeChips.map((chip) => (
-                    <button
-                      key={chip.key}
-                      type="button"
-                      className="of-active-chip"
-                      onClick={chip.clear}
-                      aria-label={`Hiq filtrin ${chip.label}`}
-                    >
-                      {chip.label}
-                      <X size={14} aria-hidden />
-                    </button>
-                  ))}
-                  <button type="button" className="of-link-btn" onClick={clearFilters}>
-                    Pastro të gjitha
-                  </button>
-                </div>
-              ) : null}
-
-              {locationError ? <p className="error" role="alert">{locationError}</p> : null}
-              {error ? <p className="error" role="alert">{error}</p> : null}
-
-              <div className="of-list tt-results-list">
-                {loading ? (
-                  <>
-                    <ResultSkeleton />
-                    <ResultSkeleton />
-                    <ResultSkeleton />
-                  </>
-                ) : null}
-
-                {!loading && resultCount === 0 && !error ? (
-                  <div className="of-empty">
-                    <span className="of-empty-icon" aria-hidden>
-                      <SearchX size={26} />
-                    </span>
+            <div className="of-layout">
+              <aside className="of-sidebar" aria-label="Filtrat">
+                <div className="of-sidebar-card">
+                  <div className="of-sidebar-head">
                     <h2>
-                      {hasActiveFilters ? 'Asnjë rezultat me këto filtra' : 'Ende nuk ka rezultate'}
+                      <SlidersHorizontal size={16} aria-hidden />
+                      Filtrat
                     </h2>
-                    <p>
-                      {hasActiveFilters
-                        ? 'Provo të heqësh disa filtra ose të kërkosh me fjalë të tjera.'
-                        : cityId
-                          ? 'Nuk ka rezultate të publikuara në qytetin e zgjedhur.'
-                          : copy.empty}
-                    </p>
                     {hasActiveFilters ? (
-                      <Button className="of-empty-action" onPress={clearFilters}>
-                        Pastro filtrat
-                      </Button>
+                      <button type="button" className="of-link-btn" onClick={clearFilters}>
+                        Pastro
+                      </button>
                     ) : null}
+                  </div>
+                  {filterSections}
+                </div>
+              </aside>
+
+              <div className="of-results">
+                <div className="of-results-head">
+                  <p className="of-count" aria-live="polite">
+                    {loading ? 'Duke kërkuar…' : (
+                      <>
+                        <strong>{resultCount}</strong> {resultLabel}
+                        {cityName ? ` në ${cityName}` : ''}
+                      </>
+                    )}
+                  </p>
+                  {sortSelect}
+                </div>
+
+                {hasActiveFilters ? (
+                  <div className="of-active-chips" aria-label="Filtrat aktivë">
+                    {activeChips.map((chip) => (
+                      <button
+                        key={chip.key}
+                        type="button"
+                        className="of-active-chip"
+                        onClick={chip.clear}
+                        aria-label={`Hiq filtrin ${chip.label}`}
+                      >
+                        {chip.label}
+                        <X size={13} aria-hidden />
+                      </button>
+                    ))}
+                    <button type="button" className="of-link-btn" onClick={clearFilters}>
+                      Pastro të gjitha
+                    </button>
                   </div>
                 ) : null}
 
-                {!loading && tab === 'services'
-                  ? filteredServices.map((service) => (
-                    <ServiceOfferCard
-                      key={service.id}
-                      service={service}
-                      provider={providersByUid.get(service.provider?.uid || service.providerUid)}
-                    />
-                  ))
-                  : null}
-                {!loading && tab === 'experts'
-                  ? filteredExperts.map((provider) => (
-                    <ExpertCard key={provider.id} provider={provider} />
-                  ))
-                  : null}
-                {!loading && tab === 'companies'
-                  ? filteredCompanies.map((provider) => (
-                    <CompanyCard key={provider.id} provider={provider} />
-                  ))
-                  : null}
+                {locationError ? <p className="of-inline-error" role="alert">{locationError}</p> : null}
+
+                {TABS.map(({ id }) => (
+                  <Tabs.Panel key={id} id={id} className="of-list">
+                    {renderResults(id)}
+                  </Tabs.Panel>
+                ))}
               </div>
             </div>
           </div>
-        </section>
+        </Tabs>
 
         <Drawer.Root open={filtersOpen} onOpenChange={setFiltersOpen} repositionInputs={false}>
           <Drawer.Portal>
             <Drawer.Overlay className="tt-offers-drawer-overlay" />
-            <Drawer.Content className="tt-offers-drawer-content" aria-describedby={undefined}>
+            <Drawer.Content className="tt-offers-drawer-content of-drawer" aria-describedby={undefined}>
               <div className="tt-offers-drawer-handle" aria-hidden />
               <div className="tt-offers-drawer-head">
                 <Drawer.Title className="tt-offers-drawer-title">Filtrat</Drawer.Title>

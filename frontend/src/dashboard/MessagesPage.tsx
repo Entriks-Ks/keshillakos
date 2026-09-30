@@ -1,7 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MessageCircle, Search, Send, UserRound } from 'lucide-react'
-import { Button, toast } from '@heroui/react'
+import { ArrowLeft, MessageCircle, Send, UserRound } from 'lucide-react'
+import {
+  Alert,
+  Badge,
+  Button,
+  buttonVariants,
+  Card,
+  Input,
+  SearchField,
+  Separator,
+  Skeleton,
+  toast,
+} from '@heroui/react'
 import {
   fetchConversations,
   fetchMessages,
@@ -14,24 +25,36 @@ import { useAuth } from '../auth/AuthContext'
 import { useChatSocket } from '../hooks/useChatSocket'
 import { getErrorMessage } from '../utils/errors'
 import { providerPath } from '../utils/publicPaths'
+import './Messages.css'
 
-function formatTime(iso?: string) {
+function sameDate(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+function formatClock(iso?: string) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit' })
+}
+
+function dayKey(iso: string) {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+
+function formatDay(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
   const now = new Date()
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  if (sameDay) {
-    return d.toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit' })
-  }
-  return d.toLocaleString('sq-AL', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
+  if (sameDate(d, now)) return 'Sot'
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (sameDate(d, yesterday)) return 'Dje'
+  return d.toLocaleDateString('sq-AL', {
+    day: 'numeric',
+    month: 'long',
+    year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric',
   })
 }
 
@@ -286,109 +309,147 @@ export default function MessagesPage() {
     }, 1200)
   }
 
+  const listSummary = totalUnread > 0
+    ? `${totalUnread} të palexuara`
+    : `${conversations.length} ${conversations.length === 1 ? 'bisedë' : 'biseda'}`
+
   return (
-    <div className={`chat-page${activeId ? ' has-active' : ''}`}>
-      <div className="chat-layout">
-        <aside className="chat-list">
-          <div className="chat-list-top">
-            <div className="chat-list-title">
-              <div>
-                <strong>Mesazhet</strong>
-                <p>
-                  {totalUnread > 0
-                    ? `${totalUnread} të palexuara`
-                    : `${conversations.length} ${conversations.length === 1 ? 'bisedë' : 'biseda'}`}
-                </p>
-              </div>
-              <span className={`chat-conn${socket.connected ? ' is-online' : ''}`} title={socket.connected ? 'Online' : 'Duke u lidhur'}>
-                <span className="chat-conn-dot" aria-hidden />
-              </span>
+    <div className={`msg-page${activeId ? ' has-active' : ''}`}>
+      <Card className="msg-shell">
+        <aside className="msg-list" aria-label="Bisedat">
+          <div className="msg-list-head">
+            <div className="msg-list-title">
+              <h1>Mesazhet</h1>
+              {!loadingList ? <span>{listSummary}</span> : null}
             </div>
-            <label className="chat-list-search">
-              <Search size={16} aria-hidden />
-              <input
-                value={listQuery}
-                onChange={(e) => setListQuery(e.target.value)}
-                placeholder="Kërko bisedë..."
-                aria-label="Kërko bisedë"
-              />
-            </label>
+            <span
+              className={`msg-conn${socket.connected ? ' is-online' : ''}`}
+              role="status"
+              title={socket.connected ? 'Online' : 'Duke u lidhur'}
+            >
+              <span className="msg-conn-dot" aria-hidden />
+              <span className="msg-conn-label">{socket.connected ? 'Online' : 'Duke u lidhur'}</span>
+            </span>
           </div>
 
-          {error ? <p className="error chat-pad">{error}</p> : null}
-          {loadingList ? <p className="muted chat-pad">Duke u ngarkuar...</p> : null}
+          <div className="msg-list-search">
+            <SearchField aria-label="Kërko bisedë" value={listQuery} onChange={setListQuery} fullWidth>
+              <SearchField.Group>
+                <SearchField.SearchIcon />
+                <SearchField.Input placeholder="Kërko bisedë..." />
+                <SearchField.ClearButton />
+              </SearchField.Group>
+            </SearchField>
+          </div>
 
-          {!loadingList && conversations.length === 0 ? (
-            <div className="chat-list-empty">
-              <span className="chat-empty-icon" aria-hidden>
-                <MessageCircle size={22} />
-              </span>
-              <p>Ende pa biseda</p>
-              <span>Hap një ofertë dhe kliko “Dërgo mesazh”.</span>
-              <Link to="/ofertat" className="chat-empty-link">
-                Shiko ofertat
-              </Link>
-            </div>
-          ) : null}
+          <Separator />
 
-          {!loadingList && conversations.length > 0 && filteredConversations.length === 0 ? (
-            <p className="muted chat-pad">Asnjë rezultat për “{listQuery}”.</p>
-          ) : null}
+          <div className="msg-list-body">
+            {error ? (
+              <Alert status="danger" className="msg-alert">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Description>{error}</Alert.Description>
+                </Alert.Content>
+              </Alert>
+            ) : null}
 
-          <ul className="chat-people">
-            {filteredConversations.map((c) => {
-              return (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className={`chat-list-item${c.id === activeId ? ' is-active' : ''}${c.unread > 0 ? ' has-unread' : ''}`}
-                    onClick={() => selectConversation(c.id)}
-                  >
-                    <div className="chat-avatar" aria-hidden>
-                      <ProfileAvatar src={c.peer.profilePhoto} seed={c.peer.uid} size="fill" />
-                    </div>
-                    <div className="chat-list-meta">
-                      <div className="chat-list-row">
-                        <strong>{c.peer.name}</strong>
-                        {c.lastMessageAt ? <time>{formatListTime(c.lastMessageAt)}</time> : null}
-                      </div>
-                      <span>{c.serviceTitle || c.peer.roleLabel || 'Bisedë'}</span>
-                      <em>{c.lastMessagePreview || 'Nis bisedën'}</em>
-                    </div>
-                    {c.unread > 0 ? <span className="chat-unread">{c.unread}</span> : null}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+            {loadingList ? (
+              <ul className="msg-items" aria-hidden>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <li key={i} className="msg-item is-skeleton">
+                    <Skeleton className="msg-skel-avatar" />
+                    <span className="msg-item-body">
+                      <Skeleton className="msg-skel-line" />
+                      <Skeleton className="msg-skel-line is-wide" />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : conversations.length === 0 ? (
+              <div className="msg-list-empty">
+                <span className="msg-empty-icon" aria-hidden>
+                  <MessageCircle size={20} />
+                </span>
+                <strong>Ende pa biseda</strong>
+                <p>Hap një ofertë dhe kliko “Dërgo mesazh”.</p>
+                <Link to="/ofertat" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                  Shiko ofertat
+                </Link>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <p className="msg-list-note">Asnjë rezultat për “{listQuery}”.</p>
+            ) : (
+              <ul className="msg-items">
+                {filteredConversations.map((c) => {
+                  const isActive = c.id === activeId
+                  return (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        className={`msg-item${isActive ? ' is-active' : ''}${c.unread > 0 ? ' has-unread' : ''}`}
+                        aria-current={isActive ? 'true' : undefined}
+                        onClick={() => selectConversation(c.id)}
+                      >
+                        <Badge.Anchor className="msg-item-avatar">
+                          <ProfileAvatar src={c.peer.profilePhoto} seed={c.peer.uid} alt="" size={44} />
+                          {c.unread > 0 ? (
+                            <Badge color="accent" size="sm" aria-label={`${c.unread} mesazhe të palexuara`}>
+                              <Badge.Label>{c.unread > 9 ? '9+' : c.unread}</Badge.Label>
+                            </Badge>
+                          ) : null}
+                        </Badge.Anchor>
+                        <span className="msg-item-body">
+                          <span className="msg-item-row">
+                            <strong>{c.peer.name}</strong>
+                            {c.lastMessageAt ? <time dateTime={c.lastMessageAt}>{formatListTime(c.lastMessageAt)}</time> : null}
+                          </span>
+                          <span className="msg-item-context">{c.serviceTitle || c.peer.roleLabel || 'Bisedë'}</span>
+                          <span className="msg-item-preview">{c.lastMessagePreview || 'Nis bisedën'}</span>
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
         </aside>
 
-        <section className="chat-thread">
+        <section className="msg-thread" aria-label={active ? `Biseda me ${active.peer.name}` : 'Biseda'}>
           {!activeId ? (
-            <div className="chat-empty">
-              <span className="chat-empty-icon is-lg" aria-hidden>
-                <MessageCircle size={28} />
+            <div className="msg-thread-placeholder">
+              <span className="msg-empty-icon is-lg" aria-hidden>
+                <MessageCircle size={26} />
               </span>
-              <h2>Zgjidh një bisedë</h2>
-              <p className="muted">Zgjidh dikë nga lista majtas për të vazhduar chat-in.</p>
+              {!loadingList && conversations.length === 0 ? (
+                <>
+                  <h2>Bisedat shfaqen këtu</h2>
+                  <p>Kur të nisësh një bisedë me një ekspert ose kompani, do ta gjesh në këtë faqe.</p>
+                </>
+              ) : (
+                <>
+                  <h2>Zgjidh një bisedë</h2>
+                  <p>Zgjidh dikë nga lista për të vazhduar bisedën.</p>
+                </>
+              )}
             </div>
           ) : (
             <>
-              <div className="chat-thread-head">
-                <button
-                  type="button"
-                  className="chat-back"
-                  onClick={() => selectConversation('')}
-                  aria-label="Kthehu te lista"
+              <header className="msg-thread-head">
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  className="msg-back"
+                  aria-label="Kthehu te bisedat"
+                  onPress={() => selectConversation('')}
                 >
-                  <ArrowLeft size={18} />
-                </button>
-                <div className="chat-avatar is-md" aria-hidden>
-                  <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} size="fill" />
-                </div>
-                <div className="chat-thread-meta">
+                  <ArrowLeft size={20} />
+                </Button>
+                <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} alt="" size={40} />
+                <div className="msg-thread-meta">
                   <strong>{active?.peer.name || 'Bisedë'}</strong>
-                  <span>
+                  <span className={peerTyping ? 'is-typing' : undefined}>
                     {peerTyping
                       ? 'Po shkruan...'
                       : active?.serviceTitle
@@ -397,36 +458,55 @@ export default function MessagesPage() {
                   </span>
                 </div>
                 {active?.peer.uid ? (
-                  <Link to={providerPath(active.peer)} className="chat-profile-link" title="Shiko profilin">
+                  <Link
+                    to={providerPath(active.peer)}
+                    className={`${buttonVariants({ variant: 'outline', size: 'sm' })} msg-profile`}
+                    aria-label="Shiko profilin"
+                  >
                     <UserRound size={16} aria-hidden />
-                    <span>Profili</span>
+                    <span>Shiko profilin</span>
                   </Link>
                 ) : null}
-              </div>
+              </header>
 
-              <div className="chat-messages">
-                {loadingThread ? <p className="muted chat-loading">Duke ngarkuar mesazhet...</p> : null}
-                {!loadingThread && messages.length === 0 ? (
-                  <div className="chat-thread-empty">
-                    <span className="chat-empty-icon" aria-hidden>
+              <div className="msg-history">
+                {loadingThread ? (
+                  <div className="msg-history-loading" aria-label="Duke ngarkuar mesazhet">
+                    <Skeleton className="msg-skel-bubble" />
+                    <Skeleton className="msg-skel-bubble is-mine" />
+                    <Skeleton className="msg-skel-bubble is-short" />
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="msg-history-empty">
+                    <span className="msg-empty-icon" aria-hidden>
                       <MessageCircle size={20} />
                     </span>
                     <p>
                       Nis bisedën me <strong>{active?.peer.name}</strong>
                     </p>
                   </div>
-                ) : null}
-                {messages.map((m) => {
-                  const mine = m.senderUid === user?.uid
-                  return (
-                    <div key={m.id} className={`chat-bubble${mine ? ' is-mine' : ''}`}>
-                      <p>{m.body}</p>
-                      <time>{formatTime(m.createdAt)}</time>
-                    </div>
-                  )
-                })}
+                ) : (
+                  messages.map((m, index) => {
+                    const mine = m.senderUid === user?.uid
+                    const day = dayKey(m.createdAt)
+                    const showDay = index === 0 || day !== dayKey(messages[index - 1].createdAt)
+                    return (
+                      <Fragment key={m.id}>
+                        {showDay && day ? (
+                          <div className="msg-day" role="separator">
+                            <span>{formatDay(m.createdAt)}</span>
+                          </div>
+                        ) : null}
+                        <div className={`msg-bubble${mine ? ' is-mine' : ''}`}>
+                          <p>{m.body}</p>
+                          <time dateTime={m.createdAt}>{formatClock(m.createdAt)}</time>
+                        </div>
+                      </Fragment>
+                    )
+                  })
+                )}
                 {peerTyping ? (
-                  <div className="chat-typing" aria-live="polite">
+                  <div className="msg-typing" aria-live="polite" aria-label="Po shkruan">
                     <span />
                     <span />
                     <span />
@@ -435,20 +515,23 @@ export default function MessagesPage() {
                 <div ref={bottomRef} />
               </div>
 
-              <form className="chat-composer" onSubmit={onSend}>
-                <input
+              <form className="msg-composer" onSubmit={onSend}>
+                <Input
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => onDraftChange(e.target.value)}
                   placeholder={`Shkruaj mesazh për ${active?.peer.name || 'ta'}...`}
+                  aria-label="Mesazhi"
                   maxLength={4000}
                   disabled={sending}
+                  fullWidth
+                  className="msg-input"
                 />
                 <Button
                   type="submit"
                   variant="primary"
                   isIconOnly
-                  className="chat-send"
+                  className="msg-send"
                   isDisabled={sending || !draft.trim()}
                   aria-label="Dërgo"
                 >
@@ -458,7 +541,8 @@ export default function MessagesPage() {
             </>
           )}
         </section>
-      </div>
+      </Card>
     </div>
   )
 }
+

@@ -1,21 +1,32 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Alert, Button, buttonVariants, Card, Chip, ProgressBar, Separator, Skeleton, toast } from '@heroui/react'
-import { ArrowRight, Inbox, Plus } from 'lucide-react'
+import { Alert, Button, buttonVariants, Card, Chip, toast } from '@heroui/react'
+import { ArrowRight, Plus } from 'lucide-react'
 import type { DashboardContext, UserRole } from '../api/auth'
 import { fetchMyAppointments, upcomingAppointments, type AppointmentItem } from '../api/appointments'
-import { fetchConversations, type ChatPeer, type ConversationItem } from '../api/chat'
+import { fetchConversations, type ConversationItem } from '../api/chat'
 import { fetchProfileCompletion, type ProfileCompletion } from '../api/profileCompletion'
 import { fetchMyRequests, type ServiceRequestItem } from '../api/requests'
 import { fetchMyServices, type ServiceItem } from '../api/services'
 import { useAuth } from '../auth/AuthContext'
-import ProfileAvatar from '../components/ProfileAvatar'
 import { getDashboardPath } from '../utils/dashboardPath'
 import { getErrorMessage } from '../utils/errors'
-import { formatServicePrice } from '../utils/serviceDiscovery'
 import { ROLE_HINTS, ROLE_LABELS } from './nav'
-import { formatAmount, formatWhen, REQUEST_STATUS, type ChipColor } from './requestDisplay'
-import './UserOverview.css'
+import {
+  ActivityRows,
+  conversationEntries,
+  EmptyBlock,
+  latestActivity,
+  ProfileSetupCard,
+  RowsSkeleton,
+  SectionHead,
+  ServiceRows,
+  StatsStrip as StatsStripView,
+  TextLink,
+  timeGreeting,
+  type ActivityEntry,
+} from './OverviewParts'
+import { formatAmount, formatWhen, REQUEST_STATUS } from './requestDisplay'
 
 const REQUESTS_PATH = '/dashboard/user/requests'
 const MESSAGES_PATH = '/dashboard/user/messages'
@@ -29,23 +40,6 @@ type OverviewData = {
   completion: ProfileCompletion | null
   /** `null` when the account has no expert/company role and cannot own services. */
   services: ServiceItem[] | null
-}
-
-type ActivityEntry = {
-  id: string
-  title: string
-  detail: string
-  at: string
-  to: string
-  peer?: ChatPeer
-  status?: { label: string; color: ChipColor }
-  unread?: number
-}
-
-function timeGreeting(hour: number) {
-  if (hour < 12) return 'Mirëmëngjes'
-  if (hour < 18) return 'Mirëdita'
-  return 'Mirëmbrëma'
 }
 
 function requestDetail(item: ServiceRequestItem) {
@@ -77,67 +71,7 @@ function buildActivity(requests: ServiceRequestItem[], conversations: Conversati
     to: REQUESTS_PATH,
     status: REQUEST_STATUS[item.status] ?? { label: item.status, color: 'default' as const },
   }))
-  const fromConversations = conversations
-    .filter((item) => item.lastMessageAt)
-    .map((item) => ({
-      id: `c-${item.id}`,
-      title: item.peer.name,
-      detail: item.lastMessagePreview || item.serviceTitle || 'Bisedë',
-      at: item.lastMessageAt as string,
-      to: `${MESSAGES_PATH}?c=${item.id}`,
-      peer: item.peer,
-      unread: item.unread,
-    }))
-  return [...fromRequests, ...fromConversations]
-    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-    .slice(0, 6)
-}
-
-function SectionHead({ title, meta, action }: { title: string; meta?: ReactNode; action?: ReactNode }) {
-  return (
-    <Card.Header className="uo-card-head">
-      <div className="uo-card-heading">
-        <Card.Title className="uo-card-title">{title}</Card.Title>
-        {meta}
-      </div>
-      {action}
-    </Card.Header>
-  )
-}
-
-function TextLink({ to, children }: { to: string; children: ReactNode }) {
-  return (
-    <Link to={to} className="uo-link">
-      {children}
-      <ArrowRight size={14} aria-hidden />
-    </Link>
-  )
-}
-
-function RowsSkeleton({ rows }: { rows: number }) {
-  return (
-    <ul className="uo-rows" aria-busy="true">
-      {Array.from({ length: rows }).map((_, i) => (
-        <li key={i} className="uo-row is-skeleton">
-          <Skeleton className="uo-skel-avatar" />
-          <span className="uo-row-copy">
-            <Skeleton className="uo-skel-line is-wide" />
-            <Skeleton className="uo-skel-line" />
-          </span>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function EmptyBlock({ title, text, action }: { title: string; text: string; action: ReactNode }) {
-  return (
-    <div className="uo-empty">
-      <strong>{title}</strong>
-      <p>{text}</p>
-      {action}
-    </div>
-  )
+  return latestActivity([...fromRequests, ...conversationEntries(conversations, MESSAGES_PATH)])
 }
 
 function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boolean }) {
@@ -174,25 +108,7 @@ function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boo
     },
   ]
 
-  return (
-    <Card className="uo-card uo-stats">
-      <ul className="uo-stats-list" aria-label="Statistika">
-        {stats.map((stat) => (
-          <li key={stat.label}>
-            <Link to={stat.to} className="uo-stat">
-              <span className="uo-stat-label">{stat.label}</span>
-              {loading ? (
-                <Skeleton className="uo-skel-value" />
-              ) : (
-                <strong className={`uo-stat-value${stat.highlight ? ' is-highlight' : ''}`}>{stat.value}</strong>
-              )}
-              {loading ? <Skeleton className="uo-skel-line" /> : <span className="uo-stat-hint">{stat.hint}</span>}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  )
+  return <StatsStripView stats={stats} loading={loading} />
 }
 
 function ActivityCard({ data, loading }: { data: OverviewData | null; loading: boolean }) {
@@ -215,37 +131,7 @@ function ActivityCard({ data, loading }: { data: OverviewData | null; loading: b
             }
           />
         ) : (
-          <ul className="uo-rows">
-            {entries.map((entry) => (
-              <li key={entry.id}>
-                <Link to={entry.to} className={`uo-row${entry.unread ? ' is-unread' : ''}`}>
-                  {entry.peer ? (
-                    <ProfileAvatar src={entry.peer.profilePhoto} seed={entry.peer.uid} size={36} alt="" />
-                  ) : (
-                    <span className="uo-row-icon" aria-hidden>
-                      <Inbox size={16} />
-                    </span>
-                  )}
-                  <span className="uo-row-copy">
-                    <strong>{entry.title}</strong>
-                    <span>{entry.detail}</span>
-                  </span>
-                  <span className="uo-row-end">
-                    {entry.status ? (
-                      <Chip size="sm" variant="soft" color={entry.status.color}>
-                        <Chip.Label>{entry.status.label}</Chip.Label>
-                      </Chip>
-                    ) : entry.unread ? (
-                      <span className="uo-unread" aria-label={`${entry.unread} të palexuara`}>
-                        {entry.unread}
-                      </span>
-                    ) : null}
-                    <time dateTime={entry.at}>{formatWhen(entry.at)}</time>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <ActivityRows entries={entries} />
         )}
       </Card.Content>
     </Card>
@@ -295,10 +181,6 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
     )
   }
 
-  const recent = [...list]
-    .sort((a, b) => Number(b.active) - Number(a.active) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3)
-
   return (
     <Card className="uo-card">
       <SectionHead
@@ -316,7 +198,7 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
       <Card.Content className="uo-card-body">
         {loading ? (
           <RowsSkeleton rows={2} />
-        ) : recent.length === 0 ? (
+        ) : list.length === 0 ? (
           <EmptyBlock
             title="Nuk ke publikuar shërbime ende"
             text="Shërbimet e publikuara shfaqen në ofertat e KëshillaKos."
@@ -327,57 +209,8 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
             }
           />
         ) : (
-          <ul className="uo-rows">
-            {recent.map((service) => {
-              const price = formatServicePrice(service)
-              return (
-                <li key={service.id}>
-                  <div className="uo-row is-static">
-                    <span className="uo-row-copy">
-                      <strong>{service.title}</strong>
-                      <span>{[service.categoryLabel || service.category, price].filter(Boolean).join(' · ')}</span>
-                    </span>
-                    <Chip size="sm" variant="soft" color={service.active ? 'success' : 'default'}>
-                      <Chip.Label>{service.active ? 'Aktiv' : 'Joaktiv'}</Chip.Label>
-                    </Chip>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          <ServiceRows services={list} />
         )}
-      </Card.Content>
-    </Card>
-  )
-}
-
-function ProfileSetupCard({ completion }: { completion: ProfileCompletion }) {
-  const percent = Math.max(0, Math.min(100, Math.round(completion.overallPercent ?? 0)))
-  const missing = completion.section.missingRequired
-  const shown = missing.slice(0, 4)
-
-  return (
-    <Card className="uo-card">
-      <SectionHead title="Plotëso profilin" meta={<span className="uo-card-meta is-strong">{percent}%</span>} />
-      <Card.Content className="uo-card-body uo-setup">
-        <ProgressBar aria-label="Plotësimi i profilit" value={percent} className="uo-progress">
-          <ProgressBar.Track>
-            <ProgressBar.Fill />
-          </ProgressBar.Track>
-        </ProgressBar>
-        {shown.length > 0 ? (
-          <div className="uo-missing">
-            <span>Mungojnë:</span>
-            {shown.map((field) => (
-              <Chip key={field.key} size="sm" variant="soft">
-                <Chip.Label>{field.label}</Chip.Label>
-              </Chip>
-            ))}
-            {missing.length > shown.length ? <span>+{missing.length - shown.length}</span> : null}
-          </div>
-        ) : null}
-        <Separator />
-        <TextLink to={PROFILE_PATH}>Përditëso profilin</TextLink>
       </Card.Content>
     </Card>
   )
@@ -464,7 +297,7 @@ export function UserOverviewPage() {
             <ActivityCard data={data} loading={loading} />
             <div className="uo-side">
               <ServicesCard services={loading ? undefined : data?.services} roles={roles} loading={loading} />
-              {showSetup && completion ? <ProfileSetupCard completion={completion} /> : null}
+              {showSetup && completion ? <ProfileSetupCard completion={completion} to={PROFILE_PATH} /> : null}
             </div>
           </div>
         </>

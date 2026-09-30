@@ -37,6 +37,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.ur-stat-value.is-highlight {
+  color: var(--accent);
+}
+
 .ur-stat-hint {
   overflow: hidden;
   color: color-mix(in srgb, var(--ink-secondary) 75%, #fff);
@@ -177,6 +181,42 @@ a.ur-provider:hover {
   flex: none;
 }
 
+.ur-chips {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ur-service {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--brand-navy);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ur-service svg {
+  flex: none;
+  color: var(--accent);
+}
+
+/* Incoming request that still needs a response */
+.ur-item.is-action {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.ur-reply {
+  max-width: 75ch;
+}
+
+.ur-reply textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
 .ur-need,
 .ur-message,
 .ur-response {
@@ -297,6 +337,12 @@ a.ur-provider:hover {
   align-items: center;
   gap: 4px;
   margin-left: auto;
+}
+
+.ur-actions.is-wrap {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .ur-actions .chat-start {
@@ -471,6 +517,16 @@ a.ur-provider:hover {
   .ur-more {
     min-width: 40px;
     height: 40px;
+  }
+
+  .ur-actions.is-wrap > * {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 40px;
+  }
+
+  .ur-actions.is-wrap > .chat-start {
+    flex-basis: 100%;
+    order: 1;
   }
 
   .ur-empty {
