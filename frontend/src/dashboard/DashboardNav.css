@@ -8,23 +8,13 @@
 /* Sidebar */
 
 .dsb-rail {
-  --dsb-bg: #141619;
-  --dsb-text: #c9cad1;
-  --dsb-text-strong: #ffffff;
-  --dsb-text-muted: #8b8d98;
-  --dsb-line: rgba(255, 255, 255, 0.08);
-  --dsb-hover: rgba(255, 255, 255, 0.06);
-  --dsb-active-bg: color-mix(in srgb, #0a21c0 32%, #141619);
-  --dsb-active-mark: color-mix(in srgb, #0a21c0 55%, #ffffff);
-
   position: sticky;
   top: 0;
   z-index: 20;
   height: 100svh;
-  border-right: 1px solid var(--dsb-bg);
-  background: var(--dsb-bg);
-  color: var(--dsb-text);
-  color-scheme: dark;
+  border-right: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink-secondary);
 }
 
 .dsb {
@@ -225,77 +215,6 @@
 .dsb-list.is-secondary .dsb-link {
   min-height: 38px;
   font-size: 0.88rem;
-}
-
-/* Dark desktop rail (the mobile drawer keeps the light surface) */
-
-.dsb-rail .dsb-brand {
-  color: var(--dsb-text-strong);
-}
-
-.dsb-rail .dsb-context {
-  border-color: var(--dsb-line);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--dsb-text-strong);
-}
-
-.dsb-rail .dsb-context:not(.is-static):hover,
-.dsb-rail .dsb-context[aria-expanded='true'] {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: var(--dsb-hover);
-}
-
-.dsb-rail .dsb-context-label,
-.dsb-rail .dsb-context-caret,
-.dsb-rail .dsb-group-label {
-  color: var(--dsb-text-muted);
-}
-
-.dsb-rail .dsb-context-value {
-  color: var(--dsb-text-strong);
-}
-
-.dsb-rail .dsb-link {
-  color: var(--dsb-text);
-}
-
-.dsb-rail .dsb-link svg {
-  color: var(--dsb-text-muted);
-}
-
-.dsb-rail .dsb-link:hover {
-  background: var(--dsb-hover);
-  color: var(--dsb-text-strong);
-}
-
-.dsb-rail .dsb-link:hover svg {
-  color: var(--dsb-text);
-}
-
-.dsb-rail .dsb-link.is-active {
-  background: var(--dsb-active-bg);
-  color: var(--dsb-text-strong);
-}
-
-.dsb-rail .dsb-link.is-active svg {
-  color: var(--dsb-text-strong);
-}
-
-.dsb-rail .dsb-link.is-active::before {
-  background: var(--dsb-active-mark);
-}
-
-.dsb-rail .dsb-link:focus-visible,
-.dsb-rail .dsb-context:focus-visible {
-  outline-color: var(--dsb-active-mark);
-}
-
-.dsb-rail .separator {
-  background-color: var(--dsb-line);
-}
-
-.dsb-rail .dsb {
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }
 
 /* Mobile drawer */
