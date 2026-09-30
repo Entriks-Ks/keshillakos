@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { BadgeCheck, Briefcase, ChevronRight, MapPin, Users, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import { humanLabels } from '../utils/displayLabels'
+import { providerPath } from '../utils/publicPaths'
 import ProfileAvatar from './ProfileAvatar'
 import ProviderCardActions from './ProviderCardActions'
 import { ProviderDescription, ProviderRating, ProviderTags } from './ProviderCardParts'
@@ -14,7 +15,7 @@ type Props = {
 
 export default function CompanyCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const profilePath = `/providers/${provider.uid}`
+  const profilePath = providerPath(provider)
   const cardLink = useProviderCardLink(profilePath)
   const specialties = humanLabels(
     [...provider.specializations, ...provider.categoryLabels],
@@ -93,7 +94,7 @@ export default function CompanyCard({ provider }: Props) {
 
       {featured ? (
         <div className="pc-team">
-          <Link to={`/providers/${featured.uid}`} className="pc-team-member" onClick={(e) => e.stopPropagation()}>
+          <Link to={providerPath(featured)} className="pc-team-member" onClick={(e) => e.stopPropagation()}>
             <span className="pc-team-photo" aria-hidden>
               <ProfileAvatar src={featured.photoUrl} seed={featured.uid} size="fill" />
             </span>

@@ -28,6 +28,7 @@ import LocationSelector from '../components/LocationSelector'
 import DashPageHeader from './DashPageHeader'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { getErrorMessage } from '../utils/errors'
+import { servicePath } from '../utils/publicPaths'
 
 type PricingMode = 'agreement' | 'from' | 'fixed' | 'range'
 type OfferOwner = 'company' | 'expert'
@@ -1200,7 +1201,7 @@ export default function ProviderServicesPanel() {
                 </div>
               ) : null}
               <div className="services-list-actions">
-                <Link className="ghost link-btn" to={`/services/${service.id}`}>
+                <Link className="ghost link-btn" to={servicePath(service)}>
                   {sq ? 'Shiko' : 'View'}
                 </Link>
                 <button type="button" className="ghost" onClick={() => startEdit(service)}>

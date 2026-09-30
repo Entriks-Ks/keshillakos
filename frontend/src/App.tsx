@@ -3,6 +3,7 @@ import { RouterProvider, Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes, useHref, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
+import ScrollToTop from './components/ScrollToTop'
 import DashboardShell from './dashboard/DashboardShell'
 import AdminUsersPanel from './dashboard/AdminUsersPanel'
 import AvailabilityPanel from './dashboard/AvailabilityPanel'
@@ -73,6 +74,7 @@ export default function App() {
         width={360}
       />
       <BrowserRouter>
+        <ScrollToTop />
         <HeroRouterProvider>
           <Routes>
             <Route path="/" element={<HomePage />} />

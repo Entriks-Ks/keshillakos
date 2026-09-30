@@ -4,6 +4,7 @@ import { BadgeCheck, Building2, MapPin, Tag, Users, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import type { ServiceItem } from '../api/services'
 import { humanLabels } from '../utils/displayLabels'
+import { providerPath, servicePath as publicServicePath } from '../utils/publicPaths'
 import { formatServicePrice, isVerified } from '../utils/serviceDiscovery'
 import ProfileAvatar from './ProfileAvatar'
 import ProviderCardActions from './ProviderCardActions'
@@ -38,7 +39,7 @@ function fallbackProvider(service: ServiceItem, companyOwned: boolean): Marketpl
 
 export default function ServiceOfferCard({ service, provider }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const servicePath = `/services/${service.id}`
+  const servicePath = publicServicePath(service)
   const cardLink = useProviderCardLink(servicePath)
   const owner = service.provider
   const companyOwned = owner?.providerType === 'business' || owner?.role === 'company'
@@ -47,7 +48,7 @@ export default function ServiceOfferCard({ service, provider }: Props) {
     categories: [service.categoryId],
     location: service.location || provider?.location || owner?.location,
   }
-  const profilePath = `/providers/${contact.uid}`
+  const profilePath = providerPath(contact)
   const photo = provider?.photoUrl || owner?.profilePhoto
   const verified = isVerified(owner)
   const responsibleExpert = companyOwned ? service.responsibleExpert : undefined
@@ -88,7 +89,7 @@ export default function ServiceOfferCard({ service, provider }: Props) {
               <>
                 {' · '}
                 {responsibleExpert.uid ? (
-                  <Link to={`/providers/${responsibleExpert.uid}`} onClick={(e) => e.stopPropagation()}>
+                  <Link to={providerPath(responsibleExpert)} onClick={(e) => e.stopPropagation()}>
                     {responsibleExpert.name}
                   </Link>
                 ) : responsibleExpert.name}

@@ -41,6 +41,7 @@ import SiteNav from '../components/SiteNav'
 import SiteFooter from '../components/SiteFooter'
 import { catalogCardImage, catalogCategoryImage } from '../data/catalogImages'
 import { getErrorMessage } from '../utils/errors'
+import { providerPath, servicePath } from '../utils/publicPaths'
 import { useSavedLocation } from '../hooks/useSavedLocation'
 import heroPlaceholder from '../assets/hero.png'
 import './HomeCategories.css'
@@ -646,11 +647,11 @@ export default function HomePage() {
                               </div>
 
                               {m.source === 'service' ? (
-                                <Link to={`/services/${m.id}`} className="ghost match-details-link">
+                                <Link to={servicePath({ id: m.id, title: m.title })} className="ghost match-details-link">
                                   Shiko detajet
                                 </Link>
                               ) : (
-                                <Link to={`/providers/${m.providerUid}`} className="ghost match-details-link">
+                                <Link to={providerPath({ uid: m.providerUid, name: m.companyName || m.name })} className="ghost match-details-link">
                                   Shiko profilin
                                 </Link>
                               )}

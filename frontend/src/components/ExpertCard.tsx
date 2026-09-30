@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Award, BadgeCheck, Building2, MapPin, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import { humanLabels } from '../utils/displayLabels'
+import { providerPath } from '../utils/publicPaths'
 import ProfileAvatar from './ProfileAvatar'
 import ProviderCardActions from './ProviderCardActions'
 import { ProviderDescription, ProviderRating, ProviderTags } from './ProviderCardParts'
@@ -14,7 +15,7 @@ type Props = {
 
 export default function ExpertCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const profilePath = `/providers/${provider.uid}`
+  const profilePath = providerPath(provider)
   const cardLink = useProviderCardLink(profilePath)
   const specialties = humanLabels(
     [...provider.specializations, ...provider.categoryLabels],

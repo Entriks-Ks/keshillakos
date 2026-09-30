@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button, Modal } from '@heroui/react'
 import {
   BadgeCheck,
@@ -27,6 +27,7 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { getErrorMessage } from '../utils/errors'
+import { idFromPublicParam, providerPath as publicProviderPath, servicePath } from '../utils/publicPaths'
 import { formatServicePrice, isVerified } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
 import './ServiceDetailPage.css'
@@ -167,7 +168,10 @@ function ProviderRatingLine({ average, count }: { average: number; count: number
 }
 
 export default function ServiceDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id: param } = useParams<{ id: string }>()
+  const id = idFromPublicParam(param)
+  const navigate = useNavigate()
+  const location = useLocation()
   const [service, setService] = useState<ServiceItem | null>(null)
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const [activePhoto, setActivePhoto] = useState(0)
@@ -207,6 +211,14 @@ export default function ServiceDetailPage() {
   }, [id])
 
   useEffect(() => {
+    if (!service || service.id !== id) return
+    const canonical = servicePath(service)
+    if (location.pathname !== canonical) {
+      navigate({ pathname: canonical, search: location.search, hash: location.hash }, { replace: true })
+    }
+  }, [service, id, location.pathname, location.search, location.hash, navigate])
+
+  useEffect(() => {
     if (!service?.providerUid) {
       setSchedule([])
       return
@@ -228,7 +240,7 @@ export default function ServiceDetailPage() {
   const provider = service?.provider
   const providerUid = provider?.uid || service?.providerUid || ''
   const providerName = provider?.name || service?.providerName || ''
-  const providerPath = `/providers/${providerUid}`
+  const providerPath = publicProviderPath({ uid: providerUid, name: providerName })
   const companyOwned = provider?.providerType === 'business' || provider?.role === 'company'
   const responsibleExpert = companyOwned && service?.responsibleExpert?.uid ? service.responsibleExpert : undefined
   const teamExperts = companyOwned
@@ -323,7 +335,7 @@ export default function ServiceDetailPage() {
                         {verified ? <BadgeCheck size={16} className="sd-verified" aria-label="I verifikuar" /> : null}
                         {responsibleExpert ? (
                           <span className="sd-byline-expert">
-                            me <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
+                            me <Link to={publicProviderPath(responsibleExpert)}>{responsibleExpert.name}</Link>
                           </span>
                         ) : null}
                       </p>
@@ -526,7 +538,7 @@ export default function ServiceDetailPage() {
                       {responsibleExpert ? (
                         <div className="sd-provider is-expert">
                           <Link
-                            to={`/providers/${responsibleExpert.uid}`}
+                            to={publicProviderPath(responsibleExpert)}
                             className="sd-provider-avatar"
                             aria-label={`Shiko profilin e ${responsibleExpert.name}`}
                           >
@@ -535,13 +547,13 @@ export default function ServiceDetailPage() {
                           <div className="sd-provider-copy">
                             <span className="sd-provider-kind">Eksperti përgjegjës</span>
                             <h3>
-                              <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
+                              <Link to={publicProviderPath(responsibleExpert)}>{responsibleExpert.name}</Link>
                             </h3>
                             {responsibleExpert.headline ? (
                               <p className="sd-provider-headline">{responsibleExpert.headline}</p>
                             ) : null}
                           </div>
-                          <Link to={`/providers/${responsibleExpert.uid}`} className="sd-provider-link">
+                          <Link to={publicProviderPath(responsibleExpert)} className="sd-provider-link">
                             Profili i ekspertit
                             <ChevronRight size={16} aria-hidden />
                           </Link>
@@ -554,7 +566,7 @@ export default function ServiceDetailPage() {
                           <ul>
                             {teamExperts.map((expert) => (
                               <li key={expert.uid}>
-                                <Link to={`/providers/${expert.uid}`} className="sd-team-person">
+                                <Link to={publicProviderPath(expert)} className="sd-team-person">
                                   <span className="sd-team-photo" aria-hidden>
                                     <ProfileAvatar src={expert.photoUrl} seed={expert.uid} size="fill" />
                                   </span>

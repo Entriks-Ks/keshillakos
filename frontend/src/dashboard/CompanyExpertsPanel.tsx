@@ -15,6 +15,7 @@ import {
 import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
+import { providerPath } from '../utils/publicPaths'
 import DashPageHeader from './DashPageHeader'
 import './CompanyExpertsPanel.css'
 
@@ -253,7 +254,7 @@ export default function CompanyExpertsPanel() {
                     </div>
                     <div className="company-person-actions">
                       {member.uid ? (
-                        <Link to={`/providers/${member.uid}`}>Profili</Link>
+                        <Link to={providerPath({ uid: member.uid, name: member.name })}>Profili</Link>
                       ) : null}
                       <button type="button" disabled={busyId === member.id} onClick={() => void onRemove(member.id)}>
                         {busyId === member.id ? 'Duke hequr…' : 'Hiq'}

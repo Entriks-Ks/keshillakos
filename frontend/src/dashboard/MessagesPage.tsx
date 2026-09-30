@@ -13,6 +13,7 @@ import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../auth/AuthContext'
 import { useChatSocket } from '../hooks/useChatSocket'
 import { getErrorMessage } from '../utils/errors'
+import { providerPath } from '../utils/publicPaths'
 
 function formatTime(iso?: string) {
   if (!iso) return ''
@@ -396,7 +397,7 @@ export default function MessagesPage() {
                   </span>
                 </div>
                 {active?.peer.uid ? (
-                  <Link to={`/providers/${active.peer.uid}`} className="chat-profile-link" title="Shiko profilin">
+                  <Link to={providerPath(active.peer)} className="chat-profile-link" title="Shiko profilin">
                     <UserRound size={16} aria-hidden />
                     <span>Profili</span>
                   </Link>

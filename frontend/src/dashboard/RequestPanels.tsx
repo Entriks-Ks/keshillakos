@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@heroui/react'
-import { Link } from 'react-router-dom'
 import {
   CalendarDays,
   Clock,
@@ -9,10 +8,8 @@ import {
   MapPin,
   MessageCircle,
   Phone,
-  Search,
 } from 'lucide-react'
 import {
-  fetchMyRequests,
   fetchRequestInbox,
   fetchAllRequests,
   updateRequestStatus,
@@ -21,7 +18,6 @@ import {
 } from '../api/requests'
 import ProfileAvatar from '../components/ProfileAvatar'
 import StartChatButton from '../components/StartChatButton'
-import RateProvider from '../components/RateProvider'
 import { getErrorMessage } from '../utils/errors'
 import DashPageHeader from './DashPageHeader'
 
@@ -91,207 +87,7 @@ function formatAppointment(startAt?: string, endAt?: string) {
   }
 }
 
-export function UserRequestsPanel() {
-  const [requests, setRequests] = useState<ServiceRequestItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all')
-
-  async function load() {
-    setLoading(true)
-    try {
-      setRequests(await fetchMyRequests())
-      setError('')
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void load()
-  }, [])
-
-  const filtered =
-    statusFilter === 'all' ? requests : requests.filter((r) => r.status === statusFilter)
-
-  const statusCounts = requests.reduce(
-    (acc, r) => {
-      acc[r.status] = (acc[r.status] || 0) + 1
-      return acc
-    },
-    {} as Partial<Record<RequestStatus, number>>,
-  )
-
-  const filterOptions = ([
-    { id: 'all', label: 'Të gjitha', count: requests.length },
-    { id: 'pending', label: 'Në pritje', count: statusCounts.pending || 0 },
-    { id: 'accepted', label: 'Pranuar', count: statusCounts.accepted || 0 },
-    { id: 'completed', label: 'Përfunduar', count: statusCounts.completed || 0 },
-    { id: 'rejected', label: 'Refuzuar', count: statusCounts.rejected || 0 },
-  ] satisfies Array<{ id: 'all' | RequestStatus; label: string; count: number }>).filter((item) => item.id === 'all' || item.count > 0)
-
-  const ratingCardIds = useMemo(() => {
-    const seen = new Set<string>()
-    const ids = new Set<string>()
-    for (const request of requests) {
-      if (request.status !== 'completed' || !request.providerUid || seen.has(request.providerUid)) continue
-      seen.add(request.providerUid)
-      ids.add(request.id)
-    }
-    return ids
-  }, [requests])
-
-  return (
-    <section className="req-page">
-      <header className="req-head">
-        <div>
-          <h2>Kërkesat e mia</h2>
-          <p>Ndiq përgjigjet e ofruesve për kërkesat që ke dërguar.</p>
-        </div>
-        <Link to="/ofertat" className="req-head-cta">
-          <Search size={16} aria-hidden />
-          Shiko ofertat
-        </Link>
-      </header>
-
-      {!loading && requests.length > 0 ? (
-        <div className="req-filters" role="tablist" aria-label="Filtro sipas statusit">
-          {filterOptions.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={statusFilter === item.id}
-              className={`req-filter${statusFilter === item.id ? ' is-active' : ''}`}
-              onClick={() => setStatusFilter(item.id)}
-            >
-              {item.label}
-              <em>{item.count}</em>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
-      {error ? <p className="error">{error}</p> : null}
-
-      {!loading && requests.length === 0 ? (
-        <div className="req-empty">
-          <span className="req-empty-icon" aria-hidden>
-            <Inbox size={22} />
-          </span>
-          <h3>Ende nuk ke dërguar kërkesë</h3>
-          <p>Shiko ofertat, zgjidh ofruesin dhe dërgo kërkesë me një hap.</p>
-          <Link to="/ofertat" className="req-head-cta">
-            <Search size={16} aria-hidden />
-            Shiko ofertat
-          </Link>
-        </div>
-      ) : null}
-
-      {!loading && requests.length > 0 && filtered.length === 0 ? (
-        <div className="req-empty is-soft">
-          <p>Nuk ka kërkesa me këtë status.</p>
-          <button type="button" className="ghost" onClick={() => setStatusFilter('all')}>
-            Shiko të gjitha
-          </button>
-        </div>
-      ) : null}
-
-      <ul className="req-list">
-        {filtered.map((r) => {
-          const appointment = formatAppointment(r.requestedStartAt, r.requestedEndAt)
-          return (
-            <li key={r.id} className="req-card">
-              <div className="req-card-head">
-                <div className="req-card-title">
-                  <strong>{r.providerName}</strong>
-                  {r.serviceTitle ? <span>{r.serviceTitle}</span> : null}
-                </div>
-                <span className={`status-pill status-${r.status}`}>
-                  {STATUS_LABELS[r.status]}
-                </span>
-              </div>
-
-              <p className="req-need">{r.need}</p>
-              {r.message ? <p className="req-message">{r.message}</p> : null}
-
-              {appointment ? (
-                <p className="req-appointment">
-                  <CalendarDays size={15} aria-hidden />
-                  <span>{appointment}</span>
-                </p>
-              ) : null}
-
-              <p className="req-meta-line">
-                {CONTACT_LABELS[r.contactMethod]}
-                {r.contactPhone ? ` · ${r.contactPhone}` : ''}
-                {r.contactMethod === 'email' && (r.contactEmail || r.seekerEmail)
-                  ? ` · ${r.contactEmail || r.seekerEmail}`
-                  : ''}
-                {r.urgency ? ` · ${URGENCY_LABELS[r.urgency] || r.urgency}` : ''}
-                {' · '}
-                {formatDate(r.createdAt)}
-              </p>
-
-              {r.providerNote ? (
-                <div className="req-note">
-                  <strong>Përgjigja</strong>
-                  <p>{r.providerNote}</p>
-                </div>
-              ) : r.status === 'pending' || r.status === 'open' || r.status === 'read' ? (
-                <p className="req-waiting">Në pritje të përgjigjes së ofruesit…</p>
-              ) : r.status === 'accepted' ? (
-                <p className="req-waiting">Ofruesi do ta shënojë kërkesën si të përfunduar.</p>
-              ) : null}
-
-              <div className="req-card-actions">
-                {r.providerUid ? (
-                  <Link to={`/providers/${r.providerUid}`} className="req-link-btn">
-                    Profili
-                  </Link>
-                ) : null}
-                {r.status === 'completed' && r.providerUid ? (
-                  <Link to={`/providers/${r.providerUid}#vleresimet`} className="req-link-btn is-accent">
-                    Shiko vlerësimet
-                  </Link>
-                ) : null}
-                {r.providerUid ? (
-                  <StartChatButton
-                    providerUid={r.providerUid}
-                    providerName={r.providerName}
-                    serviceId={r.serviceId}
-                    serviceTitle={r.serviceTitle}
-                    className="req-link-btn is-accent"
-                    label="Dërgo mesazh"
-                    hideGuestHint
-                  />
-                ) : (
-                  <Link to="/dashboard/user/messages" className="req-link-btn is-accent">
-                    <MessageCircle size={14} aria-hidden />
-                    Mesazhet
-                  </Link>
-                )}
-              </div>
-              {ratingCardIds.has(r.id) && r.providerUid ? (
-                <div className="req-rate">
-                  <RateProvider
-                    providerUid={r.providerUid}
-                    providerName={r.providerName}
-                    providerId={r.providerId}
-                    quiet
-                  />
-                </div>
-              ) : null}
-            </li>
-          )
-        })}
-      </ul>
-    </section>
-  )
-}
+export { UserRequestsPage as UserRequestsPanel } from './UserRequestsPage'
 
 type InboxFilter = 'all' | 'waiting' | 'accepted' | 'completed' | 'rejected'
 

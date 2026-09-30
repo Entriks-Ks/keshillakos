@@ -11,14 +11,12 @@ import {
   MessageCircle,
   MessageSquarePlus,
   Plus,
-  Search,
   Star,
   TrendingUp,
   Users,
 } from 'lucide-react'
 import { fetchAdminUsersMeta, fetchPendingRoleRequests } from '../api/adminUsers'
 import {
-  fetchMyAppointments,
   fetchProviderAppointments,
   upcomingAppointments,
   type AppointmentItem,
@@ -31,7 +29,6 @@ import { fetchProfileCompletion } from '../api/profileCompletion'
 import { fetchProviderRatings } from '../api/ratings'
 import {
   fetchAllRequests,
-  fetchMyRequests,
   fetchRequestInbox,
   type ServiceRequestItem,
 } from '../api/requests'
@@ -43,7 +40,6 @@ import {
   OVERVIEW_CHART_COLORS,
   OverviewBarChart,
   OverviewDonutChart,
-  requestStatusSlices,
   weekActivitySlices,
   type OverviewChartsData,
 } from './OverviewCharts'
@@ -593,188 +589,7 @@ function OverviewShell({
   )
 }
 
-export function UserOverviewPage() {
-  const { user } = useAuth()
-  const [stats, setStats] = useState<StatItem[]>([])
-  const [charts, setCharts] = useState<OverviewChartsData | null>(null)
-  const [nextStep, setNextStep] = useState<NextStep | null>(null)
-  const [activity, setActivity] = useState<ActivityItem[]>([])
-  const [reminder, setReminder] = useState<Reminder | null>(null)
-  const [profilePercent, setProfilePercent] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [reloadKey, setReloadKey] = useState(0)
-
-  const reload = useCallback(() => setReloadKey((n) => n + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError('')
-    Promise.all([
-      fetchMyRequests(),
-      fetchConversations(),
-      fetchMyAppointments().catch(() => [] as AppointmentItem[]),
-      fetchProfileCompletion('private').catch(() => null),
-    ])
-      .then(([requests, conversations, appointments, completion]) => {
-        if (cancelled) return
-        const byStatus = countByStatus(requests)
-        const pending = byStatus.pending || 0
-        const accepted = byStatus.accepted || 0
-        const completed = byStatus.completed || 0
-        const unread = unreadFromConversations(conversations)
-        const upcoming = upcomingAppointments(appointments).length
-        setStats([
-          {
-            label: 'Kërkesa gjithsej',
-            value: requests.length,
-            hint: pending > 0 ? `${pending} në pritje` : 'Të dërguara',
-            to: '/dashboard/user/requests',
-            tone: 'accent',
-            featured: true,
-          },
-          {
-            label: 'Pranuara',
-            value: accepted,
-            hint: completed > 0 ? `${completed} përfunduar` : 'Nga ofruesit',
-            to: '/dashboard/user/requests',
-            tone: accepted > 0 ? 'success' : 'default',
-          },
-          {
-            label: 'Termine',
-            value: upcoming,
-            hint: upcoming > 0 ? 'Të ardhshme' : 'Asnjë i planifikuar',
-            to: '/dashboard/user/requests',
-            tone: upcoming > 0 ? 'success' : 'default',
-          },
-          {
-            label: 'Mesazhe',
-            value: unread,
-            hint: unread > 0 ? 'Të palexuara' : `${conversations.length} biseda`,
-            to: '/dashboard/user/messages',
-            tone: unread > 0 ? 'warn' : 'default',
-          },
-        ])
-        setCharts({
-          bar: {
-            title: 'Aktiviteti i javës',
-            subtitle: 'Kërkesa të dërguara 7 ditët e fundit',
-            items: weekActivitySlices(requests),
-            emptyText: 'Dërgo kërkesën e parë për të parë aktivitetin.',
-          },
-          donut: {
-            title: 'Kërkesat sipas statusit',
-            subtitle: 'Si po shkojnë kërkesat e tua',
-            centerLabel: 'Gjithsej',
-            items: requestStatusSlices(byStatus),
-            emptyText: 'Aktiviteti do të shfaqet sapo të fillosh.',
-          },
-        })
-        setActivity(requestsToActivity(requests, '/dashboard/user/requests'))
-        setReminder(appointmentReminder(appointments, '/dashboard/user/requests'))
-        setProfilePercent(completion?.overallPercent ?? null)
-        setNextStep(
-          requests.length === 0
-            ? {
-                title: 'Dërgo kërkesën e parë',
-                text: 'Përshkruaj çfarë të duhet dhe gjej ofruesin e duhur.',
-                to: '/',
-                cta: 'Fillo',
-              }
-            : unread > 0
-              ? {
-                  title: 'Ke mesazhe të palexuara',
-                  text: `${unread} biseda presin përgjigjen tënde.`,
-                  to: '/dashboard/user/messages',
-                  cta: 'Hap chat',
-                }
-              : pending > 0
-                ? {
-                    title: 'Kërkesa ende në pritje',
-                    text: `${pending} kërkesa nuk kanë marrë përgjigje ende.`,
-                    to: '/dashboard/user/requests',
-                    cta: 'Shiko',
-                  }
-                : {
-                    title: 'Gjithçka është e qetë',
-                    text: 'Shiko ofertat kur të të duhet ndihmë përsëri.',
-                    to: '/ofertat',
-                    cta: 'Ofertat',
-                  },
-        )
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setStats([])
-          setCharts(null)
-          setActivity([])
-          setReminder(null)
-          setNextStep(null)
-          setError(getErrorMessage(err))
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
-
-  return (
-    <OverviewShell
-      role="user"
-      greeting={`Mirë se erdhe, ${user?.name || ''}`}
-      subtitle={ROLE_HINTS.user}
-      actions={[
-        { label: 'Kërko ndihmë', to: '/', variant: 'primary', icon: Plus },
-        { label: 'Shiko ofertat', to: '/ofertat', variant: 'secondary', icon: Search },
-      ]}
-      stats={stats}
-      statsLoading={loading}
-      charts={charts}
-      activity={{
-        title: 'Aktiviteti i fundit',
-        subtitle: 'Kërkesat më të reja',
-        items: activity,
-        emptyText: 'Ende nuk ke dërguar asnjë kërkesë.',
-        viewAllTo: '/dashboard/user/requests',
-      }}
-      activityLoading={loading}
-      reminder={reminder}
-      reminderLoading={loading}
-      profilePercent={profilePercent}
-      profileLabel="Profili privat"
-      profileTo="/dashboard/user/profile"
-      nextStep={loading || error ? null : nextStep}
-      error={error}
-      onRetry={reload}
-    >
-      <OverviewCard
-        title="Kërko ndihmë"
-        description="Përshkruaj problemin dhe gjej ofruesin e duhur."
-        to="/"
-        cta="Fillo"
-        icon={Search}
-      />
-      <OverviewCard
-        title="Kërkesat e mia"
-        description="Shiko statusin e kërkesave që ke dërguar."
-        to="/dashboard/user/requests"
-        cta="Hap"
-        icon={Inbox}
-      />
-      <OverviewCard
-        title="Mesazhet"
-        description="Bisedo drejtpërdrejt me ofruesit."
-        to="/dashboard/user/messages"
-        cta="Hap"
-        icon={MessageCircle}
-      />
-    </OverviewShell>
-  )
-}
+export { UserOverviewPage } from './UserOverviewPage'
 
 export function ProviderOverviewPage() {
   const { user } = useAuth()

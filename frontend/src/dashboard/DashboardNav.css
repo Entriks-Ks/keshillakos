@@ -1,0 +1,444 @@
+/* Shared dashboard navigation: sidebar rail, mobile drawer and top bar. */
+
+/* The chat page height calcs in index.css assume this top bar height. */
+.dash-layout {
+  --dtb-height: 60px;
+}
+
+/* Sidebar */
+
+.dsb-rail {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 100svh;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.dsb {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  padding: 14px 12px 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.dsb.is-drawer {
+  height: auto;
+  min-height: 100%;
+  padding: 0;
+  overflow: visible;
+}
+
+.dsb-head {
+  display: grid;
+  gap: 14px;
+}
+
+.dsb-brand {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 1.2rem;
+  border-radius: 6px;
+}
+
+.dsb-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 10px 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.dsb-context:not(.is-static):hover,
+.dsb-context[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: var(--surface-muted);
+}
+
+.dsb-context:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dsb-context[data-disabled] {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.dsb-context.is-static {
+  cursor: default;
+}
+
+.dsb-context-meta {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.dsb-context-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.dsb-context-value {
+  overflow: hidden;
+  color: var(--brand-navy);
+  font-size: 0.9rem;
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dsb-context-caret {
+  flex: none;
+  color: var(--muted);
+}
+
+.dsb-context-popover {
+  min-width: var(--trigger-width, 220px);
+  padding: 4px;
+}
+
+.dsb-context-check {
+  flex: none;
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.dsb-context-note {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.dsb-nav {
+  display: grid;
+  gap: 4px;
+}
+
+.dsb-group-label {
+  margin: 14px 0 4px;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dsb-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dsb-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--ink-secondary);
+  font-size: 0.92rem;
+  font-weight: 550;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.dsb-link svg {
+  flex: none;
+  color: color-mix(in srgb, var(--ink-secondary) 75%, transparent);
+}
+
+.dsb-link:hover {
+  background: var(--surface-muted);
+  color: var(--brand-navy);
+}
+
+.dsb-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dsb-link.is-active {
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.dsb-link.is-active::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.dsb-link.is-active svg {
+  color: var(--accent);
+}
+
+.dsb-foot {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.dsb-list.is-secondary .dsb-link {
+  min-height: 38px;
+  font-size: 0.88rem;
+}
+
+/* Mobile drawer */
+
+.dtb-drawer-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(320px, 86vw);
+  height: 100%;
+}
+
+.dtb-drawer-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dtb-drawer-head .dsb-brand {
+  padding: 0;
+}
+
+.dtb-drawer-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.dsb.is-drawer .dsb-link {
+  min-height: 46px;
+  font-size: 1rem;
+}
+
+/* Top bar */
+
+.dtb {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--dtb-height);
+  padding: 0 20px 0 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.dtb-start {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dtb-menu {
+  display: none;
+}
+
+.dtb-title {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.dtb-kicker {
+  display: none;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.dtb-page {
+  margin: 0;
+  overflow: hidden;
+  color: var(--brand-navy);
+  font-size: 1rem;
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dtb-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.dtb-icon {
+  color: var(--ink-secondary);
+}
+
+.dtb-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px 0 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dtb-account:hover,
+.dtb-account[aria-expanded='true'] {
+  background: var(--surface-muted);
+}
+
+.dtb-account:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dtb-account-name {
+  max-width: 160px;
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dtb-account-caret {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.dtb-account[aria-expanded='true'] .dtb-account-caret {
+  transform: rotate(180deg);
+}
+
+.dtb-popover {
+  min-width: 260px;
+  padding: 6px;
+}
+
+.dtb-account-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dtb-account-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.dtb-account-meta strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.94rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dtb-account-meta span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dtb-account-meta .dtb-account-role {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.dtb-menu-icon {
+  flex: none;
+  color: var(--ink-secondary);
+}
+
+.menu-item--danger .dtb-menu-icon {
+  color: currentColor;
+}
+
+@media (max-width: 900px) {
+  .dsb-rail {
+    display: none;
+  }
+
+  .dtb {
+    padding: 0 8px 0 6px;
+  }
+
+  .dtb-menu {
+    display: inline-flex;
+    flex: none;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .dtb-kicker {
+    display: block;
+  }
+
+  .dtb-account {
+    padding: 0 6px;
+  }
+
+  .dtb-account-name,
+  .dtb-account-caret {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsb-link,
+  .dsb-context,
+  .dtb-account,
+  .dtb-account-caret {
+    transition: none;
+  }
+}

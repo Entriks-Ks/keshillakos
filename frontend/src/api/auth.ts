@@ -37,6 +37,7 @@ export type AuthUser = {
   languages?: string[]
   profilePhoto?: string
   socialLinks?: import('./socialLinks').SocialLinks
+  privacy?: { profileVisibility: 'public' | 'private'; marketingConsent: boolean }
 }
 
 export type ProfileUpdatePayload = {
@@ -50,6 +51,7 @@ export type ProfileUpdatePayload = {
   languages?: string[]
   savedLocation?: { countryId: string; cityId: string } | null
   socialLinks?: import('./socialLinks').SocialLinks | null
+  marketingConsent?: boolean
 }
 
 type AuthResponse = {

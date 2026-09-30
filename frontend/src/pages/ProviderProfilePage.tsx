@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@heroui/react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Share2 } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import {
@@ -19,6 +19,7 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { getErrorMessage } from '../utils/errors'
+import { idFromPublicParam, providerPath } from '../utils/publicPaths'
 import { marketplaceLink } from '../utils/siteNavMenu'
 import './ProviderProfilePage.css'
 
@@ -31,7 +32,10 @@ function ratingWord(average: number, count: number) {
 }
 
 export default function ProviderProfilePage() {
-  const { uid } = useParams<{ uid: string }>()
+  const { uid: param } = useParams<{ uid: string }>()
+  const uid = idFromPublicParam(param)
+  const navigate = useNavigate()
+  const location = useLocation()
   const [provider, setProvider] = useState<PublicProvider | null>(null)
   const [services, setServices] = useState<ServiceItem[]>([])
   const [experts, setExperts] = useState<PublicExpert[]>([])
@@ -73,6 +77,14 @@ export default function ProviderProfilePage() {
       cancelled = true
     }
   }, [uid])
+
+  useEffect(() => {
+    if (!provider || provider.uid !== uid) return
+    const canonical = providerPath(provider)
+    if (location.pathname !== canonical) {
+      navigate({ pathname: canonical, search: location.search, hash: location.hash }, { replace: true })
+    }
+  }, [provider, uid, location.pathname, location.search, location.hash, navigate])
 
   useEffect(() => {
     if (!provider?.uid) {
@@ -282,7 +294,7 @@ export default function ProviderProfilePage() {
                               {experts.map((expert) => {
                                 return (
                                   <li key={expert.uid}>
-                                    <Link to={`/providers/${expert.uid}`} className="kk-profile-person">
+                                    <Link to={providerPath(expert)} className="kk-profile-person">
                                       <ProfileAvatar src={expert.photoUrl} seed={expert.uid} size="md" />
                                       <span>
                                         <strong>{expert.name}</strong>
