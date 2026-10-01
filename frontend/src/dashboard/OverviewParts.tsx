@@ -4,10 +4,11 @@ import { Card, Chip, ProgressBar, Separator, Skeleton } from '@heroui/react'
 import { ArrowRight, Inbox } from 'lucide-react'
 import type { ChatPeer, ConversationItem } from '../api/chat'
 import type { ProfileCompletion } from '../api/profileCompletion'
+import type { ServiceRequestItem } from '../api/requests'
 import type { ServiceItem } from '../api/services'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { formatServicePrice } from '../utils/serviceDiscovery'
-import { formatWhen, type ChipColor } from './requestDisplay'
+import { formatAmount, formatWhen, REQUEST_STATUS, type ChipColor } from './requestDisplay'
 import './UserOverview.css'
 
 export type ActivityEntry = {
@@ -100,6 +101,45 @@ export function conversationEntries(conversations: ConversationItem[], messagesP
 
 export function latestActivity(entries: ActivityEntry[], limit = 6) {
   return [...entries].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, limit)
+}
+
+function receivedRequestDetail(item: ServiceRequestItem) {
+  const client = item.seekerName || 'Klienti'
+  if (item.offer) {
+    const amount = formatAmount(item.offer)
+    return `Dërgove ofertë te ${client}${amount ? ` · ${amount}` : ''}`
+  }
+  switch (item.status) {
+    case 'accepted':
+      return `Pranove kërkesën e ${client}`
+    case 'completed':
+      return `Përfunduar me ${client}`
+    case 'rejected':
+      return `Refuzove kërkesën e ${client}`
+    case 'withdrawn':
+      return `${client} e tërhoqi kërkesën`
+    default:
+      return `Kërkesë nga ${client}`
+  }
+}
+
+/** Latest received requests and conversations, for the expert and company overviews. */
+export function inboxActivity(
+  requests: ServiceRequestItem[],
+  conversations: ConversationItem[],
+  inboxPath: string,
+  messagesPath: string,
+): ActivityEntry[] {
+  const fromRequests = requests.map((item) => ({
+    id: `r-${item.id}`,
+    title: item.need || item.serviceTitle || 'Kërkesë',
+    detail: receivedRequestDetail(item),
+    at: item.updatedAt || item.createdAt,
+    to: inboxPath,
+    status: REQUEST_STATUS[item.status] ?? { label: item.status, color: 'default' as const },
+    emphasize: item.status === 'pending' || item.status === 'open',
+  }))
+  return latestActivity([...fromRequests, ...conversationEntries(conversations, messagesPath)])
 }
 
 export function ActivityRows({ entries }: { entries: ActivityEntry[] }) {

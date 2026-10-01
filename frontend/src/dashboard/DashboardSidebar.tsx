@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Dropdown, Label, Separator } from '@heroui/react'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import type { DashboardContext, UserRole } from '../api/auth'
@@ -21,12 +21,14 @@ type DashboardSidebarProps = {
 
 function SidebarLink({ item, onNavigate }: { item: DashNavItem; onNavigate?: () => void }) {
   const Icon = item.icon
+  const location = useLocation()
+  const isPrivateEdit = location.pathname === '/dashboard/profile/edit' && item.to === '/dashboard/user/profile'
   return (
     <li>
       <NavLink
         to={item.to}
         end={item.end}
-        className={({ isActive }) => `dsb-link${isActive ? ' is-active' : ''}`}
+        className={({ isActive }) => `dsb-link${isActive || isPrivateEdit ? ' is-active' : ''}`}
         onClick={onNavigate}
       >
         <Icon size={18} strokeWidth={2} aria-hidden />

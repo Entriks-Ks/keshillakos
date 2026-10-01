@@ -93,6 +93,9 @@ export default function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<DashboardRedirect />} />
+              <Route path="/dashboard/profile/edit" element={<DashboardShell />}>
+                <Route index element={<ProfilePage />} />
+              </Route>
               <Route path="/dashboard/onboarding/expert" element={<ExpertOnboardingRedirect />} />
               <Route path="/dashboard/onboarding/company" element={<CompanyOnboardingRedirect />} />
             </Route>
@@ -120,6 +123,7 @@ export default function App() {
                 <Route path="availability" element={<AvailabilityPanel />} />
                 <Route path="ratings" element={<OwnRatingsPage />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="profile/edit" element={<ProfilePage />} />
                 <Route path="create" element={<ExpertOnboardingPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
@@ -136,6 +140,7 @@ export default function App() {
                 <Route path="availability" element={<AvailabilityPanel />} />
                 <Route path="ratings" element={<OwnRatingsPage />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="profile/edit" element={<ProfilePage />} />
                 <Route path="create" element={<CompanyOnboardingPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
@@ -149,6 +154,7 @@ export default function App() {
                 <Route path="messages" element={<MessagesPage />} />
                 <Route path="feedback" element={<AdminFeedbackPanel />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="profile/edit" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Route>

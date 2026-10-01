@@ -4,10 +4,12 @@
   background: var(--surface);
 }
 
+.of-marketplace .tt-nav-inner,
 .of-inner {
-  max-width: 1120px;
+  width: var(--tt-wide-content-width);
+  max-width: none;
   margin: 0 auto;
-  padding: 0 20px;
+  padding-inline: 0;
 }
 
 .of-tabs {
@@ -21,7 +23,7 @@
 }
 
 .of-tabs > .of-body {
-  max-width: 1120px;
+  width: var(--tt-wide-content-width);
 }
 
 /* ---------- Header + tabs ---------- */
@@ -594,11 +596,16 @@
   }
 }
 
-@media (max-width: 640px) {
-  .of-inner {
-    padding: 0 16px;
+@media (max-width: 900px) {
+  .of-marketplace .tt-nav-inner,
+  .of-inner,
+  .of-tabs > .of-body {
+    width: auto;
+    margin-inline: 16px;
   }
+}
 
+@media (max-width: 640px) {
   .of-head {
     padding-top: 22px;
   }

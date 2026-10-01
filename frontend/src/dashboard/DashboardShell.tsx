@@ -23,10 +23,11 @@ export default function DashboardShell() {
   const context = resolveActiveContext(user)
   const nav = getDashboardNav(context)
   const mobilePrimary = getMobilePrimaryNav(nav)
+  const activePath = location.pathname === '/dashboard/profile/edit' ? '/dashboard/user/profile' : location.pathname
   const active = nav.find((item) =>
     item.end
-      ? location.pathname === item.to
-      : item.to !== '/' && location.pathname.startsWith(item.to),
+      ? activePath === item.to
+      : item.to !== '/' && activePath.startsWith(item.to),
   )
   const pageTitle = active?.label ?? 'Dashboard'
   const roles = user.roles ?? [user.role]

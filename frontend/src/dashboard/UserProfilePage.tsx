@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -53,6 +53,31 @@ function socialDisplay(value: string) {
   return value.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '')
 }
 
+export function filledSocialLinks(links?: SocialLinks | null) {
+  return SOCIAL_LINK_KEYS
+    .map((key) => [key, links?.[key]?.trim() || ''] as const)
+    .filter(([, value]) => value)
+}
+
+export function SocialLinksList({ entries, className }: { entries: ReturnType<typeof filledSocialLinks>; className?: string }) {
+  return (
+    <ul className={`up-social${className ? ` ${className}` : ''}`}>
+      {entries.map(([key, value]) => (
+        <li key={key}>
+          <a href={socialHref(value)} target="_blank" rel="noopener noreferrer" className="up-social-link">
+            <span className="up-social-icon"><SocialIcon name={key} /></span>
+            <span className="up-social-copy">
+              <strong>{SOCIAL_LINK_LABELS[key]}</strong>
+              <span>{socialDisplay(value)}</span>
+            </span>
+            <ExternalLink size={15} aria-hidden className="up-social-out" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function languageLabel(options: CatalogOptionChoice[], value: string) {
   return options.find((option) => option.value === value)?.label || value
 }
@@ -69,7 +94,7 @@ function SectionHead({ title, meta, action }: { title: string; meta?: ReactNode;
   )
 }
 
-function EmptyNote({ text, action, onAction }: { text: string; action: string; onAction: () => void }) {
+export function EmptyNote({ text, action, onAction }: { text: string; action: string; onAction: () => void }) {
   return (
     <div className="up-empty">
       <p>{text}</p>
@@ -84,8 +109,11 @@ function EmptyNote({ text, action, onAction }: { text: string; action: string; o
 export function UserProfile({ completion, onSaved }: Props) {
   const { user, switchContext } = useAuth()
   const navigate = useNavigate()
+  const route = useLocation()
   const { languages: languageOptions } = useCatalogOptions()
-  const [editing, setEditing] = useState(false)
+  const editing = route.pathname.endsWith('/profile/edit')
+  const profilePath = route.pathname.startsWith('/dashboard/admin') ? '/dashboard/admin/profile' : '/dashboard/user/profile'
+  const editPath = profilePath.startsWith('/dashboard/admin') ? '/dashboard/admin/profile/edit' : '/dashboard/profile/edit'
   const [resolved, setResolved] = useState<{ key: string; value: LocationSelection | null }>({ key: '', value: null })
 
   const countryId = user?.savedLocation?.countryId
@@ -110,7 +138,7 @@ export function UserProfile({ completion, onSaved }: Props) {
   const roles = user.roles ?? [user.role]
 
   function startEdit() {
-    setEditing(true)
+    navigate(editPath)
     window.scrollTo({ top: 0 })
   }
 
@@ -118,7 +146,7 @@ export function UserProfile({ completion, onSaved }: Props) {
     if (nextCity !== undefined) {
       setResolved({ key: nextCity ? `${nextCity.country._id}:${nextCity.city._id}` : '', value: nextCity })
     }
-    setEditing(false)
+    navigate(profilePath)
     window.scrollTo({ top: 0 })
   }
 
@@ -165,9 +193,7 @@ export function UserProfile({ completion, onSaved }: Props) {
     ? Math.max(0, Math.min(100, Math.round(completion.overallPercent)))
     : null
   const missing = completion?.section.missingRequired ?? []
-  const socialEntries = SOCIAL_LINK_KEYS
-    .map((key) => [key, user.socialLinks?.[key]?.trim() || ''] as const)
-    .filter(([, value]) => value)
+  const socialEntries = filledSocialLinks(user.socialLinks)
   const userLanguages = user.languages ?? []
   const skills = user.skills ?? []
 
@@ -271,20 +297,7 @@ export function UserProfile({ completion, onSaved }: Props) {
             />
             <Card.Content className="uo-card-body">
               {socialEntries.length ? (
-                <ul className="up-social">
-                  {socialEntries.map(([key, value]) => (
-                    <li key={key}>
-                      <a href={socialHref(value)} target="_blank" rel="noopener noreferrer" className="up-social-link">
-                        <span className="up-social-icon"><SocialIcon name={key} /></span>
-                        <span className="up-social-copy">
-                          <strong>{SOCIAL_LINK_LABELS[key]}</strong>
-                          <span>{socialDisplay(value)}</span>
-                        </span>
-                        <ExternalLink size={15} aria-hidden className="up-social-out" />
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <SocialLinksList entries={socialEntries} />
               ) : (
                 <EmptyNote text="Nuk ke shtuar asnjë rrjet social." action="Shto rrjete sociale" onAction={startEdit} />
               )}

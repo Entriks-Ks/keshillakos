@@ -13,9 +13,8 @@ import { providerPath } from '../utils/publicPaths'
 import { CONTEXT_LABELS, ROLE_HINTS } from './nav'
 import {
   ActivityRows,
-  conversationEntries,
   EmptyBlock,
-  latestActivity,
+  inboxActivity,
   ProfileSetupCard,
   RowsSkeleton,
   SectionHead,
@@ -23,10 +22,9 @@ import {
   StatsStrip,
   TextLink,
   timeGreeting,
-  type ActivityEntry,
   type OverviewStat,
 } from './OverviewParts'
-import { formatAmount, formatWhen, REQUEST_STATUS } from './requestDisplay'
+import { formatWhen } from './requestDisplay'
 
 const INBOX_PATH = '/dashboard/provider/inbox'
 const MESSAGES_PATH = '/dashboard/provider/messages'
@@ -45,39 +43,6 @@ type OverviewData = {
 
 function plural(count: number, one: string, many: string) {
   return count === 1 ? one : many
-}
-
-function requestDetail(item: ServiceRequestItem) {
-  const client = item.seekerName || 'Klienti'
-  if (item.offer) {
-    const amount = formatAmount(item.offer)
-    return `Dërgove ofertë te ${client}${amount ? ` · ${amount}` : ''}`
-  }
-  switch (item.status) {
-    case 'accepted':
-      return `Pranove kërkesën e ${client}`
-    case 'completed':
-      return `Përfunduar me ${client}`
-    case 'rejected':
-      return `Refuzove kërkesën e ${client}`
-    case 'withdrawn':
-      return `${client} e tërhoqi kërkesën`
-    default:
-      return `Kërkesë nga ${client}`
-  }
-}
-
-function buildActivity(requests: ServiceRequestItem[], conversations: ConversationItem[]): ActivityEntry[] {
-  const fromRequests = requests.map((item) => ({
-    id: `r-${item.id}`,
-    title: item.need || item.serviceTitle || 'Kërkesë',
-    detail: requestDetail(item),
-    at: item.updatedAt || item.createdAt,
-    to: INBOX_PATH,
-    status: REQUEST_STATUS[item.status] ?? { label: item.status, color: 'default' as const },
-    emphasize: item.status === 'pending' || item.status === 'open',
-  }))
-  return latestActivity([...fromRequests, ...conversationEntries(conversations, MESSAGES_PATH)])
 }
 
 function contextSentence(data: OverviewData) {
@@ -133,7 +98,7 @@ function StatsSection({ data, loading }: { data: OverviewData | null; loading: b
 }
 
 function ActivityCard({ data, loading, publicPath }: { data: OverviewData | null; loading: boolean; publicPath: string | null }) {
-  const entries = data ? buildActivity(data.requests, data.conversations) : []
+  const entries = data ? inboxActivity(data.requests, data.conversations, INBOX_PATH, MESSAGES_PATH) : []
   const hasServices = (data?.services.length ?? 0) > 0
 
   return (

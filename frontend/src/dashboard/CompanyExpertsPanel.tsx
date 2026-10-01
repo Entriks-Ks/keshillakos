@@ -1,6 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, toast } from '@heroui/react'
+import { Alert, Button, buttonVariants, Card, Chip, toast } from '@heroui/react'
+import { Building2, ChevronDown, Clock, Eye, Mail, MailPlus, Plus, UserMinus, Users } from 'lucide-react'
+import { fetchDomains } from '../api/domains'
 import {
   cancelInvitation,
   fetchBusinessTeam,
@@ -16,8 +18,11 @@ import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
 import { providerPath } from '../utils/publicPaths'
-import DashPageHeader from './DashPageHeader'
-import './CompanyExpertsPanel.css'
+import { RowsSkeleton, SectionHead } from './OverviewParts'
+import type { ChipColor } from './requestDisplay'
+import './UserOverview.css'
+import './UserRequests.css'
+import './DashboardSections.css'
 
 function formatInviteDate(value: string) {
   try {
@@ -35,6 +40,13 @@ const LOOKUP_HINT: Record<Exclude<ExpertLookup['status'], 'ready' | 'invalid'>, 
   owner: 'Ky person e menaxhon kompaninë.',
 }
 
+const PROFILE_STATUS: Record<string, { label: string; color: ChipColor }> = {
+  published: { label: 'Profil publik', color: 'success' },
+  pending: { label: 'Profili në shqyrtim', color: 'warning' },
+  draft: { label: 'Profil draft', color: 'default' },
+  suspended: { label: 'Profil i pezulluar', color: 'danger' },
+}
+
 export default function CompanyExpertsPanel() {
   const { user } = useAuth()
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([])
@@ -47,6 +59,20 @@ export default function CompanyExpertsPanel() {
   const [checking, setChecking] = useState(false)
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState('')
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({})
+  const emailRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchDomains()
+      .then((domains) => {
+        if (!cancelled) setCategoryLabels(Object.fromEntries(domains.map((domain) => [domain.id, domain.labelSq])))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!(user?.roles ?? []).includes('company') && user?.role !== 'admin') return
@@ -164,134 +190,289 @@ export default function CompanyExpertsPanel() {
     }
   }
 
+  function focusInvite() {
+    emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    emailRef.current?.focus({ preventScroll: true })
+  }
+
   const members = team?.members ?? []
   const invitations = team?.invitations ?? []
   const selectedBusiness = businesses.find((item) => item._id === selected)
   const canInviteExperts = Boolean(selectedBusiness && selectedBusiness.status !== 'suspended' && selectedBusiness.status !== 'closed')
+  const companyName = team?.business.publicName || selectedBusiness?.publicName || ''
+  const noCompany = !loading && !error && !selected
+
   return (
-    <section className="provider-section company-experts">
-      <DashPageHeader
-        title="Ekspertët"
-        description="Shto ekspertë që janë tashmë në KëshillaKos. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë, u shkruajnë dhe caktojnë takim."
-      />
+    <section className="uo ds">
+      <header className="uo-head">
+        <div className="uo-head-copy">
+          <h1>Ekspertët</h1>
+          <p>
+            {companyName ? `Ekipi i ${companyName}. ` : ''}
+            Fto ekspertë që janë tashmë në KëshillaKos. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë,
+            u shkruajnë dhe caktojnë takim.
+          </p>
+        </div>
+        {!loading && selected && canInviteExperts ? (
+          <Button variant="primary" className="uo-primary" onPress={focusInvite}>
+            <Plus size={16} aria-hidden />
+            Fto ekspert
+          </Button>
+        ) : null}
+      </header>
+
+      {businesses.length > 1 ? (
+        <div className="ds-field ds-company-select">
+          <label className="ds-label" htmlFor="company-select">
+            Kompania
+          </label>
+          <span className="ds-select">
+            <select id="company-select" value={selected} onChange={(e) => setSelected(e.target.value)}>
+              {businesses.map((business) => (
+                <option key={business._id} value={business._id}>
+                  {business.publicName}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} aria-hidden />
+          </span>
+        </div>
+      ) : null}
+
+      {error ? (
+        <Alert status="danger" className="uo-alert">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>Nuk u ngarkuan ekspertët</Alert.Title>
+            <Alert.Description>{error}</Alert.Description>
+          </Alert.Content>
+        </Alert>
+      ) : null}
 
       {selectedBusiness && !canInviteExperts ? (
-        <p className="muted role-pending-pill" role="status">
-          Kompania është pezulluar ose e mbyllur. Ftesat e ekspertëve nuk janë të disponueshme.
-        </p>
-      ) : null}
-      {businesses.length > 1 ? (
-        <label className="dash-inline-select">
-          Kompania
-          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-            {businesses.map((business) => (
-              <option key={business._id} value={business._id}>
-                {business.publicName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Alert status="warning" className="uo-alert">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>Ftesat nuk janë të disponueshme</Alert.Title>
+            <Alert.Description>Kompania është pezulluar ose e mbyllur. Ftesat e ekspertëve nuk janë të disponueshme.</Alert.Description>
+          </Alert.Content>
+        </Alert>
       ) : null}
 
-      {error ? <p className="error">{error}</p> : null}
-      {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
-
-      {!loading && !selected ? (
-        <p className="muted">Nuk ke ende një kompani të menaxhueshme. <Link to="/dashboard/company/create">Krijo kompaninë</Link>.</p>
-      ) : null}
-
-      {!loading && selected && canInviteExperts ? (
-        <form className="company-invite" onSubmit={onInvite}>
-          <label htmlFor="expert-email">Email i ekspertit</label>
-          <div className="company-invite-row">
-            <input
-              id="expert-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              placeholder="eksperti@email.com"
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Button type="submit" variant="primary" isDisabled={saving || match?.status !== 'ready'}>
-              {saving ? 'Duke ftuar…' : 'Fto'}
-            </Button>
+      {noCompany ? (
+        <Card className="uo-card ur-empty">
+          <span className="ur-empty-icon" aria-hidden>
+            <Building2 size={22} />
+          </span>
+          <h2>Nuk ke ende një kompani të menaxhueshme</h2>
+          <p>Krijo kompaninë për të ftuar ekspertë në ekip. Ekspertët e pranuar shfaqen te profili publik i kompanisë.</p>
+          <div className="ur-empty-actions">
+            <Link to="/dashboard/company/create" className={buttonVariants({ variant: 'primary' })}>
+              <Plus size={16} aria-hidden />
+              Krijo kompaninë
+            </Link>
           </div>
-          {checking ? <p className="company-invite-note">Po kontrollohet…</p> : null}
-          {!checking && match?.status === 'ready' && match.person ? (
-            <div className="company-invite-match">
-              <div className="profile-avatar-sm" aria-hidden>
-                <ProfileAvatar src={match.person.photoUrl} seed={match.person.uid} size="fill" />
-              </div>
-              <div>
-                <strong>{match.person.name}</strong>
-                <span>{match.person.headline || match.person.email}</span>
-              </div>
-            </div>
-          ) : null}
-          {!checking && match && match.status !== 'ready' && match.status !== 'invalid' ? (
-            <p className="company-invite-note">{LOOKUP_HINT[match.status]}</p>
-          ) : null}
-        </form>
+        </Card>
       ) : null}
 
-      {!loading && selected ? (
-        <>
-          <div className="company-team">
-            <h3>Në ekip ({members.length})</h3>
-            {members.length === 0 ? <p className="muted">Ende nuk ka ekspertë. Fto të parin me email.</p> : null}
-            <ul>
-              {members.map((member) => {
-                return (
-                  <li key={member.id}>
-                    <div className="company-person">
-                      <div className="profile-avatar-sm" aria-hidden>
-                        <ProfileAvatar src={member.photoUrl} seed={member.uid} size="fill" />
-                      </div>
-                      <div>
-                        <strong>{member.name}</strong>
-                        <span>{member.headline || member.email}</span>
+      {selected ? (
+        <div className={`uo-grid${canInviteExperts ? '' : ' ds-single'}`}>
+          <div className="uo-side">
+            <Card className="uo-card ur-card">
+              <SectionHead
+                title="Ekspertët në ekip"
+                meta={!loading && members.length > 0 ? <span className="uo-card-meta">{members.length}</span> : null}
+              />
+              {loading ? (
+                <Card.Content className="uo-card-body">
+                  <RowsSkeleton rows={3} />
+                </Card.Content>
+              ) : members.length === 0 ? (
+                <div className="ur-empty ds-divided">
+                  <span className="ur-empty-icon" aria-hidden>
+                    <Users size={22} />
+                  </span>
+                  <h2>Ende nuk ka ekspertë në kompani</h2>
+                  <p>
+                    {invitations.length > 0
+                      ? 'Ekspertët e ftuar shfaqen këtu sapo ta pranojnë ftesën te profili i tyre.'
+                      : 'Fto ekspertin e parë me email-in që përdor në KëshillaKos. Pasi ta pranojë ftesën, shfaqet këtu dhe te profili i kompanisë.'}
+                  </p>
+                  {canInviteExperts ? (
+                    <div className="ur-empty-actions">
+                      <Button variant="primary" onPress={focusInvite}>
+                        <MailPlus size={16} aria-hidden />
+                        Fto ekspertin e parë
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <ul className="ur-list ds-divided">
+                  {members.map((member) => {
+                    const status = member.profileStatus ? PROFILE_STATUS[member.profileStatus] : null
+                    const categories = (member.categories ?? []).map((id) => categoryLabels[id]).filter(Boolean)
+                    return (
+                      <li key={member.id} className="ds-member">
+                        <ProfileAvatar src={member.photoUrl} seed={member.uid} size={48} alt="" />
+                        <div className="ur-main">
+                          <div className="ur-top">
+                            <div className="ur-titles">
+                              <h3 className="ur-title">{member.name}</h3>
+                              {member.headline ? <p className="ur-sub">{member.headline}</p> : null}
+                            </div>
+                            <div className="ur-chips">
+                              {member.role === 'manager' ? (
+                                <Chip size="sm" variant="soft" color="accent">
+                                  <Chip.Label>Menaxher</Chip.Label>
+                                </Chip>
+                              ) : null}
+                              {status ? (
+                                <Chip size="sm" variant="soft" color={status.color}>
+                                  <Chip.Label>{status.label}</Chip.Label>
+                                </Chip>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {categories.length > 0 ? (
+                            <div className="ur-chips">
+                              {categories.map((label) => (
+                                <Chip key={label} size="sm" variant="soft">
+                                  <Chip.Label>{label}</Chip.Label>
+                                </Chip>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {member.email ? (
+                            <ul className="ur-facts">
+                              <li>
+                                <Mail size={14} aria-hidden />
+                                {member.email}
+                              </li>
+                            </ul>
+                          ) : null}
+
+                          <div className="ur-actions is-wrap ds-service-actions">
+                            {member.uid ? (
+                              <Link
+                                className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+                                to={providerPath({ uid: member.uid, name: member.name })}
+                              >
+                                <Eye size={14} aria-hidden />
+                                Profili
+                              </Link>
+                            ) : null}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="ds-danger-btn"
+                              isPending={busyId === member.id}
+                              isDisabled={Boolean(busyId) && busyId !== member.id}
+                              onPress={() => void onRemove(member.id)}
+                            >
+                              <UserMinus size={14} aria-hidden />
+                              {busyId === member.id ? 'Duke hequr…' : 'Hiq'}
+                            </Button>
+                          </div>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </Card>
+
+            {!loading && invitations.length > 0 ? (
+              <Card className="uo-card">
+                <SectionHead title="Ftesa në pritje" meta={<span className="uo-card-meta">{invitations.length}</span>} />
+                <Card.Content className="uo-card-body">
+                  <ul className="uo-rows">
+                    {invitations.map((invite) => (
+                      <li key={invite.id}>
+                        <div className="uo-row is-static ds-invite-row">
+                          <ProfileAvatar src={invite.photoUrl} seed={invite.uid} size={36} alt="" />
+                          <span className="uo-row-copy">
+                            <strong>{invite.name || invite.email}</strong>
+                            <span>
+                              {invite.email}
+                              {invite.invitedAt ? ` · ${formatInviteDate(invite.invitedAt)}` : ''}
+                            </span>
+                          </span>
+                          <span className="ds-invite-end">
+                            <Chip size="sm" variant="soft" color="warning">
+                              <Clock size={12} aria-hidden />
+                              <Chip.Label>Në pritje</Chip.Label>
+                            </Chip>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              isPending={busyId === invite.id}
+                              isDisabled={Boolean(busyId) && busyId !== invite.id}
+                              onPress={() => void onCancelInvite(invite.id)}
+                            >
+                              {busyId === invite.id ? 'Duke anuluar…' : 'Anulo'}
+                            </Button>
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </Card.Content>
+              </Card>
+            ) : null}
+          </div>
+
+          {canInviteExperts ? (
+            <div className="uo-side ds-invite-col">
+              <Card className="uo-card">
+                <SectionHead title="Fto ekspert" />
+                <Card.Content className="uo-card-body">
+                  <form className="ds-form ds-invite" onSubmit={onInvite}>
+                    <p className="ds-hint">
+                      Shkruaj email-in me të cilin eksperti është regjistruar në KëshillaKos. Eksperti e pranon ftesën te
+                      profili i tij.
+                    </p>
+                    <div className="ds-field">
+                      <label className="ds-label" htmlFor="expert-email">
+                        Email i ekspertit
+                      </label>
+                      <div className="ds-invite-input">
+                        <input
+                          ref={emailRef}
+                          id="expert-email"
+                          className="ds-input"
+                          type="email"
+                          autoComplete="email"
+                          value={email}
+                          placeholder="eksperti@email.com"
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
+                        <Button type="submit" variant="primary" isPending={saving} isDisabled={saving || match?.status !== 'ready'}>
+                          {saving ? 'Duke ftuar…' : 'Fto'}
+                        </Button>
                       </div>
                     </div>
-                    <div className="company-person-actions">
-                      {member.uid ? (
-                        <Link to={providerPath({ uid: member.uid, name: member.name })}>Profili</Link>
-                      ) : null}
-                      <button type="button" disabled={busyId === member.id} onClick={() => void onRemove(member.id)}>
-                        {busyId === member.id ? 'Duke hequr…' : 'Hiq'}
-                      </button>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          {invitations.length > 0 ? (
-            <div className="company-team">
-              <h3>Në pritje ({invitations.length})</h3>
-              <ul>
-                {invitations.map((invite) => (
-                  <li key={invite.id}>
-                    <div className="company-person">
-                      <div>
-                        <strong>{invite.name || invite.email}</strong>
-                        <span>
-                          {invite.email}
-                          {invite.invitedAt ? ` · ${formatInviteDate(invite.invitedAt)}` : ''}
+                    {checking ? <p className="ds-hint">Po kontrollohet…</p> : null}
+                    {!checking && match?.status === 'ready' && match.person ? (
+                      <div className="ds-invite-match">
+                        <ProfileAvatar src={match.person.photoUrl} seed={match.person.uid} size={40} alt="" />
+                        <span className="uo-row-copy">
+                          <strong>{match.person.name}</strong>
+                          <span>{match.person.headline || match.person.email}</span>
                         </span>
                       </div>
-                    </div>
-                    <div className="company-person-actions">
-                      <button type="button" disabled={busyId === invite.id} onClick={() => void onCancelInvite(invite.id)}>
-                        {busyId === invite.id ? 'Duke anuluar…' : 'Anulo'}
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    ) : null}
+                    {!checking && match && match.status !== 'ready' && match.status !== 'invalid' ? (
+                      <p className="ds-hint">{LOOKUP_HINT[match.status]}</p>
+                    ) : null}
+                  </form>
+                </Card.Content>
+              </Card>
             </div>
           ) : null}
-        </>
+        </div>
       ) : null}
     </section>
   )

@@ -570,7 +570,7 @@ export default function OffersPage() {
   )
 
   return (
-    <div className="tt-shell">
+    <div className="tt-shell of-marketplace">
       <SiteNav />
 
       <main className="of-page">

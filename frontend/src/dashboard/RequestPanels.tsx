@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Alert, Card, Chip } from '@heroui/react'
 import { fetchAllRequests, type RequestStatus, type ServiceRequestItem } from '../api/requests'
 import { getErrorMessage } from '../utils/errors'
-import DashPageHeader from './DashPageHeader'
+import { EmptyBlock, RowsSkeleton, SectionHead } from './OverviewParts'
+import { REQUEST_STATUS } from './requestDisplay'
+import './UserOverview.css'
+import './DashboardSections.css'
+import './AdminDashboard.css'
 
 const STATUS_LABELS: Record<RequestStatus, string> = {
   draft: 'Draft',
@@ -75,29 +80,28 @@ export function AdminRequestsPanel() {
   }, [])
 
   return (
-    <section className="provider-section">
-      <DashPageHeader
-        title="Të gjitha kërkesat"
-        description="Mbikëqyrja e kërkesave në platformë."
-      />
-      {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
-      {error ? <p className="error">{error}</p> : null}
-      <ul className="request-list">
+    <section className="uo ds ad">
+      <header className="uo-head"><div className="uo-head-copy"><h1>Të gjitha kërkesat</h1><p>Mbikëqyrja e kërkesave në platformë.</p></div></header>
+      {error ? <Alert status="danger" className="uo-alert"><Alert.Indicator /><Alert.Content><Alert.Title>Kërkesat nuk u ngarkuan</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content></Alert> : null}
+      <Card className="uo-card">
+        <SectionHead title="Kërkesat" meta={!loading ? <span className="uo-card-meta">{requests.length}</span> : null} />
+        {loading ? <Card.Content className="uo-card-body"><RowsSkeleton rows={4} /></Card.Content> : !error && requests.length === 0 ? <EmptyBlock title="Ende nuk ka kërkesa" text="Kërkesat e platformës do të shfaqen këtu." /> : null}
+      {!loading && requests.length > 0 ? <ul className="ad-request-list">
         {requests.map((r) => (
           <li key={r.id}>
-            <div className="request-list-head">
+            <div className="ad-request-head">
               <strong>
                 {r.seekerName} → {r.providerName}
               </strong>
-              <span className={`status-pill status-${r.status}`}>{STATUS_LABELS[r.status]}</span>
+              <Chip size="sm" variant="soft" color={REQUEST_STATUS[r.status]?.color || 'default'}><Chip.Label>{STATUS_LABELS[r.status]}</Chip.Label></Chip>
             </div>
-            <p>{r.message}</p>
+            {r.message ? <p>{r.message}</p> : null}
             {formatAppointment(r.requestedStartAt, r.requestedEndAt) ? (
               <p className="request-appointment">
                 <strong>Termini:</strong> {formatAppointment(r.requestedStartAt, r.requestedEndAt)}
               </p>
             ) : null}
-            <ul className="match-meta">
+            <ul className="ad-request-meta">
               <li>
                 {CONTACT_LABELS[r.contactMethod]}
                 {r.contactPhone ? ` · ${r.contactPhone}` : ''}
@@ -109,7 +113,8 @@ export function AdminRequestsPanel() {
             </ul>
           </li>
         ))}
-      </ul>
+      </ul> : null}
+      </Card>
     </section>
   )
 }

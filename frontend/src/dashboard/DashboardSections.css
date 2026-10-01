@@ -803,9 +803,99 @@
   gap: 6px;
 }
 
+/* Kompania */
+
+.ds-company-hero {
+  padding: 18px 20px;
+}
+
+.ds-company-hero .up-hero-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.ds-company-hero .up-hero-title h2 {
+  margin: 0;
+  color: var(--brand-navy);
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.ds-company-hero .up-hero-meta {
+  margin-top: 2px;
+}
+
+.ds-company-select {
+  max-width: 360px;
+}
+
+.uo-grid.ds-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ds-member {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.ds-member + .ds-member {
+  border-top: 1px solid var(--border);
+}
+
+.ds-member .ur-sub {
+  overflow-wrap: anywhere;
+}
+
+.ds-invite-row {
+  flex-wrap: wrap;
+}
+
+.ds-invite-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ds-invite {
+  gap: 14px;
+}
+
+.ds-invite-input {
+  display: flex;
+  gap: 8px;
+}
+
+.ds-invite-input .ds-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-invite-match {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 4%, #fff);
+}
+
 @media (max-width: 1024px) {
   .ds-av-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ds-invite-col {
+    order: -1;
   }
 }
 
@@ -918,5 +1008,42 @@
 
   .ds-wizard-buttons > span:empty {
     display: none;
+  }
+
+  .ds-company-hero {
+    padding: 16px;
+  }
+
+  .ds-company-hero .up-hero-avatar {
+    width: 56px;
+    height: 56px;
+  }
+
+  .ds-company-select {
+    max-width: none;
+  }
+
+  .ds-member {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .ds-member .ur-top {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ds-invite-end {
+    width: 100%;
+    justify-content: space-between;
+    padding-left: 48px;
+  }
+
+  .ds-invite-input {
+    flex-direction: column;
+  }
+
+  .ds-invite-input > * {
+    min-height: 44px;
   }
 }
