@@ -239,6 +239,14 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
 }
 
+/** Dashboard context names used by the shared shell (sidebar, top bar, context switch). */
+export const CONTEXT_LABELS: Record<UserRole, string> = {
+  user: 'Përdorues privat',
+  provider: 'Ekspert',
+  company: 'Kompani',
+  admin: 'Admin',
+}
+
 export const ROLE_HINTS: Record<UserRole, string> = {
   user: 'Gjej ndihmë, ndiq kërkesat dhe flit me ofruesit.',
   provider: 'Prano kërkesa, menaxho ofertat dhe oraret.',

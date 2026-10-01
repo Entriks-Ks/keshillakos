@@ -64,7 +64,7 @@ export const UNIVERSAL_EXTENSION_KEYS = new Set([
   'certifiedTranslation',
 ])
 
-function fieldLabel(field: ExtensionField, language: 'sq' | 'en') {
+export function fieldLabel(field: ExtensionField, language: 'sq' | 'en') {
   const mapped = FIELD_LABELS[field.key]
   if (mapped) return mapped[language] || mapped.sq
   return field.key.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase())
@@ -75,7 +75,7 @@ function fieldHint(field: ExtensionField, language: 'sq' | 'en') {
   return mapped ? mapped[language] || mapped.sq : undefined
 }
 
-function optionLabel(value: string, options: CatalogOption[], language: 'sq' | 'en') {
+export function optionLabel(value: string, options: CatalogOption[], language: 'sq' | 'en') {
   const match = options.find((item) => (item.group === 'language' ? item.name.sq === value : item.slug === value || item.slug.replace(/-/g, '_') === value))
   return match ? catalogOptionLabel(match, language) : value
 }

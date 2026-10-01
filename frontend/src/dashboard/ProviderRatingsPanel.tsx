@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Alert, Button, buttonVariants, Card, Label, TextArea, TextField } from '@heroui/react'
 import { BadgeCheck, ExternalLink, MessageSquareReply, Star } from 'lucide-react'
 import { fetchProviderRatings, respondToRating, type RatingItem } from '../api/ratings'
 import ProfileAvatar from '../components/ProfileAvatar'
-import {
-  formatReviewDate,
-  ratingBuckets,
-  ratingWord,
-  StarRow,
-} from '../components/ratingUi'
+import { formatReviewDate, ratingBuckets, ratingWord, StarRow } from '../components/ratingUi'
 import { getErrorMessage } from '../utils/errors'
-import DashPageHeader from './DashPageHeader'
+import { RowsSkeleton, SectionHead } from './OverviewParts'
+import './UserRequests.css'
+import './DashboardSections.css'
 
 export default function ProviderRatingsPanel({
   providerUid,
@@ -23,10 +21,18 @@ export default function ProviderRatingsPanel({
   const [count, setCount] = useState(0)
   const [ratings, setRatings] = useState<RatingItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
   const [replyId, setReplyId] = useState('')
   const [replyText, setReplyText] = useState('')
   const [replyError, setReplyError] = useState('')
   const [replying, setReplying] = useState(false)
+
+  const reload = useCallback(() => {
+    setLoading(true)
+    setError('')
+    setReloadKey((n) => n + 1)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -37,14 +43,16 @@ export default function ProviderRatingsPanel({
         setCount(data.stats.count)
         setRatings(data.ratings)
       })
-      .catch(() => undefined)
+      .catch((err: unknown) => {
+        if (!cancelled) setError(getErrorMessage(err))
+      })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
     return () => {
       cancelled = true
     }
-  }, [providerUid])
+  }, [providerUid, reloadKey])
 
   const buckets = useMemo(() => ratingBuckets(ratings.map((item) => item.score)), [ratings])
 
@@ -65,151 +73,170 @@ export default function ProviderRatingsPanel({
     }
   }
 
+  function closeReply() {
+    setReplyId('')
+    setReplyText('')
+    setReplyError('')
+  }
+
   return (
-    <section className="provider-section dash-ratings">
-      <DashPageHeader
-        title="Vlerësimet"
-        description={
-          audience === 'company'
-            ? 'Feedback-u i klientëve për ofruesit dhe ekspertët e kompanisë.'
-            : 'Shiko çfarë thonë klientët pas punës së përfunduar dhe përgjigju nëse do.'
-        }
-        actions={
-          <Link to={`/providers/${providerUid}#vleresimet`} className="dash-ratings-public">
-            Shiko te profili
-            <ExternalLink size={14} aria-hidden />
-          </Link>
-        }
-      />
-
-      {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
-
-      {!loading && count > 0 ? (
-        <div className="tt-reviews-summary">
-          <div className="tt-reviews-score">
-            <span className="tt-reviews-score-num">{average.toFixed(1)}</span>
-            <StarRow value={average} size={18} label={`${average.toFixed(1)} nga 5 yje`} />
-            <strong>{ratingWord(average, count)}</strong>
-            <span className="muted">
-              {count} {count === 1 ? 'vlerësim publik' : 'vlerësime publike'}
-            </span>
-          </div>
-          <ul className="tt-review-bars" aria-label="Shpërndarja e vlerësimeve">
-            {buckets.map((bucket) => (
-              <li key={bucket.stars}>
-                <span>
-                  {bucket.stars}
-                  <Star size={11} className="is-filled" aria-hidden />
-                </span>
-                <span className="tt-review-bar">
-                  <em style={{ width: `${bucket.pct}%` }} />
-                </span>
-                <span>{bucket.pct}%</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {!loading && ratings.length === 0 ? (
-        <div className="tt-reviews-empty">
-          <Star size={22} aria-hidden />
-          <p>Ende pa vlerësime</p>
-          <span>
+    <section className="uo ds">
+      <header className="uo-head">
+        <div className="uo-head-copy">
+          <h1>Vlerësimet</h1>
+          <p>
             {audience === 'company'
-              ? 'Klientët vlerësojnë pasi ta përfundosh kërkesën. Pastaj nota shfaqet këtu dhe te profili publik.'
-              : 'Kur ta përfundosh kërkesën, klienti mund të lërë yje dhe koment. Ato shfaqen këtu dhe te profili yt publik.'}
-          </span>
+              ? 'Vlerësimet që klientët kanë lënë për kompaninë dhe ekspertët e saj pas punës së përfunduar.'
+              : 'Vlerësimet që klientët kanë lënë pas punës së përfunduar me ty. Mund t’u përgjigjesh drejtpërdrejt.'}
+          </p>
         </div>
-      ) : null}
+        <Link to={`/providers/${providerUid}#vleresimet`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
+          <ExternalLink size={16} aria-hidden />
+          Shiko te profili publik
+        </Link>
+      </header>
 
-      {ratings.length > 0 ? (
-        <ul className="tt-review-list">
-          {ratings.map((item) => (
-            <li key={item.id} className="tt-review-card">
-              <div className="tt-review-card-head">
-                <span className="tt-review-avatar" aria-hidden>
-                  <ProfileAvatar seed={item.raterUid} size="fill" />
-                </span>
-                <div className="tt-review-who">
-                  <strong>{item.raterName}</strong>
-                  <span className="muted">
-                    {formatReviewDate(item.createdAt)}
-                    {item.providerName ? ` · ${item.providerName}` : ''}
+      {error ? (
+        <Alert status="danger" className="uo-alert">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>Vlerësimet nuk u ngarkuan</Alert.Title>
+            <Alert.Description>{error}</Alert.Description>
+          </Alert.Content>
+          <Button size="sm" variant="outline" onPress={reload}>
+            Provo përsëri
+          </Button>
+        </Alert>
+      ) : loading ? (
+        <Card className="uo-card">
+          <Card.Content className="uo-card-body ds-pad-top">
+            <RowsSkeleton rows={3} />
+          </Card.Content>
+        </Card>
+      ) : ratings.length === 0 ? (
+        <Card className="uo-card ur-empty">
+          <span className="ur-empty-icon" aria-hidden>
+            <Star size={22} />
+          </span>
+          <h2>Ende pa vlerësime</h2>
+          <p>
+            {audience === 'company'
+              ? 'Pasi kompania të përfundojë një kërkesë ose takim, klienti mund të lërë yje dhe koment. Vlerësimet shfaqen këtu dhe në profilin publik.'
+              : 'Pasi të përfundosh një kërkesë ose takim, klienti mund të lërë yje dhe koment. Vlerësimet shfaqen këtu dhe në profilin tënd publik.'}
+          </p>
+        </Card>
+      ) : (
+        <>
+          {count > 0 ? (
+            <Card className="uo-card ds-rating-summary">
+              <div className="ds-rating-score">
+                <strong className="ds-rating-num">{average.toFixed(1)}</strong>
+                <div className="ds-rating-copy">
+                  <StarRow value={average} size={16} label={`${average.toFixed(1)} nga 5 yje`} />
+                  <span className="ds-rating-word">{ratingWord(average, count)}</span>
+                  <span className="ds-muted">
+                    {count} {count === 1 ? 'vlerësim publik' : 'vlerësime publike'}
                   </span>
                 </div>
-                <StarRow value={item.score} size={14} label={`${item.score} nga 5 yje`} />
               </div>
-              {item.verified ? (
-                <p className="tt-review-hired">
-                  <BadgeCheck size={14} aria-hidden />
-                  Punë e përfunduar në KëshillaKos
-                </p>
-              ) : (
-                <p className="tt-review-hired is-plain">Klient në KëshillaKos</p>
-              )}
-              {item.comment?.trim() ? (
-                <p className="tt-review-comment">{item.comment}</p>
-              ) : (
-                <p className="tt-review-comment is-empty">Pa koment, vetëm yje.</p>
-              )}
-              {item.response ? (
-                <div className="tt-review-response">
-                  <p>
-                    <MessageSquareReply size={14} aria-hidden />
-                    Përgjigja jote
-                  </p>
-                  <span>{item.response}</span>
-                </div>
-              ) : replyId === item.id ? (
-                <form className="dash-ratings-reply" onSubmit={(e) => void onReply(e, item.id)}>
-                  <label>
-                    Përgjigju klientit
-                    <textarea
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      rows={3}
-                      maxLength={2000}
-                      placeholder="Faleminderit për feedback-un…"
-                      required
-                    />
-                  </label>
-                  {replyError ? <p className="error">{replyError}</p> : null}
-                  <div className="dash-ratings-reply-actions">
-                    <button type="submit" className="primary-btn" disabled={replying || !replyText.trim()}>
-                      {replying ? 'Duke dërguar…' : 'Dërgo përgjigjen'}
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost"
-                      onClick={() => {
-                        setReplyId('')
-                        setReplyText('')
-                        setReplyError('')
-                      }}
-                    >
-                      Anulo
-                    </button>
+              <ul className="ds-rating-bars" aria-label="Shpërndarja e vlerësimeve">
+                {buckets.map((bucket) => (
+                  <li key={bucket.stars}>
+                    <span className="ds-rating-bar-label">
+                      {bucket.stars}
+                      <Star size={11} aria-hidden />
+                    </span>
+                    <span className="ds-rating-bar">
+                      <em style={{ width: `${bucket.pct}%` }} />
+                    </span>
+                    <span className="ds-rating-bar-pct">{bucket.pct}%</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+
+          <Card className="uo-card ur-card">
+            <SectionHead title="Të gjitha vlerësimet" meta={<span className="uo-card-meta">{ratings.length}</span>} />
+            <ul className="ur-list ds-divided">
+              {ratings.map((item) => (
+                <li key={item.id} className="ur-item">
+                  <ProfileAvatar seed={item.raterUid} size={36} alt="" />
+                  <div className="ur-main">
+                    <div className="ur-top">
+                      <div className="ur-titles">
+                        <h3 className="ur-title">{item.raterName}</h3>
+                        <p className="ur-sub">
+                          <time dateTime={item.createdAt}>{formatReviewDate(item.createdAt)}</time>
+                          {item.providerName ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span>{item.providerName}</span>
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                      <StarRow value={item.score} size={14} label={`${item.score} nga 5 yje`} />
+                    </div>
+
+                    <p className={`ds-review-origin${item.verified ? ' is-verified' : ''}`}>
+                      {item.verified ? <BadgeCheck size={14} aria-hidden /> : null}
+                      {item.verified ? 'Punë e përfunduar në KëshillaKos' : 'Klient në KëshillaKos'}
+                    </p>
+
+                    {item.comment?.trim() ? (
+                      <p className="ur-need ds-review-text">{item.comment}</p>
+                    ) : (
+                      <p className="ur-message">Pa koment, vetëm yje.</p>
+                    )}
+
+                    {item.response ? (
+                      <div className="ur-response">
+                        <div className="ur-response-head">
+                          <span className="ur-response-label">Përgjigja jote</span>
+                        </div>
+                        <p>{item.response}</p>
+                      </div>
+                    ) : replyId === item.id ? (
+                      <form className="ds-reply" onSubmit={(e) => void onReply(e, item.id)}>
+                        <TextField fullWidth value={replyText} onChange={setReplyText} isDisabled={replying} isRequired>
+                          <Label>Përgjigju klientit</Label>
+                          <TextArea rows={3} maxLength={2000} placeholder="Faleminderit për feedback-un…" />
+                        </TextField>
+                        {replyError ? <p className="ds-error">{replyError}</p> : null}
+                        <div className="ds-actions">
+                          <Button type="button" variant="outline" size="sm" onPress={closeReply} isDisabled={replying}>
+                            Anulo
+                          </Button>
+                          <Button type="submit" variant="primary" size="sm" isPending={replying} isDisabled={!replyText.trim()}>
+                            {replying ? 'Duke dërguar…' : 'Dërgo përgjigjen'}
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="ur-foot">
+                        <span />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onPress={() => {
+                            setReplyId(item.id)
+                            setReplyText('')
+                            setReplyError('')
+                          }}
+                        >
+                          <MessageSquareReply size={14} aria-hidden />
+                          Përgjigju
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                </form>
-              ) : (
-                <button
-                  type="button"
-                  className="dash-ratings-reply-open"
-                  onClick={() => {
-                    setReplyId(item.id)
-                    setReplyText('')
-                    setReplyError('')
-                  }}
-                >
-                  <MessageSquareReply size={14} aria-hidden />
-                  Përgjigju
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </>
+      )}
     </section>
   )
 }

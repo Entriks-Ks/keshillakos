@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Button, Modal } from '@heroui/react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Breadcrumbs, Button, buttonVariants, Card, Chip, Modal, Separator, Skeleton } from '@heroui/react'
 import {
   BadgeCheck,
+  Briefcase,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +28,7 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { getErrorMessage } from '../utils/errors'
+import { idFromPublicParam, providerPath as publicProviderPath, servicePath } from '../utils/publicPaths'
 import { formatServicePrice, isVerified } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
 import './ServiceDetailPage.css'
@@ -60,6 +62,8 @@ const AVAILABILITY_SHORT: Record<string, string> = {
   by_arrangement: 'Me marrëveshje',
   slots: 'Me orar',
 }
+
+const GALLERY_VISIBLE = 5
 
 function ofertatPath(filters: { categoryId?: string; subcategoryId?: string } = {}) {
   const params = new URLSearchParams()
@@ -154,20 +158,90 @@ function keyFacts(service: ServiceItem) {
 }
 
 function ProviderRatingLine({ average, count }: { average: number; count: number }) {
-  if (count <= 0) return <p className="sd-rating is-empty">Ende pa vlerësime</p>
+  if (count <= 0) return <span className="sd-rating is-empty">Ende pa vlerësime</span>
   return (
-    <p className="sd-rating">
-      <span className="sd-score">
-        <Star size={13} aria-hidden />
-        {average.toFixed(1)}
-      </span>
-      <span>{count} {count === 1 ? 'vlerësim' : 'vlerësime'}</span>
-    </p>
+    <span className="sd-rating">
+      <Star size={13} aria-hidden />
+      <strong>{average.toFixed(1)}</strong>
+      <span>({count} {count === 1 ? 'vlerësim' : 'vlerësime'})</span>
+    </span>
+  )
+}
+
+function Section({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
+  return (
+    <Card className="sd-card" id={id}>
+      <Card.Header className="sd-card-head">
+        <h2 className="sd-card-title" id={id ? `${id}-title` : undefined}>{title}</h2>
+      </Card.Header>
+      <Card.Content className="sd-card-body">{children}</Card.Content>
+    </Card>
+  )
+}
+
+function Gallery({ photos, title, onOpen }: { photos: string[]; title: string; onOpen: (index: number) => void }) {
+  const visible = photos.slice(0, GALLERY_VISIBLE)
+  const hidden = photos.length - visible.length
+  return (
+    <ul className={`sd-gallery is-${visible.length}`}>
+      {visible.map((src, index) => {
+        const isLast = index === visible.length - 1
+        return (
+          <li key={`${src}-${index}`}>
+            <button
+              type="button"
+              onClick={() => onOpen(index)}
+              aria-label={hidden > 0 && isLast ? `Shiko të gjitha ${photos.length} fotot` : `Hap foton ${index + 1}`}
+            >
+              <img src={src} alt={`${title} — foto ${index + 1}`} loading="lazy" />
+              {hidden > 0 && isLast ? <span className="sd-gallery-more">+{hidden}</span> : null}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="sd-layout" aria-hidden>
+      <Card className="sd-card sd-hero">
+        <Card.Content className="sd-hero-body sd-skel">
+          <Skeleton className="sd-skel-line is-short" />
+          <Skeleton className="sd-skel-line is-title" />
+          <Skeleton className="sd-skel-line is-mid" />
+          <Skeleton className="sd-skel-line is-wide" />
+        </Card.Content>
+      </Card>
+      <div className="sd-body">
+        <Card className="sd-card">
+          <Card.Content className="sd-card-body sd-skel">
+            <Skeleton className="sd-skel-line is-short" />
+            <Skeleton className="sd-skel-line is-wide" />
+            <Skeleton className="sd-skel-line is-mid" />
+          </Card.Content>
+        </Card>
+      </div>
+      <div className="sd-aside">
+        <Card className="sd-card">
+          <Card.Content className="sd-card-body sd-skel">
+            <Skeleton className="sd-skel-line is-short" />
+            <Skeleton className="sd-skel-line is-title" />
+            <Skeleton className="sd-skel-button" />
+            <Skeleton className="sd-skel-button" />
+          </Card.Content>
+        </Card>
+      </div>
+    </div>
   )
 }
 
 export default function ServiceDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id: param } = useParams<{ id: string }>()
+  const id = idFromPublicParam(param)
+  const navigate = useNavigate()
+  const location = useLocation()
   const [service, setService] = useState<ServiceItem | null>(null)
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const [activePhoto, setActivePhoto] = useState(0)
@@ -207,6 +281,14 @@ export default function ServiceDetailPage() {
   }, [id])
 
   useEffect(() => {
+    if (!service || service.id !== id) return
+    const canonical = servicePath(service)
+    if (location.pathname !== canonical) {
+      navigate({ pathname: canonical, search: location.search, hash: location.hash }, { replace: true })
+    }
+  }, [service, id, location.pathname, location.search, location.hash, navigate])
+
+  useEffect(() => {
     if (!service?.providerUid) {
       setSchedule([])
       return
@@ -228,7 +310,7 @@ export default function ServiceDetailPage() {
   const provider = service?.provider
   const providerUid = provider?.uid || service?.providerUid || ''
   const providerName = provider?.name || service?.providerName || ''
-  const providerPath = `/providers/${providerUid}`
+  const providerPath = publicProviderPath({ uid: providerUid, name: providerName })
   const companyOwned = provider?.providerType === 'business' || provider?.role === 'company'
   const responsibleExpert = companyOwned && service?.responsibleExpert?.uid ? service.responsibleExpert : undefined
   const teamExperts = companyOwned
@@ -250,7 +332,13 @@ export default function ServiceDetailPage() {
   const openSlots = schedule.filter((slot) => slot.status === 'open').length
   const duration = durationLabel(service?.durationMinutes)
   const providerEmail = provider?.email?.trim() || ''
+  const providerHeadline = provider?.headline?.trim() || ''
+  const providerLocation = provider?.location?.trim() || ''
+  const providerBio = provider?.bio?.trim() || ''
+  const providerYears = provider?.yearsOfExperience && provider.yearsOfExperience > 0 ? provider.yearsOfExperience : 0
   const kindLabel = companyOwned ? 'Kompani' : 'Ekspert'
+  const availabilityNote = details.availabilityMode ? AVAILABILITY_LABELS[details.availabilityMode] : undefined
+  const hasIncluded = rows.length > 0 || Boolean(details.regulatoryNotice) || Boolean(details.coachingDisclaimerAccepted)
 
   function openPhoto(index: number) {
     setActivePhoto(index)
@@ -274,36 +362,43 @@ export default function ServiceDetailPage() {
   return (
     <div className="tt-shell">
       <SiteNav />
-      <main>
-        <section className="tt-section tt-pro-page sd-page">
-          <div className="tt-section-inner">
+      <main className="sd">
+        <div className="sd-inner">
+          <div className="sd-topbar">
             <BackButton fallback={marketplaceLink('services').to} />
-            {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
+          </div>
 
-            {!loading && error ? (
-              <div className="tt-detail-empty">
+          {loading ? <DetailSkeleton /> : null}
+
+          {!loading && error ? (
+            <Card className="sd-card sd-missing">
+              <Card.Content className="sd-card-body">
                 <h1>Shërbimi nuk u gjet</h1>
-                <p className="error">{error}</p>
-                <Link className="primary-btn" to="/ofertat">
+                <p>{error}</p>
+                <Link className={buttonVariants({ variant: 'primary', size: 'md' })} to="/ofertat">
                   Shiko shërbimet
                 </Link>
-              </div>
-            ) : null}
+              </Card.Content>
+            </Card>
+          ) : null}
 
-            {!loading && service && intake && price ? (
-              <div className="sd-layout">
-                <header className="sd-head">
-                  {categoryLabel || subcategoryLabel ? (
-                    <ul className="sd-categories" aria-label="Kategoritë">
-                      {categoryLabel ? (
-                        <li>{categoryHref ? <Link to={categoryHref}>{categoryLabel}</Link> : categoryLabel}</li>
-                      ) : null}
-                      {subcategoryLabel ? (
-                        <li>{subcategoryHref ? <Link to={subcategoryHref}>{subcategoryLabel}</Link> : subcategoryLabel}</li>
-                      ) : null}
-                    </ul>
-                  ) : null}
-                  <h1>{service.title}</h1>
+          {!loading && service && intake && price ? (
+            <div className="sd-layout">
+              <Card className="sd-card sd-hero">
+                <Card.Content className="sd-hero-body">
+                  <Breadcrumbs className="sd-crumbs">
+                    <Breadcrumbs.Item href={marketplaceLink('services').to}>Shërbimet</Breadcrumbs.Item>
+                    {categoryLabel ? (
+                      <Breadcrumbs.Item href={categoryHref}>{categoryLabel}</Breadcrumbs.Item>
+                    ) : null}
+                    {subcategoryLabel ? (
+                      <Breadcrumbs.Item href={subcategoryHref}>{subcategoryLabel}</Breadcrumbs.Item>
+                    ) : null}
+                    <Breadcrumbs.Item>{service.title}</Breadcrumbs.Item>
+                  </Breadcrumbs>
+
+                  <h1 className="sd-title">{service.title}</h1>
+
                   <div className="sd-byline">
                     <Link
                       to={providerPath}
@@ -318,80 +413,170 @@ export default function ServiceDetailPage() {
                       />
                     </Link>
                     <div className="sd-byline-copy">
-                      <p className="sd-byline-name">
-                        <Link to={providerPath}>{providerName}</Link>
-                        {verified ? <BadgeCheck size={16} className="sd-verified" aria-label="I verifikuar" /> : null}
+                      <p className="sd-byline-text">
+                        <Link to={providerPath} className="sd-byline-name">{providerName}</Link>
+                        {verified ? <BadgeCheck size={15} className="sd-verified" aria-label="I verifikuar" /> : null}
                         {responsibleExpert ? (
                           <span className="sd-byline-expert">
-                            me <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
+                            me <Link to={publicProviderPath(responsibleExpert)}>{responsibleExpert.name}</Link>
                           </span>
                         ) : null}
                       </p>
-                      <div className="sd-byline-meta">
+                      <p className="sd-byline-meta">
                         <span>{kindLabel}</span>
                         <ProviderRatingLine average={provider?.ratingAverage ?? 0} count={provider?.ratingCount ?? 0} />
-                        {service.location ? (
-                          <span className="sd-byline-location">
-                            <MapPin size={14} aria-hidden />
-                            {service.location}
-                          </span>
-                        ) : null}
-                      </div>
+                      </p>
                     </div>
                   </div>
-                </header>
 
-                <aside className="sd-aside" aria-label="Kërko shërbimin">
-                  <div className="sd-price">
-                    <span>Çmimi</span>
-                    <strong>{price.value}</strong>
-                    <small>{price.note}</small>
-                  </div>
-                  <ul className="sd-aside-facts">
-                    {duration ? (
+                  {facts.length > 0 ? (
+                    <>
+                      <Separator className="sd-hero-sep" />
+                      <dl className="sd-facts">
+                        {facts.map(({ key, icon: Icon, label, value, hint }) => (
+                          <div key={key} title={hint}>
+                            <dt>
+                              <Icon size={14} aria-hidden />
+                              {label}
+                            </dt>
+                            <dd>{value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </>
+                  ) : null}
+                </Card.Content>
+              </Card>
+
+              <aside className="sd-aside" aria-label="Kërko shërbimin">
+                <Card className="sd-card sd-book">
+                  <Card.Content className="sd-book-body">
+                    <div className="sd-price">
+                      <span className="sd-label">Çmimi</span>
+                      <strong>{price.value}</strong>
+                      <small>{price.note}</small>
+                    </div>
+
+                    <ul className="sd-book-facts">
+                      {duration ? (
+                        <li>
+                          <Clock size={15} aria-hidden />
+                          {duration}
+                        </li>
+                      ) : null}
+                      {openSlots > 0 ? (
+                        <li>
+                          <CalendarClock size={15} aria-hidden />
+                          {openSlots === 1 ? '1 orë e lirë' : `${openSlots} orë të lira`}
+                        </li>
+                      ) : null}
                       <li>
-                        <Clock size={15} aria-hidden />
-                        {duration}
+                        <MapPin size={15} aria-hidden />
+                        {service.location || 'Online'}
                       </li>
+                    </ul>
+
+                    <div className="sd-actions">
+                      <SendRequestButton
+                        providerUid={service.providerUid}
+                        providerId={service.providerId}
+                        providerName={providerName}
+                        categoryId={service.categoryId}
+                        serviceId={service.id}
+                        serviceTitle={service.title}
+                        intake={intake}
+                        compact
+                        ctaLabel="Kërko shërbimin"
+                        ctaIcon="mail"
+                      />
+                      <StartChatButton
+                        providerUid={service.providerUid}
+                        providerName={providerName}
+                        serviceId={service.id}
+                        serviceTitle={service.title}
+                        hideGuestHint
+                        label="Live Chat"
+                        className="sd-chat"
+                      />
+                    </div>
+
+                    {availabilityNote ? <p className="sd-book-note">{availabilityNote}</p> : null}
+
+                    <Separator />
+
+                    <div className="sd-book-provider">
+                      <Link
+                        to={providerPath}
+                        className={`sd-book-avatar${companyOwned ? ' is-company' : ''}`}
+                        aria-label={`Shiko profilin e ${providerName}`}
+                      >
+                        <ProfileAvatar
+                          src={provider?.profilePhoto}
+                          seed={providerUid}
+                          size="fill"
+                          fit={companyOwned ? 'contain' : 'cover'}
+                        />
+                      </Link>
+                      <div className="sd-book-provider-copy">
+                        <span className="sd-label">{kindLabel}</span>
+                        <Link to={providerPath}>{providerName}</Link>
+                      </div>
+                    </div>
+                    {providerEmail ? (
+                      <a className="sd-book-contact" href={`mailto:${providerEmail}`}>
+                        <Mail size={15} aria-hidden />
+                        {providerEmail}
+                      </a>
                     ) : null}
-                    {openSlots > 0 ? (
-                      <li>
-                        <CalendarClock size={15} aria-hidden />
-                        {openSlots === 1 ? '1 orë e lirë' : `${openSlots} orë të lira`}
-                      </li>
+                  </Card.Content>
+                </Card>
+              </aside>
+
+              <div className="sd-body">
+                <Section title="Përshkrimi">
+                  {service.description ? (
+                    <p className="sd-description">{service.description}</p>
+                  ) : (
+                    <p className="sd-muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>
+                  )}
+                </Section>
+
+                {hasIncluded ? (
+                  <Section title="Çfarë përfshin">
+                    {rows.length > 0 ? (
+                      <dl className="sd-included">
+                        {rows.map((row) => (
+                          <div key={row.label}>
+                            <dt>{row.label}</dt>
+                            <dd>
+                              {row.label === 'Portfolio' && row.value.startsWith('http') ? (
+                                <a href={row.value} target="_blank" rel="noreferrer">{row.value}</a>
+                              ) : (
+                                row.value
+                              )}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
                     ) : null}
-                    <li>
-                      <MapPin size={15} aria-hidden />
-                      {service.location || 'Online'}
-                    </li>
-                  </ul>
-                  <div className="sd-actions">
-                    <SendRequestButton
-                      providerUid={service.providerUid}
-                      providerId={service.providerId}
-                      providerName={providerName}
-                      categoryId={service.categoryId}
-                      serviceId={service.id}
-                      serviceTitle={service.title}
-                      intake={intake}
-                      compact
-                      ctaLabel="Kërko shërbimin"
-                      ctaIcon="mail"
-                    />
-                    <StartChatButton
-                      providerUid={service.providerUid}
-                      providerName={providerName}
-                      serviceId={service.id}
-                      serviceTitle={service.title}
-                      hideGuestHint
-                      label="Live Chat"
-                      className="sd-chat"
-                    />
-                  </div>
-                  <div className="sd-aside-provider">
+                    {details.regulatoryNotice ? <p className="sd-notice">{details.regulatoryNotice}</p> : null}
+                    {details.coachingDisclaimerAccepted ? (
+                      <p className="sd-notice">Coaching nuk është terapi ose trajtim mjekësor.</p>
+                    ) : null}
+                  </Section>
+                ) : null}
+
+                {gallery.length > 0 ? (
+                  <Section title="Fotot" id="sd-photos">
+                    <Gallery photos={gallery} title={service.title} onOpen={openPhoto} />
+                  </Section>
+                ) : null}
+
+                <Section title="Kush e ofron këtë shërbim" id="ofruesi">
+                  <div className="sd-provider">
                     <Link
                       to={providerPath}
-                      className={`sd-aside-avatar${companyOwned ? ' is-company' : ''}`}
+                      className={`sd-provider-avatar${companyOwned ? ' is-company' : ''}`}
                       aria-label={`Shiko profilin e ${providerName}`}
                     >
                       <ProfileAvatar
@@ -401,231 +586,133 @@ export default function ServiceDetailPage() {
                         fit={companyOwned ? 'contain' : 'cover'}
                       />
                     </Link>
-                    <div className="sd-aside-provider-copy">
-                      <span>{kindLabel}</span>
-                      <Link to={providerPath}>{providerName}</Link>
-                    </div>
-                  </div>
-                  {providerEmail ? (
-                    <a className="sd-aside-contact" href={`mailto:${providerEmail}`}>
-                      <Mail size={15} aria-hidden />
-                      {providerEmail}
-                    </a>
-                  ) : null}
-                  <Link to={providerPath} className="sd-provider-link">
-                    {companyOwned ? 'Shiko profilin e kompanisë' : 'Shiko profilin e ekspertit'}
-                    <ChevronRight size={16} aria-hidden />
-                  </Link>
-                </aside>
-
-                <div className="sd-main">
-                  {facts.length > 0 ? (
-                    <dl className="sd-facts">
-                      {facts.map(({ key, icon: Icon, label, value, hint }) => (
-                        <div key={key} title={hint}>
-                          <dt>
-                            <Icon size={15} aria-hidden />
-                            {label}
-                          </dt>
-                          <dd>{value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : null}
-
-                  <div className="sd-content">
-                    <section className="sd-section">
-                      <h2>Përshkrimi</h2>
-                      {service.description ? (
-                        <p className="sd-description">{service.description}</p>
-                      ) : (
-                        <p className="muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>
-                      )}
-                    </section>
-
-                    {rows.length > 0 || details.regulatoryNotice || details.coachingDisclaimerAccepted ? (
-                      <section className="sd-section">
-                        <h2>Çfarë përfshin</h2>
-                        {rows.length > 0 ? (
-                          <dl className="sd-included">
-                            {rows.map((row) => (
-                              <div key={row.label}>
-                                <dt>{row.label}</dt>
-                                <dd>
-                                  {row.label === 'Portfolio' && row.value.startsWith('http') ? (
-                                    <a href={row.value} target="_blank" rel="noreferrer">{row.value}</a>
-                                  ) : (
-                                    row.value
-                                  )}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
+                    <div className="sd-provider-copy">
+                      <div className="sd-provider-name">
+                        <h3>
+                          <Link to={providerPath}>{providerName}</Link>
+                        </h3>
+                        {verified ? (
+                          <Chip size="sm" variant="soft" color="success">
+                            <BadgeCheck size={12} aria-hidden />
+                            <Chip.Label>{companyOwned ? 'E verifikuar' : 'I verifikuar'}</Chip.Label>
+                          </Chip>
                         ) : null}
-                        {details.regulatoryNotice ? <p className="sd-notice">{details.regulatoryNotice}</p> : null}
-                        {details.coachingDisclaimerAccepted ? (
-                          <p className="sd-notice">Coaching nuk është terapi ose trajtim mjekësor.</p>
-                        ) : null}
-                      </section>
-                    ) : null}
-
-                    <section className="sd-section">
-                      <h2>Çmimi</h2>
-                      <div className="sd-pricing">
-                        <strong>{price.value}</strong>
-                        <span>{price.note}</span>
                       </div>
-                      {duration || details.availabilityMode ? (
-                        <dl className="sd-included">
-                          {duration ? (
-                            <div>
-                              <dt>Kohëzgjatja</dt>
-                              <dd>{duration}</dd>
-                            </div>
-                          ) : null}
-                          {details.availabilityMode ? (
-                            <div>
-                              <dt>Rezervimi</dt>
-                              <dd>{AVAILABILITY_LABELS[details.availabilityMode] || details.availabilityMode}</dd>
-                            </div>
-                          ) : null}
-                        </dl>
-                      ) : null}
-                    </section>
-
-                    <section className="sd-section" id="ofruesi">
-                      <h2>Kush e ofron këtë shërbim</h2>
-                      <div className="sd-provider">
-                        <Link
-                          to={providerPath}
-                          className={`sd-provider-avatar${companyOwned ? ' is-company' : ''}`}
-                          aria-label={`Shiko profilin e ${providerName}`}
-                        >
-                          <ProfileAvatar
-                            src={provider?.profilePhoto}
-                            seed={providerUid}
-                            size="fill"
-                            fit={companyOwned ? 'contain' : 'cover'}
-                          />
-                        </Link>
-                        <div className="sd-provider-copy">
-                          <span className="sd-provider-kind">{kindLabel}</span>
-                          <h3>
-                            <Link to={providerPath}>{providerName}</Link>
-                            {verified ? <BadgeCheck size={16} className="sd-verified" aria-label="I verifikuar" /> : null}
-                          </h3>
-                          {provider?.headline ? <p className="sd-provider-headline">{provider.headline}</p> : null}
+                      <p className="sd-provider-title">{providerHeadline || kindLabel}</p>
+                      <ul className="sd-provider-meta">
+                        {providerHeadline ? <li>{kindLabel}</li> : null}
+                        {providerLocation ? (
+                          <li>
+                            <MapPin size={14} aria-hidden />
+                            {providerLocation}
+                          </li>
+                        ) : null}
+                        {providerYears ? (
+                          <li>
+                            <Briefcase size={14} aria-hidden />
+                            {providerYears === 1 ? '1 vit përvojë' : `${providerYears} vite përvojë`}
+                          </li>
+                        ) : null}
+                        <li>
                           <ProviderRatingLine average={provider?.ratingAverage ?? 0} count={provider?.ratingCount ?? 0} />
-                        </div>
-                        <Link to={providerPath} className="sd-provider-link">
-                          {companyOwned ? 'Profili i kompanisë' : 'Profili i ekspertit'}
-                          <ChevronRight size={16} aria-hidden />
+                        </li>
+                      </ul>
+                    </div>
+                    <Link
+                      to={providerPath}
+                      className={`${buttonVariants({ variant: 'outline', size: 'sm' })} sd-provider-link`}
+                    >
+                      {companyOwned ? 'Profili i kompanisë' : 'Profili i ekspertit'}
+                      <ChevronRight size={15} aria-hidden />
+                    </Link>
+                  </div>
+
+                  {providerBio ? <p className="sd-provider-bio">{providerBio}</p> : null}
+
+                  {responsibleExpert || teamExperts.length > 0 ? <Separator className="sd-provider-sep" /> : null}
+
+                  {responsibleExpert ? (
+                    <div className="sd-people">
+                      <h4 className="sd-label">Eksperti përgjegjës</h4>
+                      <div className="sd-person">
+                        <Link to={publicProviderPath(responsibleExpert)} className="sd-person-link">
+                          <span className="sd-person-photo" aria-hidden>
+                            <ProfileAvatar src={responsibleExpert.photoUrl} seed={responsibleExpert.uid} size="fill" />
+                          </span>
+                          <span className="sd-person-copy">
+                            <strong>{responsibleExpert.name}</strong>
+                            {responsibleExpert.headline ? <small>{responsibleExpert.headline}</small> : null}
+                          </span>
+                        </Link>
+                        <Link to={publicProviderPath(responsibleExpert)} className="sd-text-link">
+                          Profili
+                          <ChevronRight size={15} aria-hidden />
                         </Link>
                       </div>
+                    </div>
+                  ) : null}
 
-                      {responsibleExpert ? (
-                        <div className="sd-provider is-expert">
-                          <Link
-                            to={`/providers/${responsibleExpert.uid}`}
-                            className="sd-provider-avatar"
-                            aria-label={`Shiko profilin e ${responsibleExpert.name}`}
-                          >
-                            <ProfileAvatar src={responsibleExpert.photoUrl} seed={responsibleExpert.uid} size="fill" />
-                          </Link>
-                          <div className="sd-provider-copy">
-                            <span className="sd-provider-kind">Eksperti përgjegjës</span>
-                            <h3>
-                              <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
-                            </h3>
-                            {responsibleExpert.headline ? (
-                              <p className="sd-provider-headline">{responsibleExpert.headline}</p>
-                            ) : null}
-                          </div>
-                          <Link to={`/providers/${responsibleExpert.uid}`} className="sd-provider-link">
-                            Profili i ekspertit
-                            <ChevronRight size={16} aria-hidden />
-                          </Link>
-                        </div>
-                      ) : null}
-
-                      {teamExperts.length > 0 ? (
-                        <div className="sd-team">
-                          <h3>Ekspertët e kompanisë</h3>
-                          <ul>
-                            {teamExperts.map((expert) => (
-                              <li key={expert.uid}>
-                                <Link to={`/providers/${expert.uid}`} className="sd-team-person">
-                                  <span className="sd-team-photo" aria-hidden>
-                                    <ProfileAvatar src={expert.photoUrl} seed={expert.uid} size="fill" />
-                                  </span>
-                                  <span>
-                                    <strong>{expert.name}</strong>
-                                    {expert.headline ? <small>{expert.headline}</small> : null}
-                                  </span>
-                                </Link>
-                                <SendRequestButton
-                                  providerUid={expert.uid}
-                                  providerName={expert.name}
-                                  categoryId={service.categoryId}
-                                  serviceId={service.id}
-                                  serviceTitle={service.title}
-                                  intake={intake}
-                                  compact
-                                  ctaLabel="Cakto takim"
-                                />
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </section>
-
-                    {gallery.length > 0 ? (
-                      <section className="sd-section" aria-labelledby="sd-photos-heading">
-                        <h2 id="sd-photos-heading">Fotot</h2>
-                        <ul className="sd-photos">
-                          {gallery.map((src, index) => (
-                            <li key={`${src}-${index}`}>
-                              <button type="button" onClick={() => openPhoto(index)} aria-label={`Hap foton ${index + 1}`}>
-                                <img src={src} alt="" loading="lazy" />
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
-                  </div>
-                </div>
-
-                {viewerPhoto ? (
-                  <Modal isOpen={viewerOpen} onOpenChange={setViewerOpen}>
-                    <Modal.Backdrop>
-                      <Modal.Container size="lg" placement="center">
-                        <Modal.Dialog className="sd-viewer" aria-label={`Fotot e shërbimit ${service.title}`}>
-                          <Modal.CloseTrigger />
-                          <Modal.Body className="sd-viewer-body">
-                            <img src={viewerPhoto} alt={`${service.title} — foto ${activePhoto + 1}`} />
-                          </Modal.Body>
-                          {gallery.length > 1 ? (
-                            <Modal.Footer className="sd-viewer-nav">
-                              <Button variant="ghost" size="sm" isIconOnly aria-label="Foto e mëparshme" onPress={() => stepPhoto(-1)}>
-                                <ChevronLeft size={18} aria-hidden />
-                              </Button>
-                              <span>{activePhoto + 1} / {gallery.length}</span>
-                              <Button variant="ghost" size="sm" isIconOnly aria-label="Foto tjetër" onPress={() => stepPhoto(1)}>
-                                <ChevronRight size={18} aria-hidden />
-                              </Button>
-                            </Modal.Footer>
-                          ) : null}
-                        </Modal.Dialog>
-                      </Modal.Container>
-                    </Modal.Backdrop>
-                  </Modal>
-                ) : null}
+                  {teamExperts.length > 0 ? (
+                    <div className="sd-people">
+                      <h4 className="sd-label">Ekspertët e kompanisë</h4>
+                      <ul>
+                        {teamExperts.map((expert) => (
+                          <li key={expert.uid} className="sd-person">
+                            <Link to={publicProviderPath(expert)} className="sd-person-link">
+                              <span className="sd-person-photo" aria-hidden>
+                                <ProfileAvatar src={expert.photoUrl} seed={expert.uid} size="fill" />
+                              </span>
+                              <span className="sd-person-copy">
+                                <strong>{expert.name}</strong>
+                                {expert.headline ? <small>{expert.headline}</small> : null}
+                              </span>
+                            </Link>
+                            <SendRequestButton
+                              providerUid={expert.uid}
+                              providerName={expert.name}
+                              categoryId={service.categoryId}
+                              serviceId={service.id}
+                              serviceTitle={service.title}
+                              intake={intake}
+                              compact
+                              ctaLabel="Cakto takim"
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </Section>
               </div>
-            ) : null}
-          </div>
-        </section>
+
+              {viewerPhoto ? (
+                <Modal isOpen={viewerOpen} onOpenChange={setViewerOpen}>
+                  <Modal.Backdrop>
+                    <Modal.Container size="lg" placement="center">
+                      <Modal.Dialog className="sd-viewer" aria-label={`Fotot e shërbimit ${service.title}`}>
+                        <Modal.CloseTrigger />
+                        <Modal.Body className="sd-viewer-body">
+                          <img src={viewerPhoto} alt={`${service.title} — foto ${activePhoto + 1}`} />
+                        </Modal.Body>
+                        {gallery.length > 1 ? (
+                          <Modal.Footer className="sd-viewer-nav">
+                            <Button variant="ghost" size="sm" isIconOnly aria-label="Foto e mëparshme" onPress={() => stepPhoto(-1)}>
+                              <ChevronLeft size={18} aria-hidden />
+                            </Button>
+                            <span>{activePhoto + 1} / {gallery.length}</span>
+                            <Button variant="ghost" size="sm" isIconOnly aria-label="Foto tjetër" onPress={() => stepPhoto(1)}>
+                              <ChevronRight size={18} aria-hidden />
+                            </Button>
+                          </Modal.Footer>
+                        ) : null}
+                      </Modal.Dialog>
+                    </Modal.Container>
+                  </Modal.Backdrop>
+                </Modal>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </main>
       <SiteFooter />
     </div>

@@ -4,6 +4,7 @@ import { Clock, MapPin } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import type { ServiceItem } from '../api/services'
 import { humanLabels } from '../utils/displayLabels'
+import { providerPath, servicePath } from '../utils/publicPaths'
 import { formatServicePrice } from '../utils/serviceDiscovery'
 import ProfileAvatar from './ProfileAvatar'
 import ServiceMediaPlaceholder from './ServiceMediaPlaceholder'
@@ -50,7 +51,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
   const workPhoto = details.photos?.[0] ? mediaUrl(details.photos[0]) : ''
   const rounded = ratingCount > 0 ? Math.max(1, Math.round(rating)) : 0
   function openDetails() {
-    navigate(`/services/${service.id}`)
+    navigate(servicePath(service))
   }
 
   function onCardClick(e: MouseEvent<HTMLElement>) {
@@ -85,7 +86,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
         {providerName ? (
           <p className="tt-result-provider">
             {providerUid ? (
-              <Link to={`/providers/${providerUid}`}>{providerName}</Link>
+              <Link to={providerPath({ uid: providerUid, name: providerName })}>{providerName}</Link>
             ) : (
               <span>{providerName}</span>
             )}
@@ -95,7 +96,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
                   ·
                 </span>
                 {responsibleExpert.uid ? (
-                  <Link to={`/providers/${responsibleExpert.uid}`}>{responsibleExpert.name}</Link>
+                  <Link to={providerPath(responsibleExpert)}>{responsibleExpert.name}</Link>
                 ) : (
                   <span>{responsibleExpert.name}</span>
                 )}
@@ -135,7 +136,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
       </div>
 
       <div className="tt-result-cta">
-        <Link to={`/services/${service.id}`} className="primary-btn tt-result-profile-btn">
+        <Link to={servicePath(service)} className="primary-btn tt-result-profile-btn">
           Shiko shërbimin
         </Link>
         <span className="tt-result-responds">

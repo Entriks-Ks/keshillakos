@@ -124,6 +124,15 @@ export default function SiteNav() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                to="/rreth-nesh"
+                className="kk-nav-link"
+                aria-current={location.pathname === '/rreth-nesh' ? 'page' : undefined}
+              >
+                Rreth nesh
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -189,6 +198,16 @@ export default function SiteNav() {
                             </Link>
                           </li>
                         ))}
+                        <li>
+                          <Link
+                            to="/rreth-nesh"
+                            className="kk-nav-drawer-link"
+                            aria-current={location.pathname === '/rreth-nesh' ? 'page' : undefined}
+                            onClick={closeMenu}
+                          >
+                            Rreth nesh
+                          </Link>
+                        </li>
                       </ul>
 
                       {user ? (

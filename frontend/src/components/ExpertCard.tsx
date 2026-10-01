@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Award, BadgeCheck, Building2, MapPin, Video } from 'lucide-react'
+import { Award, Building2, MapPin, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import { humanLabels } from '../utils/displayLabels'
+import { providerPath } from '../utils/publicPaths'
 import ProfileAvatar from './ProfileAvatar'
 import ProviderCardActions from './ProviderCardActions'
-import { ProviderDescription, ProviderRating, ProviderTags } from './ProviderCardParts'
-import { isProviderVerified, useProviderCardLink } from './providerCardUtils'
+import { CardMeta, CardShell, CardTitle, ProviderDescription, ProviderTags, RatingMeta } from './ProviderCardParts'
+import { isProviderVerified } from './providerCardUtils'
 
 type Props = {
   provider: MarketplaceProvider
@@ -14,8 +14,7 @@ type Props = {
 
 export default function ExpertCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const profilePath = `/providers/${provider.uid}`
-  const cardLink = useProviderCardLink(profilePath)
+  const profilePath = providerPath(provider)
   const specialties = humanLabels(
     [...provider.specializations, ...provider.categoryLabels],
     provider.categories,
@@ -30,73 +29,49 @@ export default function ExpertCard({ provider }: Props) {
     : null
 
   return (
-    <article
-      className="pc-card is-clickable"
-      onClick={cardLink.onClick}
-      onKeyDown={cardLink.onKeyDown}
-      role="link"
-      tabIndex={0}
-      aria-label={`Shiko profilin e ${provider.name}`}
+    <CardShell
+      href={profilePath}
+      label={`Shiko profilin e ${provider.name}`}
+      mediaKind="person"
+      media={<ProfileAvatar src={provider.photoUrl} seed={provider.uid} size="fill" />}
+      footer={<ProviderCardActions provider={provider} profilePath={profilePath} need={provider.title || provider.name} />}
     >
-      <div className="pc-top">
-        <div className="pc-avatar" aria-hidden>
-          <ProfileAvatar src={provider.photoUrl} seed={provider.uid} size="fill" />
-          {verified ? (
-            <span className="pc-avatar-badge" title="I verifikuar">
-              <BadgeCheck size={14} />
-            </span>
-          ) : null}
-        </div>
+      <CardTitle to={profilePath} verified={verified ? 'I verifikuar' : undefined}>{provider.name}</CardTitle>
+      <p className="pc-subtitle">{subtitle}</p>
 
-        <div className="pc-heading">
-          <h3 className="pc-name">
-            <Link to={profilePath} onClick={(e) => e.stopPropagation()}>{provider.name}</Link>
-          </h3>
-          <p className="pc-subtitle">{subtitle}</p>
-          <ProviderRating provider={provider} profilePath={profilePath} />
-        </div>
-      </div>
-
-      <ul className="pc-facts">
+      <CardMeta>
         {provider.location ? (
           <li>
-            <MapPin size={15} aria-hidden />
+            <MapPin size={14} aria-hidden />
             {provider.location}
           </li>
         ) : null}
+        <RatingMeta average={provider.ratingAverage ?? 0} count={provider.ratingCount ?? 0} href={profilePath} />
         {experienceLabel ? (
           <li>
-            <Award size={15} aria-hidden />
+            <Award size={14} aria-hidden />
             {experienceLabel}
           </li>
         ) : null}
         {provider.companyName ? (
           <li>
-            <Building2 size={15} aria-hidden />
+            <Building2 size={14} aria-hidden />
             {provider.companyName}
           </li>
         ) : null}
         {provider.modes.includes('online') ? (
-          <li className="is-accent">
-            <Video size={15} aria-hidden />
+          <li>
+            <Video size={14} aria-hidden />
             Online
           </li>
         ) : null}
-        {verified ? (
-          <li className="is-accent">
-            <BadgeCheck size={15} aria-hidden />
-            I verifikuar
-          </li>
-        ) : null}
-      </ul>
+      </CardMeta>
 
       {description ? (
         <ProviderDescription text={description} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
       ) : null}
 
-      <ProviderTags items={tags} max={3} />
-
-      <ProviderCardActions provider={provider} profilePath={profilePath} need={provider.title || provider.name} />
-    </article>
+      <ProviderTags items={tags} max={4} />
+    </CardShell>
   )
 }

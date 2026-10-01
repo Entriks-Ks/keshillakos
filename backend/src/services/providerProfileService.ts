@@ -8,7 +8,7 @@ import { ServiceOffer } from '../models/ServiceOffer'
 import { Subcategory } from '../models/Subcategory'
 import type { Location } from '../models/location'
 import { User } from '../models/User'
-import { applySocialLinks, normalizeSocialLinks, type SocialLinks } from '../models/socialLinks'
+import { applySocialLinks, normalizeSocialLinks, SOCIAL_LINK_KEYS, type SocialLinks } from '../models/socialLinks'
 import {
   normalizeCertifications,
   normalizeEducation,
@@ -174,6 +174,11 @@ export async function listPublishedProviderProfiles(cityId?: string) {
   })
     .select('-qualificationClaims -moderation.reason')
     .sort({ updatedAt: -1 }).limit(50)
+  return withActiveBusiness(profiles)
+}
+
+/** Business profiles are only public while their business is active. */
+async function withActiveBusiness<P extends { business?: Types.ObjectId | null }>(profiles: P[]): Promise<P[]> {
   const ids = profiles.map((profile) => profile.business).filter((id): id is Types.ObjectId => Boolean(id))
   if (!ids.length) return profiles
   const activeBusinesses = await Business.find({ _id: { $in: ids }, status: 'active' }).select('_id').lean()
@@ -229,7 +234,66 @@ export function toPublicProvider(profile: ProviderProfileDoc & { _id: Types.Obje
 
 /** Marketplace directory cards (experts + companies) with owner uid and ratings. */
 export async function listMarketplaceProviders(cityId?: string) {
-  const profiles = await listPublishedProviderProfiles(cityId)
+  return serializeMarketplaceProviders(await listPublishedProviderProfiles(cityId))
+}
+
+/**
+ * Public profile page: the owner's published profile, serialized exactly like the
+ * directory cards, plus the career and social fields only the profile page shows.
+ */
+export async function getMarketplaceProviderByUid(uid: string, providerType: 'individual' | 'business') {
+  const owner = await User.findOne({ uid }).select('_id').lean()
+  if (!owner) return null
+  const found = await ProviderProfile.findOne({
+    ownerUser: owner._id,
+    providerType,
+    status: 'published',
+    'moderation.status': 'approved',
+  })
+    .select('-qualificationClaims -moderation.reason')
+    .sort({ updatedAt: -1 })
+  if (!found) return null
+  const [profile] = await withActiveBusiness([found])
+  if (!profile) return null
+  const [card] = await serializeMarketplaceProviders([profile])
+  if (!card) return null
+  const monthYear = (value?: { month: number; year: number }) =>
+    value ? { month: value.month, year: value.year } : undefined
+  const socialLinks: SocialLinks = {}
+  for (const key of SOCIAL_LINK_KEYS) {
+    const url = profile.socialLinks?.[key]
+    if (url) socialLinks[key] = url
+  }
+  return {
+    ...card,
+    about: profile.publicProfile.description || profile.publicProfile.shortDescription || profile.experience || '',
+    socialLinks,
+    workExperience: (profile.workExperience ?? []).map((entry) => ({
+      position: entry.position,
+      organization: entry.organization,
+      from: monthYear(entry.from),
+      to: entry.current ? undefined : monthYear(entry.to),
+      current: Boolean(entry.current),
+      description: entry.description || '',
+    })),
+    education: (profile.education ?? []).map((entry) => ({
+      institution: entry.institution,
+      degree: entry.degree,
+      fieldOfStudy: entry.fieldOfStudy,
+      from: monthYear(entry.from),
+      to: entry.current ? undefined : monthYear(entry.to),
+      current: Boolean(entry.current),
+    })),
+    certifications: (profile.certifications ?? []).map((entry) => ({
+      name: entry.name,
+      issuer: entry.issuer,
+      year: entry.year,
+      credentialUrl: entry.credentialUrl || '',
+    })),
+  }
+}
+
+async function serializeMarketplaceProviders(profiles: Awaited<ReturnType<typeof listPublishedProviderProfiles>>) {
   if (!profiles.length) return []
 
   const ownerIds = profiles.map((profile) => profile.ownerUser)

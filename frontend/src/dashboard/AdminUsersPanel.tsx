@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { toast } from '@heroui/react'
+import { Alert, Button, Card, Chip, toast } from '@heroui/react'
 import {
   createAdminUser,
   deleteAdminUser,
@@ -13,8 +13,12 @@ import {
 import type { UserRole } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
+import ProfileAvatar from '../components/ProfileAvatar'
 import { getErrorMessage } from '../utils/errors'
-import DashPageHeader from './DashPageHeader'
+import { EmptyBlock, RowsSkeleton, SectionHead, StatsStrip } from './OverviewParts'
+import './UserOverview.css'
+import './DashboardSections.css'
+import './AdminDashboard.css'
 import './AdminUsersPanel.css'
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -147,16 +151,14 @@ export default function AdminUsersPanel() {
   }
 
   return (
-    <section className="provider-section admin-users">
-      <DashPageHeader
-        title="Menaxhimi i përdoruesve"
-        description="Shiko dhe menaxho të gjitha rolet: user, provider, company, admin. Kërkesat për ofrues ose kompani shfaqen këtu për shqyrtim."
-      />
+    <section className="uo ds ad admin-users">
+      <header className="uo-head"><div className="uo-head-copy"><h1>Përdoruesit</h1><p>Menaxho llogaritë, rolet dhe kërkesat për akses në platformë.</p></div></header>
 
-      <div className="admin-role-requests">
-        <h3>Kërkesa për akses ({pending.length})</h3>
-        {pending.length === 0 ? (
-          <p className="muted">Nuk ka kërkesa në pritje. Kur një përdorues kërkon të bëhet ofrues ose kompani, shfaqet këtu.</p>
+      <Card className="uo-card admin-role-requests">
+        <SectionHead title="Kërkesa për akses" meta={<span className="uo-card-meta">{pending.length}</span>} />
+        <Card.Content className="uo-card-body">
+        {loading ? <RowsSkeleton rows={2} /> : pending.length === 0 ? (
+          <EmptyBlock title="Nuk ka kërkesa në pritje" text="Kërkesat për t’u bërë ofrues ose kompani do të shfaqen këtu." />
         ) : (
           <ul>
             {pending.map((user) => (
@@ -164,43 +166,28 @@ export default function AdminUsersPanel() {
                 <div>
                   <strong>{user.name}</strong>
                   <span className="muted">{user.email}</span>
-                  <span className="role-pending-pill">Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? user.requestedRole}</span>
+                  <Chip size="sm" variant="soft" color="warning"><Chip.Label>Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label ?? user.requestedRole}</Chip.Label></Chip>
                 </div>
                 <div className="admin-row-actions">
-                  <button
-                    type="button"
-                    disabled={reviewingUid === user.uid}
-                    onClick={() => void onReview(user, 'accept')}
-                  >
+                  <Button size="sm" variant="primary" isDisabled={reviewingUid === user.uid} onPress={() => void onReview(user, 'accept')}>
                     {reviewingUid === user.uid ? 'Duke ruajtur…' : 'Prano'}
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost"
-                    disabled={reviewingUid === user.uid}
-                    onClick={() => void onReview(user, 'reject')}
-                  >
+                  </Button>
+                  <Button size="sm" variant="outline" isDisabled={reviewingUid === user.uid} onPress={() => void onReview(user, 'reject')}>
                     Refuzo
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}
           </ul>
         )}
-      </div>
+        </Card.Content>
+      </Card>
 
       {counts ? (
-        <ul className="admin-role-stats">
-          {ROLE_OPTIONS.map((role) => (
-            <li key={role.value}>
-              <strong>{counts[role.value]}</strong>
-              <span>{role.label}</span>
-            </li>
-          ))}
-        </ul>
+        <StatsStrip loading={loading} stats={ROLE_OPTIONS.map((role) => ({ label: role.label, value: counts[role.value], hint: 'Llogari', to: '/dashboard/admin/users' }))} />
       ) : null}
 
-      <div className="admin-users-filters">
+      <Card className="uo-card"><Card.Content className="uo-card-body admin-users-filters">
         <label>
           Filtro sipas rolit
           <select
@@ -223,13 +210,10 @@ export default function AdminUsersPanel() {
             placeholder="Emër, email ose UID"
           />
         </label>
-        <button type="button" className="ghost" onClick={() => void load()}>
-          Rifresko
-        </button>
-      </div>
+        <Button size="sm" variant="outline" onPress={() => void load()}>Rifresko</Button>
+      </Card.Content></Card>
 
-      <form onSubmit={onCreate} className="service-form admin-create-form">
-        <h3 className="full">Krijo përdorues</h3>
+      <Card className="uo-card"><SectionHead title="Krijo përdorues" /><Card.Content className="uo-card-body"><form onSubmit={onCreate} className="service-form admin-create-form">
         <label>
           Emri
           <input
@@ -269,16 +253,16 @@ export default function AdminUsersPanel() {
             ))}
           </select>
         </label>
-        <button type="submit" className="full" disabled={creating}>
+        <Button type="submit" variant="primary" className="full" isPending={creating}>
           {creating ? 'Duke krijuar...' : 'Krijo'}
-        </button>
-      </form>
+        </Button>
+      </form></Card.Content></Card>
 
-      {error ? <p className="error">{error}</p> : null}
+      {error ? <Alert status="danger" className="uo-alert"><Alert.Indicator /><Alert.Content><Alert.Title>Veprimi nuk u krye</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content></Alert> : null}
 
-      {loading ? <p className="muted">Duke u ngarkuar...</p> : null}
-
-      <div className="admin-users-table-wrap">
+      <Card className="uo-card"><SectionHead title="Të gjithë përdoruesit" meta={!loading ? <span className="uo-card-meta">{users.length}</span> : null} />
+      {loading ? <Card.Content className="uo-card-body"><RowsSkeleton rows={4} /></Card.Content> : null}
+      {!loading ? <div className="admin-users-table-wrap">
         <table className="admin-users-table">
           <thead>
             <tr>
@@ -328,44 +312,30 @@ export default function AdminUsersPanel() {
                         </select>
                       </label>
                       <div className="full admin-edit-actions">
-                        <button type="submit" disabled={saving}>
+                        <Button type="submit" variant="primary" size="sm" isPending={saving}>
                           {saving ? 'Duke ruajtur...' : 'Ruaj'}
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost"
-                          onClick={() => setEditingUid(null)}
-                          disabled={saving}
-                        >
+                        </Button>
+                        <Button size="sm" variant="outline" className="ad-secondary" onPress={() => setEditingUid(null)} isDisabled={saving}>
                           Anulo
-                        </button>
+                        </Button>
                       </div>
                     </form>
                   </td>
                 ) : (
                   <>
-                    <td>{user.name}</td>
+                    <td><span className="ad-user-name"><ProfileAvatar seed={user.uid} size={32} alt="" />{user.name}</span></td>
                     <td>{user.email}</td>
                     <td>
-                      <span className="role-pill">{ROLE_OPTIONS.find((r) => r.value === user.role)?.label}</span>
+                      <Chip size="sm" variant="soft"><Chip.Label>{ROLE_OPTIONS.find((r) => r.value === user.role)?.label}</Chip.Label></Chip>
                       {user.requestedRole && user.requestedRole !== user.role ? (
-                        <span className="role-pending-pill">Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label}</span>
+                        <Chip size="sm" variant="soft" color="warning"><Chip.Label>Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label}</Chip.Label></Chip>
                       ) : null}
                     </td>
                     <td className="mono">{user.uid}</td>
                     <td>
                       <div className="admin-row-actions">
-                        <button type="button" className="ghost" onClick={() => startEdit(user)}>
-                          Ndrysho
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost danger-ghost"
-                          onClick={() => void onDelete(user)}
-                          disabled={user.uid === me?.uid}
-                        >
-                          Fshi
-                        </button>
+                        <Button size="sm" variant="outline" onPress={() => startEdit(user)}>Ndrysho</Button>
+                        <Button size="sm" variant="ghost" className="ds-danger-btn" onPress={() => void onDelete(user)} isDisabled={user.uid === me?.uid}>Fshi</Button>
                       </div>
                     </td>
                   </>
@@ -374,10 +344,9 @@ export default function AdminUsersPanel() {
             ))}
           </tbody>
         </table>
-        {!loading && users.length === 0 ? (
-          <p className="muted">Nuk u gjet asnjë përdorues.</p>
-        ) : null}
-      </div>
+        {!loading && users.length === 0 ? <EmptyBlock title="Nuk u gjet asnjë përdorues" text="Provo një kërkim ose filtër tjetër." /> : null}
+      </div> : null}
+      </Card>
     </section>
   )
 }

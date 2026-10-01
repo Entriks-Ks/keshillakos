@@ -1,7 +1,8 @@
-import ChangePasswordPanel from './ChangePasswordPanel'
 import ProfilePanel from './ProfilePanel'
 import ProviderRatingsPanel from './ProviderRatingsPanel'
 import { useAuth } from '../auth/AuthContext'
+
+export { SettingsPage } from './SettingsPage'
 
 export function OwnRatingsPage() {
   const { user } = useAuth()
@@ -16,8 +17,4 @@ export function OwnRatingsPage() {
 
 export function ProfilePage() {
   return <ProfilePanel />
-}
-
-export function SettingsPage() {
-  return <ChangePasswordPanel />
 }

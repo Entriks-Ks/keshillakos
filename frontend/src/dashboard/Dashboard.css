@@ -9,32 +9,6 @@
   --dash-role-soft: color-mix(in srgb, var(--accent) 10%, #fff);
 }
 
-.dash-layout .dash-role-badge {
-  color: #fff;
-  background: var(--dash-role);
-  border-color: transparent;
-}
-
-.dash-layout .dash-nav-link.is-active {
-  background: var(--dash-role-soft);
-  border-color: color-mix(in srgb, var(--dash-role) 22%, transparent);
-  color: var(--dash-role);
-}
-
-.dash-layout .dash-nav-link.is-active .dash-nav-icon {
-  background: var(--dash-role);
-  color: #fff;
-}
-
-.dash-layout .dash-nav-link:hover {
-  color: var(--dash-role);
-}
-
-.dash-layout .dash-nav-link:hover .dash-nav-icon {
-  background: var(--dash-role-soft);
-  color: var(--dash-role);
-}
-
 .dash-layout .dash-bottom-link.is-active {
   color: var(--dash-role);
 }

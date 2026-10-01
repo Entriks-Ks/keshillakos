@@ -1,7 +1,7 @@
 .tt-home .tt-nav-inner,
 .tt-home .tt-hero-inner,
 .tt-home .tt-section-inner {
-  width: min(1680px, calc(100% - clamp(40px, 6vw, 96px)));
+  width: var(--tt-wide-content-width);
   max-width: none;
   padding-inline: 0;
 }

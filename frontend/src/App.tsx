@@ -3,6 +3,7 @@ import { RouterProvider, Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes, useHref, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
+import ScrollToTop from './components/ScrollToTop'
 import DashboardShell from './dashboard/DashboardShell'
 import AdminUsersPanel from './dashboard/AdminUsersPanel'
 import AvailabilityPanel from './dashboard/AvailabilityPanel'
@@ -73,6 +74,7 @@ export default function App() {
         width={360}
       />
       <BrowserRouter>
+        <ScrollToTop />
         <HeroRouterProvider>
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -91,6 +93,9 @@ export default function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<DashboardRedirect />} />
+              <Route path="/dashboard/profile/edit" element={<DashboardShell />}>
+                <Route index element={<ProfilePage />} />
+              </Route>
               <Route path="/dashboard/onboarding/expert" element={<ExpertOnboardingRedirect />} />
               <Route path="/dashboard/onboarding/company" element={<CompanyOnboardingRedirect />} />
             </Route>
@@ -118,6 +123,7 @@ export default function App() {
                 <Route path="availability" element={<AvailabilityPanel />} />
                 <Route path="ratings" element={<OwnRatingsPage />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="profile/edit" element={<ProfilePage />} />
                 <Route path="create" element={<ExpertOnboardingPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
@@ -134,6 +140,7 @@ export default function App() {
                 <Route path="availability" element={<AvailabilityPanel />} />
                 <Route path="ratings" element={<OwnRatingsPage />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="profile/edit" element={<ProfilePage />} />
                 <Route path="create" element={<CompanyOnboardingPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
@@ -147,6 +154,7 @@ export default function App() {
                 <Route path="messages" element={<MessagesPage />} />
                 <Route path="feedback" element={<AdminFeedbackPanel />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="profile/edit" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Route>

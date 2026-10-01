@@ -1,0 +1,359 @@
+/* Expert dashboard — Profili. Builds on UserOverview.css, UserProfile.css and DashboardSections.css. */
+
+.ep-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.ep-edit-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Identity card */
+
+.up-hero-title h2 {
+  margin: 0;
+  color: var(--brand-navy);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ep-avatar {
+  position: relative;
+  flex: none;
+}
+
+.ep-avatar-btn {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.ep-avatar-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 86%, #000);
+}
+
+.ep-avatar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ep-avatar-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.up-hero-meta li.ep-hero-category {
+  color: var(--brand-navy);
+  font-weight: 600;
+}
+
+.up-hero-meta li.ep-hero-category svg {
+  color: var(--accent);
+}
+
+/* Sections */
+
+.ep-block {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.ep-sub {
+  margin: 0 0 8px;
+  color: var(--ink-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ep-bio {
+  max-width: 75ch;
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.ep-entries {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ep-entry,
+.ep-place {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ep-entry {
+  padding: 12px 0;
+}
+
+.ep-entry:first-child {
+  padding-top: 2px;
+}
+
+.ep-entry:last-child {
+  padding-bottom: 0;
+}
+
+.ep-entry + .ep-entry {
+  border-top: 1px solid var(--border);
+}
+
+.ep-entry .uo-row-icon,
+.ep-place .uo-row-icon {
+  flex: none;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+}
+
+.ep-entry-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ep-entry-copy strong {
+  color: var(--brand-navy);
+  font-size: 0.94rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ep-entry-copy span {
+  color: var(--ink-secondary);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.ep-entry-copy .ep-entry-period {
+  color: color-mix(in srgb, var(--ink-secondary) 75%, #fff);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ep-entry-copy p {
+  max-width: 70ch;
+  margin: 6px 0 0;
+  color: var(--foreground);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.ep-entry-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ep-entry-link:hover {
+  text-decoration: underline;
+}
+
+.ep-place .ep-entry-copy span {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ep-social.up-social {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ep-cover {
+  overflow: hidden;
+  aspect-ratio: 16 / 5;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+
+.ep-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ep-cover-btn {
+  justify-self: start;
+  gap: 6px;
+}
+
+.ep-skel-avatar {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+}
+
+.ep-skel-copy {
+  width: min(320px, 50vw);
+}
+
+/* Company invitations */
+
+.ep-invite {
+  margin: 0;
+  padding: 11px 0;
+}
+
+.ep-invite-actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+/* Edit modals */
+
+.ep-modal-body {
+  display: grid;
+  gap: 16px;
+}
+
+.ep-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.ep-full {
+  grid-column: 1 / -1;
+}
+
+.ds-input.ep-textarea {
+  height: auto;
+  min-height: 110px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ep-optional {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.ep-month-year {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.ep-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--brand-navy);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ep-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.ep-repeat {
+  display: grid;
+  gap: 12px;
+}
+
+.ep-repeat-item {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.ep-repeat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ep-repeat-head strong {
+  color: var(--brand-navy);
+  font-size: 0.88rem;
+}
+
+.ep-repeat-head .button {
+  gap: 4px;
+}
+
+.ep-add {
+  justify-self: start;
+  gap: 6px;
+}
+
+.ep-social-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .ep-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ep-repeat-item {
+    padding: 12px;
+  }
+
+  .ep-invite {
+    flex-wrap: wrap;
+  }
+
+  .ep-invite-actions {
+    width: 100%;
+    padding-left: 48px;
+  }
+
+  .ep-invite-actions > * {
+    flex: 1;
+    min-height: 40px;
+  }
+
+  .ep-cover-btn,
+  .ep-add {
+    justify-self: stretch;
+    min-height: 40px;
+  }
+}
