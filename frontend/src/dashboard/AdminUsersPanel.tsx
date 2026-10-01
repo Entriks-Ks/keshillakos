@@ -269,7 +269,6 @@ export default function AdminUsersPanel() {
               <th>Emri</th>
               <th>Email</th>
               <th>Roli</th>
-              <th>UID</th>
               <th>Veprime</th>
             </tr>
           </thead>
@@ -277,7 +276,7 @@ export default function AdminUsersPanel() {
             {users.map((user) => (
               <tr key={user.uid}>
                 {editingUid === user.uid ? (
-                  <td colSpan={5}>
+                  <td colSpan={4}>
                     <form onSubmit={onSaveEdit} className="service-form admin-edit-form">
                       <label>
                         Emri
@@ -331,7 +330,6 @@ export default function AdminUsersPanel() {
                         <Chip size="sm" variant="soft" color="warning"><Chip.Label>Në pritje · {ROLE_OPTIONS.find((r) => r.value === user.requestedRole)?.label}</Chip.Label></Chip>
                       ) : null}
                     </td>
-                    <td className="mono">{user.uid}</td>
                     <td>
                       <div className="admin-row-actions">
                         <Button size="sm" variant="outline" onPress={() => startEdit(user)}>Ndrysho</Button>
