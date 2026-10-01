@@ -756,12 +756,14 @@ export default function HomePage() {
                       className="tt-service-tile"
                       onClick={() => browseOffers('', { categoryId: selectedCategoryId, subcategoryId: subcategory._id })}
                     >
-                      <img
-                        src={catalogCardImage(subcategory.slug, selectedCategory?.slug)}
-                        alt=""
-                        loading="lazy"
-                        onError={(event) => { event.currentTarget.src = heroPlaceholder }}
-                      />
+                      <span className="tt-service-tile-image">
+                        <img
+                          src={catalogCardImage(subcategory.slug, selectedCategory?.slug)}
+                          alt=""
+                          loading="lazy"
+                          onError={(event) => { event.currentTarget.src = heroPlaceholder }}
+                        />
+                      </span>
                       <span>{subcategory.name[catalogLanguage] || subcategory.name.sq}</span>
                     </button>
                   ))}

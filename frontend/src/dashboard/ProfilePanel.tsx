@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button, Card, Chip, buttonVariants, toast } from '@heroui/react'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { Camera, ExternalLink, Globe, ImageIcon, MapPin, Pencil } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { fetchMyBusinesses, updateBusinessProfile, uploadBusinessCover, uploadBusinessLogo, type BusinessProfile } from '../api/businesses'
@@ -129,6 +130,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
   const [coverPreview, setCoverPreview] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null)
   const [error, setError] = useState('')
   const logoInput = useRef<HTMLInputElement>(null)
@@ -347,8 +349,9 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
           </Card>
           <Card className="uo-card"><SectionHead title="Rrjetet sociale" /><Card.Content className="uo-card-body"><div className="service-form cp-form"><SocialLinksFields value={socialLinks} onChange={setSocialLinks} disabled={saving} /></div></Card.Content></Card>
           {error ? <p className="up-error" role="alert">{error}</p> : null}
-          <div className="up-actions"><Button variant="outline" onPress={() => navigate('/dashboard/company/profile')} isDisabled={saving || uploading !== null}>Anulo</Button><Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null || !categories.length}>{saving ? 'Duke ruajtur…' : 'Ruaj ndryshimet'}</Button></div>
+          <div className="up-actions"><Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={saving || uploading !== null}>Anulo</Button><Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null || !categories.length}>{saving ? 'Duke ruajtur…' : 'Ruaj ndryshimet'}</Button></div>
         </form>
+        <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { setConfirmCancel(false); navigate('/dashboard/company/profile') }} title="Hidh ndryshimet?" description="Ndryshimet e paruajtura në profilin e kompanisë do të humbasin." confirmLabel="Hidh ndryshimet" />
       </section>
     )
   }

@@ -14,6 +14,7 @@ import type { UserRole } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import ProfileAvatar from '../components/ProfileAvatar'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { getErrorMessage } from '../utils/errors'
 import { EmptyBlock, RowsSkeleton, SectionHead, StatsStrip } from './OverviewParts'
 import './UserOverview.css'
@@ -50,6 +51,8 @@ export default function AdminUsersPanel() {
   const [saving, setSaving] = useState(false)
   const [pending, setPending] = useState<AdminUser[]>([])
   const [reviewingUid, setReviewingUid] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -132,21 +135,25 @@ export default function AdminUsersPanel() {
     }
   }
 
-  async function onDelete(user: AdminUser) {
+  async function onDelete() {
+    const user = deleteTarget
+    if (!user || deleting) return
     if (user.uid === me?.uid) {
       setError('Nuk mund ta fshish llogarinë tënde.')
       return
     }
-    const ok = window.confirm(`Fshi përdoruesin ${user.name} (${user.email})?`)
-    if (!ok) return
+    setDeleting(true)
     setError('')
     try {
       await deleteAdminUser(user.uid)
       toast.success('Përdoruesi u fshi.')
+      setDeleteTarget(null)
       if (editingUid === user.uid) setEditingUid(null)
       await load()
     } catch (err) {
       toast.danger(getErrorMessage(err))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -333,7 +340,7 @@ export default function AdminUsersPanel() {
                     <td>
                       <div className="admin-row-actions">
                         <Button size="sm" variant="outline" onPress={() => startEdit(user)}>Ndrysho</Button>
-                        <Button size="sm" variant="ghost" className="ds-danger-btn" onPress={() => void onDelete(user)} isDisabled={user.uid === me?.uid}>Fshi</Button>
+                        <Button size="sm" variant="ghost" className="ds-danger-btn" onPress={() => setDeleteTarget(user)} isDisabled={user.uid === me?.uid}>Fshi</Button>
                       </div>
                     </td>
                   </>
@@ -345,6 +352,7 @@ export default function AdminUsersPanel() {
         {!loading && users.length === 0 ? <EmptyBlock title="Nuk u gjet asnjë përdorues" text="Provo një kërkim ose filtër tjetër." /> : null}
       </div> : null}
       </Card>
+      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={deleting} title="Fshi përdoruesin?" description={`Llogaria e ${deleteTarget?.name ?? ''} (${deleteTarget?.email ?? ''}) do të fshihet përgjithmonë. Ky veprim nuk mund të zhbëhet.`} confirmLabel="Fshi" />
     </section>
   )
 }

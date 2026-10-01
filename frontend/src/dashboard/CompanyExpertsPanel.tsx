@@ -15,6 +15,7 @@ import {
   type ExpertLookup,
 } from '../api/onboarding'
 import ProfileAvatar from '../components/ProfileAvatar'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
 import { providerPath } from '../utils/publicPaths'
@@ -59,6 +60,7 @@ export default function CompanyExpertsPanel() {
   const [checking, setChecking] = useState(false)
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState('')
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null)
   const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({})
   const emailRef = useRef<HTMLInputElement>(null)
 
@@ -161,14 +163,14 @@ export default function CompanyExpertsPanel() {
     }
   }
 
-  async function onRemove(userId: string) {
-    if (!selected) return
-    const ok = window.confirm('A je i sigurt që do ta heqësh këtë ekspert nga kompania?')
-    if (!ok) return
+  async function onRemove() {
+    const userId = removeTarget?.id
+    if (!selected || !userId || busyId) return
     setBusyId(userId)
     try {
       setTeam(await removeExpert(selected, userId))
       toast.success('Eksperti u hoq nga kompania.')
+      setRemoveTarget(null)
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -370,7 +372,7 @@ export default function CompanyExpertsPanel() {
                               className="ds-danger-btn"
                               isPending={busyId === member.id}
                               isDisabled={Boolean(busyId) && busyId !== member.id}
-                              onPress={() => void onRemove(member.id)}
+                              onPress={() => setRemoveTarget({ id: member.id, name: member.name || member.email })}
                             >
                               <UserMinus size={14} aria-hidden />
                               {busyId === member.id ? 'Duke hequr…' : 'Hiq'}
@@ -474,6 +476,7 @@ export default function CompanyExpertsPanel() {
           ) : null}
         </div>
       ) : null}
+      <ConfirmActionDialog isOpen={Boolean(removeTarget)} onClose={() => setRemoveTarget(null)} onConfirm={() => void onRemove()} pending={Boolean(busyId)} title="Hiq ekspertin?" description={`${removeTarget?.name ?? 'Eksperti'} do të hiqet nga ekipi i kompanisë. Ai nuk do të shfaqet më në profilin e kompanisë.`} confirmLabel="Hiq" />
     </section>
   )
 }

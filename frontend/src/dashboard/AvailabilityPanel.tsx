@@ -10,6 +10,7 @@ import {
   type AvailabilitySlot,
 } from '../api/availability'
 import ScheduleCalendar from '../components/ScheduleCalendar'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { getErrorMessage } from '../utils/errors'
 import { EmptyBlock, RowsSkeleton, SectionHead } from './OverviewParts'
 import './DashboardSections.css'
@@ -93,6 +94,7 @@ export default function AvailabilityPanel() {
   const [date, setDate] = useState(todayInputDate())
   const [selectedHours, setSelectedHours] = useState<string[]>([])
   const [selectedSlotId, setSelectedSlotId] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<AvailabilitySlot | null>(null)
 
   function fail(source: ErrorSource, message: string) {
     setErrorSource(source)
@@ -235,7 +237,9 @@ export default function AvailabilityPanel() {
     }
   }
 
-  async function onDelete(id: string) {
+  async function onDelete() {
+    const id = deleteTarget?.id
+    if (!id || busyId) return
     setBusyId(id)
     setError('')
     try {
@@ -243,6 +247,7 @@ export default function AvailabilityPanel() {
       setSlots((prev) => prev.filter((s) => s.id !== id))
       setSelectedSlotId('')
       toast.success('Orari u fshi.')
+      setDeleteTarget(null)
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -485,7 +490,7 @@ export default function AvailabilityPanel() {
                     size="sm"
                     className="ds-danger-btn"
                     isPending={busyId === selectedSlot.id}
-                    onPress={() => void onDelete(selectedSlot.id)}
+                    onPress={() => setDeleteTarget(selectedSlot)}
                   >
                     <Trash2 size={14} aria-hidden />
                     {busyId === selectedSlot.id ? 'Duke fshirë…' : `Fshi ${formatSlotTime(selectedSlot.startAt)}`}
@@ -500,6 +505,7 @@ export default function AvailabilityPanel() {
           )}
         </Card.Content>
       </Card>
+      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(busyId)} title="Fshi orën e lirë?" description={`Ora ${deleteTarget ? formatSlotTime(deleteTarget.startAt) : ''} do të hiqet nga disponueshmëria. Ky veprim nuk mund të zhbëhet.`} confirmLabel="Fshi" />
     </section>
   )
 }

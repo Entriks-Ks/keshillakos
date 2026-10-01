@@ -40,6 +40,7 @@ import {
   type TeamPerson,
 } from '../api/onboarding'
 import ExtensionFieldsForm, { categorySpecificFields, fieldLabel, optionLabel } from '../components/ExtensionFieldsForm'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import LocationSelector from '../components/LocationSelector'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { getErrorMessage } from '../utils/errors'
@@ -274,6 +275,8 @@ export default function ProviderServicesPanel() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<ServiceItem | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const [offerOwner, setOfferOwner] = useState<OfferOwner>('company')
   const [businessId, setBusinessId] = useState('')
   const [businessName, setBusinessName] = useState('')
@@ -694,8 +697,9 @@ export default function ProviderServicesPanel() {
     }
   }
 
-  async function onDelete(id: string) {
-    if (!window.confirm(sq ? 'A je i sigurt që do ta fshish këtë shërbim?' : 'Delete this service?')) return
+  async function onDelete() {
+    const id = deleteTarget?.id
+    if (!id || deletingId) return
     setError('')
     setDeletingId(id)
     try {
@@ -703,6 +707,7 @@ export default function ProviderServicesPanel() {
       setServices((prev) => prev.filter((item) => item.id !== id))
       if (editingId === id) resetForm()
       toast.success(sq ? 'Shërbimi u fshi.' : 'Service deleted.')
+      setDeleteTarget(null)
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -998,7 +1003,7 @@ export default function ProviderServicesPanel() {
                         variant="outline"
                         className="ds-danger-btn"
                         isPending={deletingId === service.id}
-                        onPress={() => void onDelete(service.id)}
+                        onPress={() => setDeleteTarget(service)}
                       >
                         <Trash2 size={14} aria-hidden />
                         {deletingId === service.id ? (sq ? 'Duke fshirë…' : 'Deleting…') : (sq ? 'Fshi' : 'Delete')}
@@ -1764,7 +1769,7 @@ export default function ProviderServicesPanel() {
                   {sq ? 'Mbrapa' : 'Back'}
                 </Button>
               ) : editingId || services.length > 0 ? (
-                <Button variant="outline" onPress={closeForm} isDisabled={submitting}>
+                <Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={submitting}>
                   {sq ? 'Anulo' : 'Cancel'}
                 </Button>
               ) : (
@@ -1798,6 +1803,8 @@ export default function ProviderServicesPanel() {
         </Card.Content>
       </Card>
       ) : null}
+      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(deletingId)} title={sq ? 'Fshi ofertën?' : 'Delete this offer?'} description={sq ? `“${deleteTarget?.title ?? ''}” do të fshihet përgjithmonë. Ky veprim nuk mund të zhbëhet.` : `“${deleteTarget?.title ?? ''}” will be permanently deleted. This cannot be undone.`} confirmLabel={sq ? 'Fshi' : 'Delete'} />
+      <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { closeForm(); setConfirmCancel(false) }} title={sq ? 'Hidh ndryshimet?' : 'Discard changes?'} description={sq ? 'Ndryshimet e paruajtura në ofertë do të humbasin.' : 'Unsaved changes to this offer will be lost.'} confirmLabel={sq ? 'Hidh ndryshimet' : 'Discard changes'} />
     </section>
   )
 }
