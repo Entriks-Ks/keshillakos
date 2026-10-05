@@ -1,3 +1,4 @@
+import { paginateItems, queryPage, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
 import { Business, type BusinessDoc } from '../models/Business'
 import { City } from '../models/City'
@@ -151,9 +152,11 @@ export async function listManagedBusinesses(uid: string) {
   return Business.find({ $or: [{ owners: userId }, { members: { $elemMatch: { user: userId, role: 'manager' } } }] }).sort({ createdAt: 1 })
 }
 
-export async function businessTeam(uid: string, businessId: string) {
+export async function businessTeam(uid: string, businessId: string, input: PaginationInput = { page: 1, limit: 20 }, invitationsInput: PaginationInput = input) {
   const { business } = await ownedBusinessById(uid, businessId)
-  const ids = [...business.owners, ...business.members.map((member) => member.user), ...business.invitations.map((invite) => invite.user)]
+  const members = paginateItems(business.members, input)
+  const invitations = paginateItems(business.invitations, invitationsInput)
+  const ids = [...business.owners, ...members.items.map((member) => member.user), ...invitations.items.map((invite) => invite.user)]
   const users = await User.find({ _id: { $in: ids } }).select('uid name firstName lastName email headline profilePhoto roles role').lean()
   const profiles = await ProviderProfile.find({
     ownerUser: { $in: ids },
@@ -181,8 +184,10 @@ export async function businessTeam(uid: string, businessId: string) {
   return {
     business: { id: String(business._id), publicName: business.publicName },
     owners: business.owners.map(person),
-    members: business.members.map((member) => ({ ...person(member.user), role: member.role })),
-    invitations: business.invitations.map((invite) => ({
+    members: members.items.map((member) => ({ ...person(member.user), role: member.role })),
+    pagination: members.pagination,
+    invitationsPagination: invitations.pagination,
+    invitations: invitations.items.map((invite) => ({
       ...person(invite.user),
       invitedAt: invite.invitedAt,
       status: 'pending' as const,
@@ -213,6 +218,20 @@ export async function publicExpertsForOwner(ownerUid: string) {
         photoUrl: profile?.publicProfile?.photoUrl || user.profilePhoto || '',
       }
     })
+}
+
+export async function publicExpertPageForOwner(ownerUid: string, input: PaginationInput) {
+  const owner = await User.findOne({ uid: ownerUid }).select('_id').lean()
+  const business = owner ? await Business.findOne({ owners: owner._id, status: 'active' }).select('members').lean() : null
+  const query: Record<string, unknown> = { _id: { $in: business?.members.map((member) => member.user) ?? [] }, accountStatus: 'active', uid: { $exists: true, $ne: '' } }
+  const result = await queryPage(input, () => User.countDocuments(query), (skip, limit) => User.find(query).select('uid name firstName lastName headline profilePhoto').sort({ name: 1, _id: 1 }).skip(skip).limit(limit).lean())
+  const profiles = await ProviderProfile.find({ ownerUser: { $in: result.items.map((user) => user._id) }, providerType: 'individual' }).select('ownerUser publicProfile').lean()
+  const byOwner = new Map(profiles.map((profile) => [String(profile.ownerUser), profile]))
+  return { experts: result.items.map((user) => {
+    const profile = byOwner.get(String(user._id))
+    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.name
+    return { uid: user.uid, name: name || profile?.publicProfile.displayName || 'Ekspert', headline: profile?.publicProfile.title || user.headline || '', photoUrl: profile?.publicProfile.photoUrl || user.profilePhoto || '' }
+  }), pagination: result.pagination }
 }
 
 export async function lookupBusinessExpert(uid: string, businessId: string, email: string) {
@@ -276,12 +295,11 @@ export async function inviteBusinessExpert(uid: string, businessId: string, emai
   return businessTeam(uid, businessId)
 }
 
-export async function listMyBusinessInvitations(uid: string) {
+export async function listMyBusinessInvitations(uid: string, input: PaginationInput = { page: 1, limit: 20 }) {
   const userId = await userIdForUid(uid)
-  const businesses = await Business.find({ 'invitations.user': userId, status: { $nin: ['suspended', 'closed'] } })
-    .select('publicName invitations')
-    .lean()
-  return businesses.map((business) => {
+  const query: Record<string, unknown> = { 'invitations.user': userId, status: { $nin: ['suspended', 'closed'] } }
+  const result = await queryPage(input, () => Business.countDocuments(query), (skip, limit) => Business.find(query).select('publicName invitations').sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean())
+  return Object.assign(result.items.map((business) => {
     const invite = business.invitations.find((item) => String(item.user) === String(userId))
     return {
       id: String(business._id),
@@ -289,7 +307,7 @@ export async function listMyBusinessInvitations(uid: string) {
       invitedAt: invite?.invitedAt ?? null,
       status: 'pending' as const,
     }
-  })
+  }), { pagination: result.pagination })
 }
 
 export async function acceptBusinessInvitation(uid: string, businessId: string) {

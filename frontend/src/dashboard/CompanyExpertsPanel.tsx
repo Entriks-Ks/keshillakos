@@ -1,3 +1,5 @@
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip, toast } from '@heroui/react'
@@ -52,6 +54,9 @@ export default function CompanyExpertsPanel() {
   const { user } = useAuth()
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([])
   const [selected, setSelected] = useState('')
+  const membersPaging = usePagination(selected)
+  const invitesPaging = usePagination(selected)
+  const [revision, setRevision] = useState(0)
   const [team, setTeam] = useState<BusinessTeam | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -102,10 +107,12 @@ export default function CompanyExpertsPanel() {
     if (!selected) return
     let cancelled = false
     setLoading(true)
-    fetchBusinessTeam(selected)
+    fetchBusinessTeam(selected, { page: membersPaging.page, invitationsPage: invitesPaging.page, limit: 20 })
       .then((next) => {
         if (!cancelled) {
           setTeam(next)
+          if (next.pagination) membersPaging.receivePagination(next.pagination)
+          if (next.invitationsPagination) invitesPaging.receivePagination(next.invitationsPagination)
           setError('')
         }
       })
@@ -118,7 +125,7 @@ export default function CompanyExpertsPanel() {
     return () => {
       cancelled = true
     }
-  }, [selected])
+  }, [selected, membersPaging.page, invitesPaging.page, revision])
 
   useEffect(() => {
     const trimmed = email.trim()
@@ -153,7 +160,7 @@ export default function CompanyExpertsPanel() {
     if (!selected || match?.status !== 'ready') return
     setSaving(true)
     try {
-      setTeam(await inviteExpert(selected, email.trim()))
+      await inviteExpert(selected, email.trim()); setRevision((value) => value + 1)
       setMatch({ ...match, status: 'invited' })
       toast.success('Ftesa u dërgua. Eksperti e pranon te profili i tij.')
     } catch (err) {
@@ -168,7 +175,7 @@ export default function CompanyExpertsPanel() {
     if (!selected || !userId || busyId) return
     setBusyId(userId)
     try {
-      setTeam(await removeExpert(selected, userId))
+      await removeExpert(selected, userId); setRevision((value) => value + 1)
       toast.success('Eksperti u hoq nga kompania.')
       setRemoveTarget(null)
     } catch (err) {
@@ -182,7 +189,7 @@ export default function CompanyExpertsPanel() {
     if (!selected) return
     setBusyId(userId)
     try {
-      setTeam(await cancelInvitation(selected, userId))
+      await cancelInvitation(selected, userId); setRevision((value) => value + 1)
       if (match?.person?.id === userId) setMatch({ ...match, status: 'ready' })
       toast.success('Ftesa u anulua.')
     } catch (err) {
@@ -283,7 +290,7 @@ export default function CompanyExpertsPanel() {
             <Card className="uo-card ur-card">
               <SectionHead
                 title="Ekspertët në ekip"
-                meta={!loading && members.length > 0 ? <span className="uo-card-meta">{members.length}</span> : null}
+                meta={!loading && members.length > 0 ? <span className="uo-card-meta">{membersPaging.pagination.total}</span> : null}
               />
               {loading ? (
                 <Card.Content className="uo-card-body">
@@ -384,11 +391,12 @@ export default function CompanyExpertsPanel() {
                   })}
                 </ul>
               )}
+              <KeshillaPagination pagination={membersPaging.pagination} onPageChange={membersPaging.setPage} isDisabled={loading} />
             </Card>
 
             {!loading && invitations.length > 0 ? (
               <Card className="uo-card">
-                <SectionHead title="Ftesa në pritje" meta={<span className="uo-card-meta">{invitations.length}</span>} />
+                <SectionHead title="Ftesa në pritje" meta={<span className="uo-card-meta">{invitesPaging.pagination.total}</span>} />
                 <Card.Content className="uo-card-body">
                   <ul className="uo-rows">
                     {invitations.map((invite) => (
@@ -421,6 +429,7 @@ export default function CompanyExpertsPanel() {
                       </li>
                     ))}
                   </ul>
+                  <KeshillaPagination pagination={invitesPaging.pagination} onPageChange={invitesPaging.setPage} isDisabled={loading} />
                 </Card.Content>
               </Card>
             ) : null}

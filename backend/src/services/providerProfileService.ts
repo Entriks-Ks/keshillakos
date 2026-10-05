@@ -1,3 +1,5 @@
+import { providerDirectoryPipeline } from './marketplaceQuery'
+import { queryPage, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
 import { Business } from '../models/Business'
 import { Category } from '../models/Category'
@@ -173,7 +175,7 @@ export async function listPublishedProviderProfiles(cityId?: string) {
     ...(cityId ? { serviceAreaCityIds: new Types.ObjectId(cityId) } : {}),
   })
     .select('-qualificationClaims -moderation.reason')
-    .sort({ updatedAt: -1 }).limit(50)
+    .sort({ updatedAt: -1, _id: -1 }).limit(0)
   return withActiveBusiness(profiles)
 }
 
@@ -235,6 +237,20 @@ export function toPublicProvider(profile: ProviderProfileDoc & { _id: Types.Obje
 /** Marketplace directory cards (experts + companies) with owner uid and ratings. */
 export async function listMarketplaceProviders(cityId?: string) {
   return serializeMarketplaceProviders(await listPublishedProviderProfiles(cityId))
+}
+
+export async function listMarketplaceProviderPage(query: Record<string, unknown>, input: PaginationInput) {
+  const pipeline = providerDirectoryPipeline(query)
+  const counts = await ProviderProfile.aggregate<{ _id: string; total: number }>([...pipeline, { $group: { _id: '$providerType', total: { $sum: 1 } } }])
+  const experts = counts.find((item) => item._id === 'individual')?.total ?? 0
+  const companies = counts.find((item) => item._id === 'business')?.total ?? 0
+  const type = query.tab === 'companies' ? 'business' : query.tab === 'experts' ? 'individual' : undefined
+  const selected = type ? [...pipeline, { $match: { providerType: type } }] : pipeline
+  const result = await queryPage(input, () => Promise.resolve(type === 'individual' ? experts : type === 'business' ? companies : experts + companies), (skip, limit) => ProviderProfile.aggregate<{ _id: Types.ObjectId }>([...selected, { $skip: skip }, { $limit: limit }, { $project: { _id: 1 } }]))
+  const profiles = await ProviderProfile.find({ _id: { $in: result.items.map((row) => row._id) } }).select('-qualificationClaims -moderation.reason')
+  const byId = new Map(profiles.map((profile) => [String(profile._id), profile]))
+  const ordered = result.items.flatMap((row) => { const profile = byId.get(String(row._id)); return profile ? [profile] : [] })
+  return { providers: await serializeMarketplaceProviders(ordered), pagination: result.pagination, counts: { experts, companies } }
 }
 
 /**

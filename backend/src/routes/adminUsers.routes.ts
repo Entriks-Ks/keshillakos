@@ -1,3 +1,4 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import { firebaseSignUp } from '../services/firebaseAuth'
@@ -13,6 +14,7 @@ import {
 import { isUserRole, ROLE_LABELS, ROLES } from '../types/roles'
 
 const router = Router()
+router.use(validatePagination)
 
 router.use(requireAuth, requireRole('admin'))
 
@@ -42,8 +44,9 @@ router.get('/', async (req, res) => {
     const users = await listUsers({
       role: role && isUserRole(role) ? role : undefined,
       q,
-    })
-    return res.json({ users })
+    }, paginationInput(req.query, 20))
+    const result = { items: users, pagination: users.pagination }
+    return res.json({ users: result.items, pagination: result.pagination })
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan përdoruesit',
@@ -51,10 +54,11 @@ router.get('/', async (req, res) => {
   }
 })
 
-router.get('/role-requests', async (_req, res) => {
+router.get('/role-requests', async (req, res) => {
   try {
-    const users = await listPendingRoleRequests()
-    return res.json({ users })
+    const users = await listPendingRoleRequests(paginationInput(req.query, 20))
+    const result = { items: users, pagination: users.pagination }
+    return res.json({ users: result.items, pagination: result.pagination })
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan kërkesat',

@@ -1,3 +1,4 @@
+import { pagedItems, type PaginationMeta, type CollectionSummary } from './pagination'
 import api from './auth'
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
@@ -21,17 +22,19 @@ export type AppointmentItem = {
 }
 
 export async function fetchMyAppointments(signal?: AbortSignal) {
-  const { data } = await api.get<{ appointments: AppointmentItem[] }>('/api/appointments/mine', {
+  const { data } = await api.get<{ appointments: AppointmentItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/appointments/mine', {
     signal,
+    params: { page: 1, limit: 10, upcoming: true },
   })
-  return data.appointments
+  return pagedItems(data.appointments, data.pagination, data.summary)
 }
 
 export async function fetchProviderAppointments(signal?: AbortSignal) {
-  const { data } = await api.get<{ appointments: AppointmentItem[] }>('/api/appointments/provider', {
+  const { data } = await api.get<{ appointments: AppointmentItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/appointments/provider', {
     signal,
+    params: { page: 1, limit: 10, upcoming: true },
   })
-  return data.appointments
+  return pagedItems(data.appointments, data.pagination, data.summary)
 }
 
 export function upcomingAppointments(appointments: AppointmentItem[], now = new Date()) {

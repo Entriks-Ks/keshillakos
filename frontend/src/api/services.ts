@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type CollectionSummary, type PaginationMeta } from './pagination'
 import api from './auth'
 import { postPhotoUpload } from './media'
 import type { PublicExpert } from './providers'
@@ -93,6 +94,7 @@ export type ServiceItem = {
   providerName: string
   provider?: ServiceProvider
   experts?: PublicExpert[]
+  expertsPagination?: PaginationMeta
   active: boolean
   createdAt: string
 }
@@ -116,9 +118,9 @@ export async function createService(payload: ServiceWritePayload) {
   return data.service
 }
 
-export async function fetchMyServices() {
-  const { data } = await api.get<{ services: ServiceItem[] }>('/api/services/mine')
-  return data.services
+export async function fetchMyServices(params: PageParams = {}) {
+  const { data } = await api.get<{ services: ServiceItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/services/mine', { params })
+  return pagedItems(data.services, data.pagination, data.summary)
 }
 
 export async function updateService(id: string, payload: ServiceWritePayload) {
@@ -136,6 +138,11 @@ export async function uploadServicePhoto(file: File) {
 }
 
 export type ServiceSearchParams = {
+  delivery?: string
+  language?: string
+  minRating?: string
+  verification?: string
+  sort?: string
   cityId?: string
   categoryId?: string
   subcategoryId?: string
@@ -143,12 +150,12 @@ export type ServiceSearchParams = {
   q?: string
 }
 
-export async function fetchActiveServices(params: ServiceSearchParams = {}, signal?: AbortSignal) {
-  const { data } = await api.get<{ services: ServiceItem[] }>('/api/services', { params, signal })
-  return data.services
+export async function fetchActiveServices(params: ServiceSearchParams & PageParams = {}, signal?: AbortSignal) {
+  const { data } = await api.get<{ services: ServiceItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/services', { params, signal })
+  return pagedItems(data.services, data.pagination, data.summary)
 }
 
-export async function fetchService(id: string) {
-  const { data } = await api.get<{ service: ServiceItem }>(`/api/services/${id}`)
+export async function fetchService(id: string, params: PageParams = {}) {
+  const { data } = await api.get<{ service: ServiceItem }>(`/api/services/${id}`, { params })
   return data.service
 }

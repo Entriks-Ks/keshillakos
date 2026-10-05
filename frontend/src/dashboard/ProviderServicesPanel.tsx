@@ -1,3 +1,5 @@
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Button, buttonVariants, Card, Chip, ProgressBar, toast } from '@heroui/react'
 import { Link, useLocation } from 'react-router-dom'
@@ -249,6 +251,8 @@ export default function ProviderServicesPanel() {
     options: catalogOptions,
     error: optionsError,
   } = useCatalogOptions()
+  const { page, setPage, pagination, receivePagination } = usePagination()
+  const [listRevision, setListRevision] = useState(0)
   const [services, setServices] = useState<ServiceItem[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -280,6 +284,7 @@ export default function ProviderServicesPanel() {
   const [offerOwner, setOfferOwner] = useState<OfferOwner>('company')
   const [businessId, setBusinessId] = useState('')
   const [businessName, setBusinessName] = useState('')
+  const teamPaging = usePagination()
   const [teamExperts, setTeamExperts] = useState<TeamPerson[]>([])
   const [expertProviderId, setExpertProviderId] = useState('')
   const [responsibleExpertId, setResponsibleExpertId] = useState('')
@@ -345,12 +350,13 @@ export default function ProviderServicesPanel() {
         }
         setBusinessId(business._id)
         setBusinessName(business.publicName)
-        const team = await fetchBusinessTeam(business._id)
+        const team = await fetchBusinessTeam(business._id, { page: teamPaging.page, limit: 20 })
         if (cancelled) return
         const people = [...team.owners, ...team.members]
         const unique = new Map<string, TeamPerson>()
         for (const person of people) unique.set(person.id, person)
-        setTeamExperts([...unique.values()])
+        if (team.pagination) teamPaging.receivePagination(team.pagination)
+        setTeamExperts((previous) => [...unique.values(), ...previous.filter((person) => !unique.has(person.id) && (person.id === responsibleExpertId || person.providerProfileId === expertProviderId))])
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -361,7 +367,7 @@ export default function ProviderServicesPanel() {
     return () => {
       cancelled = true
     }
-  }, [isCompany])
+  }, [isCompany, teamPaging.page])
 
   useEffect(() => {
     if (!isCompany || offerOwner !== 'expert') return
@@ -429,9 +435,10 @@ export default function ProviderServicesPanel() {
 
   useEffect(() => {
     let cancelled = false
-    fetchMyServices()
+    setLoading(true)
+    fetchMyServices({ page, limit: 20 })
       .then((items) => {
-        if (!cancelled) setServices(items)
+        if (!cancelled) { setServices(items); receivePagination(items.pagination) }
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -442,7 +449,7 @@ export default function ProviderServicesPanel() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [page, listRevision])
 
   useEffect(() => {
     if (optionsError) setError(optionsError)
@@ -684,8 +691,9 @@ export default function ProviderServicesPanel() {
         setFormOpen(false)
         toast.success(sq ? 'Shërbimi u përditësua.' : 'Service updated.')
       } else {
-        const service = await createService(payload)
-        setServices((prev) => [service, ...prev])
+        await createService(payload)
+        setPage(1)
+        setListRevision((value) => value + 1)
         resetForm()
         setFormOpen(false)
         toast.success(sq ? 'Shërbimi u publikua dhe shfaqet te ofertat.' : 'Service published and visible in offers.')
@@ -704,7 +712,7 @@ export default function ProviderServicesPanel() {
     setDeletingId(id)
     try {
       await deleteService(id)
-      setServices((prev) => prev.filter((item) => item.id !== id))
+      setListRevision((value) => value + 1)
       if (editingId === id) resetForm()
       toast.success(sq ? 'Shërbimi u fshi.' : 'Service deleted.')
       setDeleteTarget(null)
@@ -913,7 +921,7 @@ export default function ProviderServicesPanel() {
         <Card className="uo-card ur-card">
           <SectionHead
             title={sq ? 'Shërbimet e mia' : 'My services'}
-            meta={<span className="uo-card-meta">{services.length}</span>}
+            meta={<span className="uo-card-meta">{pagination.total}</span>}
           />
           <ul className="ur-list ds-divided">
             {services.map((service) => {
@@ -1014,6 +1022,7 @@ export default function ProviderServicesPanel() {
               )
             })}
           </ul>
+          <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading} />
         </Card>
       )}
 
@@ -1160,6 +1169,8 @@ export default function ProviderServicesPanel() {
                 </FieldHint>
               </label>
             ) : null}
+
+            <KeshillaPagination pagination={teamPaging.pagination} onPageChange={teamPaging.setPage} isDisabled={companyContextLoading || Boolean(editingId)} />
 
             {!businessId && !companyContextLoading ? (
               <FieldHint>

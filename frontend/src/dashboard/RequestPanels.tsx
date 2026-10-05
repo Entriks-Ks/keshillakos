@@ -1,3 +1,5 @@
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState } from 'react'
 import { Alert, Card, Chip } from '@heroui/react'
 import { fetchAllRequests, type RequestStatus, type ServiceRequestItem } from '../api/requests'
@@ -59,14 +61,17 @@ export { ProviderInboxPage as ProviderInboxPanel } from './ProviderInboxPage'
 
 export function AdminRequestsPanel() {
   const [requests, setRequests] = useState<ServiceRequestItem[]>([])
+  const { page, setPage, pagination, receivePagination } = usePagination()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let cancelled = false
-    fetchAllRequests()
+    setLoading(true)
+    setError('')
+    fetchAllRequests({ page, limit: 20 })
       .then((items) => {
-        if (!cancelled) setRequests(items)
+        if (!cancelled) { setRequests(items); receivePagination(items.pagination) }
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -77,7 +82,7 @@ export function AdminRequestsPanel() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [page])
 
   return (
     <section className="uo ds ad">
@@ -115,6 +120,7 @@ export function AdminRequestsPanel() {
         ))}
       </ul> : null}
       </Card>
+      {!loading && !error ? <KeshillaPagination pagination={pagination} onPageChange={setPage} /> : null}
     </section>
   )
 }

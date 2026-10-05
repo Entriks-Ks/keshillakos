@@ -1,3 +1,4 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { Types } from 'mongoose'
 import { z } from 'zod'
@@ -11,7 +12,7 @@ import {
 } from '../services/mediaService'
 import {
   createProviderProfile,
-  listMarketplaceProviders,
+  listMarketplaceProviderPage,
   listMyProviderProfiles,
   moderateProviderProfile,
   toPublicProvider,
@@ -21,6 +22,7 @@ import {
 } from '../services/providerProfileService'
 
 const router = Router()
+router.use(validatePagination)
 const locationInput = z.object({
   countryId: z.string().refine(Types.ObjectId.isValid, 'Invalid country ID'),
   cityId: z.string().refine(Types.ObjectId.isValid, 'Invalid city ID'),
@@ -59,8 +61,8 @@ const certificationsInput = z.array(z.object({
 
 router.get('/', async (req, res) => {
   try {
-    const cityId = typeof req.query.cityId === 'string' ? req.query.cityId : undefined
-    return res.json({ providers: await listMarketplaceProviders(cityId) })
+    if (req.query.cityId !== undefined && (typeof req.query.cityId !== 'string' || !Types.ObjectId.isValid(req.query.cityId))) return res.status(400).json({ message: 'City ID i pavlefshëm' })
+    return res.json(await listMarketplaceProviderPage(req.query, paginationInput(req.query)))
   }
   catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Profilet nuk u ngarkuan' }) }
 })

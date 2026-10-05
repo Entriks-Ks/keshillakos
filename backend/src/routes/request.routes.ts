@@ -1,3 +1,5 @@
+import { listRequestPage } from '../services/requestPaginationService'
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
@@ -7,17 +9,14 @@ import {
   type RequestStatus,
 } from '../models/ServiceRequest'
 import {
-  countPendingForProvider,
-  listAllRequests,
-  listRequestsByProvider,
-  listRequestsBySeeker,
   updateRequestStatus,
 } from '../services/requestService'
 import { RequestDelivery, DELIVERY_STATUSES, type DeliveryStatus } from '../models/RequestDelivery'
 import { openOrGetConversation } from '../services/chatService'
-import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, listMyUserRequests, listProviderDeliveries, listAllUserRequests, updateDeliveryStatus, countPendingDeliveries } from '../services/userRequestService'
+import { createUserRequest, sendExistingRequest, updateUserRequestLifecycle, listMyUserRequests, updateDeliveryStatus } from '../services/userRequestService'
 
 const router = Router()
+router.use(validatePagination)
 
 router.post('/', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
@@ -121,9 +120,7 @@ router.post('/', requireAuth, requireRole('user', 'provider', 'company', 'admin'
 
 router.get('/mine', requireAuth, requireRole('user', 'provider', 'company', 'admin'), async (req, res) => {
   try {
-    const [canonical, legacy] = await Promise.all([listMyUserRequests(req.user!.uid), listRequestsBySeeker(req.user!.uid)])
-    const requests = [...canonical, ...legacy]
-    return res.json({ requests })
+    return res.json(await listRequestPage(req.user!.uid, "mine", req.query, paginationInput(req.query, 20)))
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan kërkesat',
@@ -133,13 +130,7 @@ router.get('/mine', requireAuth, requireRole('user', 'provider', 'company', 'adm
 
 router.get('/inbox', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
-    const [canonical, legacy, canonicalPending, legacyPending] = await Promise.all([
-      listProviderDeliveries(req.user!.uid), listRequestsByProvider(req.user!.uid),
-      countPendingDeliveries(req.user!.uid), countPendingForProvider(req.user!.uid),
-    ])
-    const requests = [...canonical, ...legacy]
-    const pendingCount = canonicalPending + legacyPending
-    return res.json({ requests, pendingCount })
+    return res.json(await listRequestPage(req.user!.uid, "inbox", req.query, paginationInput(req.query, 20)))
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkua inbox-i',
@@ -147,11 +138,9 @@ router.get('/inbox', requireAuth, requireRole('provider', 'company', 'admin'), a
   }
 })
 
-router.get('/all', requireAuth, requireRole('admin'), async (_req, res) => {
+router.get('/all', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const [canonical, legacy] = await Promise.all([listAllUserRequests(), listAllRequests()])
-    const requests = [...canonical, ...legacy]
-    return res.json({ requests })
+    return res.json(await listRequestPage(req.user!.uid, "all", req.query, paginationInput(req.query, 20)))
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan kërkesat',

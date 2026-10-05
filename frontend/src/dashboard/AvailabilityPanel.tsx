@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { collectionSummary } from '../api/pagination'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Alert, Button, Card, Chip, Input, Label, TextField, toast } from '@heroui/react'
 import { CalendarPlus, ChevronDown, Trash2 } from 'lucide-react'
 import {
@@ -79,6 +82,7 @@ function weeklySlots(days: number[], from: string, to: string, weeks: number) {
 }
 
 export default function AvailabilityPanel() {
+  const { page, setPage, pagination, receivePagination } = usePagination()
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -101,21 +105,23 @@ export default function AvailabilityPanel() {
     setError(message)
   }
 
+  const loadVersion = useRef(0)
   async function load() {
+    const version = ++loadVersion.current
     setLoading(true)
     setError('')
     try {
-      setSlots(await fetchMyAvailability())
+      const result = await fetchMyAvailability({ page, limit: 50 }); if (version !== loadVersion.current) return; setSlots(result); receivePagination(result.pagination)
     } catch (err) {
-      fail('load', getErrorMessage(err))
+      if (version === loadVersion.current) fail('load', getErrorMessage(err))
     } finally {
-      setLoading(false)
+      if (version === loadVersion.current) setLoading(false)
     }
   }
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [page])
 
   const previewCount = useMemo(
     () => weeklySlots(days, fromHour, toHour, weeks).length,
@@ -184,6 +190,7 @@ export default function AvailabilityPanel() {
       toast.danger(getErrorMessage(err))
     } finally {
       setSubmitting(false)
+      await load()
     }
   }
 
@@ -234,6 +241,7 @@ export default function AvailabilityPanel() {
       }
     } finally {
       setSubmitting(false)
+      await load()
     }
   }
 
@@ -248,6 +256,7 @@ export default function AvailabilityPanel() {
       setSelectedSlotId('')
       toast.success('Orari u fshi.')
       setDeleteTarget(null)
+      await load()
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -255,8 +264,7 @@ export default function AvailabilityPanel() {
     }
   }
 
-  const freeSlots = slots.filter((s) => s.status === 'open')
-  const busySlots = slots.filter((s) => s.status === 'held' || s.status === 'booked')
+  const slotSummary = collectionSummary(slots)
   const selectedSlot = slots.find((slot) => slot.id === selectedSlotId)
   const weeklyError = error && errorSource === 'weekly' ? error : ''
   const extraError = error && errorSource === 'extra' ? error : ''
@@ -462,10 +470,10 @@ export default function AvailabilityPanel() {
             slots.length > 0 ? (
               <span className="ds-cal-counts">
                 <Chip size="sm" variant="soft" color="success">
-                  {freeSlots.length} të lira
+                  {slotSummary.free ?? 0} të lira
                 </Chip>
                 <Chip size="sm" variant="soft" color="danger">
-                  {busySlots.length} të zëna
+                  {slotSummary.busy ?? 0} të zëna
                 </Chip>
               </span>
             ) : null
@@ -482,7 +490,7 @@ export default function AvailabilityPanel() {
           ) : (
             <div className="ds-cal">
               <p className="ds-hint">Zgjidh ditën, pastaj një orë të lirë për ta fshirë. Pikat e gjelbra kanë orë të lira.</p>
-              <ScheduleCalendar slots={slots} selectedId={selectedSlotId} onSelect={setSelectedSlotId} selectable />
+              <ScheduleCalendar key={page} slots={slots} selectedId={selectedSlotId} onSelect={setSelectedSlotId} selectable />
               <div className="ds-cal-foot">
                 {selectedSlot && selectedSlot.status === 'open' ? (
                   <Button
@@ -505,6 +513,7 @@ export default function AvailabilityPanel() {
           )}
         </Card.Content>
       </Card>
+      <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading || submitting} />
       <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(busyId)} title="Fshi orën e lirë?" description={`Ora ${deleteTarget ? formatSlotTime(deleteTarget.startAt) : ''} do të hiqet nga disponueshmëria. Ky veprim nuk mund të zhbëhet.`} confirmLabel="Fshi" />
     </section>
   )

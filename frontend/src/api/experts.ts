@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type PaginationMeta } from './pagination'
 import api from './auth'
 
 export type ExpertItem = {
@@ -38,12 +39,12 @@ export async function createExpert(payload: {
   return data.expert
 }
 
-export async function fetchMyExperts() {
-  const { data } = await api.get<{ experts: ExpertItem[] }>('/api/experts/mine')
-  return data.experts
+export async function fetchMyExperts(params: PageParams = {}) {
+  const { data } = await api.get<{ experts: ExpertItem[]; pagination: PaginationMeta }>('/api/experts/mine', { params })
+  return pagedItems(data.experts, data.pagination)
 }
 
-export async function fetchActiveExperts() {
-  const { data } = await api.get<{ experts: ExpertItem[] }>('/api/experts')
-  return data.experts
+export async function fetchActiveExperts(params: PageParams = {}) {
+  const { data } = await api.get<{ experts: ExpertItem[]; pagination: PaginationMeta }>('/api/experts', { params })
+  return pagedItems(data.experts, data.pagination)
 }

@@ -1,3 +1,4 @@
+import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip } from '@heroui/react'
@@ -47,7 +48,7 @@ function plural(count: number, one: string, many: string) {
 
 function contextSentence(data: OverviewData) {
   const next = upcomingAppointments(data.appointments)[0]
-  const active = data.services.filter((item) => item.active).length
+  const active = collectionSummary(data.services).active ?? 0
   if (data.pendingCount > 0) {
     return `Ke ${data.pendingCount} ${plural(data.pendingCount, 'kërkesë që pret', 'kërkesa që presin')} përgjigjen tënde.`
   }
@@ -63,32 +64,32 @@ function StatsSection({ data, loading }: { data: OverviewData | null; loading: b
   const services = data?.services ?? []
   const conversations = data?.conversations ?? []
   const upcoming = upcomingAppointments(data?.appointments ?? [])
-  const unread = conversations.reduce((sum, item) => sum + (item.unread || 0), 0)
+  const unread = collectionSummary(conversations).unread ?? 0
   const pending = data?.pendingCount ?? 0
   const stats: OverviewStat[] = [
     {
       label: 'Kërkesa në pritje',
       value: pending,
-      hint: `${data?.requests.length ?? 0} të marra gjithsej`,
+      hint: `${collectionTotal(data?.requests)} të marra gjithsej`,
       to: INBOX_PATH,
       highlight: pending > 0,
     },
     {
       label: 'Shërbime aktive',
-      value: services.filter((item) => item.active).length,
-      hint: services.length > 0 ? `${services.length} gjithsej` : 'Asnjë e publikuar',
+      value: collectionSummary(services).active ?? 0,
+      hint: services.length > 0 ? `${collectionTotal(services)} gjithsej` : 'Asnjë e publikuar',
       to: SERVICES_PATH,
     },
     {
       label: 'Termine të ardhshme',
-      value: upcoming.length,
+      value: collectionSummary(data?.appointments).upcoming ?? upcoming.length,
       hint: upcoming[0] ? `Tjetri: ${formatWhen(upcoming[0].startAt)}` : 'Asnjë i planifikuar',
       to: AVAILABILITY_PATH,
     },
     {
       label: 'Mesazhe të palexuara',
       value: unread,
-      hint: `${conversations.length} biseda`,
+      hint: `${collectionTotal(conversations)} biseda`,
       to: MESSAGES_PATH,
       highlight: unread > 0,
     },

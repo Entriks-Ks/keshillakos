@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type PaginationMeta } from './pagination'
 import api from './auth'
 
 export type PlatformFeedbackItem = {
@@ -15,9 +16,9 @@ export async function submitPlatformFeedback(payload: { message: string; name?: 
   return data.feedback
 }
 
-export async function fetchPlatformFeedback() {
-  const { data } = await api.get<{ feedback: PlatformFeedbackItem[] }>('/api/feedback')
-  return data.feedback
+export async function fetchPlatformFeedback(params: PageParams = {}) {
+  const { data } = await api.get<{ feedback: PlatformFeedbackItem[]; pagination: PaginationMeta; unreadTotal: number }>('/api/feedback', { params })
+  return pagedItems(data.feedback, data.pagination, { unread: data.unreadTotal })
 }
 
 export async function markPlatformFeedbackRead(id: string) {

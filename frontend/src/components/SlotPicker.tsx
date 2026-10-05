@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import KeshillaPagination from './KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
+import { useEffect, useRef, useState } from 'react'
 import { Spinner } from '@heroui/react'
 import { fetchProviderSchedule, type AvailabilitySlot } from '../api/availability'
 import ScheduleCalendar from './ScheduleCalendar'
@@ -20,20 +22,27 @@ export default function SlotPicker({
   required = false,
   onLoaded,
 }: Props) {
+  const { page, setPage, pagination, receivePagination } = usePagination(providerUid)
+  const selectionScope = useRef(`${providerUid}:${refreshKey}`)
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let cancelled = false
+    const scope = `${providerUid}:${refreshKey}`
+    const scopeChanged = selectionScope.current !== scope
+    selectionScope.current = scope
+    if (scopeChanged && selectedId) onSelect('')
     setLoading(true)
     setError('')
-    fetchProviderSchedule(providerUid)
+    fetchProviderSchedule(providerUid, { page, limit: 50 })
       .then((data) => {
         if (cancelled) return
         setSlots(data.slots)
-        onLoaded?.({ freeCount: data.free.length })
-        if (selectedId && !data.free.some((s) => s.id === selectedId)) {
+        receivePagination(data.pagination)
+        onLoaded?.({ freeCount: data.freeTotal })
+        if (selectedId && data.slots.some((s) => s.id === selectedId) && !data.free.some((s) => s.id === selectedId)) {
           onSelect('')
         }
       })
@@ -51,7 +60,7 @@ export default function SlotPicker({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh when provider/key changes
-  }, [providerUid, refreshKey])
+  }, [providerUid, refreshKey, page])
 
   if (loading) {
     return (
@@ -77,12 +86,16 @@ export default function SlotPicker({
   }
 
   return (
+    <>
     <ScheduleCalendar
+      key={page}
       slots={slots}
       selectedId={selectedId}
       onSelect={onSelect}
       selectable
       required={required}
     />
+    <KeshillaPagination pagination={pagination} onPageChange={setPage} />
+    </>
   )
 }

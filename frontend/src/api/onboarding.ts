@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type PaginationMeta } from './pagination'
 import api, { type AuthUser } from './auth'
 import type { SavedLocationIds } from './locations'
 import type { BusinessProfile } from './businesses'
@@ -61,6 +62,8 @@ export type TeamInvitation = TeamPerson & {
 }
 
 export type BusinessTeam = {
+  pagination?: PaginationMeta
+  invitationsPagination?: PaginationMeta
   business: { id: string; publicName: string }
   owners: TeamPerson[]
   members: Array<TeamPerson & { role: 'manager' | 'member' }>
@@ -79,8 +82,8 @@ export async function fetchMyBusinesses() {
   return data.businesses
 }
 
-export async function fetchBusinessTeam(id: string) {
-  const { data } = await api.get<{ team: BusinessTeam }>(`/api/businesses/${id}/team`)
+export async function fetchBusinessTeam(id: string, params: PageParams & { invitationsPage?: number } = {}) {
+  const { data } = await api.get<{ team: BusinessTeam }>(`/api/businesses/${id}/team`, { params })
   return data.team
 }
 
@@ -113,9 +116,9 @@ export async function removeExpert(id: string, userId: string) {
   return data.team
 }
 
-export async function fetchMyInvitations() {
-  const { data } = await api.get<{ invitations: MyBusinessInvitation[] }>('/api/businesses/invitations/mine')
-  return data.invitations
+export async function fetchMyInvitations(params: PageParams = {}) {
+  const { data } = await api.get<{ invitations: MyBusinessInvitation[]; pagination: PaginationMeta }>('/api/businesses/invitations/mine', { params })
+  return pagedItems(data.invitations, data.pagination)
 }
 
 export async function acceptInvitation(id: string) {

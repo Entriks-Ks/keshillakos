@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react'
+import { collectionSummary } from '../api/pagination'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Card, Chip, toast } from '@heroui/react'
 import { fetchPlatformFeedback, markPlatformFeedbackRead, type PlatformFeedbackItem } from '../api/feedback'
 import ProfileAvatar from '../components/ProfileAvatar'
@@ -18,31 +21,34 @@ function formatDate(value: string) {
 
 export default function AdminFeedbackPanel() {
   const [items, setItems] = useState<PlatformFeedbackItem[]>([])
+  const { page, setPage, pagination, receivePagination } = usePagination()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState('')
 
+  const loadVersion = useRef(0)
   async function load() {
+    const version = ++loadVersion.current
     setLoading(true)
     try {
-      setItems(await fetchPlatformFeedback())
+      const result = await fetchPlatformFeedback({ page, limit: 20 }); if (version !== loadVersion.current) return; setItems(result); receivePagination(result.pagination)
       setError('')
     } catch (err) {
-      setError(getErrorMessage(err))
+      if (version === loadVersion.current) setError(getErrorMessage(err))
     } finally {
-      setLoading(false)
+      if (version === loadVersion.current) setLoading(false)
     }
   }
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [page])
 
   async function onRead(id: string) {
     setBusyId(id)
     try {
-      const updated = await markPlatformFeedbackRead(id)
-      setItems((current) => current.map((item) => (item.id === id ? updated : item)))
+      await markPlatformFeedbackRead(id)
+      await load()
       toast.success('U shënua si i lexuar.')
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -51,7 +57,7 @@ export default function AdminFeedbackPanel() {
     }
   }
 
-  const fresh = items.filter((item) => item.status === 'new').length
+  const fresh = collectionSummary(items).unread ?? 0
 
   return (
     <section className="uo ds ad">
@@ -80,6 +86,7 @@ export default function AdminFeedbackPanel() {
             ))}
           </ul> : null}
       </Card>
+      {!loading && !error ? <KeshillaPagination pagination={pagination} onPageChange={setPage} /> : null}
     </section>
   )
 }

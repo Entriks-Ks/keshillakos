@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import KeshillaPagination from './KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
+import { useEffect, useState } from 'react'
 import { BadgeCheck, MessageSquareReply, Star } from 'lucide-react'
 import { fetchProviderRatings, type ProviderRatingStats, type RatingItem } from '../api/ratings'
 import ProfileAvatar from './ProfileAvatar'
 import RateProvider from './RateProvider'
 import {
   formatReviewDate,
-  ratingBuckets,
   ratingWord,
   StarRow,
 } from './ratingUi'
@@ -27,17 +28,22 @@ export default function ProviderReviews({
 }: Props) {
   const [average, setAverage] = useState(initialAverage)
   const [count, setCount] = useState(initialCount)
+  const [buckets, setBuckets] = useState<Array<{ stars: number; count: number; pct: number }>>([])
   const [ratings, setRatings] = useState<RatingItem[]>([])
+  const { page, setPage, pagination, receivePagination } = usePagination(providerUid)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    fetchProviderRatings(providerUid)
+    setLoading(true)
+    fetchProviderRatings(providerUid, { page, limit: 12 })
       .then((data) => {
         if (cancelled) return
         setAverage(data.stats.average)
         setCount(data.stats.count)
         setRatings(data.ratings)
+        receivePagination(data.pagination)
+        setBuckets(data.buckets)
         onStatsChange?.(data.stats)
       })
       .catch(() => {
@@ -49,7 +55,7 @@ export default function ProviderReviews({
     return () => {
       cancelled = true
     }
-  }, [providerUid])
+  }, [providerUid, page])
 
   useEffect(() => {
     if (loading) return
@@ -57,7 +63,6 @@ export default function ProviderReviews({
     document.getElementById('vleresimet')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [loading, providerUid])
 
-  const buckets = useMemo(() => ratingBuckets(ratings.map((item) => item.score)), [ratings])
 
   return (
     <section className="tt-pro-section tt-reviews" id="vleresimet" aria-labelledby={`reviews-${providerUid}`}>
@@ -105,7 +110,7 @@ export default function ProviderReviews({
 
       {ratings.length > 0 ? (
         <ul className="tt-review-list">
-          {ratings.slice(0, 8).map((item) => (
+          {ratings.map((item) => (
             <li key={item.id} className="tt-review-card">
               <div className="tt-review-card-head">
                 <span className="tt-review-avatar" aria-hidden>
@@ -151,16 +156,19 @@ export default function ProviderReviews({
           setAverage(stats.average)
           setCount(stats.count)
           onStatsChange?.(stats)
-          fetchProviderRatings(providerUid)
+          fetchProviderRatings(providerUid, { page, limit: 12 })
             .then((data) => {
               setAverage(data.stats.average)
               setCount(data.stats.count)
               setRatings(data.ratings)
+              receivePagination(data.pagination)
+              setBuckets(data.buckets)
               onStatsChange?.(data.stats)
             })
             .catch(() => undefined)
         }}
       />
+      {!loading ? <KeshillaPagination pagination={pagination} onPageChange={setPage} /> : null}
     </section>
   )
 }

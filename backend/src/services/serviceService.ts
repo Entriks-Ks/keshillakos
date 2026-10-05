@@ -1,4 +1,6 @@
-import mongoose, { Types } from 'mongoose'
+import { publicServicesPipeline } from './marketplaceQuery'
+import { queryPage, type PaginationInput } from './pagination'
+import mongoose, { Types, type PipelineStage } from 'mongoose'
 import { Category } from '../models/Category'
 import { City } from '../models/City'
 import { Country } from '../models/Country'
@@ -10,9 +12,9 @@ import { User } from '../models/User'
 import { validateExtensions } from './categoryConfiguration'
 import { findDomainById } from './domainService'
 import { deleteRemovedUploads, deleteUploads, sanitizeUploadPaths } from './mediaService'
-import { publicExpertsForOwner } from './businessService'
+import { publicExpertPageForOwner } from './businessService'
 import { createProviderProfile, ensureBusinessProviderProfile } from './providerProfileService'
-import { createServiceOffer, deleteServiceOffer, listMyServiceOffers, listPublishedServiceOffers, offersToLegacyServices, updateServiceOffer } from './serviceOfferService'
+import { createServiceOffer, deleteServiceOffer, listMyServiceOffers, managedServiceOfferQuery, listPublishedServiceOffers, offersToLegacyServices, updateServiceOffer } from './serviceOfferService'
 import { getProvidersPublicDetails, type ProviderPublicDetails } from './providerPublicService'
 
 export type CreateServiceInput = {
@@ -255,6 +257,26 @@ export async function listServicesByProvider(providerUid: string) {
   return [...(await offersToLegacyServices(offers)), ...(await withLegacyProviders(legacy))]
 }
 
+export async function listProviderServicePage(providerUid: string, input: PaginationInput, publicOnly = false) {
+  const offerQuery = { ...await managedServiceOfferQuery(providerUid), ...(publicOnly ? { status: 'published', visibility: 'public', 'moderation.status': 'approved' } : {}) }
+  const pipeline: PipelineStage[] = [
+    { $match: offerQuery },
+    { $project: { _id: 1, source: { $literal: 'offer' }, createdAt: 1, active: { $and: [{ $eq: ['$status', 'published'] }, { $eq: ['$moderation.status', 'approved'] }] } } },
+    { $unionWith: { coll: Service.collection.name, pipeline: [
+      { $match: { providerUid, ...(publicOnly ? { active: true } : {}) } },
+      { $project: { _id: 1, source: { $literal: 'legacy' }, createdAt: 1, active: 1 } },
+    ] } },
+  ]
+  const totals = (await ServiceOffer.aggregate<{ total: number; active: number }>([...pipeline, { $group: { _id: null, total: { $sum: 1 }, active: { $sum: { $cond: ['$active', 1, 0] } } } }]))[0]
+  const result = await queryPage(input, () => Promise.resolve(totals?.total ?? 0), (skip, limit) => ServiceOffer.aggregate<{ _id: Types.ObjectId; source: string }>([...pipeline, { $sort: { createdAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }]))
+  const [offers, legacy] = await Promise.all([
+    ServiceOffer.find({ _id: { $in: result.items.filter((row) => row.source === 'offer').map((row) => row._id) } }),
+    Service.find({ _id: { $in: result.items.filter((row) => row.source === 'legacy').map((row) => row._id) } }),
+  ])
+  const byId = new Map([...await offersToLegacyServices(offers, publicOnly), ...await withLegacyProviders(legacy)].map((card) => [card.id, card]))
+  return { services: result.items.flatMap((row) => { const card = byId.get(String(row._id)); return card ? [card] : [] }), pagination: result.pagination, summary: { total: totals?.total ?? 0, active: totals?.active ?? 0 } }
+}
+
 export async function listActiveServices(filters: ServiceDiscoveryFilters = {}) {
   let providerIds: Types.ObjectId[] | undefined
   let providerUids: string[] | undefined
@@ -271,7 +293,7 @@ export async function listActiveServices(filters: ServiceDiscoveryFilters = {}) 
   }
   const [legacy, offers] = await Promise.all([
     Service.find({ active: true, ...(providerUids ? { providerUid: { $in: providerUids } } : {}) })
-      .sort({ createdAt: -1 }).limit(filters.cityId ? 0 : 50),
+      .sort({ createdAt: -1 }),
     listPublishedServiceOffers(providerIds),
   ])
   let categoryId = filters.categoryId
@@ -294,7 +316,25 @@ export async function listActiveServices(filters: ServiceDiscoveryFilters = {}) 
   const services = [...(await offersToLegacyServices(offers, true)), ...(await withLegacyProviders(legacy))]
   return filterDiscoveredServices(services, { ...filters, categoryId, subcategoryNames })
 }
-export async function getActiveServiceById(id: string) {
+export async function listPublicServicePage(query: Record<string, unknown>, input: PaginationInput) {
+  if (typeof query.cityId === 'string' && !await isActiveDiscoveryCity(query.cityId)) {
+    const result = await queryPage(input, () => Promise.resolve(0), () => Promise.resolve([]))
+    return { services: [], pagination: result.pagination, summary: { total: 0, active: 0 } }
+  }
+  const pipeline = publicServicesPipeline(query)
+  const result = await queryPage(input, async () => (await ServiceOffer.aggregate<{ total: number }>([...pipeline, { $count: 'total' }]))[0]?.total ?? 0,
+    (skip, limit) => ServiceOffer.aggregate<{ _id: Types.ObjectId; source: 'offer' | 'legacy' }>([...pipeline, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, source: 1 } }]))
+  const [offers, legacy] = await Promise.all([
+    ServiceOffer.find({ _id: { $in: result.items.filter((row) => row.source === 'offer').map((row) => row._id) } }),
+    Service.find({ _id: { $in: result.items.filter((row) => row.source === 'legacy').map((row) => row._id) } }),
+  ])
+  const cards = [...await offersToLegacyServices(offers, true), ...await withLegacyProviders(legacy)]
+  const byId = new Map(cards.map((card) => [card.id, card]))
+  const services = result.items.flatMap((row) => { const card = byId.get(String(row._id)); return card ? [card] : [] })
+  return { services, pagination: result.pagination, summary: { total: result.pagination.total, active: result.pagination.total } }
+}
+
+export async function getActiveServiceById(id: string, input: PaginationInput = { page: 1, limit: 12 }) {
   if (!mongoose.isValidObjectId(id)) return null
 
   const offer = await ServiceOffer.findOne({
@@ -305,19 +345,19 @@ export async function getActiveServiceById(id: string) {
   })
   if (offer) {
     const [enriched] = await offersToLegacyServices([offer], true)
-    if (enriched?.active) return withCompanyExperts(enriched)
+    if (enriched?.active) return withCompanyExperts(enriched, input)
   }
 
   const service = await Service.findOne({ _id: id, active: true })
   if (!service) return null
   const [enriched] = await withLegacyProviders([service])
   if (!enriched) return null
-  return withCompanyExperts(enriched)
+  return withCompanyExperts(enriched, input)
 }
 
-async function withCompanyExperts<T extends { providerUid?: string }>(service: T) {
-  const experts = service.providerUid ? await publicExpertsForOwner(service.providerUid) : []
-  return { ...service, experts }
+async function withCompanyExperts<T extends { providerUid?: string }>(service: T, input: PaginationInput) {
+  const result = await publicExpertPageForOwner(service.providerUid || '', input)
+  return { ...service, experts: result.experts, expertsPagination: result.pagination }
 }
 
 export async function listActiveServicesByProvider(providerUid: string) {

@@ -1,4 +1,5 @@
-import { Types } from 'mongoose'
+import { queryPage, type PaginationInput } from './pagination'
+import { Types, type PipelineStage } from 'mongoose'
 import { Business } from '../models/Business'
 import { Category } from '../models/Category'
 import { ProviderProfile } from '../models/ProviderProfile'
@@ -171,25 +172,27 @@ export async function createServiceOffer(input: CreateServiceOfferInput) {
   })
 }
 
-export async function listMyServiceOffers(uid: string) {
+export async function managedServiceOfferQuery(uid: string): Promise<Record<string, unknown>> {
   const userId = await userIdForUid(uid)
-  const [profiles, managedBusinesses] = await Promise.all([
-    listMyProviderProfiles(uid),
-    managedBusinessesFor(userId),
-  ])
-  return ServiceOffer.find({
-    $or: [
-      { providerProfile: { $in: profiles.map((profile) => profile._id) } },
-      ...(managedBusinesses.length ? [{ business: { $in: managedBusinesses.map((business) => business._id) } }] : []),
-    ],
-  }).sort({ createdAt: -1 })
+  const [profiles, managedBusinesses] = await Promise.all([listMyProviderProfiles(uid), managedBusinessesFor(userId)])
+  return { $or: [
+    { providerProfile: { $in: profiles.map((profile) => profile._id) } },
+    ...(managedBusinesses.length ? [{ business: { $in: managedBusinesses.map((business) => business._id) } }] : []),
+  ] }
+}
+export async function listMyServiceOffers(uid: string) {
+  return ServiceOffer.find(await managedServiceOfferQuery(uid)).sort({ createdAt: -1, _id: -1 })
+}
+export async function listMyServiceOfferPage(uid: string, input: PaginationInput) {
+  const query = await managedServiceOfferQuery(uid)
+  return queryPage(input, () => ServiceOffer.countDocuments(query), (skip, limit) => ServiceOffer.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit))
 }
 
 export async function listPublishedServiceOffers(providerIds?: Types.ObjectId[]) {
   const offers = await ServiceOffer.find({
     status: 'published', visibility: 'public', 'moderation.status': 'approved',
     ...(providerIds ? { providerProfile: { $in: providerIds } } : {}),
-  }).sort({ updatedAt: -1 }).limit(providerIds ? 0 : 50)
+  }).sort({ updatedAt: -1 })
   const [profiles, categories, businesses] = await Promise.all([
     ProviderProfile.find({ _id: { $in: offers.map((offer) => offer.providerProfile) }, status: 'published', 'moderation.status': 'approved' }).select('_id'),
     Category.find({ _id: { $in: offers.map((offer) => offer.category) }, status: 'active' }).select('_id'),
@@ -199,6 +202,25 @@ export async function listPublishedServiceOffers(providerIds?: Types.ObjectId[])
   const categoryIds = new Set(categories.map((category) => String(category._id)))
   const businessIds = new Set(businesses.map((business) => String(business._id)))
   return offers.filter((offer) => profileIds.has(String(offer.providerProfile)) && categoryIds.has(String(offer.category)) && (!offer.business || businessIds.has(String(offer.business))))
+}
+
+export async function listPublishedServiceOfferPage(input: PaginationInput) {
+  const pipeline: PipelineStage[] = [
+    { $match: { status: 'published', visibility: 'public', 'moderation.status': 'approved' } },
+    { $lookup: { from: ProviderProfile.collection.name, localField: 'providerProfile', foreignField: '_id', as: '_profile' } },
+    { $match: { '_profile.status': 'published', '_profile.moderation.status': 'approved' } },
+    { $lookup: { from: Category.collection.name, localField: 'category', foreignField: '_id', as: '_category' } },
+    { $match: { '_category.status': 'active' } },
+    { $lookup: { from: Business.collection.name, localField: 'business', foreignField: '_id', as: '_business' } },
+    { $match: { $or: [{ business: { $exists: false } }, { business: null }, { '_business.status': 'active' }] } },
+  ]
+  const result = await queryPage(input,
+    async () => (await ServiceOffer.aggregate<{ total: number }>([...pipeline, { $count: 'total' }]))[0]?.total ?? 0,
+    (skip, limit) => ServiceOffer.aggregate<{ _id: Types.ObjectId }>([...pipeline, { $sort: { updatedAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }, { $project: { _id: 1 } }]),
+  )
+  const offers = await ServiceOffer.find({ _id: { $in: result.items.map((item) => item._id) } })
+  const byId = new Map(offers.map((offer) => [String(offer._id), offer]))
+  return { items: result.items.flatMap((item) => { const offer = byId.get(String(item._id)); return offer ? [toPublicServiceOffer(offer)] : [] }), pagination: result.pagination }
 }
 
 export function toPublicServiceOffer(offer: ServiceOfferDoc & { _id: Types.ObjectId }) {

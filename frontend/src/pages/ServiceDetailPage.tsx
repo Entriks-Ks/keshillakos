@@ -1,3 +1,5 @@
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Breadcrumbs, Button, buttonVariants, Card, Chip, Modal, Separator, Skeleton } from '@heroui/react'
@@ -242,6 +244,7 @@ export default function ServiceDetailPage() {
   const id = idFromPublicParam(param)
   const navigate = useNavigate()
   const location = useLocation()
+  const teamPaging = usePagination(id)
   const [service, setService] = useState<ServiceItem | null>(null)
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const [activePhoto, setActivePhoto] = useState(0)
@@ -261,9 +264,9 @@ export default function ServiceDetailPage() {
     setError('')
     setActivePhoto(0)
     setViewerOpen(false)
-    fetchService(id)
+    fetchService(id, { page: teamPaging.page, limit: 12 })
       .then((item) => {
-        if (!cancelled) setService(item)
+        if (!cancelled) { setService(item); if (item.expertsPagination) teamPaging.receivePagination(item.expertsPagination) }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -278,7 +281,7 @@ export default function ServiceDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, teamPaging.page])
 
   useEffect(() => {
     if (!service || service.id !== id) return
@@ -680,6 +683,7 @@ export default function ServiceDetailPage() {
                           </li>
                         ))}
                       </ul>
+                      <KeshillaPagination pagination={teamPaging.pagination} onPageChange={teamPaging.setPage} />
                     </div>
                   ) : null}
                 </Section>

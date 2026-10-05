@@ -1,3 +1,4 @@
+import { queryPage, type PaginationInput } from './pagination'
 import { PlatformFeedback, type PlatformFeedbackStatus } from '../models/PlatformFeedback'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -48,9 +49,9 @@ export async function createPlatformFeedback(input: FeedbackInput) {
   return toFeedbackItem(doc)
 }
 
-export async function listPlatformFeedback() {
-  const items = await PlatformFeedback.find().sort({ createdAt: -1 }).limit(200).lean()
-  return items.map(toFeedbackItem)
+export async function listPlatformFeedback(input: PaginationInput = { page: 1, limit: 20 }) {
+  const result = await queryPage(input, () => PlatformFeedback.countDocuments(), (skip, limit) => PlatformFeedback.find().sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean())
+  return Object.assign(result.items.map(toFeedbackItem), { pagination: result.pagination, unreadTotal: await PlatformFeedback.countDocuments({ status: "new" }) })
 }
 
 export async function markPlatformFeedbackRead(id: string) {

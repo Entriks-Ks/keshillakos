@@ -1,3 +1,6 @@
+import { collectionSummary, collectionTotal } from '../api/pagination'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
@@ -84,8 +87,8 @@ function wasUpdated(item: ServiceRequestItem) {
 }
 
 function Stats({ requests, now }: { requests: ServiceRequestItem[]; now: number }) {
-  const awaiting = requests.filter((item) => isAwaiting(item.status)).length
-  const accepted = requests.filter((item) => item.status === 'accepted').length
+  const awaiting = AWAITING.reduce((sum, status) => sum + (collectionSummary(requests).statusCounts?.[status] ?? 0), 0)
+  const accepted = collectionSummary(requests).statusCounts?.accepted ?? 0
   const upcoming = requests
     .filter(
       (item) =>
@@ -109,7 +112,7 @@ function Stats({ requests, now }: { requests: ServiceRequestItem[]; now: number 
     },
     {
       label: 'Termine të kërkuara',
-      value: upcoming.length,
+      value: collectionSummary(requests).upcoming ?? upcoming.length,
       hint: upcoming[0]?.requestedStartAt ? `Tjetri: ${formatWhen(upcoming[0].requestedStartAt)}` : 'Asnjë i ardhshëm',
     },
   ]
@@ -347,6 +350,8 @@ export function ProviderInboxPage() {
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [filter, setFilter] = useState<FilterId>('all')
+  const { page, setPage, pagination, receivePagination } = usePagination(filter)
+  const requestParams = { page, limit: 20, statuses: FILTERS.find((item) => item.id === filter)?.statuses?.join(',') }
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
 
@@ -358,10 +363,13 @@ export function ProviderInboxPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetchRequestInbox()
+    setLoading(true)
+    setError('')
+    fetchRequestInbox(requestParams)
       .then((data) => {
         if (cancelled) return
         setRequests(data.requests)
+        receivePagination(data.pagination)
         setLoadedAt(Date.now())
       })
       .catch((err: unknown) => {
@@ -373,15 +381,16 @@ export function ProviderInboxPage() {
     return () => {
       cancelled = true
     }
-  }, [reloadKey])
+  }, [reloadKey, page, filter])
 
   async function setStatus(id: string, status: RequestStatus) {
     setBusyId(id)
     try {
       await updateRequestStatus(id, { status, providerNote: notes[id]?.trim() || undefined })
       toast.success(STATUS_TOAST[status] || 'Statusi u përditësua.')
-      const data = await fetchRequestInbox()
+      const data = await fetchRequestInbox(requestParams)
       setRequests(data.requests)
+        receivePagination(data.pagination)
       setLoadedAt(Date.now())
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -399,8 +408,8 @@ export function ProviderInboxPage() {
   )
   const filters = FILTERS.map((item) => ({
     ...item,
-    items: item.statuses ? sorted.filter((request) => item.statuses!.includes(request.status)) : sorted,
-  })).filter((item) => item.id === 'all' || item.items.length > 0)
+    items: item.id === filter ? sorted : [],
+  }))
   const selected = filters.some((item) => item.id === filter) ? filter : 'all'
 
   return (
@@ -442,7 +451,7 @@ export function ProviderInboxPage() {
             <ListSkeleton />
           </Card>
         </>
-      ) : requests.length === 0 ? (
+      ) : requests.length === 0 && filter === 'all' ? (
         <EmptyState servicesPath={servicesPath} isCompany={isCompany} />
       ) : (
         <>
@@ -459,7 +468,7 @@ export function ProviderInboxPage() {
                   {filters.map((item) => (
                     <Tabs.Tab key={item.id} id={item.id} className="ur-tab">
                       {item.label}
-                      <span className="ur-tab-count">{item.items.length}</span>
+                      <span className="ur-tab-count">{item.statuses ? item.statuses.reduce((sum, status) => sum + (collectionSummary(requests).statusCounts?.[status] ?? 0), 0) : collectionTotal(requests)}</span>
                       <Tabs.Indicator />
                     </Tabs.Tab>
                   ))}
@@ -482,6 +491,7 @@ export function ProviderInboxPage() {
                 </Tabs.Panel>
               ))}
             </Tabs>
+            <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading} />
           </Card>
         </>
       )}

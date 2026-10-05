@@ -1,3 +1,4 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { Types } from 'mongoose'
 import { requireAuth, requireRole } from '../middleware/auth'
@@ -8,6 +9,7 @@ import {
 } from '../services/platformFeedbackService'
 
 const router = Router()
+router.use(validatePagination)
 
 router.post('/', async (req, res, next) => {
   if (!req.headers.authorization?.startsWith('Bearer ')) return next()
@@ -30,9 +32,9 @@ router.post('/', async (req, res, next) => {
   }
 })
 
-router.get('/', requireAuth, requireRole('admin'), async (_req, res) => {
+router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    return res.json({ feedback: await listPlatformFeedback() })
+    const feedback = await listPlatformFeedback(paginationInput(req.query, 20)); return res.json({ feedback, pagination: feedback.pagination, unreadTotal: feedback.unreadTotal })
   } catch (err) {
     return res.status(500).json({ message: err instanceof Error ? err.message : 'Feedback-u nuk u ngarkua' })
   }

@@ -1,3 +1,4 @@
+import { queryPage, type PaginationInput } from './pagination'
 import { randomUUID } from 'node:crypto'
 import { Types } from 'mongoose'
 import { AvailabilityLock } from '../models/AvailabilityLock'
@@ -196,28 +197,43 @@ async function providerSlotFilter(identifier: string) {
   return { $or: [{ providerUid: identifier }, { providerProfile: { $in: profiles.map((profile) => profile._id) } }] }
 }
 
-export async function listMyAvailability(uid: string) {
+export async function listMyAvailability(uid: string, input: PaginationInput = { page: 1, limit: 50 }) {
   const profiles = await listMyProviderProfiles(uid)
-  const docs = await AvailabilitySlot.find({
-    $or: [{ providerUid: uid }, { providerProfile: { $in: profiles.map((profile) => profile._id) } }],
-    status: { $ne: 'cancelled' }, endAt: { $gte: new Date(Date.now() - 86_400_000) },
-  }).sort({ startAt: 1 })
-  return docs.map(toSlot)
+  const query: Record<string, unknown> = { $or: [{ providerUid: uid }, { providerProfile: { $in: profiles.map((profile) => profile._id) } }], status: { $ne: 'cancelled' }, endAt: { $gte: new Date(Date.now() - 86_400_000) } }
+  const result = await queryPage(input, () => AvailabilitySlot.countDocuments(query), (skip, limit) => AvailabilitySlot.find(query).sort({ startAt: 1, _id: 1 }).skip(skip).limit(limit))
+  const free = await AvailabilitySlot.countDocuments({ ...query, $expr: { $gt: [remainingCapacityExpression, 0] } })
+  return Object.assign(result.items.map(toSlot), { pagination: result.pagination, summary: { free, busy: result.pagination.total - free } })
 }
 
-export async function listOpenAvailabilityForProvider(identifier: string) {
-  const docs = await AvailabilitySlot.find({
-    ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() },
-  }).sort({ startAt: 1 }).limit(200)
-  return docs.map(toSlot).filter((slot) => slot.remainingCapacity > 0).slice(0, 120)
+// Match the legacy single-booking fields and the newer capacity/holds model.
+const remainingCapacityExpression = {
+  $cond: [
+    { $and: [
+      { $eq: [{ $size: { $ifNull: ['$holds', []] } }, 0] },
+      { $or: [{ $eq: ['$status', 'booked'] }, { $and: [{ $eq: ['$status', 'held'] }, { $ne: [{ $ifNull: ['$requestId', ''] }, ''] }] }] },
+    ] },
+    0,
+    { $max: [0, { $subtract: [{ $ifNull: ['$capacity', 1] }, { $size: { $ifNull: ['$holds', []] } }] }] },
+  ],
 }
 
-export async function listScheduleForProvider(identifier: string) {
-  const docs = await AvailabilitySlot.find({
+export async function listOpenAvailabilityForProvider(identifier: string, input: PaginationInput = { page: 1, limit: 50 }) {
+  const query: Record<string, unknown> = {
     ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() },
-  }).sort({ startAt: 1 }).limit(200)
-  const slots = docs.map(toSlot)
-  return { slots, free: slots.filter((slot) => slot.remainingCapacity > 0), busy: slots.filter((slot) => slot.remainingCapacity === 0) }
+    $expr: { $gt: [remainingCapacityExpression, 0] },
+  }
+  const result = await queryPage(input, () => AvailabilitySlot.countDocuments(query), (skip, limit) => AvailabilitySlot.find(query).sort({ startAt: 1, _id: 1 }).skip(skip).limit(limit))
+  return Object.assign(result.items.map(toSlot), { pagination: result.pagination })
+}
+
+export async function listScheduleForProvider(identifier: string, input: PaginationInput = { page: 1, limit: 50 }) {
+  const query: Record<string, unknown> = { ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() } }
+  const [result, freeTotal] = await Promise.all([
+    queryPage(input, () => AvailabilitySlot.countDocuments(query), (skip, limit) => AvailabilitySlot.find(query).sort({ startAt: 1, _id: 1 }).skip(skip).limit(limit)),
+    AvailabilitySlot.countDocuments({ ...query, $expr: { $gt: [remainingCapacityExpression, 0] } }),
+  ])
+  const slots = result.items.map(toSlot)
+  return { slots, free: slots.filter((slot) => slot.remainingCapacity > 0), busy: slots.filter((slot) => slot.remainingCapacity === 0), freeTotal, busyTotal: result.pagination.total - freeTotal, pagination: result.pagination }
 }
 
 export async function deleteAvailabilitySlot(input: { id: string; providerUid: string; asAdmin?: boolean }) {

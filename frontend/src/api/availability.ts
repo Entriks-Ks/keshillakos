@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type PaginationMeta, type CollectionSummary } from './pagination'
 import api from './auth'
 
 export type SlotStatus = 'open' | 'held' | 'booked' | 'cancelled'
@@ -25,6 +26,9 @@ export type AvailabilitySlot = {
 }
 
 export type ProviderSchedule = {
+  freeTotal: number
+  busyTotal: number
+  pagination: PaginationMeta
   slots: AvailabilitySlot[]
   free: AvailabilitySlot[]
   busy: AvailabilitySlot[]
@@ -37,16 +41,17 @@ export async function fetchProviderOpenSlots(providerUid: string) {
   return data.slots
 }
 
-export async function fetchProviderSchedule(providerUid: string) {
+export async function fetchProviderSchedule(providerUid: string, params: PageParams = {}) {
   const { data } = await api.get<ProviderSchedule>(
-    `/api/availability/provider/${providerUid}?view=schedule`,
+    `/api/availability/provider/${providerUid}`,
+    { params: { ...params, view: "schedule" } },
   )
   return data
 }
 
-export async function fetchMyAvailability() {
-  const { data } = await api.get<{ slots: AvailabilitySlot[] }>('/api/availability/mine')
-  return data.slots
+export async function fetchMyAvailability(params: PageParams = {}) {
+  const { data } = await api.get<{ slots: AvailabilitySlot[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/availability/mine', { params })
+  return pagedItems(data.slots, data.pagination, data.summary)
 }
 
 export async function createAvailabilitySlot(payload: {

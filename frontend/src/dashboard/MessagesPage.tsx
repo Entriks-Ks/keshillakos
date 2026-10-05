@@ -1,3 +1,6 @@
+import { collectionSummary } from '../api/pagination'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, Send, UserRound } from 'lucide-react'
@@ -15,6 +18,7 @@ import {
 } from '@heroui/react'
 import {
   fetchConversations,
+  fetchConversation,
   fetchMessages,
   markConversationRead,
   type ChatMessage,
@@ -85,15 +89,24 @@ export default function MessagesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeId = searchParams.get('c') || ''
 
+  const activeIdRef = useRef(activeId)
+  activeIdRef.current = activeId
   const [conversations, setConversations] = useState<ConversationItem[]>([])
+  const [totalUnread, setTotalUnread] = useState(0)
+  const [listRevision, setListRevision] = useState(0)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [listQuery, setListQuery] = useState('')
+  const { page, setPage, pagination, receivePagination } = usePagination(listQuery)
+  const [activeConversation, setActiveConversation] = useState<ConversationItem | null>(null)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [hasOlderMessages, setHasOlderMessages] = useState(true)
   const [loadingList, setLoadingList] = useState(true)
   const [loadingThread, setLoadingThread] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [peerTyping, setPeerTyping] = useState(false)
+  const preserveHistoryScroll = useRef(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const typingTimeout = useRef<number | null>(null)
@@ -102,33 +115,18 @@ export default function MessagesPage() {
   const socket = useChatSocket(Boolean(user))
 
   const active = useMemo(
-    () => conversations.find((c) => c.id === activeId) || null,
-    [conversations, activeId],
+    () => conversations.find((c) => c.id === activeId) || (activeConversation?.id === activeId ? activeConversation : null),
+    [conversations, activeId, activeConversation],
   )
 
-  const filteredConversations = useMemo(() => {
-    const q = listQuery.trim().toLowerCase()
-    if (!q) return conversations
-    return conversations.filter((c) => {
-      const haystack = [c.peer.name, c.peer.roleLabel, c.serviceTitle, c.lastMessagePreview]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(q)
-    })
-  }, [conversations, listQuery])
-
-  const totalUnread = useMemo(
-    () => conversations.reduce((sum, c) => sum + (c.unread || 0), 0),
-    [conversations],
-  )
+  const filteredConversations = conversations
 
   useEffect(() => {
     let cancelled = false
     setLoadingList(true)
-    fetchConversations()
+    fetchConversations({ page, limit: 20, q: listQuery })
       .then((items) => {
-        if (!cancelled) setConversations(items)
+        if (!cancelled) { setConversations(items); setTotalUnread(collectionSummary(items).unread ?? 0); receivePagination(items.pagination) }
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -139,21 +137,23 @@ export default function MessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [page, listQuery, listRevision])
 
   useEffect(() => {
     if (didAutoSelect.current || loadingList || activeId || conversations.length === 0) return
-    if (conversations.length <= 5) {
+    if (pagination.total <= 5) {
       didAutoSelect.current = true
       setSearchParams({ c: conversations[0].id }, { replace: true })
     }
-  }, [loadingList, activeId, conversations, setSearchParams])
+  }, [loadingList, activeId, conversations, pagination.total, setSearchParams])
 
   useEffect(() => {
     if (!activeId || !socket.connected) return
 
     let cancelled = false
     setLoadingThread(true)
+    setHasOlderMessages(true)
+    void fetchConversation(activeId).then(setActiveConversation).catch(() => undefined)
     setPeerTyping(false)
 
     void (async () => {
@@ -162,11 +162,13 @@ export default function MessagesPage() {
         if (cancelled) return
         if (joined.ok && joined.messages) {
           setMessages(joined.messages)
+          setHasOlderMessages(joined.pagination ? joined.pagination.total > joined.messages.length : joined.messages.length === 50)
         } else {
           const fallback = await fetchMessages(activeId)
-          if (!cancelled) setMessages(fallback)
+          if (!cancelled) { setMessages(fallback); setHasOlderMessages(fallback.pagination.total > fallback.length) }
         }
         await markConversationRead(activeId)
+        setListRevision((value) => value + 1)
         setConversations((prev) =>
           prev.map((c) => (c.id === activeId ? { ...c, unread: 0 } : c)),
         )
@@ -204,42 +206,16 @@ export default function MessagesPage() {
         ),
       )
       void markConversationRead(message.conversationId)
+      setListRevision((value) => value + 1)
     })
   }, [activeId, socket.onMessageNew])
 
   useEffect(() => {
-    return socket.onConversationUpdated((event) => {
-      setConversations((prev) => {
-        const exists = prev.some((c) => c.id === event.conversationId)
-        if (!exists) {
-          void fetchConversations().then(setConversations).catch(() => undefined)
-          return prev
-        }
-
-        const next = prev.map((c) =>
-          c.id === event.conversationId
-            ? {
-                ...c,
-                lastMessageAt: event.lastMessageAt,
-                lastMessagePreview: event.lastMessagePreview,
-                unread:
-                  event.conversationId === activeId || event.senderUid === user?.uid
-                    ? event.conversationId === activeId
-                      ? 0
-                      : c.unread
-                    : c.unread + 1,
-              }
-            : c,
-        )
-
-        return [...next].sort((a, b) => {
-          const at = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
-          const bt = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
-          return bt - at
-        })
-      })
+    return socket.onConversationUpdated(() => {
+      // New messages can move a conversation between pages; let the server reorder it.
+      setListRevision((value) => value + 1)
     })
-  }, [activeId, socket.onConversationUpdated, user?.uid])
+  }, [socket.onConversationUpdated])
 
   useEffect(() => {
     return socket.onTyping((event) => {
@@ -249,6 +225,7 @@ export default function MessagesPage() {
   }, [activeId, socket.onTyping, user?.uid])
 
   useEffect(() => {
+    if (preserveHistoryScroll.current) { preserveHistoryScroll.current = false; return }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, peerTyping])
 
@@ -414,6 +391,7 @@ export default function MessagesPage() {
               </ul>
             )}
           </div>
+          <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loadingList} />
         </aside>
 
         <section className="msg-thread" aria-label={active ? `Biseda me ${active.peer.name}` : 'Biseda'}>
@@ -470,6 +448,16 @@ export default function MessagesPage() {
               </header>
 
               <div className="msg-history">
+                {!loadingThread && messages.length > 0 && hasOlderMessages ? <Button size="sm" variant="outline" isPending={loadingHistory} onPress={() => {
+                  setLoadingHistory(true)
+                  const conversationId = activeId
+                  fetchMessages(conversationId, { before: messages[0].createdAt, limit: 50 }).then((older) => {
+                    if (activeIdRef.current !== conversationId) return
+                    setHasOlderMessages(older.pagination.total > older.length)
+                    preserveHistoryScroll.current = true
+                    setMessages((current) => [...older.filter((item) => !current.some((message) => message.id === item.id)), ...current])
+                  }).catch((error: unknown) => setError(getErrorMessage(error))).finally(() => setLoadingHistory(false))
+                }}>Shfaq mesazhet e mëparshme</Button> : null}
                 {loadingThread ? (
                   <div className="msg-history-loading" aria-label="Duke ngarkuar mesazhet">
                     <Skeleton className="msg-skel-bubble" />

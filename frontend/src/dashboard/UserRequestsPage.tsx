@@ -1,3 +1,6 @@
+import { collectionSummary, collectionTotal } from '../api/pagination'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip, Dropdown, Label, Skeleton, Tabs } from '@heroui/react'
@@ -66,8 +69,8 @@ function wasUpdated(item: ServiceRequestItem) {
 }
 
 function Stats({ requests, now }: { requests: ServiceRequestItem[]; now: number }) {
-  const awaiting = requests.filter((item) => AWAITING.includes(item.status)).length
-  const offers = requests.filter((item) => item.offer).length
+  const awaiting = AWAITING.reduce((sum, status) => sum + (collectionSummary(requests).statusCounts?.[status] ?? 0), 0)
+  const offers = collectionSummary(requests).offers ?? 0
   const upcoming = requests
     .filter((item) => item.requestedStartAt && SCHEDULABLE.includes(item.status) && new Date(item.requestedStartAt).getTime() > now)
     .sort((a, b) => new Date(a.requestedStartAt!).getTime() - new Date(b.requestedStartAt!).getTime())
@@ -81,7 +84,7 @@ function Stats({ requests, now }: { requests: ServiceRequestItem[]; now: number 
     { label: 'Oferta të marra', value: offers, hint: offers > 0 ? 'Shiko detajet te kërkesa' : 'Asnjë ende' },
     {
       label: 'Termine të kërkuara',
-      value: upcoming.length,
+      value: collectionSummary(requests).upcoming ?? upcoming.length,
       hint: upcoming[0]?.requestedStartAt ? `Tjetri: ${formatWhen(upcoming[0].requestedStartAt)}` : 'Asnjë i ardhshëm',
     },
   ]
@@ -307,6 +310,8 @@ export function UserRequestsPage() {
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [filter, setFilter] = useState<FilterId>('all')
+  const { page, setPage, pagination, receivePagination } = usePagination(filter)
+  const requestParams = { page, limit: 20, statuses: FILTERS.find((item) => item.id === filter)?.statuses?.join(',') }
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -316,10 +321,13 @@ export function UserRequestsPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetchMyRequests()
+    setLoading(true)
+    setError('')
+    fetchMyRequests(requestParams)
       .then((items) => {
         if (cancelled) return
         setRequests(items)
+        receivePagination(items.pagination)
         setLoadedAt(Date.now())
       })
       .catch((err: unknown) => {
@@ -331,12 +339,12 @@ export function UserRequestsPage() {
     return () => {
       cancelled = true
     }
-  }, [reloadKey])
+  }, [reloadKey, page, filter])
 
   const filters = FILTERS.map((item) => ({
     ...item,
-    items: item.statuses ? requests.filter((request) => item.statuses!.includes(request.status)) : requests,
-  })).filter((item) => item.id === 'all' || item.items.length > 0)
+    items: item.id === filter ? requests : [],
+  }))
   const selected = filters.some((item) => item.id === filter) ? filter : 'all'
 
   /** One rating prompt per provider, on their most recent completed request. */
@@ -391,7 +399,7 @@ export function UserRequestsPage() {
             <ListSkeleton />
           </Card>
         </>
-      ) : requests.length === 0 ? (
+      ) : requests.length === 0 && filter === 'all' ? (
         <EmptyState />
       ) : (
         <>
@@ -408,7 +416,7 @@ export function UserRequestsPage() {
                   {filters.map((item) => (
                     <Tabs.Tab key={item.id} id={item.id} className="ur-tab">
                       {item.label}
-                      <span className="ur-tab-count">{item.items.length}</span>
+                      <span className="ur-tab-count">{item.statuses ? item.statuses.reduce((sum, status) => sum + (collectionSummary(requests).statusCounts?.[status] ?? 0), 0) : collectionTotal(requests)}</span>
                       <Tabs.Indicator />
                     </Tabs.Tab>
                   ))}
@@ -424,6 +432,7 @@ export function UserRequestsPage() {
                 </Tabs.Panel>
               ))}
             </Tabs>
+            <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading} />
           </Card>
         </>
       )}

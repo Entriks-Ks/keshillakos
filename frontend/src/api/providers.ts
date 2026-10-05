@@ -1,3 +1,4 @@
+import type { PageParams, PaginationMeta } from './pagination'
 import api from './auth'
 import type { ServiceItem } from './services'
 import type {
@@ -59,12 +60,14 @@ function publicProfileFrom(raw: unknown): PublicProviderProfile | null {
   }
 }
 
-export async function fetchProviderProfile(uid: string) {
+export async function fetchProviderProfile(uid: string, params: PageParams & { expertsPage?: number } = {}) {
   const { data } = await api.get<{
+    pagination: PaginationMeta
+    expertsPagination: PaginationMeta
     provider: PublicProvider
     services: ServiceItem[]
     experts?: PublicExpert[]
     profile?: unknown
-  }>(`/api/providers/${uid}`)
+  }>(`/api/providers/${uid}`, { params })
   return { ...data, profile: publicProfileFrom(data.profile) }
 }

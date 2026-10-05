@@ -1,3 +1,5 @@
+import KeshillaPagination from './KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState, type FormEvent } from 'react'
 import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
@@ -39,6 +41,8 @@ export default function RateProvider({
   className = '',
 }: Props) {
   const { user } = useAuth()
+  const { page, setPage, pagination, receivePagination } = usePagination(providerUid)
+  const [eligibleRevision, setEligibleRevision] = useState(0)
   const [score, setScore] = useState(0)
   const [hover, setHover] = useState(0)
   const [comment, setComment] = useState('')
@@ -75,10 +79,11 @@ export default function RateProvider({
     if (!canRate || !providerUid || interactionProp) return
     let cancelled = false
     setLoadingEligible(true)
-    fetchEligibleByProviderUid(providerUid)
+    fetchEligibleByProviderUid(providerUid, { page, limit: 20 })
       .then((data) => {
         if (cancelled) return
         setInteractions(data.interactions)
+        receivePagination(data.pagination)
         if (data.providerId) setProviderId(data.providerId)
         setSelectedId(data.interactions[0]?.id || '')
       })
@@ -91,7 +96,7 @@ export default function RateProvider({
     return () => {
       cancelled = true
     }
-  }, [canRate, providerUid, interactionProp])
+  }, [canRate, providerUid, interactionProp, page, eligibleRevision])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -117,6 +122,7 @@ export default function RateProvider({
       setRated(true)
       setInteractions((prev) => prev.filter((item) => item.id !== selected.id))
       setSelectedId('')
+      setEligibleRevision((value) => value + 1)
       setComment('')
       setScore(0)
       onRated?.(fresh.stats)
@@ -165,6 +171,12 @@ export default function RateProvider({
         <form onSubmit={onSubmit} className="rate-form">
           <p className="rate-form-title">Si ishte bashkëpunimi me {providerName}?</p>
           <p className="muted rate-form-hint">Zgjidh yjet — komenti është opsional.</p>
+          {!interactionProp && interactions.length > 1 ? <label className="muted">Shërbimi i përfunduar
+            <select value={selectedId} onChange={(event) => { const choice = interactions.find((item) => item.id === event.target.value); setSelectedId(event.target.value); if (choice) setProviderId(choice.providerId) }}>
+              {interactions.map((item, index) => <option key={item.id} value={item.id}>{item.kind === 'appointment' ? 'Takim' : 'Kërkesë'} {(page - 1) * 20 + index + 1}</option>)}
+            </select>
+          </label> : null}
+          {!interactionProp ? <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loadingEligible || submitting} /> : null}
           <div className="star-row" role="group" aria-label="Vlerësimi me yje" onMouseLeave={() => setHover(0)}>
             {[1, 2, 3, 4, 5].map((value) => (
               <button

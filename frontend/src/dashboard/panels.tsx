@@ -1,3 +1,5 @@
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState, type FormEvent } from 'react'
 import { toast } from '@heroui/react'
 import { createCustomDomain, fetchDomains } from '../api/domains'
@@ -15,15 +17,19 @@ export { ProviderServicesPanel }
 export { default as CompanyExpertsPanel } from './CompanyExpertsPanel'
 
 export function UserRateProvidersPanel() {
+  const { page, setPage, pagination, receivePagination } = usePagination()
+  const [revision, setRevision] = useState(0)
   const [providers, setProviders] = useState<RateableProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let cancelled = false
-    fetchRateableProviders()
+    setLoading(true)
+    setError('')
+    fetchRateableProviders({ page, limit: 20 })
       .then((items) => {
-        if (!cancelled) setProviders(items)
+        if (!cancelled) { setProviders(items); receivePagination(items.pagination) }
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -34,7 +40,7 @@ export function UserRateProvidersPanel() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [page, revision])
 
   return (
     <section className="provider-section">
@@ -65,21 +71,14 @@ export function UserRateProvidersPanel() {
               interaction={provider.interaction}
               initialAverage={provider.average}
               initialCount={provider.count}
-              onRated={(stats) => {
-                setProviders((prev) =>
-                  prev
-                    .map((p) =>
-                      p.providerUid === stats.providerUid
-                        ? { ...p, average: stats.average, count: stats.count, interaction: undefined }
-                        : p,
-                    )
-                    .filter((p) => p.providerUid !== stats.providerUid || Boolean(p.interaction)),
-                )
+              onRated={() => {
+                setRevision((value) => value + 1)
               }}
             />
           </li>
         ))}
       </ul>
+      <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading} />
     </section>
   )
 }

@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type PaginationMeta } from './pagination'
 import api, { type UserRole } from './auth'
 
 export type AdminUser = {
@@ -22,14 +23,15 @@ export async function fetchAdminUsersMeta() {
   return data
 }
 
-export async function fetchAdminUsers(params?: { role?: UserRole | ''; q?: string }) {
-  const { data } = await api.get<{ users: AdminUser[] }>('/api/admin/users', {
+export async function fetchAdminUsers(params?: PageParams & { role?: UserRole | '' }) {
+  const { data } = await api.get<{ users: AdminUser[]; pagination: PaginationMeta }>('/api/admin/users', {
     params: {
+      ...params,
       role: params?.role || undefined,
       q: params?.q || undefined,
     },
   })
-  return data.users
+  return pagedItems(data.users, data.pagination)
 }
 
 export async function createAdminUser(payload: {
@@ -50,9 +52,9 @@ export async function updateAdminUser(
   return data.user
 }
 
-export async function fetchPendingRoleRequests() {
-  const { data } = await api.get<{ users: AdminUser[] }>('/api/admin/users/role-requests')
-  return data.users
+export async function fetchPendingRoleRequests(params: PageParams = {}) {
+  const { data } = await api.get<{ users: AdminUser[]; pagination: PaginationMeta }>('/api/admin/users/role-requests', { params })
+  return pagedItems(data.users, data.pagination)
 }
 
 export async function reviewRoleRequest(uid: string, action: 'accept' | 'reject') {
