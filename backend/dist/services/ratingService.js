@@ -15,6 +15,7 @@ exports.eligibleInteractions = eligibleInteractions;
 exports.listModerationQueue = listModerationQueue;
 exports.listEligibleInteractionPage = listEligibleInteractionPage;
 exports.listRateableProviders = listRateableProviders;
+const notificationService_1 = require("./notificationService");
 const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Appointment_1 = require("../models/Appointment");
@@ -117,6 +118,15 @@ async function createReview(input) {
     });
     if (autoPublish)
         await refreshRatingAggregate(review.portal, review.subjectType, review.subjectId);
+    if (autoPublish) {
+        const event = { type: 'review:new', title: 'Vlerësim i ri', href: '/dashboard', eventKey: `review:${review._id}:published`, actorUid: input.reviewerUid };
+        if (subjectType === 'provider')
+            await (0, notificationService_1.notifyProviders)([subjectId], event);
+        else
+            await (0, notificationService_1.notifyBusinesses)([subjectId], event);
+    }
+    else
+        await (0, notificationService_1.notifyAdmins)({ type: 'review:pending', title: 'Vlerësim për shqyrtim', href: '/dashboard/admin', eventKey: `review:${review._id}:pending`, actorUid: input.reviewerUid });
     return review;
 }
 let pendingPublicationBackfill = null;
@@ -174,11 +184,21 @@ async function moderateReview(id, moderatorUid, decision, abuseStatus = 'clear',
         throw new Error('Vlerësimi nuk u gjet');
     if (decision === 'published' && abuseStatus !== 'clear')
         throw new Error('Vlerësimet e shënuara për abuzim nuk mund të publikohen');
+    const changed = review.moderation.status !== decision || review.abuse.status !== abuseStatus;
     review.moderation = { status: decision, reviewedAt: new Date(), reviewedBy: moderator._id, reason: reason?.trim() };
     review.abuse = { status: abuseStatus, reason: abuseStatus === 'clear' ? undefined : reason?.trim() };
     review.publishedAt = decision === 'published' && abuseStatus === 'clear' ? new Date() : undefined;
     await review.save();
     await refreshRatingAggregate(review.portal, review.subjectType, review.subjectId);
+    if (changed && decision === 'published') {
+        const event = { type: 'review:new', title: 'Vlerësim i ri', href: '/dashboard', eventKey: `review:${review._id}:published`, actorUid: moderatorUid };
+        if (review.subjectType === 'provider')
+            await (0, notificationService_1.notifyProviders)([review.subjectId], event);
+        else
+            await (0, notificationService_1.notifyBusinesses)([review.subjectId], event);
+    }
+    if (changed)
+        await (0, notificationService_1.notifyUsers)([review.reviewer], { type: 'review:moderated', title: 'Vlerësimi juaj u shqyrtua', body: reason?.trim() || decision, href: '/dashboard', eventKey: `review:${review._id}:${review.updatedAt.toISOString()}`, actorUid: moderatorUid });
     return review;
 }
 async function respondToReview(uid, id, text) {
@@ -197,8 +217,11 @@ async function respondToReview(uid, id, text) {
         if (!business || !(0, businessService_1.canManageBusiness)(business, responder._id))
             throw new Error('Nuk ke leje për këtë vlerësim');
     }
+    const changed = review.response?.text !== text.trim();
     review.response = { text: text.trim(), respondedBy: responder._id, respondedAt: new Date() };
     await review.save();
+    if (changed)
+        await (0, notificationService_1.notifyUsers)([review.reviewer], { type: 'review:response', title: 'Përgjigje për vlerësimin tuaj', href: '/dashboard', eventKey: `review:${review._id}:response:${review.updatedAt.toISOString()}`, actorUid: uid });
     return review;
 }
 async function profilesForUid(uid) {

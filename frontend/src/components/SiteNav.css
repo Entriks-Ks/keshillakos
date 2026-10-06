@@ -42,6 +42,60 @@
   height: 100%;
 }
 
+.kk-nav-offers {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: 2px;
+}
+
+.kk-nav-offers-toggle,
+.kk-nav-actions .kk-notification-bell {
+  color: var(--ink-secondary);
+}
+
+.kk-nav-offers-parent {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kk-nav-offers-parent svg {
+  margin-left: auto;
+  transition: transform 0.18s ease;
+}
+
+.kk-nav-offers-parent[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.kk-nav-offers-subcategories {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.18s ease, visibility 0.18s;
+}
+
+.kk-nav-offers-subcategories[data-expanded='true'] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.kk-nav-offers-children {
+  min-height: 0;
+  overflow: hidden;
+  padding-left: 20px;
+}
+
+.kk-nav-offers-children .kk-nav-drawer-link {
+  font-size: 0.94rem;
+  font-weight: 500;
+}
+
 .kk-nav-link {
   position: relative;
   display: inline-flex;
@@ -331,6 +385,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .kk-nav-offers-parent svg,
+  .kk-nav-offers-subcategories,
   .kk-nav-link,
   .kk-nav-account,
   .kk-nav-account-caret {

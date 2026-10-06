@@ -5,6 +5,7 @@ exports.completeAppointmentFromDelivery = completeAppointmentFromDelivery;
 exports.listMyAppointments = listMyAppointments;
 exports.listProviderAppointments = listProviderAppointments;
 exports.cancelAppointment = cancelAppointment;
+const notificationService_1 = require("./notificationService");
 const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Appointment_1 = require("../models/Appointment");
@@ -111,6 +112,9 @@ async function cancelAppointment(uid, id, reason, asAdmin = false) {
         appointment.status = 'cancelled';
         appointment.cancellation = { cancelledAt: new Date(), cancelledBy: user._id, reason: reason?.trim() };
         await appointment.save();
+        const event = { type: 'appointment:cancelled', title: 'Rezervimi u anulua', body: reason?.trim(), href: '/dashboard', eventKey: `appointment:${appointment._id}:cancelled`, actorUid: uid };
+        await (0, notificationService_1.notifyUsers)([appointment.user], event);
+        await (0, notificationService_1.notifyProviders)([appointment.providerProfile], event);
     }
     if (appointment.requestDelivery)
         await (0, availabilityService_1.syncSlotWithRequestStatus)({ requestId: String(appointment.requestDelivery), status: 'rejected' });

@@ -10,12 +10,7 @@ type TypingEvent = {
   isTyping: boolean
 }
 
-type ConversationUpdated = {
-  conversationId: string
-  lastMessagePreview: string
-  lastMessageAt: string
-  senderUid: string
-}
+type ConversationUpdated = import('../chat/chatState').ConversationUpdate
 
 type AckResult = {
   ok: boolean
@@ -27,6 +22,7 @@ type AckResult = {
 
 export function useChatSocket(enabled: boolean) {
   const socketRef = useRef<Socket | null>(null)
+  const activeConversationRef = useRef<string | null>(null)
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
@@ -44,8 +40,14 @@ export function useChatSocket(enabled: boolean) {
     socketRef.current = socket
     socket.on('connect', () => setConnected(true))
     socket.on('disconnect', () => setConnected(false))
+    const visibilityChanged = () => {
+      if (activeConversationRef.current) socket.emit('conversation:visibility', { conversationId: activeConversationRef.current, active: document.visibilityState === 'visible' })
+    }
+    document.addEventListener('visibilitychange', visibilityChanged)
 
     return () => {
+      document.removeEventListener('visibilitychange', visibilityChanged)
+      activeConversationRef.current = null
       socket.disconnect()
       socketRef.current = null
       setConnected(false)
@@ -57,13 +59,16 @@ export function useChatSocket(enabled: boolean) {
     if (!socket) return Promise.resolve({ ok: false, error: 'Socket i shkëputur' })
 
     return new Promise((resolve) => {
-      socket.emit('conversation:join', { conversationId }, (res: AckResult) => {
+      activeConversationRef.current = conversationId
+      socket.emit('conversation:join', { conversationId, active: document.visibilityState === 'visible' }, (res: AckResult) => {
+        if (res?.ok && activeConversationRef.current === conversationId) socket.emit('conversation:visibility', { conversationId, active: document.visibilityState === 'visible' })
         resolve(res || { ok: false, error: 'Pa përgjigje' })
       })
     })
   }, [])
 
   const leaveConversation = useCallback((conversationId: string) => {
+    if (activeConversationRef.current === conversationId) activeConversationRef.current = null
     socketRef.current?.emit('conversation:leave', { conversationId })
   }, [])
 

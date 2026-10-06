@@ -1,3 +1,4 @@
+import { notifyProviders } from './notificationService'
 import { queryPage, type PaginationInput } from './pagination'
 import { Types, type PipelineStage } from 'mongoose'
 import { Business } from '../models/Business'
@@ -253,9 +254,11 @@ export async function reviewServiceOffer(id: string, reviewerUid: string, decisi
       throw new Error('Profili, biznesi dhe kategoria duhet të jenë aktive')
     }
   }
+  const changed = offer.moderation.status !== decision
   offer.status = decision === 'approved' ? 'published' : 'draft'
   offer.moderation = { status: decision, reviewedAt: new Date(), reviewedBy: reviewer }
   await offer.save()
+  if (changed) await notifyProviders([offer.providerProfile], { type: 'service:review', title: 'Shërbimi juaj u shqyrtua', body: decision, href: '/dashboard', eventKey: `offer:${offer._id}:${offer.updatedAt.toISOString()}`, actorUid: reviewerUid })
   return offer
 }
 

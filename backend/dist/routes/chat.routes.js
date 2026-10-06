@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const chatUnreadService_1 = require("../services/chatUnreadService");
 const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
@@ -15,6 +16,15 @@ function statusOf(err) {
     }
     return 400;
 }
+router.get('/unread-count', auth_1.requireAuth, async (req, res) => {
+    try {
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.json({ unreadCount: await (0, chatUnreadService_1.chatUnreadCount)(req.user.uid) });
+    }
+    catch (error) {
+        return res.status(500).json({ message: 'Nuk u ngarkuan mesazhet e palexuara' });
+    }
+});
 router.get('/conversations', auth_1.requireAuth, async (req, res) => {
     try {
         const conversations = await (0, chatService_1.listConversationsForUser)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20), typeof req.query.q === "string" ? req.query.q : "");

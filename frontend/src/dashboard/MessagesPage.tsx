@@ -1,12 +1,12 @@
-import { collectionSummary } from '../api/pagination'
+import { mergeMessages, mergeConversationSnapshots, updateConversation, updateConversationList, nearHistoryBottom, prependedScrollTop, type ConversationUpdate } from '../chat/chatState'
+import { useNotifications } from '../notifications/NotificationProvider'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
-import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, Send, UserRound } from 'lucide-react'
 import {
   Alert,
-  Badge,
   Button,
   buttonVariants,
   Card,
@@ -92,8 +92,7 @@ export default function MessagesPage() {
   const activeIdRef = useRef(activeId)
   activeIdRef.current = activeId
   const [conversations, setConversations] = useState<ConversationItem[]>([])
-  const [totalUnread, setTotalUnread] = useState(0)
-  const [listRevision, setListRevision] = useState(0)
+  const { messageUnreadCount: totalUnread } = useNotifications()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [listQuery, setListQuery] = useState('')
@@ -106,13 +105,80 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [peerTyping, setPeerTyping] = useState(false)
-  const preserveHistoryScroll = useRef(false)
-  const bottomRef = useRef<HTMLDivElement | null>(null)
+  const historyRef = useRef<HTMLDivElement | null>(null)
+  const followBottomRef = useRef(true)
+  const smoothFollowRef = useRef(false)
+  const restoreScrollRef = useRef<number | 'bottom' | null>(null)
+  const prependAnchorRef = useRef<{ top: number; height: number } | null>(null)
+  const threadsRef = useRef(new Map<string, { messages: ChatMessage[]; hasOlder: boolean; hydrated?: boolean; scrollTop?: number }>())
+  const conversationCacheRef = useRef(new Map<string, ConversationItem>())
+  const pendingEventsRef = useRef(new Map<string, ConversationUpdate[]>())
+  const pendingMetadataRef = useRef(new Set<string>())
+  const metadataRequestsRef = useRef(new Map<string, Promise<ConversationItem>>())
+  const conversationVersionsRef = useRef(new Map<string, number>())
+  const mountedRef = useRef(true)
+  const previouslyConnectedRef = useRef(false)
+  const listScopeRef = useRef({ page, listQuery })
+  listScopeRef.current = { page, listQuery }
   const inputRef = useRef<HTMLInputElement | null>(null)
   const typingTimeout = useRef<number | null>(null)
   const didAutoSelect = useRef(false)
 
   const socket = useChatSocket(Boolean(user))
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  function getMetadata(id: string) {
+    const pending = metadataRequestsRef.current.get(id)
+    if (pending) return pending
+    const request = fetchConversation(id).finally(() => { metadataRequestsRef.current.delete(id) })
+    metadataRequestsRef.current.set(id, request)
+    return request
+  }
+
+  function saveMessages(id: string, incoming: ChatMessage[]) {
+    const cached = threadsRef.current.get(id) ?? { messages: [], hasOlder: true }
+    const next = mergeMessages(cached.messages, incoming)
+    if (next === cached.messages) return
+    threadsRef.current.set(id, { ...cached, messages: next })
+    if (activeIdRef.current === id) setMessages(next)
+  }
+
+  function applyUpdate(event: ConversationUpdate) {
+    const viewedId = activeIdRef.current
+    const visible = document.visibilityState === 'visible'
+    const cached = conversationCacheRef.current.get(event.conversationId)
+    if (cached) {
+      const updated = updateConversation(cached, event, user?.uid || '', viewedId, visible)
+      if (updated === cached) return
+      conversationCacheRef.current.set(event.conversationId, updated)
+      conversationVersionsRef.current.set(event.conversationId, (conversationVersionsRef.current.get(event.conversationId) ?? 0) + 1)
+      setConversations(previous => updateConversationList(previous, event, user?.uid || '', viewedId, visible))
+      if (viewedId === event.conversationId) setActiveConversation(updated)
+      return
+    }
+    // A new/off-page thread needs only its own metadata, never a list refresh.
+    const pending = pendingEventsRef.current.get(event.conversationId) ?? []
+    pendingEventsRef.current.set(event.conversationId, [...pending, event])
+    if (pendingMetadataRef.current.has(event.conversationId)) return
+    pendingMetadataRef.current.add(event.conversationId)
+    void getMetadata(event.conversationId).then(conversation => {
+      if (!mountedRef.current) return
+      for (const update of pendingEventsRef.current.get(event.conversationId) ?? []) {
+        conversation = updateConversation(conversation, update, user?.uid || '', activeIdRef.current, document.visibilityState === 'visible')
+      }
+      conversationCacheRef.current.set(conversation.id, conversation)
+      conversationVersionsRef.current.set(conversation.id, (conversationVersionsRef.current.get(conversation.id) ?? 0) + 1)
+      if (listScopeRef.current.page === 1 && !listScopeRef.current.listQuery) setConversations(previous => previous.some(row => row.id === conversation.id) ? previous : [...previous, conversation])
+      if (activeIdRef.current === conversation.id) setActiveConversation(conversation)
+    }).catch(() => undefined).finally(() => {
+      pendingMetadataRef.current.delete(event.conversationId)
+      pendingEventsRef.current.delete(event.conversationId)
+    })
+  }
 
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) || (activeConversation?.id === activeId ? activeConversation : null),
@@ -123,10 +189,20 @@ export default function MessagesPage() {
 
   useEffect(() => {
     let cancelled = false
+    const versions = new Map(conversationVersionsRef.current)
     setLoadingList(true)
     fetchConversations({ page, limit: 20, q: listQuery })
       .then((items) => {
-        if (!cancelled) { setConversations(items); setTotalUnread(collectionSummary(items).unread ?? 0); receivePagination(items.pagination) }
+        if (!cancelled) {
+          const rows = items.map(item => {
+            const live = conversationCacheRef.current.get(item.id)
+            const changed = conversationVersionsRef.current.get(item.id) !== versions.get(item.id)
+            const resolved = live && changed ? live : item.id === activeIdRef.current && document.visibilityState === 'visible' && changed ? { ...item, unread: 0 } : item.id === activeIdRef.current && document.visibilityState === 'visible' && changed ? { ...item, unread: 0 } : item
+            conversationCacheRef.current.set(item.id, resolved)
+            return resolved
+          })
+          setConversations(rows); receivePagination(items.pagination)
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -137,7 +213,29 @@ export default function MessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [page, listQuery, listRevision])
+  }, [page, listQuery])
+
+  useEffect(() => {
+    if (!socket.connected) return
+    if (!previouslyConnectedRef.current) { previouslyConnectedRef.current = true; return }
+    // Reconcile missed events only after a reconnect; keep the rendered list and thread intact.
+    let cancelled = false
+    const scope = listScopeRef.current
+    const versions = new Map(conversationVersionsRef.current)
+    void fetchConversations({ page: scope.page, limit: 20, q: scope.listQuery }).then(items => {
+      if (cancelled || scope.page !== listScopeRef.current.page || scope.listQuery !== listScopeRef.current.listQuery) return
+      const rows = items.map(item => {
+        const live = conversationCacheRef.current.get(item.id)
+        const changed = conversationVersionsRef.current.get(item.id) !== versions.get(item.id)
+        const resolved = live && changed ? live : item.id === activeIdRef.current && document.visibilityState === 'visible' && changed ? { ...item, unread: 0 } : item
+        conversationCacheRef.current.set(item.id, resolved)
+        return resolved
+      })
+      setConversations(current => mergeConversationSnapshots(current, rows))
+      receivePagination(items.pagination)
+    }).catch(() => undefined)
+    return () => { cancelled = true }
+  }, [socket.connected])
 
   useEffect(() => {
     if (didAutoSelect.current || loadingList || activeId || conversations.length === 0) return
@@ -147,75 +245,82 @@ export default function MessagesPage() {
     }
   }, [loadingList, activeId, conversations, pagination.total, setSearchParams])
 
+  // Switching back to a cached thread restores it before paint; socket sync stays quiet.
+  useLayoutEffect(() => {
+    if (!activeId) return
+    const cached = threadsRef.current.get(activeId)
+    setMessages(cached?.messages ?? [])
+    setHasOlderMessages(cached?.hasOlder ?? true)
+    setLoadingThread(!cached)
+    setPeerTyping(false)
+    setActiveConversation(conversationCacheRef.current.get(activeId) ?? null)
+    restoreScrollRef.current = cached?.scrollTop ?? 'bottom'
+    followBottomRef.current = cached?.scrollTop === undefined
+    smoothFollowRef.current = false
+    prependAnchorRef.current = null
+  }, [activeId])
+
   useEffect(() => {
     if (!activeId || !socket.connected) return
-
     let cancelled = false
-    setLoadingThread(true)
-    setHasOlderMessages(true)
-    void fetchConversation(activeId).then(setActiveConversation).catch(() => undefined)
-    setPeerTyping(false)
-
+    const cached = conversationCacheRef.current.get(activeId)
+    if (!cached) void getMetadata(activeId).then(conversation => {
+      if (cancelled) return
+      const live = conversationCacheRef.current.get(activeId)
+      const resolved = live ?? (document.visibilityState === 'visible' ? { ...conversation, unread: 0 } : conversation)
+      conversationCacheRef.current.set(activeId, resolved)
+      setActiveConversation(resolved)
+    }).catch(() => undefined)
     void (async () => {
       try {
         const joined = await socket.joinConversation(activeId)
         if (cancelled) return
-        if (joined.ok && joined.messages) {
-          setMessages(joined.messages)
-          setHasOlderMessages(joined.pagination ? joined.pagination.total > joined.messages.length : joined.messages.length === 50)
-        } else {
-          const fallback = await fetchMessages(activeId)
-          if (!cancelled) { setMessages(fallback); setHasOlderMessages(fallback.pagination.total > fallback.length) }
+        const snapshot = joined.ok && joined.messages ? joined.messages : await fetchMessages(activeId)
+        if (cancelled) return
+        const thread = threadsRef.current.get(activeId)
+        const hasOlder = thread?.hydrated ? thread.hasOlder : (joined.pagination ? joined.pagination.total > snapshot.length : 'pagination' in snapshot ? (snapshot.pagination as { total: number }).total > snapshot.length : snapshot.length === 50)
+        threadsRef.current.set(activeId, { messages: thread?.messages ?? [], hasOlder, hydrated: true, scrollTop: thread?.scrollTop })
+        saveMessages(activeId, snapshot)
+        setHasOlderMessages(hasOlder)
+        if (document.visibilityState === 'visible') {
+          if (!joined.ok) await markConversationRead(activeId)
+          clearLocalUnread(activeId)
         }
-        await markConversationRead(activeId)
-        setListRevision((value) => value + 1)
-        setConversations((prev) =>
-          prev.map((c) => (c.id === activeId ? { ...c, unread: 0 } : c)),
-        )
       } catch (err) {
         if (!cancelled) setError(getErrorMessage(err))
       } finally {
         if (!cancelled) setLoadingThread(false)
       }
     })()
-
     return () => {
       cancelled = true
       socket.leaveConversation(activeId)
     }
   }, [activeId, socket.connected, socket.joinConversation, socket.leaveConversation])
 
-  useEffect(() => {
-    return socket.onMessageNew((message) => {
-      if (message.conversationId !== activeId) return
-
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === message.id)) return prev
-        return [...prev, message]
-      })
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === message.conversationId
-            ? {
-                ...c,
-                lastMessageAt: message.createdAt,
-                lastMessagePreview: message.body.slice(0, 140),
-                unread: 0,
-              }
-            : c,
-        ),
-      )
-      void markConversationRead(message.conversationId)
-      setListRevision((value) => value + 1)
+  function clearLocalUnread(id: string) {
+    conversationVersionsRef.current.set(id, (conversationVersionsRef.current.get(id) ?? 0) + 1)
+    const cached = conversationCacheRef.current.get(id)
+    if (cached?.unread) conversationCacheRef.current.set(id, { ...cached, unread: 0 })
+    setConversations(previous => {
+      const existing = previous.find(row => row.id === id)
+      return existing?.unread ? previous.map(row => row.id === id ? { ...row, unread: 0 } : row) : previous
     })
-  }, [activeId, socket.onMessageNew])
+  }
 
   useEffect(() => {
-    return socket.onConversationUpdated(() => {
-      // New messages can move a conversation between pages; let the server reorder it.
-      setListRevision((value) => value + 1)
-    })
-  }, [socket.onConversationUpdated])
+    const visible = () => {
+      if (document.visibilityState === 'visible' && activeIdRef.current) clearLocalUnread(activeIdRef.current)
+    }
+    document.addEventListener('visibilitychange', visible)
+    return () => document.removeEventListener('visibilitychange', visible)
+  }, [])
+
+  useEffect(() => socket.onMessageNew(message => {
+    saveMessages(message.conversationId, [message])
+  }), [socket.onMessageNew])
+
+  useEffect(() => socket.onConversationUpdated(applyUpdate), [socket.onConversationUpdated, user?.uid, page, listQuery])
 
   useEffect(() => {
     return socket.onTyping((event) => {
@@ -224,10 +329,23 @@ export default function MessagesPage() {
     })
   }, [activeId, socket.onTyping, user?.uid])
 
-  useEffect(() => {
-    if (preserveHistoryScroll.current) { preserveHistoryScroll.current = false; return }
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, peerTyping])
+  useLayoutEffect(() => {
+    const history = historyRef.current
+    if (!history || loadingThread) return
+    const restore = restoreScrollRef.current
+    const prepend = prependAnchorRef.current
+    if (restore !== null) {
+      history.scrollTop = restore === 'bottom' ? history.scrollHeight : restore
+      restoreScrollRef.current = null
+      followBottomRef.current = nearHistoryBottom(history.scrollTop, history.scrollHeight, history.clientHeight)
+    } else if (prepend) {
+      history.scrollTop = prependedScrollTop(prepend.top, prepend.height, history.scrollHeight)
+      prependAnchorRef.current = null
+    } else if (followBottomRef.current) {
+      smoothFollowRef.current = true
+      history.scrollTo({ top: history.scrollHeight, behavior: 'smooth' })
+    }
+  }, [activeId, messages, peerTyping, loadingThread])
 
   useEffect(() => {
     if (activeId) inputRef.current?.focus()
@@ -251,26 +369,8 @@ export default function MessagesPage() {
       setDraft(body)
       toast.danger(result.error || 'Mesazhi nuk u dërgua')
     } else {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === result.message!.id)) return prev
-        return [...prev, result.message!]
-      })
-      setConversations((prev) => {
-        const next = prev.map((c) =>
-          c.id === activeId
-            ? {
-                ...c,
-                lastMessageAt: result.message!.createdAt,
-                lastMessagePreview: result.message!.body.slice(0, 140),
-              }
-            : c,
-        )
-        return [...next].sort((a, b) => {
-          const at = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
-          const bt = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
-          return bt - at
-        })
-      })
+      saveMessages(result.message.conversationId, [result.message])
+      applyUpdate({ conversationId: result.message.conversationId, senderUid: result.message.senderUid, lastMessageAt: result.message.createdAt, lastMessagePreview: result.message.body.slice(0, 140) })
     }
     setSending(false)
     inputRef.current?.focus()
@@ -368,21 +468,26 @@ export default function MessagesPage() {
                         aria-current={isActive ? 'true' : undefined}
                         onClick={() => selectConversation(c.id)}
                       >
-                        <Badge.Anchor className="msg-item-avatar">
+                        <span className="msg-item-avatar">
                           <ProfileAvatar src={c.peer.profilePhoto} seed={c.peer.uid} alt="" size={44} />
-                          {c.unread > 0 ? (
-                            <Badge color="accent" size="sm" aria-label={`${c.unread} mesazhe të palexuara`}>
-                              <Badge.Label>{c.unread > 9 ? '9+' : c.unread}</Badge.Label>
-                            </Badge>
-                          ) : null}
-                        </Badge.Anchor>
+                        </span>
                         <span className="msg-item-body">
                           <span className="msg-item-row">
                             <strong>{c.peer.name}</strong>
                             {c.lastMessageAt ? <time dateTime={c.lastMessageAt}>{formatListTime(c.lastMessageAt)}</time> : null}
                           </span>
                           <span className="msg-item-context">{c.serviceTitle || c.peer.roleLabel || 'Bisedë'}</span>
-                          <span className="msg-item-preview">{c.lastMessagePreview || 'Nis bisedën'}</span>
+                          <span className="msg-item-preview-row">
+                            <span className="msg-item-preview">{c.lastMessagePreview || 'Nis bisedën'}</span>
+                            {c.unread > 0 && (
+                              <span
+                                className={`msg-item-unread${c.unread > 1 ? ' is-count' : ''}`}
+                                aria-label={`${c.unread} mesazhe të palexuara`}
+                              >
+                                {c.unread > 1 ? (c.unread > 99 ? '99+' : c.unread) : null}
+                              </span>
+                            )}
+                          </span>
                         </span>
                       </button>
                     </li>
@@ -447,15 +552,30 @@ export default function MessagesPage() {
                 ) : null}
               </header>
 
-              <div className="msg-history">
+              <div className="msg-history" ref={historyRef}
+                onWheel={() => { smoothFollowRef.current = false }}
+                onTouchStart={() => { smoothFollowRef.current = false }}
+                onPointerDown={() => { smoothFollowRef.current = false }}
+                onKeyDown={() => { smoothFollowRef.current = false }}
+                onScroll={event => {
+                const history = event.currentTarget
+                const nearBottom = nearHistoryBottom(history.scrollTop, history.scrollHeight, history.clientHeight)
+                followBottomRef.current = smoothFollowRef.current || nearBottom
+                if (nearBottom) smoothFollowRef.current = false
+                const cached = threadsRef.current.get(activeId)
+                if (cached) cached.scrollTop = history.scrollTop
+              }}>
                 {!loadingThread && messages.length > 0 && hasOlderMessages ? <Button size="sm" variant="outline" isPending={loadingHistory} onPress={() => {
                   setLoadingHistory(true)
                   const conversationId = activeId
                   fetchMessages(conversationId, { before: messages[0].createdAt, limit: 50 }).then((older) => {
                     if (activeIdRef.current !== conversationId) return
                     setHasOlderMessages(older.pagination.total > older.length)
-                    preserveHistoryScroll.current = true
-                    setMessages((current) => [...older.filter((item) => !current.some((message) => message.id === item.id)), ...current])
+                    const history = historyRef.current
+                    if (history) prependAnchorRef.current = { top: history.scrollTop, height: history.scrollHeight }
+                    const cached = threadsRef.current.get(conversationId)
+                    if (cached) cached.hasOlder = older.pagination.total > older.length
+                    saveMessages(conversationId, older)
                   }).catch((error: unknown) => setError(getErrorMessage(error))).finally(() => setLoadingHistory(false))
                 }}>Shfaq mesazhet e mëparshme</Button> : null}
                 {loadingThread ? (
@@ -500,7 +620,7 @@ export default function MessagesPage() {
                     <span />
                   </div>
                 ) : null}
-                <div ref={bottomRef} />
+
               </div>
 
               <form className="msg-composer" onSubmit={onSend}>
@@ -533,4 +653,3 @@ export default function MessagesPage() {
     </div>
   )
 }
-

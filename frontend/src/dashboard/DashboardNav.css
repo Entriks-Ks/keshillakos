@@ -175,6 +175,24 @@
   color: color-mix(in srgb, var(--ink-secondary) 75%, transparent);
 }
 
+.dsb-link > .kk-message-badge {
+  flex: none;
+  margin-left: auto;
+}
+
+.dsb-link.has-unread {
+  font-weight: 650;
+}
+
+.dsb-link.has-unread:not(.is-active):not(:hover) {
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  color: var(--brand-navy);
+}
+
+.dsb-link.has-unread:not(.is-active) svg {
+  color: color-mix(in srgb, var(--accent) 60%, var(--ink-secondary));
+}
+
 .dsb-link:hover {
   background: var(--surface-muted);
   color: var(--brand-navy);

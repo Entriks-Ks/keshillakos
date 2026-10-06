@@ -30,6 +30,9 @@ const chat_routes_1 = __importDefault(require("./routes/chat.routes"));
 const feedback_routes_1 = __importDefault(require("./routes/feedback.routes"));
 const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const chatSocket_1 = require("./services/chatSocket");
+const socketServer_1 = require("./services/socketServer");
+const Notification_1 = require("./models/Notification");
+const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
 const publicCache_1 = require("./middleware/publicCache");
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 4000;
@@ -46,6 +49,7 @@ app.get('/api/health', (_req, res) => {
         db: mongoose_1.default.connection.name || null,
     });
 });
+app.use('/api/notifications', notification_routes_1.default);
 app.use('/api/auth', auth_routes_1.default);
 app.use('/api/onboarding', onboarding_routes_1.default);
 app.use('/api/admin/users', adminUsers_routes_1.default);
@@ -71,6 +75,7 @@ app.use((err, _req, res, _next) => {
 async function start() {
     try {
         await (0, db_1.connectDB)();
+        await Notification_1.Notification.init();
     }
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -81,7 +86,8 @@ async function start() {
         process.exit(1);
     }
     const server = http_1.default.createServer(app);
-    (0, chatSocket_1.attachChatSocket)(server);
+    const io = (0, socketServer_1.attachRealtimeSocket)(server);
+    (0, chatSocket_1.registerChatHandlers)(io);
     server.listen(PORT, () => {
         console.log(`API running on http://localhost:${PORT}`);
     });

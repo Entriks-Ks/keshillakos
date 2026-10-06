@@ -1,3 +1,4 @@
+import { notifyProviders, notifyUsers } from './notificationService'
 import { queryPage, paginationMeta, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
 import { Appointment } from '../models/Appointment'
@@ -91,6 +92,9 @@ export async function cancelAppointment(uid: string, id: string, reason?: string
     appointment.status = 'cancelled'
     appointment.cancellation = { cancelledAt: new Date(), cancelledBy: user._id, reason: reason?.trim() }
     await appointment.save()
+    const event = { type: 'appointment:cancelled', title: 'Rezervimi u anulua', body: reason?.trim(), href: '/dashboard', eventKey: `appointment:${appointment._id}:cancelled`, actorUid: uid }
+    await notifyUsers([appointment.user], event)
+    await notifyProviders([appointment.providerProfile], event)
   }
   if (appointment.requestDelivery) await syncSlotWithRequestStatus({ requestId: String(appointment.requestDelivery), status: 'rejected' })
   return appointment

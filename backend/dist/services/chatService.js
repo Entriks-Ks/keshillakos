@@ -10,6 +10,8 @@ exports.getConversationForUser = getConversationForUser;
 exports.listMessages = listMessages;
 exports.sendMessage = sendMessage;
 exports.markConversationRead = markConversationRead;
+const realtime_1 = require("./realtime");
+const chatUnreadService_1 = require("./chatUnreadService");
 const pagination_1 = require("./pagination");
 const mongoose_1 = __importDefault(require("mongoose"));
 const Conversation_1 = require("../models/Conversation");
@@ -163,26 +165,23 @@ async function sendMessage(input) {
         senderUid: input.senderUid,
         body,
     });
-    conversation.lastMessageAt = message.createdAt;
-    conversation.lastMessagePreview = body.slice(0, 140);
-    if (input.senderUid === conversation.seekerUid) {
-        conversation.providerUnread += 1;
-    }
-    else {
-        conversation.seekerUnread += 1;
-    }
-    await conversation.save();
+    const peerUid = input.senderUid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid;
+    const unreadField = peerUid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread';
+    const active = (0, realtime_1.isConversationActive)(peerUid, input.conversationId);
+    await Conversation_1.Conversation.findByIdAndUpdate(conversation._id, {
+        $set: { lastMessageAt: message.createdAt, lastMessagePreview: body.slice(0, 140), ...(active ? { [unreadField]: 0 } : {}) },
+        ...(!active ? { $inc: { [unreadField]: 1 } } : {}),
+    });
+    (0, realtime_1.emitChatMessage)(toMessage(message), peerUid);
+    await (0, chatUnreadService_1.publishChatUnread)(peerUid);
     return toMessage(message);
 }
 async function markConversationRead(conversationId, uid) {
     const conversation = await assertParticipant(conversationId, uid);
-    if (uid === conversation.seekerUid) {
-        conversation.seekerUnread = 0;
-    }
-    else {
-        conversation.providerUnread = 0;
-    }
-    await conversation.save();
+    const unreadField = uid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread';
+    await Conversation_1.Conversation.updateOne({ _id: conversation._id }, { $set: { [unreadField]: 0 } });
+    conversation.set(unreadField, 0);
+    await (0, chatUnreadService_1.publishChatUnread)(uid);
     return toPublicConversation(conversation, uid);
 }
 async function toPublicConversation(doc, viewerUid) {

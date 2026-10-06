@@ -1,3 +1,5 @@
+import { emitChatMessage, isConversationActive } from './realtime'
+import { publishChatUnread } from './chatUnreadService'
 import { queryPage, type PaginationInput } from './pagination'
 import mongoose from 'mongoose'
 import { Conversation } from '../models/Conversation'
@@ -214,26 +216,26 @@ export async function sendMessage(input: {
     body,
   })
 
-  conversation.lastMessageAt = message.createdAt
-  conversation.lastMessagePreview = body.slice(0, 140)
-  if (input.senderUid === conversation.seekerUid) {
-    conversation.providerUnread += 1
-  } else {
-    conversation.seekerUnread += 1
-  }
-  await conversation.save()
+  const peerUid = input.senderUid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid
+  const unreadField = peerUid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread'
+  const active = isConversationActive(peerUid, input.conversationId)
+  await Conversation.findByIdAndUpdate(conversation._id, {
+    $set: { lastMessageAt: message.createdAt, lastMessagePreview: body.slice(0, 140), ...(active ? { [unreadField]: 0 } : {}) },
+    ...(!active ? { $inc: { [unreadField]: 1 } } : {}),
+  })
+  emitChatMessage(toMessage(message), peerUid)
+  await publishChatUnread(peerUid)
 
   return toMessage(message)
 }
 
 export async function markConversationRead(conversationId: string, uid: string) {
   const conversation = await assertParticipant(conversationId, uid)
-  if (uid === conversation.seekerUid) {
-    conversation.seekerUnread = 0
-  } else {
-    conversation.providerUnread = 0
-  }
-  await conversation.save()
+  const unreadField = uid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread'
+  await Conversation.updateOne({ _id: conversation._id }, { $set: { [unreadField]: 0 } })
+  conversation.set(unreadField, 0)
+  await publishChatUnread(uid)
+
   return toPublicConversation(conversation, uid)
 }
 

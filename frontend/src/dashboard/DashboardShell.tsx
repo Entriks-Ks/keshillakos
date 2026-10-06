@@ -1,3 +1,4 @@
+import MessageUnreadBadge from '../chat/MessageUnreadBadge'
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from '@heroui/react'
@@ -83,7 +84,7 @@ export default function DashboardShell() {
           navigation={<DashboardSidebar {...sidebarProps} inDrawer onNavigate={closeMenu} />}
           menuOpen={menuOpen}
           onMenuOpenChange={setMenuOpen}
-          showHome={!nav.some((item) => item.to === '/')}
+          showHome={context === 'user' || !nav.some((item) => item.to === '/')}
           onLogout={handleLogout}
         />
 
@@ -105,7 +106,7 @@ export default function DashboardShell() {
               {({ isActive }) => (
                 <>
                   <Icon size={20} strokeWidth={isActive ? 2.4 : 2} aria-hidden />
-                  <span>{item.shortLabel || item.label}</span>
+                  <span>{item.shortLabel || item.label}{item.to.endsWith('/messages') && <MessageUnreadBadge />}</span>
                 </>
               )}
             </NavLink>

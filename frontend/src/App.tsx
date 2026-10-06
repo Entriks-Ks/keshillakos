@@ -1,3 +1,4 @@
+import { NotificationProvider } from './notifications/NotificationProvider'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { RouterProvider, Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes, useHref, useNavigate } from 'react-router-dom'
@@ -69,10 +70,11 @@ export default function App() {
       <Toast.Provider
         aria-label="Njoftime"
         className="kk-toast-region"
-        placement="bottom end"
+        placement="top end"
         maxVisibleToasts={3}
         width={360}
       />
+      <NotificationProvider>
       <BrowserRouter>
         <ScrollToTop />
         <HeroRouterProvider>
@@ -163,6 +165,7 @@ export default function App() {
           </Routes>
         </HeroRouterProvider>
       </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   )
 }

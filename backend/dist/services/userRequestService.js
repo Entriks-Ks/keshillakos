@@ -10,6 +10,7 @@ exports.listProviderDeliveries = listProviderDeliveries;
 exports.listAllUserRequests = listAllUserRequests;
 exports.updateDeliveryStatus = updateDeliveryStatus;
 exports.countPendingDeliveries = countPendingDeliveries;
+const notificationService_1 = require("./notificationService");
 const mongoose_1 = require("mongoose");
 const Category_1 = require("../models/Category");
 const ProviderProfile_1 = require("../models/ProviderProfile");
@@ -111,6 +112,7 @@ async function createUserRequest(input) {
         })));
         if (slot)
             await (0, availabilityService_1.holdSlotForRequest)({ slotId: input.slotId, providerUid: slot.providerUid, providerId: slot.providerId, requestId: String(deliveries[0]._id) });
+        await (0, notificationService_1.notifyProviders)(profiles.map(p => p._id), { type: 'request:new', title: 'Kërkesë e re', href: '/dashboard', eventKey: `request:${request._id}:new`, actorUid: input.uid });
         return { request, deliveries };
     }
     catch (err) {
@@ -141,6 +143,7 @@ async function sendExistingRequest(uid, id, providerIds) {
     await RequestDelivery_1.RequestDelivery.insertMany(profiles.map((profile) => ({ request: request._id, providerProfile: profile._id, sentAt: new Date(), status: 'pending' })));
     request.status = 'open';
     await request.save();
+    await (0, notificationService_1.notifyProviders)(profiles.map(p => p._id), { type: 'request:new', title: 'Kërkesë e re', href: '/dashboard', eventKey: `request:${request._id}:new`, actorUid: uid });
     return listMyUserRequests(uid);
 }
 async function updateUserRequestLifecycle(uid, id, status) {
@@ -163,6 +166,7 @@ async function updateUserRequestLifecycle(uid, id, status) {
         if (delivery.slotId)
             await (0, availabilityService_1.syncSlotWithRequestStatus)({ requestId: String(delivery._id), status: 'rejected' });
     }
+    await (0, notificationService_1.notifyProviders)(pending.map(d => d.providerProfile), { type: 'request:withdrawn', title: 'Kërkesa u tërhoq', href: '/dashboard', eventKey: `request:${request._id}:${status}`, actorUid: uid });
     return listMyUserRequests(uid);
 }
 async function requestView(request, delivery, providerName = '', providerUid = '') {
@@ -261,6 +265,9 @@ async function updateDeliveryStatus(uid, id, status, response, isAdmin = false, 
         await (0, appointmentService_1.confirmAppointmentFromDelivery)(String(delivery._id));
     if (delivery.slotId && status === 'completed')
         await (0, appointmentService_1.completeAppointmentFromDelivery)(String(delivery._id));
+    const responseChanged = (response !== undefined && response.trim() !== (delivery.response || '')) ||
+        (offer !== undefined && (offer.description !== delivery.offer?.description || offer.amount !== delivery.offer?.amount || offer.currency !== delivery.offer?.currency));
+    const previousStatus = delivery.status;
     delivery.status = status;
     if (status === 'read' && !delivery.readAt)
         delivery.readAt = new Date();
@@ -273,6 +280,12 @@ async function updateDeliveryStatus(uid, id, status, response, isAdmin = false, 
     await delivery.save();
     if (delivery.slotId && ['rejected', 'pending'].includes(status))
         await (0, availabilityService_1.syncSlotWithRequestStatus)({ requestId: String(delivery._id), status: status });
+    if (previousStatus !== status && ['accepted', 'rejected', 'completed'].includes(status) || responseChanged && status !== 'read') {
+        const event = { type: 'request:status', title: 'Përgjigje për kërkesën tuaj', body: status, href: '/dashboard', eventKey: `delivery:${delivery._id}:${delivery.updatedAt.toISOString()}`, actorUid: uid };
+        await (0, notificationService_1.notifyUsers)([request.user], event);
+        if (isAdmin)
+            await (0, notificationService_1.notifyProviders)([delivery.providerProfile], event);
+    }
     const profile = await ProviderProfile_1.ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName');
     return requestView(request, delivery, profile?.publicProfile.displayName);
 }

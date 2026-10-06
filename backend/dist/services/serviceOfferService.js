@@ -11,6 +11,7 @@ exports.reviewServiceOffer = reviewServiceOffer;
 exports.updateServiceOffer = updateServiceOffer;
 exports.deleteServiceOffer = deleteServiceOffer;
 exports.offersToLegacyServices = offersToLegacyServices;
+const notificationService_1 = require("./notificationService");
 const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Business_1 = require("../models/Business");
@@ -226,9 +227,12 @@ async function reviewServiceOffer(id, reviewerUid, decision) {
             throw new Error('Profili, biznesi dhe kategoria duhet të jenë aktive');
         }
     }
+    const changed = offer.moderation.status !== decision;
     offer.status = decision === 'approved' ? 'published' : 'draft';
     offer.moderation = { status: decision, reviewedAt: new Date(), reviewedBy: reviewer };
     await offer.save();
+    if (changed)
+        await (0, notificationService_1.notifyProviders)([offer.providerProfile], { type: 'service:review', title: 'Shërbimi juaj u shqyrtua', body: decision, href: '/dashboard', eventKey: `offer:${offer._id}:${offer.updatedAt.toISOString()}`, actorUid: reviewerUid });
     return offer;
 }
 async function updateServiceOffer(uid, id, changes) {

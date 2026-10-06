@@ -1,3 +1,4 @@
+import { notify } from './notificationService'
 import {
   ServiceRequest,
   type ContactMethod,
@@ -96,6 +97,7 @@ export async function createServiceRequest(input: {
     }
   }
 
+  await notify([doc.providerUid], { type: 'request:new', title: 'Kërkesë e re', href: '/dashboard', eventKey: `request:${doc._id}:new`, actorUid: input.seekerUid })
   return toRequest(doc)
 }
 
@@ -128,6 +130,7 @@ export async function updateRequestStatus(input: {
     throw new Error('Nuk ke leje për këtë kërkesë')
   }
 
+  const previousStatus = doc.status
   doc.status = input.status
   if (input.providerNote !== undefined) {
     doc.providerNote = input.providerNote.trim()
@@ -141,6 +144,7 @@ export async function updateRequestStatus(input: {
     })
   }
 
+  if (previousStatus !== doc.status) await notify([doc.seekerUid, ...(input.asAdmin ? [doc.providerUid] : [])], { type: 'request:status', title: 'Statusi i kërkesës ndryshoi', body: doc.status, href: '/dashboard', eventKey: `request:${doc._id}:${doc.updatedAt.toISOString()}`, actorUid: input.providerUid })
   return toRequest(doc)
 }
 

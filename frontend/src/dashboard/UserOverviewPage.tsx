@@ -15,7 +15,6 @@ import { getErrorMessage } from '../utils/errors'
 import { ROLE_HINTS, ROLE_LABELS } from './nav'
 import {
   ActivityRows,
-  conversationEntries,
   EmptyBlock,
   latestActivity,
   ProfileSetupCard,
@@ -62,7 +61,7 @@ function requestDetail(item: ServiceRequestItem) {
   }
 }
 
-function buildActivity(requests: ServiceRequestItem[], conversations: ConversationItem[]): ActivityEntry[] {
+function buildActivity(requests: ServiceRequestItem[]): ActivityEntry[] {
   const fromRequests = requests.map((item) => ({
     id: `r-${item.id}`,
     title: item.need || item.serviceTitle || 'Kërkesë',
@@ -71,7 +70,7 @@ function buildActivity(requests: ServiceRequestItem[], conversations: Conversati
     to: REQUESTS_PATH,
     status: REQUEST_STATUS[item.status] ?? { label: item.status, color: 'default' as const },
   }))
-  return latestActivity([...fromRequests, ...conversationEntries(conversations, MESSAGES_PATH)])
+  return latestActivity(fromRequests)
 }
 
 function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boolean }) {
@@ -112,7 +111,7 @@ function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boo
 }
 
 function ActivityCard({ data, loading }: { data: OverviewData | null; loading: boolean }) {
-  const entries = data ? buildActivity(data.requests, data.conversations) : []
+  const entries = data ? buildActivity(data.requests) : []
 
   return (
     <Card className="uo-card uo-activity">
@@ -123,7 +122,7 @@ function ActivityCard({ data, loading }: { data: OverviewData | null; loading: b
         ) : entries.length === 0 ? (
           <EmptyBlock
             title="Ende s'ka aktivitet"
-            text="Kërkesat që dërgon dhe bisedat me ofruesit do të shfaqen këtu."
+            text="Kërkesat që dërgon dhe ndryshimet e statusit të tyre do të shfaqen këtu."
             action={
               <Link to="/ofertat" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Shfleto ofertat

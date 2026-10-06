@@ -1,3 +1,5 @@
+import MessageNavButton from '../chat/MessageNavButton'
+import NotificationBell from '../notifications/NotificationBell'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Drawer, Dropdown, Label, Tooltip } from '@heroui/react'
@@ -128,6 +130,8 @@ export default function DashboardTopBar({
             <Tooltip.Content placement="bottom">Kthehu në faqen kryesore</Tooltip.Content>
           </Tooltip>
         ) : null}
+        <MessageNavButton />
+        <NotificationBell />
         <AccountMenu user={user} role={role} onLogout={onLogout} />
       </div>
     </header>

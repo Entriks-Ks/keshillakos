@@ -16,6 +16,8 @@ exports.updateProfilePhoto = updateProfilePhoto;
 exports.updateUserByUid = updateUserByUid;
 exports.deleteUserByUid = deleteUserByUid;
 exports.countUsersByRole = countUsersByRole;
+const realtime_1 = require("./realtime");
+const notificationService_1 = require("./notificationService");
 const pagination_1 = require("./pagination");
 const User_1 = require("../models/User");
 const ProviderProfile_1 = require("../models/ProviderProfile");
@@ -138,8 +140,11 @@ async function requestRoleChange(uid, role) {
     if (existing.requestedRole && existing.requestedRole !== role && !roles.includes(existing.requestedRole)) {
         throw new Error('Ke tashmë një kërkesë roli në pritje');
     }
+    const changed = existing.requestedRole !== role;
     existing.requestedRole = role;
     await existing.save();
+    if (changed)
+        await (0, notificationService_1.notifyAdmins)({ type: 'role:requested', title: 'Kërkesë e re për rol', href: '/dashboard/admin/users', eventKey: `role:${uid}:${existing.updatedAt?.toISOString()}`, actorUid: uid });
     return toPublicUser(existing);
 }
 async function listPendingRoleRequests(input = { page: 1, limit: 20 }) {
@@ -158,9 +163,12 @@ async function reviewRoleRequest(uid, action) {
     if (action === 'reject') {
         existing.requestedRole = undefined;
         await existing.save();
+        await (0, notificationService_1.notify)([uid], { type: 'role:review', title: 'Kërkesa për rol u refuzua', href: '/dashboard', eventKey: `role:${uid}:rejected:${existing.updatedAt?.toISOString()}` });
         return toPublicUser(existing);
     }
-    return grantCapability(uid, requested);
+    const granted = await grantCapability(uid, requested);
+    await (0, notificationService_1.notify)([uid], { type: 'role:review', title: 'Kërkesa për rol u pranua', href: '/dashboard', eventKey: `role:${uid}:accepted:${existing.updatedAt?.toISOString()}` });
+    return granted;
 }
 async function findUserByUid(uid) {
     const user = await User_1.User.findOne({ uid }).lean();
@@ -322,6 +330,7 @@ async function updateUserByUid(uid, input) {
     const existing = await User_1.User.findOne({ uid });
     if (!existing)
         throw new Error('Përdoruesi nuk u gjet');
+    const previous = JSON.stringify({ roles: effectiveRoles(existing).sort(), status: existing.accountStatus });
     if (input.role !== undefined && !(0, roles_1.isUserRole)(input.role)) {
         throw new Error('Roli nuk është i vlefshëm');
     }
@@ -353,12 +362,17 @@ async function updateUserByUid(uid, input) {
     if (input.accountStatus !== undefined)
         existing.accountStatus = input.accountStatus;
     await existing.save();
+    if (previous !== JSON.stringify({ roles: effectiveRoles(existing).sort(), status: existing.accountStatus }))
+        await (0, notificationService_1.notify)([uid], { type: 'account:changed', title: 'Administratori përditësoi llogarinë tuaj', href: '/dashboard', eventKey: `account:${uid}:${existing.updatedAt?.toISOString()}` });
+    if (existing.accountStatus !== 'active')
+        (0, realtime_1.disconnectUser)(uid);
     return toPublicUser(existing);
 }
 async function deleteUserByUid(uid) {
     const result = await User_1.User.deleteOne({ uid });
     if (result.deletedCount === 0)
         throw new Error('Përdoruesi nuk u gjet');
+    (0, realtime_1.disconnectUser)(uid);
     return { deleted: true, uid };
 }
 async function countUsersByRole() {

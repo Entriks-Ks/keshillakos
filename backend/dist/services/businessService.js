@@ -20,6 +20,7 @@ exports.removeBusinessExpert = removeBusinessExpert;
 exports.ownedBusinessById = ownedBusinessById;
 exports.updateBusiness = updateBusiness;
 exports.reviewBusiness = reviewBusiness;
+const notificationService_1 = require("./notificationService");
 const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Business_1 = require("../models/Business");
@@ -287,7 +288,7 @@ async function inviteBusinessExpert(uid, businessId, email) {
     if (business.invitations.some((invite) => invite.user.equals(expert._id))) {
         throw new Error('Ftesa ekziston tashmë');
     }
-    // In-app invitation only for now. Hook future email/notification delivery here without changing membership rules.
+    // Persist membership changes before notifying the affected accounts.
     const updated = await Business_1.Business.findOneAndUpdate({
         _id: business._id,
         status: { $nin: ['suspended', 'closed'] },
@@ -296,6 +297,7 @@ async function inviteBusinessExpert(uid, businessId, email) {
     }, { $push: { invitations: { user: expert._id, invitedBy: userId, invitedAt: new Date() } } }, { new: true, runValidators: true });
     if (!updated)
         throw new Error('Ftesa nuk u dërgua');
+    await (0, notificationService_1.notify)([expert.uid], { type: 'company:invitation', title: 'Ftesë nga kompania', body: business.publicName, href: '/dashboard/provider/profile', eventKey: `invite:${business._id}:${expert._id}:${updated.updatedAt.toISOString()}`, actorUid: uid });
     return businessTeam(uid, businessId);
 }
 async function listMyBusinessInvitations(uid, input = { page: 1, limit: 20 }) {
@@ -322,6 +324,7 @@ async function acceptBusinessInvitation(uid, businessId) {
     const business = await Business_1.Business.findOneAndUpdate({ _id: businessId, 'invitations.user': userId, status: { $nin: ['suspended', 'closed'] } }, { $pull: { invitations: { user: userId } }, $addToSet: { members: { user: userId, role: 'member' } } }, { new: true, runValidators: true });
     if (!business)
         throw new Error('Ftesa nuk u gjet');
+    await (0, notificationService_1.notifyUsers)(business.owners, { type: 'company:invitation-accepted', title: 'Ftesa u pranua', body: business.publicName, href: '/dashboard/company/experts', eventKey: `invite:${business._id}:${userId}:accepted:${business.updatedAt.toISOString()}`, actorUid: uid });
     return { id: String(business._id), publicName: business.publicName };
 }
 async function rejectBusinessInvitation(uid, businessId) {
@@ -334,6 +337,7 @@ async function rejectBusinessInvitation(uid, businessId) {
     const business = await Business_1.Business.findOneAndUpdate({ _id: businessId, 'invitations.user': userId, status: { $nin: ['suspended', 'closed'] } }, { $pull: { invitations: { user: userId } } }, { new: true, runValidators: true });
     if (!business)
         throw new Error('Ftesa nuk u gjet');
+    await (0, notificationService_1.notifyUsers)(business.owners, { type: 'company:invitation-rejected', title: 'Ftesa u refuzua', body: business.publicName, href: '/dashboard/company/experts', eventKey: `invite:${business._id}:${userId}:rejected:${business.updatedAt.toISOString()}`, actorUid: uid });
     return { id: String(business._id), publicName: business.publicName };
 }
 async function cancelBusinessInvitation(uid, businessId, inviteeUserId) {
@@ -345,6 +349,7 @@ async function cancelBusinessInvitation(uid, businessId, inviteeUserId) {
         throw new Error('Ftesa nuk u gjet');
     business.invitations = business.invitations.filter((item) => String(item.user) !== inviteeUserId);
     await business.save();
+    await (0, notificationService_1.notifyUsers)([inviteeUserId], { type: 'company:invitation-cancelled', title: 'Ftesa u anulua', body: business.publicName, href: '/dashboard', eventKey: `invite:${business._id}:${inviteeUserId}:cancelled:${business.updatedAt.toISOString()}`, actorUid: uid });
     return businessTeam(uid, businessId);
 }
 async function removeBusinessExpert(uid, businessId, memberId) {
@@ -356,6 +361,7 @@ async function removeBusinessExpert(uid, businessId, memberId) {
         throw new Error('Anëtari nuk u gjet');
     business.members = business.members.filter((item) => String(item.user) !== memberId);
     await business.save();
+    await (0, notificationService_1.notifyUsers)([memberId], { type: 'company:member-removed', title: 'Anëtarësia në kompani përfundoi', body: business.publicName, href: '/dashboard', eventKey: `member:${business._id}:${memberId}:removed:${business.updatedAt.toISOString()}`, actorUid: uid });
     return businessTeam(uid, businessId);
 }
 async function ownedBusinessById(uid, businessId) {
@@ -442,11 +448,14 @@ async function updateBusiness(uid, businessId, changes) {
     if (changes.branches !== undefined)
         business.branches = changes.branches;
     // Verification is separate from lifecycle status; edits do not demote an active company.
-    if (business.verification.status === 'verified')
+    const newlyPending = business.verification.status === 'verified';
+    if (newlyPending)
         business.verification.status = 'pending';
     await business.save();
     if (changes.logoUrl !== undefined || changes.coverUrl !== undefined)
         await (0, mediaService_1.deleteUploads)(previousMedia);
+    if (newlyPending)
+        await (0, notificationService_1.notifyAdmins)({ type: 'company:pending', title: 'Kompani për rishqyrtim', href: '/dashboard/admin', eventKey: `business:${business._id}:pending:${business.updatedAt.toISOString()}`, actorUid: uid });
     return business;
 }
 async function reviewBusiness(id, reviewerUid, status, verification) {
@@ -456,12 +465,15 @@ async function reviewBusiness(id, reviewerUid, status, verification) {
     const business = await Business_1.Business.findById(id);
     if (!business)
         throw new Error('Biznesi nuk u gjet');
+    const changed = business.status !== status || Boolean(verification && business.verification.status !== verification);
     // Admin can suspend/reactivate; verification badges are optional and independent.
     business.status = status;
     if (verification) {
         business.verification = { status: verification, reviewedAt: new Date(), reviewedBy: reviewer };
     }
     await business.save();
+    if (changed)
+        await (0, notificationService_1.notifyUsers)([...business.owners, ...business.members.map(m => m.user)], { type: 'company:review', title: 'Statusi i kompanisë ndryshoi', body: `${business.publicName}: ${status}${verification ? ', ' + verification : ''}`, href: '/dashboard', eventKey: `business:${business._id}:${business.updatedAt.toISOString()}`, actorUid: reviewerUid });
     return business;
 }
 //# sourceMappingURL=businessService.js.map

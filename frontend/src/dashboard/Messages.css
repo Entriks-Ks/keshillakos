@@ -209,14 +209,46 @@
   font-weight: 700;
 }
 
-.msg-item.has-unread .msg-item-row time {
-  color: var(--accent);
-  font-weight: 700;
+.msg-item.has-unread:not(.is-active):not(:hover) {
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface));
 }
 
 .msg-item.has-unread .msg-item-preview {
   color: var(--brand-navy);
   font-weight: 600;
+}
+
+.msg-item-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.msg-item-preview-row .msg-item-preview {
+  min-width: 0;
+}
+
+.msg-item-unread {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.msg-item-unread.is-count {
+  width: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 18px;
+  text-align: center;
 }
 
 .msg-item.is-skeleton {

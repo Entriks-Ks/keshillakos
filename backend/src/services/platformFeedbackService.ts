@@ -1,3 +1,4 @@
+import { notifyAdmins } from './notificationService'
 import { queryPage, type PaginationInput } from './pagination'
 import { PlatformFeedback, type PlatformFeedbackStatus } from '../models/PlatformFeedback'
 
@@ -46,6 +47,7 @@ export function normalizeFeedbackInput(input: FeedbackInput) {
 export async function createPlatformFeedback(input: FeedbackInput) {
   const data = normalizeFeedbackInput(input)
   const doc = await PlatformFeedback.create(data)
+  await notifyAdmins({ type: 'feedback:new', title: 'Feedback i ri', href: '/dashboard/admin/feedback', eventKey: `feedback:${doc._id}`, actorUid: input.userUid })
   return toFeedbackItem(doc)
 }
 

@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import MessageNavButton from '../chat/MessageNavButton'
+import MessageUnreadBadge from '../chat/MessageUnreadBadge'
+import { useId, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Button, Drawer, Dropdown, Label, Separator, buttonVariants } from '@heroui/react'
 import {
@@ -25,6 +27,7 @@ import {
   type AccountMenuId,
 } from '../utils/siteNavMenu'
 import ProfileAvatar from './ProfileAvatar'
+import NotificationBell from '../notifications/NotificationBell'
 import './SiteNav.css'
 
 const ACCOUNT_ICONS: Record<AccountMenuId, LucideIcon> = {
@@ -77,7 +80,7 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             return (
               <Dropdown.Item key={item.id} id={item.id} href={item.to} textValue={item.label}>
                 <Icon size={16} aria-hidden className="kk-nav-menu-icon" />
-                <Label>{item.label}</Label>
+                <Label>{item.label}{item.id === 'messages' && <MessageUnreadBadge />}</Label>
               </Dropdown.Item>
             )
           })}
@@ -88,6 +91,74 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void 
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown>
+  )
+}
+
+function OffersNavigation({ active, mobile = false, onNavigate }: {
+  active: ReturnType<typeof activeMarketplaceLink>
+  mobile?: boolean
+  onNavigate?: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const subcategoriesId = useId()
+
+  if (mobile) {
+    return (
+      <div className="kk-nav-offers-mobile">
+        <button
+          type="button"
+          className="kk-nav-drawer-link kk-nav-offers-parent"
+          aria-expanded={expanded}
+          aria-controls={subcategoriesId}
+          onClick={() => setExpanded(open => !open)}
+        >
+          Ofertat
+          <ChevronDown size={16} aria-hidden />
+        </button>
+        <div id={subcategoriesId} className="kk-nav-offers-subcategories" data-expanded={expanded} inert={!expanded}>
+          <ul className="kk-nav-drawer-list kk-nav-offers-children">
+            {MARKETPLACE_LINKS.map(link => (
+              <li key={link.id}>
+                <Link to={link.to} className="kk-nav-drawer-link"
+                  aria-current={active === link.id ? 'page' : undefined} onClick={onNavigate}>
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="kk-nav-offers">
+      <Link
+        to="/ofertat"
+        className="kk-nav-link"
+        aria-current={active ? 'page' : undefined}
+        onClick={onNavigate}
+      >
+        Ofertat
+      </Link>
+      <Dropdown>
+        <Dropdown.Trigger>
+          <Button isIconOnly variant="ghost" size="sm" className="kk-nav-offers-toggle" aria-label="Hap menunë e ofertave">
+            <ChevronDown size={16} aria-hidden />
+          </Button>
+        </Dropdown.Trigger>
+        <Dropdown.Popover placement="bottom start" className="kk-nav-popover">
+          <Dropdown.Menu aria-label="Ofertat" className="kk-nav-menu">
+            {MARKETPLACE_LINKS.map(link => (
+              <Dropdown.Item key={link.id} id={link.id} href={link.to} textValue={link.label}
+                aria-current={active === link.id ? 'page' : undefined} onAction={onNavigate}>
+                <Label>{link.label}</Label>
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
+    </div>
   )
 }
 
@@ -113,17 +184,7 @@ export default function SiteNav() {
 
         <nav className="kk-nav-center" aria-label="Kryesore">
           <ul className="kk-nav-links">
-            {MARKETPLACE_LINKS.map((link) => (
-              <li key={link.id}>
-                <Link
-                  to={link.to}
-                  className="kk-nav-link"
-                  aria-current={active === link.id ? 'page' : undefined}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
+            <li><OffersNavigation active={active} /></li>
             <li>
               <Link
                 to="/rreth-nesh"
@@ -140,7 +201,11 @@ export default function SiteNav() {
           {loading ? (
             <span className="kk-nav-pending" aria-hidden />
           ) : user ? (
-            <AccountMenu user={user} onLogout={handleLogout} />
+            <>
+              <MessageNavButton />
+              <NotificationBell />
+              <AccountMenu user={user} onLogout={handleLogout} />
+            </>
           ) : (
             <div className="kk-nav-guest">
               <Link to="/login" className={`${buttonVariants({ variant: 'ghost', size: 'sm' })} kk-nav-login`}>
@@ -186,18 +251,7 @@ export default function SiteNav() {
 
                     <nav aria-label="Menuja mobile">
                       <ul className="kk-nav-drawer-list">
-                        {MARKETPLACE_LINKS.map((link) => (
-                          <li key={link.id}>
-                            <Link
-                              to={link.to}
-                              className="kk-nav-drawer-link"
-                              aria-current={active === link.id ? 'page' : undefined}
-                              onClick={closeMenu}
-                            >
-                              {link.label}
-                            </Link>
-                          </li>
-                        ))}
+                        <li><OffersNavigation active={active} mobile onNavigate={closeMenu} /></li>
                         <li>
                           <Link
                             to="/rreth-nesh"
@@ -225,7 +279,7 @@ export default function SiteNav() {
                                     onClick={closeMenu}
                                   >
                                     <Icon size={18} aria-hidden />
-                                    {item.label}
+                                    <span>{item.label}{item.id === 'messages' && <MessageUnreadBadge />}</span>
                                   </Link>
                                 </li>
                               )

@@ -7,6 +7,7 @@ exports.listRequestsByProvider = listRequestsByProvider;
 exports.listAllRequests = listAllRequests;
 exports.updateRequestStatus = updateRequestStatus;
 exports.countPendingForProvider = countPendingForProvider;
+const notificationService_1 = require("./notificationService");
 const ServiceRequest_1 = require("../models/ServiceRequest");
 const availabilityService_1 = require("./availabilityService");
 function toRequest(doc) {
@@ -76,6 +77,7 @@ async function createServiceRequest(input) {
             throw err;
         }
     }
+    await (0, notificationService_1.notify)([doc.providerUid], { type: 'request:new', title: 'Kërkesë e re', href: '/dashboard', eventKey: `request:${doc._id}:new`, actorUid: input.seekerUid });
     return toRequest(doc);
 }
 async function listRequestsBySeeker(seekerUid) {
@@ -97,6 +99,7 @@ async function updateRequestStatus(input) {
     if (!input.asAdmin && doc.providerUid !== input.providerUid) {
         throw new Error('Nuk ke leje për këtë kërkesë');
     }
+    const previousStatus = doc.status;
     doc.status = input.status;
     if (input.providerNote !== undefined) {
         doc.providerNote = input.providerNote.trim();
@@ -108,6 +111,8 @@ async function updateRequestStatus(input) {
             status: input.status,
         });
     }
+    if (previousStatus !== doc.status)
+        await (0, notificationService_1.notify)([doc.seekerUid, ...(input.asAdmin ? [doc.providerUid] : [])], { type: 'request:status', title: 'Statusi i kërkesës ndryshoi', body: doc.status, href: '/dashboard', eventKey: `request:${doc._id}:${doc.updatedAt.toISOString()}`, actorUid: input.providerUid });
     return toRequest(doc);
 }
 async function countPendingForProvider(providerUid) {
