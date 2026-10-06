@@ -25,3 +25,23 @@ export async function markPlatformFeedbackRead(id: string) {
   const { data } = await api.patch<{ feedback: PlatformFeedbackItem }>(`/api/feedback/${id}/read`)
   return data.feedback
 }
+
+export type UserReportItem = {
+  id: string; status: 'new' | 'reviewing' | 'resolved' | 'dismissed'; createdAt: string
+  reason: string; adminNote: string; serviceTitle: string
+  reporter: { name: string; profilePhoto: string }
+  reported: { name: string; profilePhoto: string; role: string }
+  requestContext?: { title: string; status: string } | null
+}
+export async function fetchUserReports(params: PageParams = {}) {
+  const { data } = await api.get<{ reports: UserReportItem[]; pagination: PaginationMeta }>('/api/feedback/reports', { params })
+  return pagedItems(data.reports, data.pagination)
+}
+export async function fetchUserReport(id: string) {
+  const { data } = await api.get<{ report: UserReportItem }>(`/api/feedback/reports/${id}`)
+  return data.report
+}
+export async function updateUserReportStatus(id: string, status: 'reviewing' | 'resolved' | 'dismissed') {
+  const { data } = await api.patch<{ report: UserReportItem }>(`/api/feedback/reports/${id}/status`, { status })
+  return data.report
+}

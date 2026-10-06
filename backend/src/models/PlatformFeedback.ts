@@ -8,6 +8,7 @@ export type PlatformFeedbackDoc = {
   email: string
   userUid: string
   status: PlatformFeedbackStatus
+  chatReport?: { conversationId: string; reportedUid: string; reason: string; reviewStatus?: 'new' | 'reviewing' | 'resolved' | 'dismissed'; adminNote?: string }
   createdAt: Date
   updatedAt: Date
 }
@@ -19,8 +20,11 @@ const platformFeedbackSchema = new Schema<PlatformFeedbackDoc>(
     email: { type: String, trim: true, lowercase: true, maxlength: 160, default: '' },
     userUid: { type: String, trim: true, default: '', index: true },
     status: { type: String, enum: ['new', 'read'], default: 'new', index: true },
+    chatReport: { type: new Schema({ conversationId: { type: String, required: true }, reportedUid: { type: String, required: true }, reason: { type: String, required: true, maxlength: 500 }, reviewStatus: { type: String, enum: ['new', 'reviewing', 'resolved', 'dismissed'] }, adminNote: { type: String, maxlength: 1000 } }, { _id: false }), default: undefined },
   },
   { timestamps: true },
 )
+
+platformFeedbackSchema.index({ userUid: 1, 'chatReport.conversationId': 1 }, { unique: true, partialFilterExpression: { status: 'new', 'chatReport.conversationId': { $exists: true } } })
 
 export const PlatformFeedback = mongoose.model<PlatformFeedbackDoc>('PlatformFeedback', platformFeedbackSchema)

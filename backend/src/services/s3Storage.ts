@@ -24,13 +24,14 @@ function s3() {
   return client
 }
 
-export async function putObject(key: string, body: Buffer, contentType: string) {
+export async function putObject(key: string, body: Buffer, contentType: string, options?: { private?: boolean }) {
+  if (key.startsWith('chat-private/') && !options?.private) throw new Error('Chat files require private storage')
   await s3().send(new PutObjectCommand({
     Bucket: bucketName(),
     Key: key,
     Body: body,
     ContentType: contentType,
-    CacheControl: 'public, max-age=31536000, immutable',
+    CacheControl: options?.private ? 'private, no-store' : 'public, max-age=31536000, immutable',
   }))
 }
 

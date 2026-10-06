@@ -30,6 +30,11 @@ import { useChatSocket } from '../hooks/useChatSocket'
 import { getErrorMessage } from '../utils/errors'
 import { providerPath } from '../utils/publicPaths'
 import './Messages.css'
+import ConversationActions from '../chat/ConversationActions'
+import { useChatPresence, presenceLabel } from '../chat/useChatPresence'
+import type { ChatDetails } from '../api/chat'
+import { REQUEST_STATUS } from './requestDisplay'
+import { getDashboardPath } from '../utils/dashboardPath'
 
 function sameDate(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
@@ -105,6 +110,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [peerTyping, setPeerTyping] = useState(false)
+  const [chatDetails, setChatDetails] = useState<(ChatDetails & { conversationId: string }) | null>(null)
   const historyRef = useRef<HTMLDivElement | null>(null)
   const followBottomRef = useRef(true)
   const smoothFollowRef = useRef(false)
@@ -124,7 +130,8 @@ export default function MessagesPage() {
   const typingTimeout = useRef<number | null>(null)
   const didAutoSelect = useRef(false)
 
-  const socket = useChatSocket(Boolean(user))
+  const socket = useChatSocket(Boolean(user), user?.uid)
+  const presence = useChatPresence(socket, [...conversations.map(c => c.id), ...(activeId ? [activeId] : [])])
 
   useEffect(() => {
     mountedRef.current = true
@@ -186,6 +193,9 @@ export default function MessagesPage() {
   )
 
   const filteredConversations = conversations
+  const currentDetails = chatDetails?.conversationId === activeId ? chatDetails : null
+  const messagingDisabled = Boolean(currentDetails?.messagingBlocked)
+  useEffect(() => { if (messagingDisabled) setPeerTyping(false) }, [messagingDisabled])
 
   useEffect(() => {
     let cancelled = false
@@ -357,7 +367,7 @@ export default function MessagesPage() {
 
   async function onSend(e: FormEvent) {
     e.preventDefault()
-    if (!activeId || !draft.trim() || sending) return
+    if (!activeId || !draft.trim() || sending || messagingDisabled) return
     const body = draft.trim()
     setSending(true)
     setError('')
@@ -402,10 +412,10 @@ export default function MessagesPage() {
             <span
               className={`msg-conn${socket.connected ? ' is-online' : ''}`}
               role="status"
-              title={socket.connected ? 'Online' : 'Duke u lidhur'}
+              title={socket.connected ? 'Lidhur' : 'Duke u lidhur'}
             >
               <span className="msg-conn-dot" aria-hidden />
-              <span className="msg-conn-label">{socket.connected ? 'Online' : 'Duke u lidhur'}</span>
+              <span className="msg-conn-label">{socket.connected ? 'Lidhur' : 'Duke u lidhur'}</span>
             </span>
           </div>
 
@@ -519,6 +529,7 @@ export default function MessagesPage() {
             </div>
           ) : (
             <>
+              <div className="msg-thread-heading">
               <header className="msg-thread-head">
                 <Button
                   isIconOnly
@@ -533,11 +544,11 @@ export default function MessagesPage() {
                 <div className="msg-thread-meta">
                   <strong>{active?.peer.name || 'Bisedë'}</strong>
                   <span className={peerTyping ? 'is-typing' : undefined}>
-                    {peerTyping
+                    {peerTyping && !messagingDisabled
                       ? 'Po shkruan...'
-                      : active?.serviceTitle
+                      : (active?.peer.uid && socket.connected ? presenceLabel(presence.get(active.peer.uid)) : '') || (active?.serviceTitle
                         ? `Për: ${active.serviceTitle}`
-                        : active?.peer.roleLabel || 'Chat'}
+                        : active?.peer.roleLabel || 'Chat')}
                   </span>
                 </div>
                 {active?.peer.uid ? (
@@ -550,7 +561,14 @@ export default function MessagesPage() {
                     <span>Shiko profilin</span>
                   </Link>
                 ) : null}
+                <ConversationActions conversationId={activeId} onAvailability={socket.onAvailability} onDetails={setChatDetails} />
               </header>
+              {currentDetails?.requestContext && <div className="msg-request-context">
+                <div><span>Kërkesë për shërbim</span><strong>{currentDetails.requestContext.title}</strong><span>Statusi: {REQUEST_STATUS[currentDetails.requestContext.status as keyof typeof REQUEST_STATUS]?.label || (currentDetails.requestContext.status === 'cancelled' ? 'Anuluar' : currentDetails.requestContext.status)}</span></div>
+                <Link to={`${getDashboardPath(user?.role || 'user')}/${user?.role === 'provider' || user?.role === 'company' ? active?.seekerUid === user?.uid ? 'my-requests' : 'inbox' : 'requests'}`} className="uo-link">Shiko kërkesën</Link>
+              </div>}
+              {currentDetails?.messagingBlocked && <p className="msg-blocked-note" role="status">{currentDetails.blockedByMe ? 'E ke bllokuar këtë përdorues. Zhbllokoje nga menuja për të dërguar mesazhe.' : 'Mesazhet nuk janë të disponueshme për këtë bisedë.'}</p>}
+              </div>
 
               <div className="msg-history" ref={historyRef}
                 onWheel={() => { smoothFollowRef.current = false }}
@@ -631,7 +649,7 @@ export default function MessagesPage() {
                   placeholder={`Shkruaj mesazh për ${active?.peer.name || 'ta'}...`}
                   aria-label="Mesazhi"
                   maxLength={4000}
-                  disabled={sending}
+                  disabled={sending || messagingDisabled}
                   fullWidth
                   className="msg-input"
                 />
@@ -640,7 +658,7 @@ export default function MessagesPage() {
                   variant="primary"
                   isIconOnly
                   className="msg-send"
-                  isDisabled={sending || !draft.trim()}
+                  isDisabled={sending || messagingDisabled || !draft.trim()}
                   aria-label="Dërgo"
                 >
                   <Send size={18} />

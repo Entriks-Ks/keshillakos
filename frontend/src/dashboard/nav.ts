@@ -4,6 +4,7 @@ import {
   Briefcase,
   CalendarDays,
   FolderKanban,
+  Flag,
   Inbox,
   LayoutDashboard,
   MessageCircle,
@@ -208,6 +209,7 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
           icon: MessageSquarePlus,
           section: 'manage',
         },
+        { to: '/dashboard/admin/reports', label: 'Raportime', icon: Flag, section: 'manage' },
         profile('/dashboard/admin'),
         settings('/dashboard/admin'),
       ]

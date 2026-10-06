@@ -24,6 +24,7 @@ const MessagesPage = lazy(() => import('./dashboard/MessagesPage'))
 const CompanyExpertsPanel = lazy(() => import('./dashboard/CompanyExpertsPanel'))
 const ProviderServicesPanel = lazy(() => import('./dashboard/ProviderServicesPanel'))
 const AdminFeedbackPanel = lazy(() => import('./dashboard/AdminFeedbackPanel'))
+const AdminReportsPanel = lazy(() => import('./dashboard/AdminReportsPanel'))
 const DashboardRedirect = lazy(() => import('./pages/DashboardRedirect'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const LegalPage = lazy(() => import('./pages/LegalPage'))
@@ -155,6 +156,7 @@ export default function App() {
                 <Route path="requests" element={<AdminRequestsPanel />} />
                 <Route path="messages" element={<MessagesPage />} />
                 <Route path="feedback" element={<AdminFeedbackPanel />} />
+                <Route path="reports" element={<AdminReportsPanel />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="profile/edit" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />

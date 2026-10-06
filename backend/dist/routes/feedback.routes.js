@@ -5,8 +5,42 @@ const express_1 = require("express");
 const mongoose_1 = require("mongoose");
 const auth_1 = require("../middleware/auth");
 const platformFeedbackService_1 = require("../services/platformFeedbackService");
+const adminReportService_1 = require("../services/adminReportService");
 const router = (0, express_1.Router)();
 router.use(pagination_1.validatePagination);
+router.get('/reports', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
+    try {
+        const reports = await (0, adminReportService_1.listUserReports)((0, pagination_1.paginationInput)(req.query, 20));
+        return res.json({ reports, pagination: reports.pagination });
+    }
+    catch {
+        return res.status(500).json({ message: 'Raportimet nuk u ngarkuan' });
+    }
+});
+router.get('/reports/:id', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
+    const id = String(req.params.id);
+    if (!mongoose_1.Types.ObjectId.isValid(id))
+        return res.status(400).json({ message: 'Raportimi është i pavlefshëm' });
+    try {
+        const report = await (0, adminReportService_1.userReportDetails)(id);
+        return report ? res.json({ report }) : res.status(404).json({ message: 'Raportimi nuk u gjet' });
+    }
+    catch {
+        return res.status(500).json({ message: 'Raportimi nuk u ngarkua' });
+    }
+});
+router.patch('/reports/:id/status', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
+    const id = String(req.params.id);
+    if (!mongoose_1.Types.ObjectId.isValid(id))
+        return res.status(400).json({ message: 'Raportimi është i pavlefshëm' });
+    try {
+        return res.json({ report: await (0, adminReportService_1.updateReportStatus)(id, req.body?.status) });
+    }
+    catch (error) {
+        const status = error.status || 500;
+        return res.status(status).json({ message: status === 500 ? 'Statusi i raportimit nuk u ruajt' : error.message });
+    }
+});
 router.post('/', async (req, res, next) => {
     if (!req.headers.authorization?.startsWith('Bearer '))
         return next();

@@ -17,7 +17,8 @@ const ProviderProfile_1 = require("../models/ProviderProfile");
 const Business_1 = require("../models/Business");
 const realtime_1 = require("./realtime");
 function notificationView(doc) {
-    return { id: String(doc._id), type: doc.type, title: doc.title, body: doc.body, href: doc.href, readAt: doc.readAt, createdAt: doc.createdAt };
+    const legacyReport = doc.type === 'feedback:new' && doc.title === 'Raportim përdoruesi në chat';
+    return { id: String(doc._id), type: legacyReport ? 'report:new' : doc.type, title: legacyReport ? 'Raportim i ri përdoruesi' : doc.title, body: doc.body, href: legacyReport ? '/dashboard/admin/reports' : doc.href, readAt: doc.readAt, createdAt: doc.createdAt };
 }
 async function unreadCount(uid) { return Notification_1.Notification.countDocuments({ recipientUid: uid, type: { $ne: 'message:new' }, readAt: null }); }
 async function publishCount(uid) { (0, realtime_1.emitToUser)(uid, 'notification:count', { unreadCount: await unreadCount(uid) }); }

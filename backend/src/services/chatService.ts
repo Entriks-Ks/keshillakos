@@ -10,6 +10,9 @@ import { ServiceRequest } from '../models/ServiceRequest'
 import { User } from '../models/User'
 import { UserRequest } from '../models/UserRequest'
 import { publicProfileRole } from './providerPublicService'
+import { assertChatUnblocked } from './chatSafetyService'
+import { ServiceOffer } from '../models/ServiceOffer'
+import { Service } from '../models/Service'
 import { findUserByUid, findUsersByUids } from './userService'
 
 const MAX_BODY = 4000
@@ -56,8 +59,8 @@ function toMessage(doc: {
   }
 }
 
-async function assertParticipant(conversationId: string, uid: string) {
-  if (!mongoose.isValidObjectId(conversationId)) {
+export async function assertParticipant(conversationId: string, uid: string) {
+  if (typeof conversationId !== 'string' || !mongoose.isValidObjectId(conversationId)) {
     throw Object.assign(new Error('Biseda nuk u gjet'), { status: 404 })
   }
   const conversation = await Conversation.findById(conversationId)
@@ -102,13 +105,23 @@ export async function openOrGetConversation(input: {
   serviceTitle?: string
   initialMessage?: string
   senderUid?: string
+  /** Set only by the request workflow, never accepted from the chat HTTP body. */
+  requestDeliveryId?: string
 }) {
-  if (!input.providerUid?.trim()) {
+  if (typeof input.providerUid !== 'string' || !input.providerUid.trim() || typeof input.seekerUid !== 'string' || !input.seekerUid.trim()) {
     throw Object.assign(new Error('Ofruesi është i detyrueshëm'), { status: 400 })
   }
+
+  const senderUid = input.senderUid || input.seekerUid
+  if (senderUid !== input.seekerUid && senderUid !== input.providerUid) {
+    throw Object.assign(new Error('Nuk ke leje për të hapur këtë bisedë'), { status: 403 })
+  }
+  if (senderUid === input.providerUid) await assertProviderCanMessageSeeker(input.providerUid, input.seekerUid)
+  await assertChatUnblocked(input.seekerUid, input.providerUid)
   if (input.seekerUid === input.providerUid) {
     throw Object.assign(new Error('Nuk mund të chatosh me veten'), { status: 400 })
   }
+  if (input.initialMessage !== undefined && (typeof input.initialMessage !== 'string' || input.initialMessage.trim().length > MAX_BODY)) throw Object.assign(new Error('Mesazhi është i pavlefshëm'), { status: 400 })
 
   const provider = await findUserByUid(input.providerUid)
   if (!provider) {
@@ -117,6 +130,24 @@ export async function openOrGetConversation(input: {
   if (!publicProfileRole(provider)) {
     throw Object.assign(new Error('Ky përdorues nuk ofron shërbime'), { status: 400 })
   }
+  const seeker = await findUserByUid(input.seekerUid)
+  if (!seeker || (provider.accountStatus && provider.accountStatus !== 'active') || (seeker.accountStatus && seeker.accountStatus !== 'active')) {
+    throw Object.assign(new Error('Llogaria nuk është aktive'), { status: 403 })
+  }
+  if (input.serviceId !== undefined && typeof input.serviceId !== 'string') throw Object.assign(new Error('Shërbimi është i pavlefshëm'), { status: 400 })
+  if (input.serviceTitle !== undefined && typeof input.serviceTitle !== 'string') throw Object.assign(new Error('Shërbimi është i pavlefshëm'), { status: 400 })
+  let serviceTitle = input.serviceTitle?.trim().slice(0, 160)
+  if (input.serviceId?.trim()) {
+    if (!mongoose.isValidObjectId(input.serviceId.trim())) throw Object.assign(new Error('Shërbimi është i pavlefshëm'), { status: 400 })
+    const providerAccount = await User.findOne({ uid: input.providerUid }).select('_id').lean()
+    const profiles = await ProviderProfile.find({ ownerUser: providerAccount?._id }).select('_id').lean()
+    const [offer, legacy] = await Promise.all([
+      ServiceOffer.findOne({ _id: input.serviceId.trim(), providerProfile: { $in: profiles.map(p => p._id) } }).select('name').lean(),
+      Service.findOne({ _id: input.serviceId.trim(), providerUid: input.providerUid }).select('title').lean(),
+    ])
+    if (!offer && !legacy) throw Object.assign(new Error('Shërbimi nuk i përket këtij ofruesi'), { status: 403 })
+    serviceTitle = offer?.name || legacy?.title
+  }
 
   let conversation = await Conversation.findOne({
     seekerUid: input.seekerUid,
@@ -124,17 +155,23 @@ export async function openOrGetConversation(input: {
   })
 
   if (!conversation) {
-    conversation = await Conversation.create({
+    try { conversation = await Conversation.create({
       seekerUid: input.seekerUid,
       providerUid: input.providerUid,
       serviceId: input.serviceId?.trim() || '',
-      serviceTitle: input.serviceTitle?.trim() || '',
+      serviceTitle: serviceTitle || '',
+      requestDeliveryId: input.requestDeliveryId,
       seekerUnread: 0,
       providerUnread: 0,
-    })
-  } else if (input.serviceId || input.serviceTitle) {
+    }) } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error
+      conversation = await Conversation.findOne({ seekerUid: input.seekerUid, providerUid: input.providerUid })
+      if (!conversation) throw error
+    }
+  } else if (input.serviceId || serviceTitle || input.requestDeliveryId) {
     if (input.serviceId?.trim()) conversation.serviceId = input.serviceId.trim()
-    if (input.serviceTitle?.trim()) conversation.serviceTitle = input.serviceTitle.trim()
+    if (serviceTitle) conversation.serviceTitle = serviceTitle
+    if (input.requestDeliveryId) conversation.requestDeliveryId = new mongoose.Types.ObjectId(input.requestDeliveryId)
     await conversation.save()
   }
 
@@ -201,7 +238,7 @@ export async function sendMessage(input: {
   senderUid: string
   body: string
 }) {
-  const body = input.body.trim()
+  const body = typeof input.body === 'string' ? input.body.trim() : ''
   if (!body) {
     throw Object.assign(new Error('Mesazhi nuk mund të jetë bosh'), { status: 400 })
   }
@@ -210,13 +247,14 @@ export async function sendMessage(input: {
   }
 
   const conversation = await assertParticipant(input.conversationId, input.senderUid)
+  const peerUid = input.senderUid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid
+  await assertChatUnblocked(input.senderUid, peerUid)
   const message = await Message.create({
     conversation: conversation._id,
     senderUid: input.senderUid,
     body,
   })
 
-  const peerUid = input.senderUid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid
   const unreadField = peerUid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread'
   const active = isConversationActive(peerUid, input.conversationId)
   await Conversation.findByIdAndUpdate(conversation._id, {

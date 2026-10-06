@@ -20,7 +20,7 @@ type AckResult = {
   error?: string
 }
 
-export function useChatSocket(enabled: boolean) {
+export function useChatSocket(enabled: boolean, ownerUid?: string) {
   const socketRef = useRef<Socket | null>(null)
   const activeConversationRef = useRef<string | null>(null)
   const [connected, setConnected] = useState(false)
@@ -52,7 +52,7 @@ export function useChatSocket(enabled: boolean) {
       socketRef.current = null
       setConnected(false)
     }
-  }, [enabled])
+  }, [enabled, ownerUid])
 
   const joinConversation = useCallback((conversationId: string): Promise<AckResult> => {
     const socket = socketRef.current
@@ -118,6 +118,25 @@ export function useChatSocket(enabled: boolean) {
     }
   }, [connected])
 
+  const onAvailability = useCallback((handler: (event: import('../api/chat').ChatAvailability & { conversationId: string }) => void) => {
+    const socket = socketRef.current
+    if (!socket) return () => undefined
+    socket.on('chat:availability', handler)
+    return () => { socket.off('chat:availability', handler) }
+  }, [connected])
+
+  const onPresence = useCallback((handler: (event: import('../chat/useChatPresence').ChatPresence) => void) => {
+    const socket = socketRef.current
+    if (!socket) return () => undefined
+    socket.on('presence:update', handler)
+    return () => { socket.off('presence:update', handler) }
+  }, [connected])
+  const subscribePresence = useCallback((conversationIds: string[], handler: (values: import('../chat/useChatPresence').ChatPresence[]) => void) => {
+    socketRef.current?.emit('presence:subscribe', { conversationIds }, (result: { ok: boolean; presence?: import('../chat/useChatPresence').ChatPresence[] }) => {
+      if (result?.ok && result.presence) handler(result.presence)
+    })
+  }, [connected])
+
   return {
     connected,
     joinConversation,
@@ -127,5 +146,8 @@ export function useChatSocket(enabled: boolean) {
     onMessageNew,
     onTyping,
     onConversationUpdated,
+    onAvailability,
+    onPresence,
+    subscribePresence,
   }
 }

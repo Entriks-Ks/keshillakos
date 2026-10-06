@@ -104,6 +104,7 @@ router.post('/', requireAuth, requireRole('user', 'provider', 'company', 'admin'
           providerUid: chatProviderUid,
           serviceId,
           serviceTitle,
+          requestDeliveryId: request?.deliveryId,
         })
       } catch {
         // Request is already saved; chat thread is best-effort.
