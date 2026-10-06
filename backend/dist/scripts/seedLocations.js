@@ -11,11 +11,25 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const db_1 = require("../config/db");
 const City_1 = require("../models/City");
 const Country_1 = require("../models/Country");
-// A deliberately small initial city catalog; not a complete list of settlements.
+// Kosovo covers all 38 municipalities in the existing city catalog; other
+// countries retain their initial city lists. This is not a settlement inventory.
 exports.locations = [
     { slug: 'kosovo', name: ['Kosovë', 'Kosovo'], cities: [
             ['Prishtinë', 'Pristina'], ['Prizren', 'Prizren'], ['Pejë', 'Peja'],
             ['Gjakovë', 'Gjakova'], ['Ferizaj', 'Ferizaj'], ['Gjilan', 'Gjilan'], ['Mitrovicë', 'Mitrovica'],
+            // Append only: preserve the original names, slugs and ordering above.
+            // Source: https://smial.rks-gov.net/inst/municipalitieslist.aspx?index=4
+            ['Deçan', 'Decan'], ['Gllogoc', 'Gllogoc'], ['Dragash', 'Dragash'],
+            ['Istog', 'Istog'], ['Kaçanik', 'Kacanik'], ['Klinë', 'Klina'],
+            ['Fushë Kosovë', 'Fushe Kosove'], ['Kamenicë', 'Kamenica'], ['Leposaviq', 'Leposaviq'],
+            ['Lipjan', 'Lipjan'], ['Novobërdë', 'Novoberda'], ['Obiliq', 'Obiliq'],
+            ['Rahovec', 'Rahovec'], ['Podujevë', 'Podujeva'], ['Skënderaj', 'Skenderaj'],
+            ['Shtime', 'Shtime'], ['Shtërpcë', 'Shterpce'], ['Suharekë', 'Suhareka'],
+            ['Viti', 'Viti'], ['Vushtrri', 'Vushtrri'], ['Zubin Potok', 'Zubin Potok'],
+            ['Zveçan', 'Zvecan'], ['Malishevë', 'Malisheva'], ['Junik', 'Junik'],
+            ['Mamushë', 'Mamusha'], ['Hani i Elezit', 'Hani i Elezit'], ['Graçanicë', 'Gracanica'],
+            ['Ranillug', 'Ranillug'], ['Partesh', 'Partesh'], ['Kllokot', 'Kllokot'],
+            ['Mitrovicë e Veriut', 'North Mitrovica'],
         ] },
     { slug: 'albania', name: ['Shqipëri', 'Albania'], cities: [
             ['Tiranë', 'Tirana'], ['Durrës', 'Durres'], ['Vlorë', 'Vlore'],
