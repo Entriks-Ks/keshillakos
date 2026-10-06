@@ -26,7 +26,7 @@ type DashboardTopBarProps = {
 function AccountMenu({ user, role, onLogout }: { user: AuthUser; role: UserRole; onLogout: () => void }) {
   const displayName = userDisplayName(user)
   const shortName = displayName.split(' ')[0]
-  const publicProfile = role === 'provider' || role === 'company' ? providerPath(user) : null
+  const publicProfile = user.role !== 'admin' && !user.roles?.includes('admin') && (role === 'provider' || role === 'company') ? providerPath(user) : null
 
   return (
     <Dropdown>

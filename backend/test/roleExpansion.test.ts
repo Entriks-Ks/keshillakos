@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Types } from 'mongoose'
 import { Business } from '../src/models/Business'
+import { providerDirectoryPipeline } from '../src/services/marketplaceQuery'
 import { publicProfileRole } from '../src/services/providerPublicService'
 import { effectiveRoles, toPublicUser } from '../src/services/userService'
 
@@ -54,4 +55,20 @@ test('rejecting an invitation removes it without creating membership', async () 
   await business.validate()
   assert.equal(business.invitations.length, 0)
   assert.equal(business.members.length, 0)
+})
+
+
+test('admin accounts never qualify for a public expert or company profile', () => {
+  assert.equal(publicProfileRole({ role: 'admin', roles: ['user', 'admin'] }), null)
+  assert.equal(publicProfileRole({ role: 'admin', roles: ['user', 'provider'] }), null)
+  assert.equal(publicProfileRole({ role: 'provider', roles: ['user', 'provider', 'admin'] }), null)
+  assert.equal(publicProfileRole({ role: 'company', roles: ['user', 'company', 'admin'] }), null)
+  assert.equal(publicProfileRole({ role: 'admin' }), null)
+})
+
+test('public directory excludes admin owners before counting and paging', () => {
+  const stages = providerDirectoryPipeline({}) as any[]
+  const ownerMatch = stages.find(stage => stage.$match?.['_owner.uid'])?.$match
+  assert.deepEqual(ownerMatch['_owner.role'], { $ne: 'admin' })
+  assert.deepEqual(ownerMatch['_owner.roles'], { $ne: 'admin' })
 })

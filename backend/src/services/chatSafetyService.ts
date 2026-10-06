@@ -45,7 +45,7 @@ export async function reportChatUser(conversation: { _id: { toString(): string }
     const feedback = await PlatformFeedback.create({
       userUid: uid, name: user?.name || 'Përdorues', email: user?.email || '', status: 'new',
       message: text,
-      chatReport: { conversationId, reportedUid, reason: text, reviewStatus: 'new' },
+      chatReport: { conversationId, reportedUid, reason: text, reviewStatus: 'reviewing' },
     })
     await notifyAdmins({ type: 'report:new', title: 'Raportim i ri përdoruesi', href: '/dashboard/admin/reports', eventKey: `feedback:${feedback._id}`, actorUid: uid })
   } catch (error) {

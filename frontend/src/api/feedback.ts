@@ -27,21 +27,33 @@ export async function markPlatformFeedbackRead(id: string) {
 }
 
 export type UserReportItem = {
-  id: string; status: 'new' | 'reviewing' | 'resolved' | 'dismissed'; createdAt: string
+  id: string; status: 'reviewing' | 'resolved' | 'rejected'; createdAt: string
   reason: string; adminNote: string; serviceTitle: string
-  reporter: { name: string; profilePhoto: string }
-  reported: { name: string; profilePhoto: string; role: string }
+  reporter: { name: string; profilePhoto: string; role: string }
+  reported: { uid?: string; name: string; profilePhoto: string; role: string; accountStatus: string; publicProfile: boolean; isAdmin: boolean; headline: string; bio: string; email: string }
+  hasConversation: boolean
+  resolution: { decision: 'resolved' | 'rejected'; admin: string; at?: string; note: string } | null
   requestContext?: { title: string; status: string } | null
 }
-export async function fetchUserReports(params: PageParams = {}) {
-  const { data } = await api.get<{ reports: UserReportItem[]; pagination: PaginationMeta }>('/api/feedback/reports', { params })
-  return pagedItems(data.reports, data.pagination)
+export type ReportSummary = { total: number; reviewing: number; resolved: number; rejected: number }
+export async function fetchUserReports(params: PageParams & { status?: string; sort?: string } = {}) {
+  const { data } = await api.get<{ reports: UserReportItem[]; pagination: PaginationMeta; summary: ReportSummary }>('/api/feedback/reports', { params })
+  return Object.assign(pagedItems(data.reports, data.pagination), { reportSummary: data.summary })
 }
 export async function fetchUserReport(id: string) {
   const { data } = await api.get<{ report: UserReportItem }>(`/api/feedback/reports/${id}`)
   return data.report
 }
-export async function updateUserReportStatus(id: string, status: 'reviewing' | 'resolved' | 'dismissed') {
-  const { data } = await api.patch<{ report: UserReportItem }>(`/api/feedback/reports/${id}/status`, { status })
+export async function updateUserReportStatus(id: string, status: 'reviewing' | 'resolved' | 'rejected', note?: string) {
+  const { data } = await api.patch<{ report: UserReportItem }>(`/api/feedback/reports/${id}/status`, { status, note })
   return data.report
+}
+export type ReportEvidenceMessage = { id: string; author: string; body: string; createdAt: string }
+export async function fetchReportConversation(id: string, before?: string, beforeId?: string) {
+  const { data } = await api.get<{ messages: ReportEvidenceMessage[]; pagination: PaginationMeta }>(`/api/feedback/reports/${id}/conversation`, { params: { before, beforeId, limit: 30 } })
+  return data
+}
+export async function fetchReportRequest(id: string) {
+  const { data } = await api.get<{ request: { title: string; status: string; details: string } }>(`/api/feedback/reports/${id}/request`)
+  return data.request
 }

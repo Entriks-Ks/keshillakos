@@ -28,12 +28,39 @@ sidebar item and admin-only API. Normal Feedback queries/read actions exclude
 reports. The
 server derives reporter/target identities and persists structured `chatReport`
 metadata. Admins see batch-resolved names/photos/roles, structured reasons and
-verified context, never technical message strings or IDs. Review statuses are
-new/reviewing/resolved/dismissed; legacy read reports appear as reviewing.
+verified context, never technical message strings or IDs. The moderation inbox
+supports status filters, global counts, and reviewing-first/newest sorting with
+server pagination. Desktop uses compact rows; mobile uses responsive cards.
+The large HeroUI review modal supports investigation before a decision.
+
+Public statuses are reviewing/resolved/rejected. Legacy new/read reports remain
+reviewing; dismissed maps to rejected without changing stored history. New reports
+start reviewing. Terminal decisions require a 5–1000 character internal note;
+reviewedBy comes only from the authenticated admin, and reviewedAt is server time.
+Terminal cases cannot be reopened/overwritten and remain visible with their
+decision/admin/date/note. Earlier cases with missing audit metadata show that it
+was not recorded rather than inventing an administrator or time.
 One pending report per reporter/conversation is enforced by a partial
 unique index. An admin receives a moderation notification, without copying chat
 message bodies into the bell or activity feed. Reports do not automatically ban
 users or change request status.
+
+Investigation endpoints are admin-only and report-scoped:
+`GET /api/feedback/reports/:id/conversation` returns at most 30 messages per page,
+with a timestamp/ObjectId cursor for ties; it verifies both report participants
+and never joins sockets, marks messages read, or changes unread counts.
+`GET /api/feedback/reports/:id/request` returns only a verified linked request.
+The review modal loads evidence on demand instead of dumping full conversations.
+Names/profile text/reasons/evidence/decision notes are redacted for internal IDs;
+identifiers are used only for keys, requests and existing profile links.
+
+Existing account-status moderation is exposed through the existing admin users
+API, with HeroUI AlertDialog confirmation: suspended (Kufizo) and closed
+(Çaktivizo). These options are hidden for self/admin accounts and closed cases.
+No new global ban/block or delete operation was added. Account moderation and
+the case decision are separate deliberate steps; the required decision note
+records the admin's rationale. Public profile links reuse existing provider pages;
+private accounts link to the existing admin users search by email/name.
 
 ChatBlock stores a directional user block. Either direction disables sends and
 typing for both parties, across all their threads. Only the blocker can remove

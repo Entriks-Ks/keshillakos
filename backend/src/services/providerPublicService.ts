@@ -22,7 +22,7 @@ export type ProviderPublicDetails = {
   ratingCount: number
 }
 
-const PUBLIC_PROFILE_ROLES: UserRole[] = ['provider', 'company', 'admin']
+const PUBLIC_PROFILE_ROLES: UserRole[] = ['provider', 'company']
 
 /**
  * `role` follows the dashboard context the user last switched to, so an expert
@@ -31,6 +31,7 @@ const PUBLIC_PROFILE_ROLES: UserRole[] = ['provider', 'company', 'admin']
  */
 export function publicProfileRole(user: { role?: UserRole; roles?: UserRole[] }): UserRole | null {
   const granted = user.roles ?? []
+  if (user.role === 'admin' || granted.includes('admin')) return null
   if (user.role && granted.includes(user.role) && PUBLIC_PROFILE_ROLES.includes(user.role)) return user.role
   return PUBLIC_PROFILE_ROLES.find((role) => granted.includes(role)) ?? null
 }

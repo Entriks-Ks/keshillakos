@@ -46,7 +46,7 @@ export async function createAdminUser(payload: {
 
 export async function updateAdminUser(
   uid: string,
-  payload: { name?: string; email?: string; role?: UserRole },
+  payload: { name?: string; email?: string; role?: UserRole; accountStatus?: 'active' | 'suspended' | 'closed' },
 ) {
   const { data } = await api.patch<{ user: AdminUser }>(`/api/admin/users/${uid}`, payload)
   return data.user

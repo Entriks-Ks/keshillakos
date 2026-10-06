@@ -7,26 +7,39 @@ import {
   listPlatformFeedback,
   markPlatformFeedbackRead,
 } from '../services/platformFeedbackService'
-import { listUserReports, updateReportStatus, userReportDetails } from '../services/adminReportService'
+import { listUserReports, reportListOptions, reportConversationEvidence, reportRequestEvidence, updateReportStatus, userReportDetails } from '../services/adminReportService'
 
 const router = Router()
 router.use(validatePagination)
 
 router.get('/reports', requireAuth, requireRole('admin'), async (req, res) => {
-  try { const reports = await listUserReports(paginationInput(req.query, 20)); return res.json({ reports, pagination: reports.pagination }) }
-  catch { return res.status(500).json({ message: 'Raportimet nuk u ngarkuan' }) }
+  try { const reports = await listUserReports(paginationInput(req.query, 20), reportListOptions(req.query)); return res.json({ reports, pagination: reports.pagination, summary: reports.summary }) }
+  catch (error) { return res.status((error as { status?: number }).status || 500).json({ message: 'Raportimet nuk u ngarkuan' }) }
 })
 router.get('/reports/:id', requireAuth, requireRole('admin'), async (req, res) => {
   const id = String(req.params.id)
   if (!Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Raportimi është i pavlefshëm' })
   try { const report = await userReportDetails(id); return report ? res.json({ report }) : res.status(404).json({ message: 'Raportimi nuk u gjet' }) }
-  catch { return res.status(500).json({ message: 'Raportimi nuk u ngarkua' }) }
+  catch (error) { return res.status((error as { status?: number }).status || 500).json({ message: 'Raportimi nuk u ngarkua' }) }
 })
 router.patch('/reports/:id/status', requireAuth, requireRole('admin'), async (req, res) => {
   const id = String(req.params.id)
   if (!Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Raportimi është i pavlefshëm' })
-  try { return res.json({ report: await updateReportStatus(id, req.body?.status) }) }
+    try { return res.json({ report: await updateReportStatus(id, req.body?.status, req.user!.uid, req.body?.note) }) }
   catch (error) { const status = (error as { status?: number }).status || 500; return res.status(status).json({ message: status === 500 ? 'Statusi i raportimit nuk u ruajt' : (error as Error).message }) }
+})
+
+router.get('/reports/:id/conversation', requireAuth, requireRole('admin'), async (req, res) => {
+  const id = String(req.params.id)
+  if (!Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Raportimi është i pavlefshëm' })
+  try { const messages = await reportConversationEvidence(id, paginationInput(req.query, 30), typeof req.query.before === 'string' ? req.query.before : undefined, typeof req.query.beforeId === 'string' ? req.query.beforeId : undefined); return res.json({ messages, pagination: messages.pagination }) }
+  catch (error) { return res.status((error as { status?: number }).status || 500).json({ message: 'Biseda nuk është e disponueshme për shqyrtim' }) }
+})
+router.get('/reports/:id/request', requireAuth, requireRole('admin'), async (req, res) => {
+  const id = String(req.params.id)
+  if (!Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Raportimi është i pavlefshëm' })
+  try { return res.json({ request: await reportRequestEvidence(id) }) }
+  catch (error) { return res.status((error as { status?: number }).status || 500).json({ message: 'Nuk ka kërkesë të lidhur të konfirmuar' }) }
 })
 
 router.post('/', async (req, res, next) => {

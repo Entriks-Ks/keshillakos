@@ -386,6 +386,15 @@
   min-width: 0;
 }
 
+.msg-thread-meta strong a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.msg-thread-meta strong a:hover {
+  text-decoration: underline;
+}
+
 .msg-thread-meta strong,
 .msg-thread-meta span {
   overflow: hidden;

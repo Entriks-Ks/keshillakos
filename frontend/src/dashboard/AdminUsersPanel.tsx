@@ -13,6 +13,7 @@ import {
   type AdminUser,
 } from '../api/adminUsers'
 import type { UserRole } from '../api/auth'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import ProfileAvatar from '../components/ProfileAvatar'
@@ -43,7 +44,8 @@ export default function AdminUsersPanel() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [counts, setCounts] = useState<Record<UserRole, number> | null>(null)
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
-  const [query, setQuery] = useState('')
+  const [searchParams] = useSearchParams()
+  const [query, setQuery] = useState(() => searchParams.get('q') || '')
   const usersPaging = usePagination(`${roleFilter}:${query}`)
   const pendingPaging = usePagination()
   const [loading, setLoading] = useState(true)
