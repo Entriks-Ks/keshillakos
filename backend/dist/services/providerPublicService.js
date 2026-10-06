@@ -9,7 +9,7 @@ const User_1 = require("../models/User");
 const roles_1 = require("../types/roles");
 const ratingService_1 = require("./ratingService");
 const userService_1 = require("./userService");
-const PUBLIC_PROFILE_ROLES = ['provider', 'company', 'admin'];
+const PUBLIC_PROFILE_ROLES = ['provider', 'company'];
 /**
  * `role` follows the dashboard context the user last switched to, so an expert
  * browsing in client mode reports `user`. Public visibility must follow the
@@ -17,6 +17,8 @@ const PUBLIC_PROFILE_ROLES = ['provider', 'company', 'admin'];
  */
 function publicProfileRole(user) {
     const granted = user.roles ?? [];
+    if (user.role === 'admin' || granted.includes('admin'))
+        return null;
     if (user.role && granted.includes(user.role) && PUBLIC_PROFILE_ROLES.includes(user.role))
         return user.role;
     return PUBLIC_PROFILE_ROLES.find((role) => granted.includes(role)) ?? null;

@@ -3,6 +3,7 @@ import { Server } from 'socket.io'
 import { firebaseVerifyIdToken } from './firebaseAuth'
 import { findUserByUid } from './userService'
 import { setRealtimeServer } from './realtime'
+import { registerPresence } from './presenceSocket'
 
 export type SocketUser = {
   uid: string
@@ -13,6 +14,8 @@ export function attachRealtimeSocket(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     cors: { origin: true, credentials: true },
     path: '/socket.io',
+    pingInterval: 25_000,
+    pingTimeout: 20_000,
   })
 
   setRealtimeServer(io)
@@ -50,5 +53,6 @@ export function attachRealtimeSocket(httpServer: HttpServer) {
     const user = socket.data.user as SocketUser
     void socket.join(`user:${user.uid}`)
   })
+  registerPresence(io)
   return io
 }

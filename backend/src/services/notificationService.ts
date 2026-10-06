@@ -7,7 +7,8 @@ import { emitToUser } from './realtime'
 
 export type NotificationInput = { type: string; title: string; body?: string; href: string; eventKey: string; actorUid?: string; coalesce?: boolean }
 export function notificationView(doc: { _id: unknown; type: string; title: string; body: string; href: string; readAt?: Date | null; createdAt: Date }) {
-  return { id: String(doc._id), type: doc.type, title: doc.title, body: doc.body, href: doc.href, readAt: doc.readAt, createdAt: doc.createdAt }
+  const legacyReport = doc.type === 'feedback:new' && doc.title === 'Raportim përdoruesi në chat'
+  return { id: String(doc._id), type: legacyReport ? 'report:new' : doc.type, title: legacyReport ? 'Raportim i ri përdoruesi' : doc.title, body: doc.body, href: legacyReport ? '/dashboard/admin/reports' : doc.href, readAt: doc.readAt, createdAt: doc.createdAt }
 }
 export async function unreadCount(uid: string) { return Notification.countDocuments({ recipientUid: uid, type: { $ne: 'message:new' }, readAt: null }) }
 export async function publishCount(uid: string) { emitToUser(uid, 'notification:count', { unreadCount: await unreadCount(uid) }) }

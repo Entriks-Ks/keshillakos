@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.assertParticipant = assertParticipant;
 exports.assertProviderCanMessageSeeker = assertProviderCanMessageSeeker;
 exports.openOrGetConversation = openOrGetConversation;
 exports.listConversationsForUser = listConversationsForUser;
@@ -22,6 +23,9 @@ const ServiceRequest_1 = require("../models/ServiceRequest");
 const User_1 = require("../models/User");
 const UserRequest_1 = require("../models/UserRequest");
 const providerPublicService_1 = require("./providerPublicService");
+const chatSafetyService_1 = require("./chatSafetyService");
+const ServiceOffer_1 = require("../models/ServiceOffer");
+const Service_1 = require("../models/Service");
 const userService_1 = require("./userService");
 const MAX_BODY = 4000;
 function toMessage(doc) {
@@ -34,7 +38,7 @@ function toMessage(doc) {
     };
 }
 async function assertParticipant(conversationId, uid) {
-    if (!mongoose_1.default.isValidObjectId(conversationId)) {
+    if (typeof conversationId !== 'string' || !mongoose_1.default.isValidObjectId(conversationId)) {
         throw Object.assign(new Error('Biseda nuk u gjet'), { status: 404 });
     }
     const conversation = await Conversation_1.Conversation.findById(conversationId);
@@ -72,12 +76,21 @@ async function assertProviderCanMessageSeeker(providerUid, seekerUid) {
     }
 }
 async function openOrGetConversation(input) {
-    if (!input.providerUid?.trim()) {
+    if (typeof input.providerUid !== 'string' || !input.providerUid.trim() || typeof input.seekerUid !== 'string' || !input.seekerUid.trim()) {
         throw Object.assign(new Error('Ofruesi është i detyrueshëm'), { status: 400 });
     }
+    const senderUid = input.senderUid || input.seekerUid;
+    if (senderUid !== input.seekerUid && senderUid !== input.providerUid) {
+        throw Object.assign(new Error('Nuk ke leje për të hapur këtë bisedë'), { status: 403 });
+    }
+    if (senderUid === input.providerUid)
+        await assertProviderCanMessageSeeker(input.providerUid, input.seekerUid);
+    await (0, chatSafetyService_1.assertChatUnblocked)(input.seekerUid, input.providerUid);
     if (input.seekerUid === input.providerUid) {
         throw Object.assign(new Error('Nuk mund të chatosh me veten'), { status: 400 });
     }
+    if (input.initialMessage !== undefined && (typeof input.initialMessage !== 'string' || input.initialMessage.trim().length > MAX_BODY))
+        throw Object.assign(new Error('Mesazhi është i pavlefshëm'), { status: 400 });
     const provider = await (0, userService_1.findUserByUid)(input.providerUid);
     if (!provider) {
         throw Object.assign(new Error('Ofruesi nuk u gjet'), { status: 404 });
@@ -85,25 +98,59 @@ async function openOrGetConversation(input) {
     if (!(0, providerPublicService_1.publicProfileRole)(provider)) {
         throw Object.assign(new Error('Ky përdorues nuk ofron shërbime'), { status: 400 });
     }
+    const seeker = await (0, userService_1.findUserByUid)(input.seekerUid);
+    if (!seeker || (provider.accountStatus && provider.accountStatus !== 'active') || (seeker.accountStatus && seeker.accountStatus !== 'active')) {
+        throw Object.assign(new Error('Llogaria nuk është aktive'), { status: 403 });
+    }
+    if (input.serviceId !== undefined && typeof input.serviceId !== 'string')
+        throw Object.assign(new Error('Shërbimi është i pavlefshëm'), { status: 400 });
+    if (input.serviceTitle !== undefined && typeof input.serviceTitle !== 'string')
+        throw Object.assign(new Error('Shërbimi është i pavlefshëm'), { status: 400 });
+    let serviceTitle = input.serviceTitle?.trim().slice(0, 160);
+    if (input.serviceId?.trim()) {
+        if (!mongoose_1.default.isValidObjectId(input.serviceId.trim()))
+            throw Object.assign(new Error('Shërbimi është i pavlefshëm'), { status: 400 });
+        const providerAccount = await User_1.User.findOne({ uid: input.providerUid }).select('_id').lean();
+        const profiles = await ProviderProfile_1.ProviderProfile.find({ ownerUser: providerAccount?._id }).select('_id').lean();
+        const [offer, legacy] = await Promise.all([
+            ServiceOffer_1.ServiceOffer.findOne({ _id: input.serviceId.trim(), providerProfile: { $in: profiles.map(p => p._id) } }).select('name').lean(),
+            Service_1.Service.findOne({ _id: input.serviceId.trim(), providerUid: input.providerUid }).select('title').lean(),
+        ]);
+        if (!offer && !legacy)
+            throw Object.assign(new Error('Shërbimi nuk i përket këtij ofruesi'), { status: 403 });
+        serviceTitle = offer?.name || legacy?.title;
+    }
     let conversation = await Conversation_1.Conversation.findOne({
         seekerUid: input.seekerUid,
         providerUid: input.providerUid,
     });
     if (!conversation) {
-        conversation = await Conversation_1.Conversation.create({
-            seekerUid: input.seekerUid,
-            providerUid: input.providerUid,
-            serviceId: input.serviceId?.trim() || '',
-            serviceTitle: input.serviceTitle?.trim() || '',
-            seekerUnread: 0,
-            providerUnread: 0,
-        });
+        try {
+            conversation = await Conversation_1.Conversation.create({
+                seekerUid: input.seekerUid,
+                providerUid: input.providerUid,
+                serviceId: input.serviceId?.trim() || '',
+                serviceTitle: serviceTitle || '',
+                requestDeliveryId: input.requestDeliveryId,
+                seekerUnread: 0,
+                providerUnread: 0,
+            });
+        }
+        catch (error) {
+            if (error.code !== 11000)
+                throw error;
+            conversation = await Conversation_1.Conversation.findOne({ seekerUid: input.seekerUid, providerUid: input.providerUid });
+            if (!conversation)
+                throw error;
+        }
     }
-    else if (input.serviceId || input.serviceTitle) {
+    else if (input.serviceId || serviceTitle || input.requestDeliveryId) {
         if (input.serviceId?.trim())
             conversation.serviceId = input.serviceId.trim();
-        if (input.serviceTitle?.trim())
-            conversation.serviceTitle = input.serviceTitle.trim();
+        if (serviceTitle)
+            conversation.serviceTitle = serviceTitle;
+        if (input.requestDeliveryId)
+            conversation.requestDeliveryId = new mongoose_1.default.Types.ObjectId(input.requestDeliveryId);
         await conversation.save();
     }
     let message = null;
@@ -152,7 +199,7 @@ async function listMessages(input) {
     return Object.assign(result.items.reverse().map(toMessage), { pagination: result.pagination });
 }
 async function sendMessage(input) {
-    const body = input.body.trim();
+    const body = typeof input.body === 'string' ? input.body.trim() : '';
     if (!body) {
         throw Object.assign(new Error('Mesazhi nuk mund të jetë bosh'), { status: 400 });
     }
@@ -160,12 +207,13 @@ async function sendMessage(input) {
         throw Object.assign(new Error('Mesazhi është shumë i gjatë'), { status: 400 });
     }
     const conversation = await assertParticipant(input.conversationId, input.senderUid);
+    const peerUid = input.senderUid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid;
+    await (0, chatSafetyService_1.assertChatUnblocked)(input.senderUid, peerUid);
     const message = await Message_1.Message.create({
         conversation: conversation._id,
         senderUid: input.senderUid,
         body,
     });
-    const peerUid = input.senderUid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid;
     const unreadField = peerUid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread';
     const active = (0, realtime_1.isConversationActive)(peerUid, input.conversationId);
     await Conversation_1.Conversation.findByIdAndUpdate(conversation._id, {

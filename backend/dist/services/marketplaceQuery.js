@@ -89,7 +89,7 @@ function providerDirectoryPipeline(query) {
         { $match: { ...publishedProfile, ...(cityId ? { serviceAreaCityIds: cityId } : {}) } },
         ...businessStages('business'),
         { $lookup: { from: User_1.User.collection.name, localField: 'ownerUser', foreignField: '_id', as: '_owner' } },
-        { $match: { '_owner.uid': { $exists: true, $ne: '' } } },
+        { $match: { '_owner.uid': { $exists: true, $ne: '' }, '_owner.role': { $ne: 'admin' }, '_owner.roles': { $ne: 'admin' } } },
         { $lookup: { from: Category_1.Category.collection.name, let: { keys: '$categories' }, pipeline: [
                     { $match: { $expr: { $or: [{ $in: ['$stableId', '$$keys'] }, { $in: ['$slug', '$$keys'] }, { $in: [{ $toString: '$_id' }, '$$keys'] }] } } },
                     { $project: { label: { $ifNull: ['$labels.sq', '$name.sq'] } } },

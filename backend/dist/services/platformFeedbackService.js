@@ -43,11 +43,12 @@ async function createPlatformFeedback(input) {
     return toFeedbackItem(doc);
 }
 async function listPlatformFeedback(input = { page: 1, limit: 20 }) {
-    const result = await (0, pagination_1.queryPage)(input, () => PlatformFeedback_1.PlatformFeedback.countDocuments(), (skip, limit) => PlatformFeedback_1.PlatformFeedback.find().sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean());
-    return Object.assign(result.items.map(toFeedbackItem), { pagination: result.pagination, unreadTotal: await PlatformFeedback_1.PlatformFeedback.countDocuments({ status: "new" }) });
+    const filter = { chatReport: { $exists: false } };
+    const result = await (0, pagination_1.queryPage)(input, () => PlatformFeedback_1.PlatformFeedback.countDocuments(filter), (skip, limit) => PlatformFeedback_1.PlatformFeedback.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean());
+    return Object.assign(result.items.map(toFeedbackItem), { pagination: result.pagination, unreadTotal: await PlatformFeedback_1.PlatformFeedback.countDocuments({ ...filter, status: "new" }) });
 }
 async function markPlatformFeedbackRead(id) {
-    const doc = await PlatformFeedback_1.PlatformFeedback.findByIdAndUpdate(id, { status: 'read' }, { new: true }).lean();
+    const doc = await PlatformFeedback_1.PlatformFeedback.findOneAndUpdate({ _id: id, chatReport: { $exists: false } }, { status: 'read' }, { new: true }).lean();
     if (!doc)
         return null;
     return toFeedbackItem(doc);

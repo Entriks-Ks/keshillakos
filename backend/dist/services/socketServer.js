@@ -5,10 +5,13 @@ const socket_io_1 = require("socket.io");
 const firebaseAuth_1 = require("./firebaseAuth");
 const userService_1 = require("./userService");
 const realtime_1 = require("./realtime");
+const presenceSocket_1 = require("./presenceSocket");
 function attachRealtimeSocket(httpServer) {
     const io = new socket_io_1.Server(httpServer, {
         cors: { origin: true, credentials: true },
         path: '/socket.io',
+        pingInterval: 25000,
+        pingTimeout: 20000,
     });
     (0, realtime_1.setRealtimeServer)(io);
     io.use(async (socket, next) => {
@@ -40,6 +43,7 @@ function attachRealtimeSocket(httpServer) {
         const user = socket.data.user;
         void socket.join(`user:${user.uid}`);
     });
+    (0, presenceSocket_1.registerPresence)(io);
     return io;
 }
 //# sourceMappingURL=socketServer.js.map

@@ -5,6 +5,7 @@ export type ConversationDoc = {
   providerUid: string
   serviceId?: string
   serviceTitle?: string
+  requestDeliveryId?: mongoose.Types.ObjectId
   lastMessageAt?: Date
   lastMessagePreview?: string
   seekerUnread: number
@@ -19,6 +20,7 @@ const conversationSchema = new Schema<ConversationDoc>(
     providerUid: { type: String, required: true, index: true },
     serviceId: { type: String, default: '' },
     serviceTitle: { type: String, default: '' },
+    requestDeliveryId: { type: Schema.Types.ObjectId, ref: 'RequestDelivery' },
     lastMessageAt: { type: Date },
     lastMessagePreview: { type: String, default: '' },
     seekerUnread: { type: Number, default: 0 },

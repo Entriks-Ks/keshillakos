@@ -6,6 +6,8 @@ import {
   markConversationRead,
   sendMessage,
 } from './chatService'
+import { assertChatUnblocked } from './chatSafetyService'
+import { assertParticipant } from './chatService'
 
 export function registerChatHandlers(io: Server) {
   io.on('connection', (socket) => {
@@ -55,7 +57,7 @@ export function registerChatHandlers(io: Server) {
         try {
           const conversationId = payload?.conversationId
           const body = payload?.body
-          if (!conversationId || !body?.trim()) {
+          if (typeof conversationId !== 'string' || typeof body !== 'string' || !body.trim()) {
             throw new Error('Mesazhi ose biseda mungon')
           }
 
@@ -76,8 +78,13 @@ export function registerChatHandlers(io: Server) {
       },
     )
 
-    socket.on('typing', (payload: { conversationId?: string; isTyping?: boolean }) => {
+    socket.on('typing', async (payload: { conversationId?: string; isTyping?: boolean }) => {
       if (!payload?.conversationId || !socket.rooms.has(`conversation:${payload.conversationId}`)) return
+      try {
+        const conversation = await assertParticipant(payload.conversationId, user.uid)
+        const peerUid = user.uid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid
+        await assertChatUnblocked(user.uid, peerUid)
+      } catch { return }
       socket.to(`conversation:${payload.conversationId}`).emit('typing', {
         conversationId: payload.conversationId,
         uid: user.uid,

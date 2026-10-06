@@ -40,6 +40,7 @@ const conversationSchema = new mongoose_1.Schema({
     providerUid: { type: String, required: true, index: true },
     serviceId: { type: String, default: '' },
     serviceTitle: { type: String, default: '' },
+    requestDeliveryId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'RequestDelivery' },
     lastMessageAt: { type: Date },
     lastMessagePreview: { type: String, default: '' },
     seekerUnread: { type: Number, default: 0 },

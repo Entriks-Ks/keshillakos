@@ -27,6 +27,8 @@ import mediaRoutes from './routes/media.routes'
 import { registerChatHandlers } from './services/chatSocket'
 import { attachRealtimeSocket } from './services/socketServer'
 import { Notification } from './models/Notification'
+import { ChatBlock } from './models/ChatBlock'
+import { PlatformFeedback } from './models/PlatformFeedback'
 import notificationRoutes from './routes/notification.routes'
 import { publicCache } from './middleware/publicCache'
 
@@ -84,6 +86,7 @@ async function start() {
   try {
     await connectDB()
     await Notification.init()
+    await Promise.all([ChatBlock.init(), PlatformFeedback.init()])
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('MongoDB connection failed:', message)

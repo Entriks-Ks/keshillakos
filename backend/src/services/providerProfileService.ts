@@ -325,7 +325,7 @@ async function serializeMarketplaceProviders(profiles: Awaited<ReturnType<typeof
   const categoryObjectIds = categoryKeys.filter((id) => Types.ObjectId.isValid(id) && /^[a-f\d]{24}$/i.test(id))
 
   const [users, businesses, cities, categories, offerCounts, teamBusinesses] = await Promise.all([
-    User.find({ _id: { $in: ownerIds } }).select('uid').lean(),
+    User.find({ _id: { $in: ownerIds } }).select('uid role roles').lean(),
     businessIds.length
       ? Business.find({ _id: { $in: businessIds } })
         .select('publicName logoUrl website contactPhone contactEmail members owners status verification')
@@ -420,7 +420,8 @@ async function serializeMarketplaceProviders(profiles: Awaited<ReturnType<typeof
   }
   const ratings = marketplaceRatings ? undefined : await getStatsForProviders([...uidByOwner.values()].filter(Boolean))
 
-  return profiles.map((profile) => {
+  const adminOwnerIds = new Set(users.filter(owner => owner.role === 'admin' || owner.roles?.includes('admin')).map(owner => String(owner._id)))
+  return profiles.filter(profile => !adminOwnerIds.has(String(profile.ownerUser))).map((profile) => {
     const uid = uidByOwner.get(String(profile.ownerUser)) || ''
     const business = profile.business ? businessById.get(String(profile.business)) : undefined
     const rating = marketplaceRatings?.get(String(profile._id)) ?? ratings?.get(uid)

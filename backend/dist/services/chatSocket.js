@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerChatHandlers = registerChatHandlers;
 const chatService_1 = require("./chatService");
+const chatSafetyService_1 = require("./chatSafetyService");
+const chatService_2 = require("./chatService");
 function registerChatHandlers(io) {
     io.on('connection', (socket) => {
         const user = socket.data.user;
@@ -56,7 +58,7 @@ function registerChatHandlers(io) {
             try {
                 const conversationId = payload?.conversationId;
                 const body = payload?.body;
-                if (!conversationId || !body?.trim()) {
+                if (typeof conversationId !== 'string' || typeof body !== 'string' || !body.trim()) {
                     throw new Error('Mesazhi ose biseda mungon');
                 }
                 const message = await (0, chatService_1.sendMessage)({
@@ -74,9 +76,17 @@ function registerChatHandlers(io) {
                 }
             }
         });
-        socket.on('typing', (payload) => {
+        socket.on('typing', async (payload) => {
             if (!payload?.conversationId || !socket.rooms.has(`conversation:${payload.conversationId}`))
                 return;
+            try {
+                const conversation = await (0, chatService_2.assertParticipant)(payload.conversationId, user.uid);
+                const peerUid = user.uid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid;
+                await (0, chatSafetyService_1.assertChatUnblocked)(user.uid, peerUid);
+            }
+            catch {
+                return;
+            }
             socket.to(`conversation:${payload.conversationId}`).emit('typing', {
                 conversationId: payload.conversationId,
                 uid: user.uid,

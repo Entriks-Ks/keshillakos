@@ -80,3 +80,17 @@ export async function fetchChatUnreadCount(signal?: AbortSignal) {
   const { data } = await api.get<{ unreadCount: number }>('/api/chat/unread-count', { signal })
   return data.unreadCount
 }
+
+export type ChatAvailability = { blockedByMe: boolean; messagingBlocked: boolean }
+export type ChatDetails = ChatAvailability & { requestContext: { id: string; title: string; status: string } | null }
+export async function fetchChatDetails(id: string, signal?: AbortSignal) {
+  const { data } = await api.get<ChatDetails>(`/api/chat/conversations/${id}/details`, { signal })
+  return data
+}
+export async function blockChatUser(id: string, blocked: boolean) {
+  const { data } = await api.post<ChatAvailability>(`/api/chat/conversations/${id}/block`, { blocked })
+  return data
+}
+export async function reportChatUser(id: string, reason: string) {
+  await api.post(`/api/chat/conversations/${id}/report`, { reason })
+}

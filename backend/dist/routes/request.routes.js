@@ -51,6 +51,7 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('user', 'provider',
                     providerUid: chatProviderUid,
                     serviceId,
                     serviceTitle,
+                    requestDeliveryId: request?.deliveryId,
                 });
             }
             catch {

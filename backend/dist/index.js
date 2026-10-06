@@ -32,6 +32,8 @@ const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const chatSocket_1 = require("./services/chatSocket");
 const socketServer_1 = require("./services/socketServer");
 const Notification_1 = require("./models/Notification");
+const ChatBlock_1 = require("./models/ChatBlock");
+const PlatformFeedback_1 = require("./models/PlatformFeedback");
 const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
 const publicCache_1 = require("./middleware/publicCache");
 const app = (0, express_1.default)();
@@ -76,6 +78,7 @@ async function start() {
     try {
         await (0, db_1.connectDB)();
         await Notification_1.Notification.init();
+        await Promise.all([ChatBlock_1.ChatBlock.init(), PlatformFeedback_1.PlatformFeedback.init()]);
     }
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);

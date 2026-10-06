@@ -3,7 +3,7 @@ import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
-  assertProviderCanMessageSeeker,
+  assertParticipant,
   getConversationForUser,
   listConversationsForUser,
   listMessages,
@@ -11,6 +11,8 @@ import {
   openOrGetConversation,
   sendMessage,
 } from '../services/chatService'
+import { chatAvailability, reportChatUser, setChatBlock } from '../services/chatSafetyService'
+import { chatRequestContext } from '../services/chatContextService'
 
 const router = Router()
 router.use(validatePagination)
@@ -57,13 +59,12 @@ router.post(
       }
 
       const roles = req.user!.roles
+      if (seekerUid !== undefined && typeof seekerUid !== 'string') return res.status(400).json({ message: 'Përdoruesi është i pavlefshëm' })
+      if (providerUid !== undefined && typeof providerUid !== 'string') return res.status(400).json({ message: 'Ofruesi është i pavlefshëm' })
+      if (initialMessage !== undefined && typeof initialMessage !== 'string') return res.status(400).json({ message: 'Mesazhi është i pavlefshëm' })
       const asProvider = roles.some((role) => role === 'provider' || role === 'company') && Boolean(seekerUid?.trim())
       const resolvedSeekerUid = asProvider ? seekerUid!.trim() : req.user!.uid
       const resolvedProviderUid = asProvider ? req.user!.uid : providerUid || ''
-
-      if (asProvider) {
-        await assertProviderCanMessageSeeker(resolvedProviderUid, resolvedSeekerUid)
-      }
 
       const result = await openOrGetConversation({
         seekerUid: resolvedSeekerUid,
@@ -82,6 +83,32 @@ router.post(
     }
   },
 )
+
+router.get('/conversations/:id/details', requireAuth, async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'private, no-store')
+    const conversation = await assertParticipant(paramId(req.params.id), req.user!.uid)
+    const peerUid = req.user!.uid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid
+    const [availability, requestContext] = await Promise.all([chatAvailability(req.user!.uid, peerUid), chatRequestContext(conversation)])
+    return res.json({ ...availability, requestContext })
+  } catch (error) { return res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : 'Gabim' }) }
+})
+
+router.post('/conversations/:id/block', requireAuth, async (req, res) => {
+  try {
+    if (typeof req.body.blocked !== 'boolean') return res.status(400).json({ message: 'Zgjedhja është e pavlefshme' })
+    const conversation = await assertParticipant(paramId(req.params.id), req.user!.uid)
+    return res.json(await setChatBlock(conversation, req.user!.uid, req.body.blocked))
+  } catch (error) { return res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : 'Gabim' }) }
+})
+
+router.post('/conversations/:id/report', requireAuth, async (req, res) => {
+  try {
+    const conversation = await assertParticipant(paramId(req.params.id), req.user!.uid)
+    await reportChatUser(conversation, req.user!.uid, req.body.reason)
+    return res.status(201).json({ ok: true })
+  } catch (error) { return res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : 'Gabim' }) }
+})
 
 router.get('/conversations/:id', requireAuth, async (req, res) => {
   try {

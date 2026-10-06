@@ -52,13 +52,14 @@ export async function createPlatformFeedback(input: FeedbackInput) {
 }
 
 export async function listPlatformFeedback(input: PaginationInput = { page: 1, limit: 20 }) {
-  const result = await queryPage(input, () => PlatformFeedback.countDocuments(), (skip, limit) => PlatformFeedback.find().sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean())
-  return Object.assign(result.items.map(toFeedbackItem), { pagination: result.pagination, unreadTotal: await PlatformFeedback.countDocuments({ status: "new" }) })
+  const filter = { chatReport: { $exists: false } }
+  const result = await queryPage(input, () => PlatformFeedback.countDocuments(filter), (skip, limit) => PlatformFeedback.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean())
+  return Object.assign(result.items.map(toFeedbackItem), { pagination: result.pagination, unreadTotal: await PlatformFeedback.countDocuments({ ...filter, status: "new" }) })
 }
 
 export async function markPlatformFeedbackRead(id: string) {
-  const doc = await PlatformFeedback.findByIdAndUpdate(
-    id,
+  const doc = await PlatformFeedback.findOneAndUpdate(
+    { _id: id, chatReport: { $exists: false } },
     { status: 'read' satisfies PlatformFeedbackStatus },
     { new: true },
   ).lean()

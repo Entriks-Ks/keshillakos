@@ -5,6 +5,8 @@ const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const chatService_1 = require("../services/chatService");
+const chatSafetyService_1 = require("../services/chatSafetyService");
+const chatContextService_1 = require("../services/chatContextService");
 const router = (0, express_1.Router)();
 router.use(pagination_1.validatePagination);
 function paramId(value) {
@@ -40,12 +42,15 @@ router.post('/conversations', auth_1.requireAuth, (0, auth_1.requireRole)('user'
     try {
         const { providerUid, seekerUid, serviceId, serviceTitle, initialMessage } = req.body;
         const roles = req.user.roles;
+        if (seekerUid !== undefined && typeof seekerUid !== 'string')
+            return res.status(400).json({ message: 'Përdoruesi është i pavlefshëm' });
+        if (providerUid !== undefined && typeof providerUid !== 'string')
+            return res.status(400).json({ message: 'Ofruesi është i pavlefshëm' });
+        if (initialMessage !== undefined && typeof initialMessage !== 'string')
+            return res.status(400).json({ message: 'Mesazhi është i pavlefshëm' });
         const asProvider = roles.some((role) => role === 'provider' || role === 'company') && Boolean(seekerUid?.trim());
         const resolvedSeekerUid = asProvider ? seekerUid.trim() : req.user.uid;
         const resolvedProviderUid = asProvider ? req.user.uid : providerUid || '';
-        if (asProvider) {
-            await (0, chatService_1.assertProviderCanMessageSeeker)(resolvedProviderUid, resolvedSeekerUid);
-        }
         const result = await (0, chatService_1.openOrGetConversation)({
             seekerUid: resolvedSeekerUid,
             providerUid: resolvedProviderUid,
@@ -60,6 +65,39 @@ router.post('/conversations', auth_1.requireAuth, (0, auth_1.requireRole)('user'
         return res.status(statusOf(err)).json({
             message: err instanceof Error ? err.message : 'Nuk u hap biseda',
         });
+    }
+});
+router.get('/conversations/:id/details', auth_1.requireAuth, async (req, res) => {
+    try {
+        res.setHeader('Cache-Control', 'private, no-store');
+        const conversation = await (0, chatService_1.assertParticipant)(paramId(req.params.id), req.user.uid);
+        const peerUid = req.user.uid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid;
+        const [availability, requestContext] = await Promise.all([(0, chatSafetyService_1.chatAvailability)(req.user.uid, peerUid), (0, chatContextService_1.chatRequestContext)(conversation)]);
+        return res.json({ ...availability, requestContext });
+    }
+    catch (error) {
+        return res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : 'Gabim' });
+    }
+});
+router.post('/conversations/:id/block', auth_1.requireAuth, async (req, res) => {
+    try {
+        if (typeof req.body.blocked !== 'boolean')
+            return res.status(400).json({ message: 'Zgjedhja është e pavlefshme' });
+        const conversation = await (0, chatService_1.assertParticipant)(paramId(req.params.id), req.user.uid);
+        return res.json(await (0, chatSafetyService_1.setChatBlock)(conversation, req.user.uid, req.body.blocked));
+    }
+    catch (error) {
+        return res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : 'Gabim' });
+    }
+});
+router.post('/conversations/:id/report', auth_1.requireAuth, async (req, res) => {
+    try {
+        const conversation = await (0, chatService_1.assertParticipant)(paramId(req.params.id), req.user.uid);
+        await (0, chatSafetyService_1.reportChatUser)(conversation, req.user.uid, req.body.reason);
+        return res.status(201).json({ ok: true });
+    }
+    catch (error) {
+        return res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : 'Gabim' });
     }
 });
 router.get('/conversations/:id', auth_1.requireAuth, async (req, res) => {

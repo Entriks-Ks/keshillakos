@@ -6,12 +6,15 @@ import { Conversation } from '../src/models/Conversation'
 import { Message } from '../src/models/Message'
 import { User } from '../src/models/User'
 import { Notification } from '../src/models/Notification'
+import { ChatBlock } from '../src/models/ChatBlock'
 import { sendMessage, markConversationRead } from '../src/services/chatService'
 import { chatUnreadCount, publishChatUnread } from '../src/services/chatUnreadService'
 import { setRealtimeServer } from '../src/services/realtime'
 
 test('chat unread is atomic, stays read for an active viewer, syncs reads, and never creates bell notifications', async () => {
   const originals = [Conversation.findById, Conversation.findByIdAndUpdate, Conversation.updateOne, Conversation.aggregate, Message.create, User.find, Notification.create] as const
+  const originalBlocks = ChatBlock.find
+  ChatBlock.find = (() => ({ lean: async () => [] })) as any
   const id = new Types.ObjectId()
   const row: any = { _id: id, seekerUid: 'alice', providerUid: 'bob', seekerUnread: 0, providerUnread: 0, createdAt: new Date(), set: (key: string, value: any) => { row[key] = value } }
   const events: any[] = [], updates: any[] = []
@@ -56,6 +59,7 @@ test('chat unread is atomic, stays read for an active viewer, syncs reads, and n
     await assert.rejects(sendMessage({ conversationId: String(id), senderUid: 'mallory', body: 'Forbidden' }))
   } finally {
     [Conversation.findById, Conversation.findByIdAndUpdate, Conversation.updateOne, Conversation.aggregate, Message.create, User.find, Notification.create] = originals
+    ChatBlock.find = originalBlocks
   }
 })
 
