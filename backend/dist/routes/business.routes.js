@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const mediaService_1 = require("../services/mediaService");
 const businessService_1 = require("../services/businessService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 router.get('/managed', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'admin'), async (req, res) => {
     try {
         return res.json({ businesses: await (0, businessService_1.listManagedBusinesses)(req.user.uid) });
@@ -15,7 +17,8 @@ router.get('/managed', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'a
 });
 router.get('/invitations/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider'), async (req, res) => {
     try {
-        return res.json({ invitations: await (0, businessService_1.listMyBusinessInvitations)(req.user.uid) });
+        const invitations = await (0, businessService_1.listMyBusinessInvitations)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20));
+        return res.json({ invitations, pagination: invitations.pagination });
     }
     catch (err) {
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ftesat nuk u ngarkuan' });
@@ -39,7 +42,7 @@ router.post('/:id/invitations/reject', auth_1.requireAuth, (0, auth_1.requireRol
 });
 router.get('/:id/team', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'admin'), async (req, res) => {
     try {
-        return res.json({ team: await (0, businessService_1.businessTeam)(req.user.uid, String(req.params.id)) });
+        return res.json({ team: await (0, businessService_1.businessTeam)(req.user.uid, String(req.params.id), (0, pagination_1.paginationInput)(req.query, 20), (0, pagination_1.paginationInput)({ ...req.query, page: req.query.invitationsPage }, 20)) });
     }
     catch (err) {
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ekipi nuk u ngarkua' });

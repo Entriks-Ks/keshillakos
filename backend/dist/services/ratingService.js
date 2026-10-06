@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.isCanonicalReviewSubmission = isCanonicalReviewSubmission;
 exports.interactionQualifies = interactionQualifies;
 exports.createReview = createReview;
+exports.backfillUnmoderatedPendingReviews = backfillUnmoderatedPendingReviews;
 exports.refreshRatingAggregate = refreshRatingAggregate;
 exports.moderateReview = moderateReview;
 exports.respondToReview = respondToReview;
@@ -12,7 +13,9 @@ exports.listProviderRatings = listProviderRatings;
 exports.findMyRating = findMyRating;
 exports.eligibleInteractions = eligibleInteractions;
 exports.listModerationQueue = listModerationQueue;
+exports.listEligibleInteractionPage = listEligibleInteractionPage;
 exports.listRateableProviders = listRateableProviders;
+const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Appointment_1 = require("../models/Appointment");
 const Business_1 = require("../models/Business");
@@ -240,8 +243,38 @@ async function getProviderStats(providerUid) {
 }
 async function getStatsForProviders(providerUids) {
     const unique = [...new Set(providerUids.filter(Boolean))];
-    const pairs = await Promise.all(unique.map(async (uid) => [uid, await getProviderStats(uid)]));
-    return new Map(pairs);
+    const result = new Map();
+    if (!unique.length)
+        return result;
+    await backfillUnmoderatedPendingReviews();
+    const users = await User_1.User.find({ uid: { $in: unique } }).select('_id uid').lean();
+    const ownerIds = users.map((user) => user._id);
+    const businesses = await Business_1.Business.find({ $or: [
+            { owners: { $in: ownerIds } },
+            { members: { $elemMatch: { user: { $in: ownerIds }, role: 'manager' } } },
+        ] }).select('_id owners members').lean();
+    const profiles = await ProviderProfile_1.ProviderProfile.find({ $or: [
+            { ownerUser: { $in: ownerIds } }, { business: { $in: businesses.map((business) => business._id) } },
+        ] }).select('_id ownerUser business').lean();
+    const aggregates = await RatingAggregate_1.RatingAggregate.find({ portal: domainService_1.DEFAULT_PORTAL, $or: [
+            { scope: 'provider', subjectId: { $in: profiles.map((profile) => profile._id) } },
+            { scope: 'business', subjectId: { $in: businesses.map((business) => business._id) } },
+        ] }).lean();
+    const bySubject = new Map(aggregates.map((aggregate) => [`${aggregate.scope}:${aggregate.subjectId}`, aggregate]));
+    const byUid = new Map(users.map((user) => [user.uid, user]));
+    for (const uid of unique) {
+        const user = byUid.get(uid);
+        const ownedBusinesses = new Set(businesses.filter((business) => user && (0, businessService_1.canManageBusiness)(business, user._id)).map((business) => String(business._id)));
+        const ownedProfiles = profiles.filter((profile) => user && (profile.ownerUser.equals(user._id) || (profile.business && ownedBusinesses.has(String(profile.business)))));
+        const matching = [
+            ...ownedProfiles.map((profile) => bySubject.get(`provider:${profile._id}`)),
+            ...[...ownedBusinesses].map((id) => bySubject.get(`business:${id}`)),
+        ].filter((aggregate) => aggregate !== undefined);
+        result.set(uid, { providerUid: uid, average: combinedAverage(matching),
+            count: matching.reduce((sum, aggregate) => sum + aggregate.count, 0),
+            verifiedCount: matching.reduce((sum, aggregate) => sum + aggregate.verifiedCount, 0) });
+    }
+    return result;
 }
 async function toLegacyRating(review, providerUid, providerName) {
     const request = review.userRequest ? await UserRequest_1.UserRequest.findById(review.userRequest).select('category').lean() : null;
@@ -249,14 +282,14 @@ async function toLegacyRating(review, providerUid, providerName) {
     const reviewer = policy.privacy.reviewerDisplay === 'first_name' ? await User_1.User.findById(review.reviewer).select('firstName').lean() : null;
     return { id: String(review._id), providerUid, providerName, raterUid: '', raterName: reviewer?.firstName || 'Përdorues', score: review.stars, comment: review.text, verified: review.interaction.verified, response: review.response?.text, createdAt: review.createdAt, updatedAt: review.updatedAt };
 }
-async function listProviderRatings(providerUid, limit = 20) {
+async function listProviderRatings(providerUid, input = { page: 1, limit: 12 }) {
     await backfillUnmoderatedPendingReviews();
     const [profiles, businesses] = await Promise.all([profilesForUid(providerUid), businessesForUid(providerUid)]);
     const names = new Map([
         ...profiles.map((profile) => [String(profile._id), profile.publicProfile.displayName]),
         ...businesses.map((business) => [String(business._id), business.publicName]),
     ]);
-    const reviews = await Review_1.Review.find({
+    const query = {
         portal: domainService_1.DEFAULT_PORTAL,
         $or: [
             { subjectType: 'provider', subjectId: { $in: profiles.map((profile) => profile._id) } },
@@ -266,8 +299,15 @@ async function listProviderRatings(providerUid, limit = 20) {
         'abuse.status': 'clear',
         'interaction.eligible': true,
         publishedAt: { $exists: true },
-    }).sort({ publishedAt: -1 }).limit(limit);
-    return Promise.all(reviews.map((review) => toLegacyRating(review, providerUid, names.get(String(review.subjectId)) || (review.subjectType === 'business' ? 'Kompani' : 'Ofrues'))));
+    };
+    const result = await (0, pagination_1.queryPage)(input, () => Review_1.Review.countDocuments(query), (skip, limit) => Review_1.Review.find(query).sort({ publishedAt: -1, _id: -1 }).skip(skip).limit(limit));
+    const buckets = await Review_1.Review.aggregate([{ $match: query }, { $group: { _id: '$stars', count: { $sum: 1 } } }]);
+    const ratings = await Promise.all(result.items.map((review) => toLegacyRating(review, providerUid, names.get(String(review.subjectId)) || 'Ofrues')));
+    return Object.assign(ratings, { pagination: result.pagination, buckets: Array.from({ length: 5 }, (_, index) => {
+            const stars = 5 - index;
+            const count = buckets.find((bucket) => bucket._id === stars)?.count ?? 0;
+            return { stars, count, pct: result.pagination.total ? Math.round(count / result.pagination.total * 100) : 0 };
+        }) });
 }
 async function findMyRating(raterUid, providerUid) {
     const [reviewer, profiles] = await Promise.all([User_1.User.findOne({ uid: raterUid }).select('_id').lean(), profilesForUid(providerUid)]);
@@ -280,9 +320,9 @@ async function eligibleInteractions(uid, providerId) {
     const user = await User_1.User.findOne({ uid }).select('_id').lean();
     if (!user)
         return [];
-    const appointments = await Appointment_1.Appointment.find({ user: user._id, status: 'completed', ...(providerId ? { providerProfile: providerId } : {}) }).sort({ endAt: -1 }).limit(100);
+    const appointments = await Appointment_1.Appointment.find({ user: user._id, status: 'completed', ...(providerId ? { providerProfile: providerId } : {}) }).sort({ endAt: -1 });
     const requests = await UserRequest_1.UserRequest.find({ user: user._id }).select('_id').lean();
-    const deliveries = await RequestDelivery_1.RequestDelivery.find({ request: { $in: requests.map((request) => request._id) }, status: 'completed', ...(providerId ? { providerProfile: providerId } : {}) }).sort({ respondedAt: -1 }).limit(100);
+    const deliveries = await RequestDelivery_1.RequestDelivery.find({ request: { $in: requests.map((request) => request._id) }, status: 'completed', ...(providerId ? { providerProfile: providerId } : {}) }).sort({ respondedAt: -1 });
     const linkedAppointments = await Appointment_1.Appointment.find({ requestDelivery: { $in: deliveries.map((delivery) => delivery._id) } }).select('requestDelivery').lean();
     const appointmentDeliveryIds = new Set(linkedAppointments.map((appointment) => String(appointment.requestDelivery)));
     const choices = [
@@ -313,27 +353,64 @@ async function toAdminReview(review) {
         createdAt: review.createdAt,
     };
 }
-async function listModerationQueue() {
+async function listModerationQueue(input = { page: 1, limit: 20 }, publishedInput = input) {
     await backfillUnmoderatedPendingReviews();
     const [pending, published] = await Promise.all([
-        Review_1.Review.find({ 'moderation.status': 'pending' }).sort({ createdAt: 1 }).limit(100),
-        Review_1.Review.find({ 'moderation.status': 'published' }).sort({ publishedAt: -1 }).limit(40),
+        (0, pagination_1.queryPage)(input, () => Review_1.Review.countDocuments({ 'moderation.status': 'pending' }), (skip, limit) => Review_1.Review.find({ 'moderation.status': 'pending' }).sort({ createdAt: 1, _id: 1 }).skip(skip).limit(limit)),
+        (0, pagination_1.queryPage)(publishedInput, () => Review_1.Review.countDocuments({ 'moderation.status': 'published' }), (skip, limit) => Review_1.Review.find({ 'moderation.status': 'published' }).sort({ publishedAt: -1, _id: -1 }).skip(skip).limit(limit)),
     ]);
-    return {
-        pending: await Promise.all(pending.map((review) => toAdminReview(review))),
-        published: await Promise.all(published.map((review) => toAdminReview(review))),
-    };
+    return { pending: await Promise.all(pending.items.map(toAdminReview)), published: await Promise.all(published.items.map(toAdminReview)), pagination: pending.pagination, publishedPagination: published.pagination };
 }
-async function listRateableProviders(uid) {
-    const interactions = await eligibleInteractions(uid);
-    const profileIds = [...new Set(interactions.map((item) => item.providerId))];
+/** Exclude already-reviewed, self-owned and appointment-backed deliveries before paging. */
+function eligiblePipeline(userId, providerIds) {
+    const providerMatch = providerIds ? { providerProfile: { $in: providerIds } } : {};
+    return [
+        { $match: { user: userId, status: 'completed', ...providerMatch } },
+        { $project: { _id: 1, providerProfile: 1, kind: { $literal: 'appointment' }, rank: { $literal: 0 }, completedAt: '$endAt' } },
+        { $unionWith: { coll: RequestDelivery_1.RequestDelivery.collection.name, pipeline: [
+                    { $match: { status: 'completed', ...providerMatch } },
+                    { $lookup: { from: UserRequest_1.UserRequest.collection.name, localField: 'request', foreignField: '_id', as: '_request' } },
+                    { $match: { '_request.user': userId } },
+                    { $lookup: { from: Appointment_1.Appointment.collection.name, localField: '_id', foreignField: 'requestDelivery', as: '_appointments' } },
+                    { $match: { '_appointments.0': { $exists: false } } },
+                    { $project: { _id: 1, providerProfile: 1, kind: { $literal: 'request_delivery' }, rank: { $literal: 1 }, completedAt: '$respondedAt' } },
+                ] } },
+        { $lookup: { from: ProviderProfile_1.ProviderProfile.collection.name, localField: 'providerProfile', foreignField: '_id', as: '_profile' } },
+        { $match: { '_profile.ownerUser': { $ne: userId } } },
+        { $lookup: { from: Review_1.Review.collection.name, let: { interaction: '$_id' }, pipeline: [
+                    { $match: { reviewer: userId, $expr: { $eq: ['$interaction.ref', '$$interaction'] } } }, { $limit: 1 },
+                ], as: '_reviewed' } },
+        { $match: { '_reviewed.0': { $exists: false } } },
+    ];
+}
+const interactionChoice = (row) => ({ id: String(row._id), providerId: String(row.providerProfile), kind: row.kind });
+async function listEligibleInteractionPage(uid, input, providerIds) {
+    const user = await User_1.User.findOne({ uid }).select('_id').lean();
+    const pipeline = eligiblePipeline(user?._id ?? null, providerIds);
+    const result = await (0, pagination_1.queryPage)(input, async () => (await Appointment_1.Appointment.aggregate([...pipeline, { $count: 'total' }]))[0]?.total ?? 0, (skip, limit) => Appointment_1.Appointment.aggregate([...pipeline, { $sort: { rank: 1, completedAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, providerProfile: 1, kind: 1 } }]));
+    return { items: result.items.map(interactionChoice), pagination: result.pagination };
+}
+async function listRateableProviders(uid, input = { page: 1, limit: 20 }) {
+    const user = await User_1.User.findOne({ uid }).select('_id').lean();
+    const pipeline = [...eligiblePipeline(user?._id ?? null),
+        { $sort: { rank: 1, completedAt: -1, _id: -1 } },
+        { $group: { _id: '$providerProfile', interaction: { $first: { _id: '$_id', providerProfile: '$providerProfile', kind: '$kind' } } } },
+        { $lookup: { from: ProviderProfile_1.ProviderProfile.collection.name, localField: '_id', foreignField: '_id', as: '_profile' } },
+        { $match: { '_profile.0': { $exists: true } } },];
+    const result = await (0, pagination_1.queryPage)(input, async () => (await Appointment_1.Appointment.aggregate([...pipeline, { $count: 'total' }]))[0]?.total ?? 0, (skip, limit) => Appointment_1.Appointment.aggregate([...pipeline, { $sort: { _id: -1 } }, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, interaction: 1 } }]));
+    const profileIds = result.items.map((row) => row._id);
     const profiles = await ProviderProfile_1.ProviderProfile.find({ _id: { $in: profileIds } }).select('publicProfile.displayName ownerUser');
     const users = await User_1.User.find({ _id: { $in: profiles.map((profile) => profile.ownerUser) } }).select('uid').lean();
-    const uidByUser = new Map(users.map((user) => [String(user._id), user.uid]));
+    const uidByUser = new Map(users.map((owner) => [String(owner._id), owner.uid]));
+    const byId = new Map(profiles.map((profile) => [String(profile._id), profile]));
     const aggregateByProfile = new Map((await RatingAggregate_1.RatingAggregate.find({ portal: domainService_1.DEFAULT_PORTAL, scope: 'provider', subjectId: { $in: profileIds } })).map((item) => [String(item.subjectId), item]));
-    return profiles.map((profile) => {
+    const providers = result.items.flatMap((row) => {
+        const profile = byId.get(String(row._id));
+        if (!profile)
+            return [];
         const aggregate = aggregateByProfile.get(String(profile._id));
-        return { providerId: String(profile._id), providerUid: uidByUser.get(String(profile.ownerUser)) || '', providerName: profile.publicProfile.displayName, titles: [], average: aggregate?.average ?? 0, count: aggregate?.count ?? 0, verifiedCount: aggregate?.verifiedCount ?? 0, interaction: interactions.find((item) => item.providerId === String(profile._id)) };
+        return [{ providerId: String(profile._id), providerUid: uidByUser.get(String(profile.ownerUser)) || '', providerName: profile.publicProfile.displayName, titles: [], average: aggregate?.average ?? 0, count: aggregate?.count ?? 0, verifiedCount: aggregate?.verifiedCount ?? 0, interaction: interactionChoice(row.interaction) }];
     });
+    return Object.assign(providers, { pagination: result.pagination });
 }
 //# sourceMappingURL=ratingService.js.map

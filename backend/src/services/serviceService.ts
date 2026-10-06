@@ -1,5 +1,6 @@
+import { backfillUnmoderatedPendingReviews } from './ratingService'
 import { publicServicesPipeline } from './marketplaceQuery'
-import { queryPage, type PaginationInput } from './pagination'
+import { paginationMeta, queryPage, type PaginationInput } from './pagination'
 import mongoose, { Types, type PipelineStage } from 'mongoose'
 import { Category } from '../models/Category'
 import { City } from '../models/City'
@@ -321,14 +322,22 @@ export async function listPublicServicePage(query: Record<string, unknown>, inpu
     const result = await queryPage(input, () => Promise.resolve(0), () => Promise.resolve([]))
     return { services: [], pagination: result.pagination, summary: { total: 0, active: 0 } }
   }
+  await backfillUnmoderatedPendingReviews()
   const pipeline = publicServicesPipeline(query)
-  const result = await queryPage(input, async () => (await ServiceOffer.aggregate<{ total: number }>([...pipeline, { $count: 'total' }]))[0]?.total ?? 0,
-    (skip, limit) => ServiceOffer.aggregate<{ _id: Types.ObjectId; source: 'offer' | 'legacy' }>([...pipeline, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, source: 1 } }]))
+  const count = async () => (await ServiceOffer.aggregate<{ total: number }>([...pipeline, { $count: 'total' }]))[0]?.total ?? 0
+  if (query.countsOnly === 'true') {
+    const total = await count()
+    return { services: [], pagination: paginationMeta(input, total), summary: { total, active: total } }
+  }
+  const result = await queryPage(input, count,
+    (skip, limit) => ServiceOffer.aggregate<{ _id: Types.ObjectId; source: 'offer' | 'legacy'; ratingAverage: number; ratingCount: number }>([...pipeline, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, source: 1, ratingAverage: 1, ratingCount: 1 } }]))
   const [offers, legacy] = await Promise.all([
     ServiceOffer.find({ _id: { $in: result.items.filter((row) => row.source === 'offer').map((row) => row._id) } }),
     Service.find({ _id: { $in: result.items.filter((row) => row.source === 'legacy').map((row) => row._id) } }),
   ])
-  const cards = [...await offersToLegacyServices(offers, true), ...await withLegacyProviders(legacy)]
+  const ratings = new Map(result.items.map((row) => [String(row._id), { average: row.ratingAverage, count: row.ratingCount }]))
+  const [offerCards, legacyCards] = await Promise.all([offersToLegacyServices(offers, true, ratings), withLegacyProviders(legacy)])
+  const cards = [...offerCards, ...legacyCards]
   const byId = new Map(cards.map((card) => [card.id, card]))
   const services = result.items.flatMap((row) => { const card = byId.get(String(row._id)); return card ? [card] : [] })
   return { services, pagination: result.pagination, summary: { total: result.pagination.total, active: result.pagination.total } }

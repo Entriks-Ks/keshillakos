@@ -1,3 +1,5 @@
+// Load the popup SDK with the lazy auth page, before the user's click.
+import '../firebase'
 import { useState } from 'react'
 import { toast } from '@heroui/react'
 import { useNavigate } from 'react-router-dom'

@@ -1,40 +1,38 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { RouterProvider, Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes, useHref, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
 import ScrollToTop from './components/ScrollToTop'
-import DashboardShell from './dashboard/DashboardShell'
-import AdminUsersPanel from './dashboard/AdminUsersPanel'
-import AvailabilityPanel from './dashboard/AvailabilityPanel'
-import {
-  AdminOverviewPage,
-  CompanyOverviewPage,
-  ProviderOverviewPage,
-  UserOverviewPage,
-} from './dashboard/OverviewPages'
-import { OwnRatingsPage, ProfilePage, SettingsPage } from './dashboard/SharedPages'
-import {
-  AdminRequestsPanel,
-  ProviderInboxPanel,
-  UserRequestsPanel,
-} from './dashboard/RequestPanels'
-import MessagesPage from './dashboard/MessagesPage'
-import {
-  CompanyExpertsPanel,
-  ProviderServicesPanel,
-} from './dashboard/panels'
-import AdminFeedbackPanel from './dashboard/AdminFeedbackPanel'
-import DashboardRedirect from './pages/DashboardRedirect'
-import AboutPage from './pages/AboutPage'
 import HomePage from './pages/HomePage'
-import LegalPage from './pages/LegalPage'
-import LoginPage from './pages/LoginPage'
-import OffersPage from './pages/OffersPage'
-import { CompanyOnboardingPage, ExpertOnboardingPage } from './dashboard/OnboardingPages'
-import RegisterPage from './pages/RegisterPage'
-import ServiceDetailPage from './pages/ServiceDetailPage'
-import ProviderProfilePage from './pages/ProviderProfilePage'
+
+const DashboardShell = lazy(() => import('./dashboard/DashboardShell'))
+const AdminUsersPanel = lazy(() => import('./dashboard/AdminUsersPanel'))
+const AvailabilityPanel = lazy(() => import('./dashboard/AvailabilityPanel'))
+const AdminOverviewPage = lazy(() => import('./dashboard/OverviewPages').then((module) => ({ default: module.AdminOverviewPage })))
+const CompanyOverviewPage = lazy(() => import('./dashboard/CompanyOverviewPage').then((module) => ({ default: module.CompanyOverviewPage })))
+const ProviderOverviewPage = lazy(() => import('./dashboard/ProviderOverviewPage').then((module) => ({ default: module.ProviderOverviewPage })))
+const UserOverviewPage = lazy(() => import('./dashboard/UserOverviewPage').then((module) => ({ default: module.UserOverviewPage })))
+const OwnRatingsPage = lazy(() => import('./dashboard/SharedPages').then((module) => ({ default: module.OwnRatingsPage })))
+const ProfilePage = lazy(() => import('./dashboard/SharedPages').then((module) => ({ default: module.ProfilePage })))
+const SettingsPage = lazy(() => import('./dashboard/SettingsPage').then((module) => ({ default: module.SettingsPage })))
+const AdminRequestsPanel = lazy(() => import('./dashboard/RequestPanels').then((module) => ({ default: module.AdminRequestsPanel })))
+const ProviderInboxPanel = lazy(() => import('./dashboard/ProviderInboxPage').then((module) => ({ default: module.ProviderInboxPage })))
+const UserRequestsPanel = lazy(() => import('./dashboard/UserRequestsPage').then((module) => ({ default: module.UserRequestsPage })))
+const MessagesPage = lazy(() => import('./dashboard/MessagesPage'))
+const CompanyExpertsPanel = lazy(() => import('./dashboard/CompanyExpertsPanel'))
+const ProviderServicesPanel = lazy(() => import('./dashboard/ProviderServicesPanel'))
+const AdminFeedbackPanel = lazy(() => import('./dashboard/AdminFeedbackPanel'))
+const DashboardRedirect = lazy(() => import('./pages/DashboardRedirect'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const LegalPage = lazy(() => import('./pages/LegalPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const OffersPage = lazy(() => import('./pages/OffersPage'))
+const CompanyOnboardingPage = lazy(() => import('./dashboard/OnboardingPages').then((module) => ({ default: module.CompanyOnboardingPage })))
+const ExpertOnboardingPage = lazy(() => import('./dashboard/OnboardingPages').then((module) => ({ default: module.ExpertOnboardingPage })))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const ServiceDetailPage = lazy(() => import('./pages/ServiceDetailPage'))
+const ProviderProfilePage = lazy(() => import('./pages/ProviderProfilePage'))
 
 function CompanyOnboardingRedirect() {
   const { user } = useAuth()
@@ -58,7 +56,9 @@ function HeroRouterProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   return (
     <RouterProvider navigate={navigate} useHref={useHref}>
-      {children}
+      <Suspense fallback={<div className="page-center"><p className="muted">Duke u ngarkuar...</p></div>}>
+        {children}
+      </Suspense>
     </RouterProvider>
   )
 }

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const mongoose_1 = require("mongoose");
 const zod_1 = require("zod");
@@ -7,6 +8,7 @@ const auth_1 = require("../middleware/auth");
 const mediaService_1 = require("../services/mediaService");
 const serviceService_1 = require("../services/serviceService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 const discoveryQuery = zod_1.z.object({
     cityId: zod_1.z.string().refine(mongoose_1.Types.ObjectId.isValid, 'Invalid city ID').optional(),
     categoryId: zod_1.z.string().trim().min(1).max(120).optional(),
@@ -37,8 +39,7 @@ router.get('/', async (req, res) => {
         const parsed = discoveryQuery.safeParse(req.query);
         if (!parsed.success)
             return res.status(400).json({ message: 'Filtrat nuk janë të vlefshëm', errors: parsed.error.issues });
-        const services = await (0, serviceService_1.listActiveServices)(parsed.data);
-        return res.json({ services });
+        return res.json(await (0, serviceService_1.listPublicServicePage)(req.query, (0, pagination_1.paginationInput)(req.query)));
     }
     catch (err) {
         return res.status(500).json({
@@ -48,8 +49,7 @@ router.get('/', async (req, res) => {
 });
 router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
-        const services = await (0, serviceService_1.listServicesByProvider)(req.user.uid);
-        return res.json({ services });
+        return res.json(await (0, serviceService_1.listProviderServicePage)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20)));
     }
     catch (err) {
         return res.status(500).json({
@@ -70,7 +70,7 @@ router.post('/photos', auth_1.requireAuth, (0, auth_1.requireRole)('provider', '
 });
 router.get('/:id', async (req, res) => {
     try {
-        const service = await (0, serviceService_1.getActiveServiceById)(req.params.id);
+        const service = await (0, serviceService_1.getActiveServiceById)(req.params.id, (0, pagination_1.paginationInput)(req.query));
         if (!service) {
             return res.status(404).json({ message: 'Shërbimi nuk u gjet' });
         }

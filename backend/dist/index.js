@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
 const cors_1 = __importDefault(require("cors"));
+const compression_1 = __importDefault(require("compression"));
 const express_1 = __importDefault(require("express"));
 const http_1 = __importDefault(require("http"));
 const mongoose_1 = __importDefault(require("mongoose"));
@@ -29,9 +30,13 @@ const chat_routes_1 = __importDefault(require("./routes/chat.routes"));
 const feedback_routes_1 = __importDefault(require("./routes/feedback.routes"));
 const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const chatSocket_1 = require("./services/chatSocket");
+const publicCache_1 = require("./middleware/publicCache");
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 4000;
 app.use((0, cors_1.default)({ origin: true, credentials: true }));
+// Negotiate Brotli/gzip; leave already-compressed images and tiny responses alone.
+app.use((0, compression_1.default)());
+app.use(publicCache_1.publicCache);
 app.use(express_1.default.json());
 app.use('/media', media_routes_1.default);
 app.get('/api/health', (_req, res) => {

@@ -168,6 +168,11 @@ export default function OffersPage() {
   }
   const [sort, setSort] = useState<MarketplaceSort>(() => parseSort(searchParams.get('sort')))
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
+  const [debouncedQuery, setDebouncedQuery] = useState(query)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 300)
+    return () => window.clearTimeout(timer)
+  }, [query])
   const [categoryId, setCategoryId] = useState(searchParams.get('categoryId') || 'all')
   const [subcategoryId, setSubcategoryId] = useState(searchParams.get('subcategoryId') || 'all')
   const urlFilters = JSON.stringify([searchParams.get('q'), searchParams.get('sort'), searchParams.get('categoryId'), searchParams.get('subcategoryId')])
@@ -271,22 +276,21 @@ export default function OffersPage() {
   }, [selectedCategory?._id])
 
   useEffect(() => {
-    if (locationLoading) return
+    if (locationLoading || query !== debouncedQuery) return
     const controller = new AbortController()
     const request = { cityId, page, limit, tab, q: query.trim() || undefined,
       categoryId: categoryFilterKey === 'all' ? undefined : categoryFilterKey,
       subcategoryId: subcategoryId === 'all' ? undefined : subcategoryId,
       delivery, language, minRating, verification, sort }
-    setProvidersLoading(true)
-    setProvidersError('')
-    setServicesLoading(true)
-    setServicesError('')
-    fetchMarketplaceProviders(request, controller.signal)
+    if (tab === 'services') { setServicesLoading(true); setServicesError('') }
+    else { setProvidersLoading(true); setProvidersError('') }
+    if (tab !== 'services') fetchMarketplaceProviders(request, controller.signal)
       .then((providerItems) => {
         if (!controller.signal.aborted) {
           setProviders(providerItems)
           setCounts((current) => ({ ...current, ...providerItems.counts }))
-          if (tab !== 'services') { setPagination(providerItems.pagination); if (providerItems.pagination.page !== page) changePage(providerItems.pagination.page) }
+          setPagination(providerItems.pagination)
+          if (providerItems.pagination.page !== page) changePage(providerItems.pagination.page)
         }
       })
       .catch((err: unknown) => {
@@ -297,12 +301,13 @@ export default function OffersPage() {
       .finally(() => {
         if (!controller.signal.aborted) setProvidersLoading(false)
       })
-    fetchActiveServices(request, controller.signal)
+    if (tab === 'services') fetchActiveServices(request, controller.signal)
       .then((serviceItems) => {
         if (!controller.signal.aborted) {
           setServices(serviceItems)
           setCounts((current) => ({ ...current, services: serviceItems.pagination.total }))
-          if (tab === 'services') { setPagination(serviceItems.pagination); if (serviceItems.pagination.page !== page) changePage(serviceItems.pagination.page) }
+          setPagination(serviceItems.pagination)
+          if (serviceItems.pagination.page !== page) changePage(serviceItems.pagination.page)
         }
       })
       .catch((err: unknown) => {
@@ -314,7 +319,31 @@ export default function OffersPage() {
         if (!controller.signal.aborted) setServicesLoading(false)
       })
     return () => controller.abort()
-  }, [cityId, locationLoading, reloadKey, page, limit, filters, sort, tab])
+  }, [cityId, locationLoading, reloadKey, page, limit, filters, sort, tab, debouncedQuery])
+
+  // Counts do not depend on page/limit/sort. Do not reload inactive rows on pagination.
+  useEffect(() => {
+    if (locationLoading || query !== debouncedQuery) return
+    const controller = new AbortController()
+    const request = { cityId, q: debouncedQuery.trim() || undefined,
+      categoryId: categoryFilterKey === 'all' ? undefined : categoryFilterKey,
+      subcategoryId: subcategoryId === 'all' ? undefined : subcategoryId,
+      delivery, language, minRating, verification, countsOnly: true }
+    if (tab === 'services') {
+      setProvidersLoading(true)
+      void fetchMarketplaceProviders(request, controller.signal)
+        .then((items) => { if (!controller.signal.aborted) setCounts((current) => ({ ...current, ...items.counts })) })
+        .catch(() => undefined)
+        .finally(() => { if (!controller.signal.aborted) setProvidersLoading(false) })
+    } else {
+      setServicesLoading(true)
+      void fetchActiveServices(request, controller.signal)
+        .then((items) => { if (!controller.signal.aborted) setCounts((current) => ({ ...current, services: items.pagination.total })) })
+        .catch(() => undefined)
+        .finally(() => { if (!controller.signal.aborted) setServicesLoading(false) })
+    }
+    return () => controller.abort()
+  }, [cityId, locationLoading, reloadKey, debouncedQuery, query, categoryFilterKey, subcategoryId, delivery, language, minRating, verification, tab])
 
   useEffect(() => {
     previousExtraFilters.current = extraFiltersKey

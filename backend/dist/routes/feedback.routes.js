@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const mongoose_1 = require("mongoose");
 const auth_1 = require("../middleware/auth");
 const platformFeedbackService_1 = require("../services/platformFeedbackService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 router.post('/', async (req, res, next) => {
     if (!req.headers.authorization?.startsWith('Bearer '))
         return next();
@@ -27,9 +29,10 @@ router.post('/', async (req, res, next) => {
         return res.status(status).json({ message });
     }
 });
-router.get('/', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (_req, res) => {
+router.get('/', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
     try {
-        return res.json({ feedback: await (0, platformFeedbackService_1.listPlatformFeedback)() });
+        const feedback = await (0, platformFeedbackService_1.listPlatformFeedback)((0, pagination_1.paginationInput)(req.query, 20));
+        return res.json({ feedback, pagination: feedback.pagination, unreadTotal: feedback.unreadTotal });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Feedback-u nuk u ngarkua' });

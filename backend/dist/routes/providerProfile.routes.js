@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const mongoose_1 = require("mongoose");
 const zod_1 = require("zod");
@@ -7,6 +8,7 @@ const auth_1 = require("../middleware/auth");
 const mediaService_1 = require("../services/mediaService");
 const providerProfileService_1 = require("../services/providerProfileService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 const locationInput = zod_1.z.object({
     countryId: zod_1.z.string().refine(mongoose_1.Types.ObjectId.isValid, 'Invalid country ID'),
     cityId: zod_1.z.string().refine(mongoose_1.Types.ObjectId.isValid, 'Invalid city ID'),
@@ -40,8 +42,9 @@ const certificationsInput = zod_1.z.array(zod_1.z.object({
 })).max(30);
 router.get('/', async (req, res) => {
     try {
-        const cityId = typeof req.query.cityId === 'string' ? req.query.cityId : undefined;
-        return res.json({ providers: await (0, providerProfileService_1.listMarketplaceProviders)(cityId) });
+        if (req.query.cityId !== undefined && (typeof req.query.cityId !== 'string' || !mongoose_1.Types.ObjectId.isValid(req.query.cityId)))
+            return res.status(400).json({ message: 'City ID i pavlefshëm' });
+        return res.json(await (0, providerProfileService_1.listMarketplaceProviderPage)(req.query, (0, pagination_1.paginationInput)(req.query)));
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Profilet nuk u ngarkuan' });

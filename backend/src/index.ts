@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import cors from 'cors'
+import compression from 'compression'
 import express from 'express'
 import http from 'http'
 import mongoose from 'mongoose'
@@ -24,11 +25,15 @@ import chatRoutes from './routes/chat.routes'
 import feedbackRoutes from './routes/feedback.routes'
 import mediaRoutes from './routes/media.routes'
 import { attachChatSocket } from './services/chatSocket'
+import { publicCache } from './middleware/publicCache'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 4000
 
 app.use(cors({ origin: true, credentials: true }))
+// Negotiate Brotli/gzip; leave already-compressed images and tiny responses alone.
+app.use(compression())
+app.use(publicCache)
 app.use(express.json())
 app.use('/media', mediaRoutes)
 

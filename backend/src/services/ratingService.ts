@@ -101,7 +101,7 @@ export async function createReview(input: {
 let pendingPublicationBackfill: Promise<void> | null = null
 
 /** Publish leftover pending reviews created under the unmoderated fallback policy. */
-function backfillUnmoderatedPendingReviews() {
+export function backfillUnmoderatedPendingReviews() {
   if (!pendingPublicationBackfill) {
     pendingPublicationBackfill = (async () => {
       if (DEFAULT_POLICY_RULES.moderation.reviewRequiresApproval) return
@@ -218,10 +218,41 @@ export async function getProviderStats(providerUid: string): Promise<ProviderRat
   }
 }
 
+export type ProviderRatingSummary = Pick<ProviderRatingStats, 'average' | 'count'>
+
 export async function getStatsForProviders(providerUids: string[]) {
   const unique = [...new Set(providerUids.filter(Boolean))]
-  const pairs = await Promise.all(unique.map(async (uid) => [uid, await getProviderStats(uid)] as const))
-  return new Map(pairs)
+  const result = new Map<string, ProviderRatingStats>()
+  if (!unique.length) return result
+  await backfillUnmoderatedPendingReviews()
+  const users = await User.find({ uid: { $in: unique } }).select('_id uid').lean()
+  const ownerIds = users.map((user) => user._id)
+  const businesses = await Business.find({ $or: [
+    { owners: { $in: ownerIds } },
+    { members: { $elemMatch: { user: { $in: ownerIds }, role: 'manager' } } },
+  ] }).select('_id owners members').lean()
+  const profiles = await ProviderProfile.find({ $or: [
+    { ownerUser: { $in: ownerIds } }, { business: { $in: businesses.map((business) => business._id) } },
+  ] }).select('_id ownerUser business').lean()
+  const aggregates = await RatingAggregate.find({ portal: DEFAULT_PORTAL, $or: [
+    { scope: 'provider', subjectId: { $in: profiles.map((profile) => profile._id) } },
+    { scope: 'business', subjectId: { $in: businesses.map((business) => business._id) } },
+  ] }).lean()
+  const bySubject = new Map(aggregates.map((aggregate) => [`${aggregate.scope}:${aggregate.subjectId}`, aggregate]))
+  const byUid = new Map(users.map((user) => [user.uid, user]))
+  for (const uid of unique) {
+    const user = byUid.get(uid)
+    const ownedBusinesses = new Set(businesses.filter((business) => user && canManageBusiness(business, user._id)).map((business) => String(business._id)))
+    const ownedProfiles = profiles.filter((profile) => user && (profile.ownerUser.equals(user._id) || (profile.business && ownedBusinesses.has(String(profile.business)))))
+    const matching = [
+      ...ownedProfiles.map((profile) => bySubject.get(`provider:${profile._id}`)),
+      ...[...ownedBusinesses].map((id) => bySubject.get(`business:${id}`)),
+    ].filter((aggregate) => aggregate !== undefined)
+    result.set(uid, { providerUid: uid, average: combinedAverage(matching),
+      count: matching.reduce((sum, aggregate) => sum + aggregate.count, 0),
+      verifiedCount: matching.reduce((sum, aggregate) => sum + aggregate.verifiedCount, 0) })
+  }
+  return result
 }
 
 async function toLegacyRating(review: ReviewDoc & { _id: Types.ObjectId }, providerUid: string, providerName: string) {

@@ -1,9 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const availabilityService_1 = require("../services/availabilityService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 router.get('/provider/:uid', async (req, res) => {
     try {
         const uid = String(req.params.uid || '').trim();
@@ -11,11 +13,11 @@ router.get('/provider/:uid', async (req, res) => {
             return res.status(400).json({ message: 'Mungon ofruesi' });
         const view = typeof req.query.view === 'string' ? req.query.view : 'open';
         if (view === 'schedule') {
-            const schedule = await (0, availabilityService_1.listScheduleForProvider)(uid);
+            const schedule = await (0, availabilityService_1.listScheduleForProvider)(uid, (0, pagination_1.paginationInput)(req.query, 50));
             return res.json(schedule);
         }
-        const slots = await (0, availabilityService_1.listOpenAvailabilityForProvider)(uid);
-        return res.json({ slots });
+        const slots = await (0, availabilityService_1.listOpenAvailabilityForProvider)(uid, (0, pagination_1.paginationInput)(req.query, 50));
+        return res.json({ slots, pagination: slots.pagination });
     }
     catch (err) {
         return res.status(500).json({
@@ -25,8 +27,8 @@ router.get('/provider/:uid', async (req, res) => {
 });
 router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
-        const slots = await (0, availabilityService_1.listMyAvailability)(req.user.uid);
-        return res.json({ slots });
+        const slots = await (0, availabilityService_1.listMyAvailability)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 50));
+        return res.json({ slots, pagination: slots.pagination, summary: slots.summary });
     }
     catch (err) {
         return res.status(500).json({

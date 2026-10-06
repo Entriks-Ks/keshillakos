@@ -1,0 +1,439 @@
+{
+  "timings": [
+    {
+      "4001": {
+        "samples": [
+          334,
+          311,
+          318,
+          318,
+          331
+        ],
+        "median": 318,
+        "bytes": 10763,
+        "cache": "public, max-age=0, must-revalidate"
+      },
+      "4002": {
+        "samples": [
+          517,
+          574,
+          616,
+          541,
+          501
+        ],
+        "median": 541,
+        "bytes": 10763
+      },
+      "path": "/api/services?limit=12"
+    },
+    {
+      "4001": {
+        "samples": [
+          580,
+          315,
+          316,
+          379,
+          451
+        ],
+        "median": 379,
+        "bytes": 2446,
+        "cache": "public, max-age=0, must-revalidate"
+      },
+      "4002": {
+        "samples": [
+          509,
+          489,
+          533,
+          507,
+          507
+        ],
+        "median": 507,
+        "bytes": 2446
+      },
+      "path": "/api/providers?limit=12&tab=services"
+    },
+    {
+      "4001": {
+        "samples": [
+          205,
+          204,
+          200,
+          202,
+          212
+        ],
+        "median": 204,
+        "bytes": 1110,
+        "cache": "public, max-age=0, must-revalidate"
+      },
+      "4002": {
+        "samples": [
+          505,
+          400,
+          384,
+          392,
+          402
+        ],
+        "median": 400,
+        "bytes": 1110
+      },
+      "path": "/api/providers?limit=12&tab=experts"
+    },
+    {
+      "4001": {
+        "samples": [
+          53,
+          61,
+          55,
+          55,
+          53
+        ],
+        "median": 55,
+        "bytes": 113,
+        "cache": "public, max-age=0, must-revalidate"
+      },
+      "path": "/api/providers?countsOnly=true"
+    },
+    {
+      "4001": {
+        "samples": [
+          61,
+          61,
+          65,
+          69,
+          59
+        ],
+        "median": 61,
+        "bytes": 108,
+        "cache": "public, max-age=0, must-revalidate"
+      },
+      "path": "/api/services?countsOnly=true"
+    },
+    {
+      "4001": {
+        "samples": [
+          54,
+          48,
+          53,
+          50,
+          65
+        ],
+        "median": 53,
+        "bytes": 1303,
+        "cache": "public, max-age=300, must-revalidate"
+      },
+      "4002": {
+        "samples": [
+          58,
+          50,
+          53,
+          49,
+          51
+        ],
+        "median": 51,
+        "bytes": 1303
+      },
+      "path": "/api/v1/categories"
+    },
+    {
+      "4001": {
+        "samples": [
+          52,
+          61,
+          55,
+          73,
+          57
+        ],
+        "median": 57,
+        "bytes": 2465,
+        "cache": "public, max-age=300, must-revalidate"
+      },
+      "4002": {
+        "samples": [
+          57,
+          50,
+          50,
+          51,
+          50
+        ],
+        "median": 50,
+        "bytes": 2465
+      },
+      "path": "/api/v1/catalog-options"
+    },
+    {
+      "4001": {
+        "samples": [
+          80,
+          65,
+          58,
+          59,
+          71
+        ],
+        "median": 65,
+        "bytes": 1516,
+        "cache": "public, max-age=300, must-revalidate"
+      },
+      "4002": {
+        "samples": [
+          48,
+          49,
+          48,
+          47,
+          53
+        ],
+        "median": 48,
+        "bytes": 1516
+      },
+      "path": "/api/v1/countries"
+    }
+  ],
+  "equivalence": [
+    {
+      "path": "/api/services?limit=12",
+      "equal": true
+    },
+    {
+      "path": "/api/services?limit=1&page=2",
+      "equal": true
+    },
+    {
+      "path": "/api/services?limit=1&page=999",
+      "equal": true
+    },
+    {
+      "path": "/api/services?q=tatim",
+      "equal": true
+    },
+    {
+      "path": "/api/services?q=zzzzzz",
+      "equal": true
+    },
+    {
+      "path": "/api/services?sort=rating",
+      "equal": true
+    },
+    {
+      "path": "/api/services?sort=reviews",
+      "equal": true
+    },
+    {
+      "path": "/api/services?sort=newest",
+      "equal": true
+    },
+    {
+      "path": "/api/services?minRating=4",
+      "equal": true
+    },
+    {
+      "path": "/api/services?verification=verified",
+      "equal": true
+    },
+    {
+      "path": "/api/services?delivery=online",
+      "equal": true
+    },
+    {
+      "path": "/api/services?language=Shqip",
+      "equal": true
+    },
+    {
+      "path": "/api/services?categoryId=6aabd7361558226a7e14b949",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?limit=12",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?limit=1&page=2",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?limit=1&page=999",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?q=tatim",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?q=zzzzzz",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?sort=rating",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?sort=reviews",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?sort=newest",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?minRating=4",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?verification=verified",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?delivery=online",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?language=Shqip",
+      "equal": true
+    },
+    {
+      "path": "/api/providers?categoryId=6aabd7361558226a7e14b949",
+      "equal": true
+    }
+  ],
+  "compression": [
+    {
+      "path": "/api/services?limit=12",
+      "requested": "identity",
+      "encoding": "identity",
+      "bytes": 10763,
+      "decoded": 10763,
+      "cache": "public, max-age=0, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/services?limit=12",
+      "requested": "gzip",
+      "encoding": "gzip",
+      "bytes": 1961,
+      "decoded": 10763,
+      "cache": "public, max-age=0, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/services?limit=12",
+      "requested": "br",
+      "encoding": "br",
+      "bytes": 1937,
+      "decoded": 10763,
+      "cache": "public, max-age=0, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/providers?limit=12&tab=services",
+      "requested": "identity",
+      "encoding": "identity",
+      "bytes": 2446,
+      "decoded": 2446,
+      "cache": "public, max-age=0, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/providers?limit=12&tab=services",
+      "requested": "gzip",
+      "encoding": "gzip",
+      "bytes": 997,
+      "decoded": 2446,
+      "cache": "public, max-age=0, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/providers?limit=12&tab=services",
+      "requested": "br",
+      "encoding": "br",
+      "bytes": 965,
+      "decoded": 2446,
+      "cache": "public, max-age=0, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/v1/categories",
+      "requested": "identity",
+      "encoding": "identity",
+      "bytes": 1303,
+      "decoded": 1303,
+      "cache": "public, max-age=300, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/v1/categories",
+      "requested": "gzip",
+      "encoding": "gzip",
+      "bytes": 521,
+      "decoded": 1303,
+      "cache": "public, max-age=300, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    },
+    {
+      "path": "/api/v1/categories",
+      "requested": "br",
+      "encoding": "br",
+      "bytes": 494,
+      "decoded": 1303,
+      "cache": "public, max-age=300, must-revalidate",
+      "vary": "Origin, Accept-Encoding"
+    }
+  ],
+  "revalidation": 304,
+  "bundles": {
+    "js": {
+      "files": 18,
+      "bytes": 877177,
+      "gzip": 279018,
+      "beforeBytes": 1552167,
+      "beforeGzip": 446538
+    },
+    "css": {
+      "files": 2,
+      "bytes": 583004,
+      "gzip": 63155,
+      "beforeBytes": 702912,
+      "beforeGzip": 81955
+    }
+  },
+  "hero": [
+    {
+      "path": "frontend/public/images/hero/desktop-1440.avif",
+      "bytes": 37245
+    },
+    {
+      "path": "frontend/public/images/hero/desktop-1440.webp",
+      "bytes": 71510
+    },
+    {
+      "path": "frontend/public/images/hero/desktop-1920.avif",
+      "bytes": 61660
+    },
+    {
+      "path": "frontend/public/images/hero/desktop-1920.webp",
+      "bytes": 139416
+    },
+    {
+      "path": "frontend/public/images/hero/desktop-960.avif",
+      "bytes": 21562
+    },
+    {
+      "path": "frontend/public/images/hero/desktop-960.webp",
+      "bytes": 37550
+    },
+    {
+      "path": "frontend/public/images/hero/mobile-480.avif",
+      "bytes": 18217
+    },
+    {
+      "path": "frontend/public/images/hero/mobile-480.webp",
+      "bytes": 31872
+    },
+    {
+      "path": "frontend/public/images/hero/mobile-768.avif",
+      "bytes": 34357
+    },
+    {
+      "path": "frontend/public/images/hero/mobile-768.webp",
+      "bytes": 59156
+    }
+  ],
+  "heroBeforeBytes": 1119728
+}

@@ -4,6 +4,7 @@ exports.normalizeFeedbackInput = normalizeFeedbackInput;
 exports.createPlatformFeedback = createPlatformFeedback;
 exports.listPlatformFeedback = listPlatformFeedback;
 exports.markPlatformFeedbackRead = markPlatformFeedbackRead;
+const pagination_1 = require("./pagination");
 const PlatformFeedback_1 = require("../models/PlatformFeedback");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function normalizeFeedbackInput(input) {
@@ -39,9 +40,9 @@ async function createPlatformFeedback(input) {
     const doc = await PlatformFeedback_1.PlatformFeedback.create(data);
     return toFeedbackItem(doc);
 }
-async function listPlatformFeedback() {
-    const items = await PlatformFeedback_1.PlatformFeedback.find().sort({ createdAt: -1 }).limit(200).lean();
-    return items.map(toFeedbackItem);
+async function listPlatformFeedback(input = { page: 1, limit: 20 }) {
+    const result = await (0, pagination_1.queryPage)(input, () => PlatformFeedback_1.PlatformFeedback.countDocuments(), (skip, limit) => PlatformFeedback_1.PlatformFeedback.find().sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean());
+    return Object.assign(result.items.map(toFeedbackItem), { pagination: result.pagination, unreadTotal: await PlatformFeedback_1.PlatformFeedback.countDocuments({ status: "new" }) });
 }
 async function markPlatformFeedbackRead(id) {
     const doc = await PlatformFeedback_1.PlatformFeedback.findByIdAndUpdate(id, { status: 'read' }, { new: true }).lean();

@@ -10,6 +10,7 @@ exports.getConversationForUser = getConversationForUser;
 exports.listMessages = listMessages;
 exports.sendMessage = sendMessage;
 exports.markConversationRead = markConversationRead;
+const pagination_1 = require("./pagination");
 const mongoose_1 = __importDefault(require("mongoose"));
 const Conversation_1 = require("../models/Conversation");
 const Message_1 = require("../models/Message");
@@ -115,13 +116,19 @@ async function openOrGetConversation(input) {
     const publicConv = await toPublicConversation(conversation, input.senderUid || input.seekerUid);
     return { conversation: publicConv, message };
 }
-async function listConversationsForUser(uid) {
-    const docs = await Conversation_1.Conversation.find({
-        $or: [{ seekerUid: uid }, { providerUid: uid }],
-    })
-        .sort({ lastMessageAt: -1, updatedAt: -1 })
-        .limit(100);
-    return Promise.all(docs.map((doc) => toPublicConversation(doc, uid)));
+async function listConversationsForUser(uid, input = { page: 1, limit: 20 }, search = '') {
+    const query = { $or: [{ seekerUid: uid }, { providerUid: uid }] };
+    if (search.trim()) {
+        const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const peers = await User_1.User.find({ name: { $regex: escaped, $options: 'i' } }).select('uid').lean();
+        query.$and = [{ $or: [{ seekerUid: { $in: peers.map((peer) => peer.uid) } }, { providerUid: { $in: peers.map((peer) => peer.uid) } }, { serviceTitle: { $regex: escaped, $options: 'i' } }, { lastMessagePreview: { $regex: escaped, $options: 'i' } }] }];
+    }
+    const result = await (0, pagination_1.queryPage)(input, () => Conversation_1.Conversation.countDocuments(query), (skip, limit) => Conversation_1.Conversation.find(query).sort({ lastMessageAt: -1, updatedAt: -1, _id: -1 }).skip(skip).limit(limit));
+    const totals = await Conversation_1.Conversation.aggregate([
+        { $match: { $or: [{ seekerUid: uid }, { providerUid: uid }] } },
+        { $group: { _id: null, total: { $sum: 1 }, unread: { $sum: { $cond: [{ $eq: ['$seekerUid', uid] }, '$seekerUnread', '$providerUnread'] } } } },
+    ]);
+    return Object.assign(await Promise.all(result.items.map((doc) => toPublicConversation(doc, uid))), { pagination: result.pagination, summary: { total: totals[0]?.total ?? 0, unread: totals[0]?.unread ?? 0 } });
 }
 async function getConversationForUser(conversationId, uid) {
     const conversation = await assertParticipant(conversationId, uid);
@@ -139,8 +146,8 @@ async function listMessages(input) {
             query.createdAt = { $lt: beforeDate };
         }
     }
-    const docs = await Message_1.Message.find(query).sort({ createdAt: -1 }).limit(limit);
-    return docs.reverse().map(toMessage);
+    const result = await (0, pagination_1.queryPage)({ page: input.page ?? 1, limit }, () => Message_1.Message.countDocuments(query), (skip, pageLimit) => Message_1.Message.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageLimit));
+    return Object.assign(result.items.reverse().map(toMessage), { pagination: result.pagination });
 }
 async function sendMessage(input) {
     const body = input.body.trim();

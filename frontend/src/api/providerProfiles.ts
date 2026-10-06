@@ -174,7 +174,7 @@ export type MarketplaceProvider = {
   createdAt?: string
 }
 
-export async function fetchMarketplaceProviders(params: { cityId?: string; page?: number; limit?: number; tab?: string; q?: string; categoryId?: string; subcategoryId?: string; delivery?: string; language?: string; minRating?: string; verification?: string; sort?: string } = {}, signal?: AbortSignal) {
+export async function fetchMarketplaceProviders(params: { cityId?: string; page?: number; limit?: number; tab?: string; q?: string; categoryId?: string; subcategoryId?: string; delivery?: string; language?: string; minRating?: string; verification?: string; sort?: string; countsOnly?: boolean } = {}, signal?: AbortSignal) {
   const { data } = await api.get<{ providers?: unknown; pagination: PaginationMeta; counts: { experts: number; companies: number } }>('/api/providers', { params, signal })
   return Object.assign(pagedItems(normalizeMarketplaceProviders(data?.providers), data.pagination), { counts: data.counts })
 }

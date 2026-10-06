@@ -40,9 +40,14 @@ exports.createService = createService;
 exports.updateService = updateService;
 exports.deleteService = deleteService;
 exports.listServicesByProvider = listServicesByProvider;
+exports.listProviderServicePage = listProviderServicePage;
 exports.listActiveServices = listActiveServices;
+exports.listPublicServicePage = listPublicServicePage;
 exports.getActiveServiceById = getActiveServiceById;
 exports.listActiveServicesByProvider = listActiveServicesByProvider;
+const ratingService_1 = require("./ratingService");
+const marketplaceQuery_1 = require("./marketplaceQuery");
+const pagination_1 = require("./pagination");
 const mongoose_1 = __importStar(require("mongoose"));
 const Category_1 = require("../models/Category");
 const City_1 = require("../models/City");
@@ -276,6 +281,25 @@ async function listServicesByProvider(providerUid) {
     ]);
     return [...(await (0, serviceOfferService_1.offersToLegacyServices)(offers)), ...(await withLegacyProviders(legacy))];
 }
+async function listProviderServicePage(providerUid, input, publicOnly = false) {
+    const offerQuery = { ...await (0, serviceOfferService_1.managedServiceOfferQuery)(providerUid), ...(publicOnly ? { status: 'published', visibility: 'public', 'moderation.status': 'approved' } : {}) };
+    const pipeline = [
+        { $match: offerQuery },
+        { $project: { _id: 1, source: { $literal: 'offer' }, createdAt: 1, active: { $and: [{ $eq: ['$status', 'published'] }, { $eq: ['$moderation.status', 'approved'] }] } } },
+        { $unionWith: { coll: Service_1.Service.collection.name, pipeline: [
+                    { $match: { providerUid, ...(publicOnly ? { active: true } : {}) } },
+                    { $project: { _id: 1, source: { $literal: 'legacy' }, createdAt: 1, active: 1 } },
+                ] } },
+    ];
+    const totals = (await ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $group: { _id: null, total: { $sum: 1 }, active: { $sum: { $cond: ['$active', 1, 0] } } } }]))[0];
+    const result = await (0, pagination_1.queryPage)(input, () => Promise.resolve(totals?.total ?? 0), (skip, limit) => ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $sort: { createdAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }]));
+    const [offers, legacy] = await Promise.all([
+        ServiceOffer_1.ServiceOffer.find({ _id: { $in: result.items.filter((row) => row.source === 'offer').map((row) => row._id) } }),
+        Service_1.Service.find({ _id: { $in: result.items.filter((row) => row.source === 'legacy').map((row) => row._id) } }),
+    ]);
+    const byId = new Map([...await (0, serviceOfferService_1.offersToLegacyServices)(offers, publicOnly), ...await withLegacyProviders(legacy)].map((card) => [card.id, card]));
+    return { services: result.items.flatMap((row) => { const card = byId.get(String(row._id)); return card ? [card] : []; }), pagination: result.pagination, summary: { total: totals?.total ?? 0, active: totals?.active ?? 0 } };
+}
 async function listActiveServices(filters = {}) {
     let providerIds;
     let providerUids;
@@ -294,7 +318,7 @@ async function listActiveServices(filters = {}) {
     }
     const [legacy, offers] = await Promise.all([
         Service_1.Service.find({ active: true, ...(providerUids ? { providerUid: { $in: providerUids } } : {}) })
-            .sort({ createdAt: -1 }).limit(filters.cityId ? 0 : 50),
+            .sort({ createdAt: -1 }),
         (0, serviceOfferService_1.listPublishedServiceOffers)(providerIds),
     ]);
     let categoryId = filters.categoryId;
@@ -318,7 +342,31 @@ async function listActiveServices(filters = {}) {
     const services = [...(await (0, serviceOfferService_1.offersToLegacyServices)(offers, true)), ...(await withLegacyProviders(legacy))];
     return filterDiscoveredServices(services, { ...filters, categoryId, subcategoryNames });
 }
-async function getActiveServiceById(id) {
+async function listPublicServicePage(query, input) {
+    if (typeof query.cityId === 'string' && !await isActiveDiscoveryCity(query.cityId)) {
+        const result = await (0, pagination_1.queryPage)(input, () => Promise.resolve(0), () => Promise.resolve([]));
+        return { services: [], pagination: result.pagination, summary: { total: 0, active: 0 } };
+    }
+    await (0, ratingService_1.backfillUnmoderatedPendingReviews)();
+    const pipeline = (0, marketplaceQuery_1.publicServicesPipeline)(query);
+    const count = async () => (await ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $count: 'total' }]))[0]?.total ?? 0;
+    if (query.countsOnly === 'true') {
+        const total = await count();
+        return { services: [], pagination: (0, pagination_1.paginationMeta)(input, total), summary: { total, active: total } };
+    }
+    const result = await (0, pagination_1.queryPage)(input, count, (skip, limit) => ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, source: 1, ratingAverage: 1, ratingCount: 1 } }]));
+    const [offers, legacy] = await Promise.all([
+        ServiceOffer_1.ServiceOffer.find({ _id: { $in: result.items.filter((row) => row.source === 'offer').map((row) => row._id) } }),
+        Service_1.Service.find({ _id: { $in: result.items.filter((row) => row.source === 'legacy').map((row) => row._id) } }),
+    ]);
+    const ratings = new Map(result.items.map((row) => [String(row._id), { average: row.ratingAverage, count: row.ratingCount }]));
+    const [offerCards, legacyCards] = await Promise.all([(0, serviceOfferService_1.offersToLegacyServices)(offers, true, ratings), withLegacyProviders(legacy)]);
+    const cards = [...offerCards, ...legacyCards];
+    const byId = new Map(cards.map((card) => [card.id, card]));
+    const services = result.items.flatMap((row) => { const card = byId.get(String(row._id)); return card ? [card] : []; });
+    return { services, pagination: result.pagination, summary: { total: result.pagination.total, active: result.pagination.total } };
+}
+async function getActiveServiceById(id, input = { page: 1, limit: 12 }) {
     if (!mongoose_1.default.isValidObjectId(id))
         return null;
     const offer = await ServiceOffer_1.ServiceOffer.findOne({
@@ -330,7 +378,7 @@ async function getActiveServiceById(id) {
     if (offer) {
         const [enriched] = await (0, serviceOfferService_1.offersToLegacyServices)([offer], true);
         if (enriched?.active)
-            return withCompanyExperts(enriched);
+            return withCompanyExperts(enriched, input);
     }
     const service = await Service_1.Service.findOne({ _id: id, active: true });
     if (!service)
@@ -338,11 +386,11 @@ async function getActiveServiceById(id) {
     const [enriched] = await withLegacyProviders([service]);
     if (!enriched)
         return null;
-    return withCompanyExperts(enriched);
+    return withCompanyExperts(enriched, input);
 }
-async function withCompanyExperts(service) {
-    const experts = service.providerUid ? await (0, businessService_1.publicExpertsForOwner)(service.providerUid) : [];
-    return { ...service, experts };
+async function withCompanyExperts(service, input) {
+    const result = await (0, businessService_1.publicExpertPageForOwner)(service.providerUid || '', input);
+    return { ...service, experts: result.experts, expertsPagination: result.pagination };
 }
 async function listActiveServicesByProvider(providerUid) {
     const [legacy, offers] = await Promise.all([

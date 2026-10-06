@@ -48,7 +48,7 @@ function attachChatSocket(httpServer) {
                 await (0, chatService_1.markConversationRead)(conversationId, user.uid);
                 const messages = await (0, chatService_1.listMessages)({ conversationId, uid: user.uid, limit: 50 });
                 if (typeof ack === 'function')
-                    ack({ ok: true, messages });
+                    ack({ ok: true, messages, pagination: messages.pagination });
             }
             catch (err) {
                 if (typeof ack === 'function') {

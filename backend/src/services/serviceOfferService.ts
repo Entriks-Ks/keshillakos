@@ -12,7 +12,7 @@ import { canManageBusiness, userIdForUid } from './businessService'
 import { DEFAULT_PORTAL, findCategoryById } from './domainService'
 import { deleteRemovedUploads, deleteUploads, sanitizeUploadPaths } from './mediaService'
 import { listMyProviderProfiles } from './providerProfileService'
-import { getStatsForProviders } from './ratingService'
+import { type ProviderRatingSummary, getStatsForProviders } from './ratingService'
 
 export type CreateServiceOfferInput = {
   ownerUid: string
@@ -326,7 +326,8 @@ export async function deleteServiceOffer(uid: string, id: string) {
   return { deleted: true, id }
 }
 
-export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOnly = false) {
+export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOnly = false, marketplaceRatings?: Map<string, ProviderRatingSummary>) {
+  if (!offers.length) return []
   const [profiles, categories, businesses] = await Promise.all([
     ProviderProfile.find({ _id: { $in: offers.map((offer) => offer.providerProfile) } }),
     Category.find({ _id: { $in: offers.map((offer) => offer.category) } }),
@@ -344,14 +345,14 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
     .select('uid firstName lastName name profilePhoto headline bio skills languages')
     .lean()
   const ownerById = new Map(users.map((user) => [String(user._id), user]))
-  const ratings = await getStatsForProviders(users.map((user) => user.uid).filter(Boolean))
+  const ratings = marketplaceRatings ? undefined : await getStatsForProviders(users.map((user) => user.uid).filter(Boolean))
   return offers.map((offer) => {
     const profile = profileById.get(String(offer.providerProfile))
     const category = categoryById.get(String(offer.category))
     const business = offer.business ? businessById.get(String(offer.business)) : undefined
     const owner = profile ? ownerById.get(String(profile.ownerUser)) : undefined
     const uid = owner?.uid || ''
-    const rating = ratings.get(uid)
+    const rating = marketplaceRatings?.get(String((offer as ServiceOfferDoc & { _id: Types.ObjectId })._id)) ?? ratings?.get(uid)
     const providerName = profile?.providerType === 'business'
       ? (business?.publicName || profile.publicProfile.displayName || '')
       : (profile?.publicProfile.displayName || business?.publicName || '')

@@ -150,7 +150,7 @@ export type ServiceSearchParams = {
   q?: string
 }
 
-export async function fetchActiveServices(params: ServiceSearchParams & PageParams = {}, signal?: AbortSignal) {
+export async function fetchActiveServices(params: ServiceSearchParams & PageParams & { countsOnly?: boolean } = {}, signal?: AbortSignal) {
   const { data } = await api.get<{ services: ServiceItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/services', { params, signal })
   return pagedItems(data.services, data.pagination, data.summary)
 }
