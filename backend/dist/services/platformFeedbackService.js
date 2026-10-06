@@ -4,6 +4,7 @@ exports.normalizeFeedbackInput = normalizeFeedbackInput;
 exports.createPlatformFeedback = createPlatformFeedback;
 exports.listPlatformFeedback = listPlatformFeedback;
 exports.markPlatformFeedbackRead = markPlatformFeedbackRead;
+const notificationService_1 = require("./notificationService");
 const pagination_1 = require("./pagination");
 const PlatformFeedback_1 = require("../models/PlatformFeedback");
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,6 +39,7 @@ function normalizeFeedbackInput(input) {
 async function createPlatformFeedback(input) {
     const data = normalizeFeedbackInput(input);
     const doc = await PlatformFeedback_1.PlatformFeedback.create(data);
+    await (0, notificationService_1.notifyAdmins)({ type: 'feedback:new', title: 'Feedback i ri', href: '/dashboard/admin/feedback', eventKey: `feedback:${doc._id}`, actorUid: input.userUid });
     return toFeedbackItem(doc);
 }
 async function listPlatformFeedback(input = { page: 1, limit: 20 }) {

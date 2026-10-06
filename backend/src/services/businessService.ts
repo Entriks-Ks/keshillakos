@@ -1,3 +1,4 @@
+import { notify, notifyUsers, notifyAdmins } from './notificationService'
 import { paginateItems, queryPage, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
 import { Business, type BusinessDoc } from '../models/Business'
@@ -280,7 +281,7 @@ export async function inviteBusinessExpert(uid: string, businessId: string, emai
   if (business.invitations.some((invite) => invite.user.equals(expert._id))) {
     throw new Error('Ftesa ekziston tashmë')
   }
-  // In-app invitation only for now. Hook future email/notification delivery here without changing membership rules.
+  // Persist membership changes before notifying the affected accounts.
   const updated = await Business.findOneAndUpdate(
     {
       _id: business._id,
@@ -292,6 +293,7 @@ export async function inviteBusinessExpert(uid: string, businessId: string, emai
     { new: true, runValidators: true },
   )
   if (!updated) throw new Error('Ftesa nuk u dërgua')
+  await notify([expert.uid], { type: 'company:invitation', title: 'Ftesë nga kompania', body: business.publicName, href: '/dashboard/provider/profile', eventKey: `invite:${business._id}:${expert._id}:${updated.updatedAt.toISOString()}`, actorUid: uid })
   return businessTeam(uid, businessId)
 }
 
@@ -321,6 +323,7 @@ export async function acceptBusinessInvitation(uid: string, businessId: string) 
     { new: true, runValidators: true },
   )
   if (!business) throw new Error('Ftesa nuk u gjet')
+  await notifyUsers(business.owners, { type: 'company:invitation-accepted', title: 'Ftesa u pranua', body: business.publicName, href: '/dashboard/company/experts', eventKey: `invite:${business._id}:${userId}:accepted:${business.updatedAt.toISOString()}`, actorUid: uid })
   return { id: String(business._id), publicName: business.publicName }
 }
 
@@ -335,6 +338,7 @@ export async function rejectBusinessInvitation(uid: string, businessId: string) 
     { new: true, runValidators: true },
   )
   if (!business) throw new Error('Ftesa nuk u gjet')
+  await notifyUsers(business.owners, { type: 'company:invitation-rejected', title: 'Ftesa u refuzua', body: business.publicName, href: '/dashboard/company/experts', eventKey: `invite:${business._id}:${userId}:rejected:${business.updatedAt.toISOString()}`, actorUid: uid })
   return { id: String(business._id), publicName: business.publicName }
 }
 
@@ -345,6 +349,7 @@ export async function cancelBusinessInvitation(uid: string, businessId: string, 
   if (!invite) throw new Error('Ftesa nuk u gjet')
   business.invitations = business.invitations.filter((item) => String(item.user) !== inviteeUserId)
   await business.save()
+  await notifyUsers([inviteeUserId], { type: 'company:invitation-cancelled', title: 'Ftesa u anulua', body: business.publicName, href: '/dashboard', eventKey: `invite:${business._id}:${inviteeUserId}:cancelled:${business.updatedAt.toISOString()}`, actorUid: uid })
   return businessTeam(uid, businessId)
 }
 
@@ -355,6 +360,7 @@ export async function removeBusinessExpert(uid: string, businessId: string, memb
   if (!member) throw new Error('Anëtari nuk u gjet')
   business.members = business.members.filter((item) => String(item.user) !== memberId)
   await business.save()
+  await notifyUsers([memberId], { type: 'company:member-removed', title: 'Anëtarësia në kompani përfundoi', body: business.publicName, href: '/dashboard', eventKey: `member:${business._id}:${memberId}:removed:${business.updatedAt.toISOString()}`, actorUid: uid })
   return businessTeam(uid, businessId)
 }
 
@@ -442,9 +448,11 @@ export async function updateBusiness(uid: string, businessId: string, changes: {
   }
   if (changes.branches !== undefined) business.branches = changes.branches
   // Verification is separate from lifecycle status; edits do not demote an active company.
-  if (business.verification.status === 'verified') business.verification.status = 'pending'
+  const newlyPending = business.verification.status === 'verified'
+  if (newlyPending) business.verification.status = 'pending'
   await business.save()
   if (changes.logoUrl !== undefined || changes.coverUrl !== undefined) await deleteUploads(previousMedia)
+  if (newlyPending) await notifyAdmins({ type: 'company:pending', title: 'Kompani për rishqyrtim', href: '/dashboard/admin', eventKey: `business:${business._id}:pending:${business.updatedAt.toISOString()}`, actorUid: uid })
   return business
 }
 
@@ -453,11 +461,13 @@ export async function reviewBusiness(id: string, reviewerUid: string, status: 'a
   const reviewer = await userIdForUid(reviewerUid)
   const business = await Business.findById(id)
   if (!business) throw new Error('Biznesi nuk u gjet')
+  const changed = business.status !== status || Boolean(verification && business.verification.status !== verification)
   // Admin can suspend/reactivate; verification badges are optional and independent.
   business.status = status
   if (verification) {
     business.verification = { status: verification, reviewedAt: new Date(), reviewedBy: reviewer }
   }
   await business.save()
+  if (changed) await notifyUsers([...business.owners, ...business.members.map(m => m.user)], { type: 'company:review', title: 'Statusi i kompanisë ndryshoi', body: `${business.publicName}: ${status}${verification ? ', ' + verification : ''}`, href: '/dashboard', eventKey: `business:${business._id}:${business.updatedAt.toISOString()}`, actorUid: reviewerUid })
   return business
 }

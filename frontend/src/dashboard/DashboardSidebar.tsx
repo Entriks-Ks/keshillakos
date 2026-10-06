@@ -1,3 +1,5 @@
+import MessageUnreadBadge from '../chat/MessageUnreadBadge'
+import { useNotifications } from '../notifications/NotificationProvider'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Dropdown, Label, Separator } from '@heroui/react'
 import { Check, ChevronsUpDown } from 'lucide-react'
@@ -22,17 +24,21 @@ type DashboardSidebarProps = {
 function SidebarLink({ item, onNavigate }: { item: DashNavItem; onNavigate?: () => void }) {
   const Icon = item.icon
   const location = useLocation()
+  const { messageUnreadCount } = useNotifications()
+  const isMessages = item.to.endsWith('/messages')
+  const hasUnread = isMessages && messageUnreadCount > 0
   const isPrivateEdit = location.pathname === '/dashboard/profile/edit' && item.to === '/dashboard/user/profile'
   return (
     <li>
       <NavLink
         to={item.to}
         end={item.end}
-        className={({ isActive }) => `dsb-link${isActive || isPrivateEdit ? ' is-active' : ''}`}
+        className={({ isActive }) => `dsb-link${isActive || isPrivateEdit ? ' is-active' : ''}${hasUnread ? ' has-unread' : ''}`}
         onClick={onNavigate}
       >
         <Icon size={18} strokeWidth={2} aria-hidden />
         <span>{item.label}</span>
+        {isMessages && <MessageUnreadBadge />}
       </NavLink>
     </li>
   )

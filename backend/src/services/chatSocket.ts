@@ -1,66 +1,28 @@
-import type { Server as HttpServer } from 'http'
-import { Server } from 'socket.io'
-import { firebaseVerifyIdToken } from './firebaseAuth'
-import { findUserByUid } from './userService'
+import type { Server } from 'socket.io'
+import type { SocketUser } from './socketServer'
 import {
   getConversationForUser,
   listMessages,
   markConversationRead,
   sendMessage,
-  type PublicMessage,
 } from './chatService'
 
-type SocketUser = {
-  uid: string
-  name: string
-}
-
-export function attachChatSocket(httpServer: HttpServer) {
-  const io = new Server(httpServer, {
-    cors: { origin: true, credentials: true },
-    path: '/socket.io',
-  })
-
-  io.use(async (socket, next) => {
-    try {
-      const token =
-        (typeof socket.handshake.auth?.token === 'string' && socket.handshake.auth.token) ||
-        (typeof socket.handshake.headers.authorization === 'string'
-          ? socket.handshake.headers.authorization.replace(/^Bearer\s+/i, '')
-          : '')
-
-      if (!token) {
-        return next(new Error('Mungon tokeni'))
-      }
-
-      const firebaseUser = await firebaseVerifyIdToken(token)
-      const dbUser = await findUserByUid(firebaseUser.localId)
-      if (dbUser && dbUser.accountStatus && dbUser.accountStatus !== 'active') {
-        return next(new Error('Llogaria nuk është aktive'))
-      }
-
-      const user: SocketUser = {
-        uid: firebaseUser.localId,
-        name: dbUser?.name || firebaseUser.displayName || 'User',
-      }
-      socket.data.user = user
-      next()
-    } catch (err) {
-      next(err instanceof Error ? err : new Error('Autentifikim i dështuar'))
-    }
-  })
-
+export function registerChatHandlers(io: Server) {
   io.on('connection', (socket) => {
     const user = socket.data.user as SocketUser
-    socket.join(`user:${user.uid}`)
+    let joinRevision = 0
 
-    socket.on('conversation:join', async (payload: { conversationId?: string }, ack?) => {
+    socket.on('conversation:join', async (payload: { conversationId?: string; active?: boolean }, ack?) => {
+      const revision = ++joinRevision
+      socket.data.activeConversation = null
       try {
         const conversationId = payload?.conversationId
         if (!conversationId) throw new Error('conversationId mungon')
         await getConversationForUser(conversationId, user.uid)
-        socket.join(`conversation:${conversationId}`)
-        await markConversationRead(conversationId, user.uid)
+        if (revision !== joinRevision || !socket.connected) throw new Error('Biseda ndryshoi')
+        await socket.join(`conversation:${conversationId}`)
+        socket.data.activeConversation = payload.active === false ? null : conversationId
+        if (payload.active !== false) await markConversationRead(conversationId, user.uid)
         const messages = await listMessages({ conversationId, uid: user.uid, limit: 50 })
         if (typeof ack === 'function') ack({ ok: true, messages, pagination: messages.pagination })
       } catch (err) {
@@ -72,7 +34,18 @@ export function attachChatSocket(httpServer: HttpServer) {
 
     socket.on('conversation:leave', (payload: { conversationId?: string }) => {
       if (payload?.conversationId) {
+        ++joinRevision
         socket.leave(`conversation:${payload.conversationId}`)
+        if (socket.data.activeConversation === payload.conversationId) socket.data.activeConversation = null
+      }
+    })
+
+    socket.on('conversation:visibility', async (payload: { conversationId?: string; active?: boolean }) => {
+      const id = payload?.conversationId
+      if (!id || !socket.rooms.has(`conversation:${id}`)) return
+      socket.data.activeConversation = payload.active ? id : null
+      if (payload.active) {
+        try { await markConversationRead(id, user.uid) } catch (error) { console.error('Chat read sync failed', error) }
       }
     })
 
@@ -92,24 +65,7 @@ export function attachChatSocket(httpServer: HttpServer) {
             body,
           })
 
-          const conversation = await getConversationForUser(conversationId, user.uid)
-          const peerUid =
-            user.uid === conversation.seekerUid
-              ? conversation.providerUid
-              : conversation.seekerUid
-
-          const room = `conversation:${conversationId}`
-          socket.join(room)
-          io.to(room).emit('message:new', message as PublicMessage)
-
-          const updatedPayload = {
-            conversationId,
-            lastMessagePreview: message.body.slice(0, 140),
-            lastMessageAt: message.createdAt,
-            senderUid: message.senderUid,
-          }
-          io.to(room).emit('conversation:updated', updatedPayload)
-          io.to(`user:${peerUid}`).emit('conversation:updated', updatedPayload)
+          socket.join(`conversation:${conversationId}`)
 
           if (typeof ack === 'function') ack({ ok: true, message })
         } catch (err) {
@@ -121,7 +77,7 @@ export function attachChatSocket(httpServer: HttpServer) {
     )
 
     socket.on('typing', (payload: { conversationId?: string; isTyping?: boolean }) => {
-      if (!payload?.conversationId) return
+      if (!payload?.conversationId || !socket.rooms.has(`conversation:${payload.conversationId}`)) return
       socket.to(`conversation:${payload.conversationId}`).emit('typing', {
         conversationId: payload.conversationId,
         uid: user.uid,
@@ -130,5 +86,4 @@ export function attachChatSocket(httpServer: HttpServer) {
     })
   })
 
-  return io
 }

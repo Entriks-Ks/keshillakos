@@ -1,3 +1,4 @@
+import { notifyProviders, notifyUsers } from './notificationService'
 import { Types } from 'mongoose'
 import { Category } from '../models/Category'
 import { ProviderProfile } from '../models/ProviderProfile'
@@ -108,6 +109,7 @@ export async function createUserRequest(input: NewRequestInput) {
       requestedStartAt: slot?.startAt, requestedEndAt: slot?.endAt,
     })))
     if (slot) await holdSlotForRequest({ slotId: input.slotId!, providerUid: slot.providerUid, providerId: slot.providerId, requestId: String(deliveries[0]._id) })
+    await notifyProviders(profiles.map(p => p._id), { type: 'request:new', title: 'Kërkesë e re', href: '/dashboard', eventKey: `request:${request._id}:new`, actorUid: input.uid })
     return { request, deliveries }
   } catch (err) {
     // Roll back only documents created by this operation; legacy records are never touched.
@@ -132,6 +134,7 @@ export async function sendExistingRequest(uid: string, id: string, providerIds: 
   await RequestDelivery.insertMany(profiles.map((profile) => ({ request: request._id, providerProfile: profile._id, sentAt: new Date(), status: 'pending' })))
   request.status = 'open'
   await request.save()
+  await notifyProviders(profiles.map(p => p._id), { type: 'request:new', title: 'Kërkesë e re', href: '/dashboard', eventKey: `request:${request._id}:new`, actorUid: uid })
   return listMyUserRequests(uid)
 }
 
@@ -150,6 +153,7 @@ export async function updateUserRequestLifecycle(uid: string, id: string, status
     await delivery.save()
     if (delivery.slotId) await syncSlotWithRequestStatus({ requestId: String(delivery._id), status: 'rejected' })
   }
+  await notifyProviders(pending.map(d => d.providerProfile), { type: 'request:withdrawn', title: 'Kërkesa u tërhoq', href: '/dashboard', eventKey: `request:${request._id}:${status}`, actorUid: uid })
   return listMyUserRequests(uid)
 }
 
@@ -246,6 +250,9 @@ export async function updateDeliveryStatus(uid: string, id: string, status: Deli
 
   if (delivery.slotId && status === 'accepted') await confirmAppointmentFromDelivery(String(delivery._id))
   if (delivery.slotId && status === 'completed') await completeAppointmentFromDelivery(String(delivery._id))
+  const responseChanged = (response !== undefined && response.trim() !== (delivery.response || '')) ||
+    (offer !== undefined && (offer.description !== delivery.offer?.description || offer.amount !== delivery.offer?.amount || offer.currency !== delivery.offer?.currency))
+  const previousStatus = delivery.status
   delivery.status = status
   if (status === 'read' && !delivery.readAt) delivery.readAt = new Date()
   if (['accepted', 'rejected', 'completed'].includes(status)) delivery.respondedAt = new Date()
@@ -253,6 +260,11 @@ export async function updateDeliveryStatus(uid: string, id: string, status: Deli
   if (offer !== undefined) delivery.offer = offer
   await delivery.save()
   if (delivery.slotId && ['rejected', 'pending'].includes(status)) await syncSlotWithRequestStatus({ requestId: String(delivery._id), status: status as 'rejected' | 'pending' })
+  if (previousStatus !== status && ['accepted', 'rejected', 'completed'].includes(status) || responseChanged && status !== 'read') {
+    const event = { type: 'request:status', title: 'Përgjigje për kërkesën tuaj', body: status, href: '/dashboard', eventKey: `delivery:${delivery._id}:${delivery.updatedAt.toISOString()}`, actorUid: uid }
+    await notifyUsers([request.user], event)
+    if (isAdmin) await notifyProviders([delivery.providerProfile], event)
+  }
   const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
   return requestView(request, delivery, profile?.publicProfile.displayName)
 }

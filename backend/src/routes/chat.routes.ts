@@ -1,3 +1,4 @@
+import { chatUnreadCount } from '../services/chatUnreadService'
 import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
@@ -24,6 +25,11 @@ function statusOf(err: unknown) {
   }
   return 400
 }
+
+router.get('/unread-count', requireAuth, async (req, res) => {
+  try { res.setHeader('Cache-Control', 'private, no-store'); return res.json({ unreadCount: await chatUnreadCount(req.user!.uid) }) }
+  catch (error) { return res.status(500).json({ message: 'Nuk u ngarkuan mesazhet e palexuara' }) }
+})
 
 router.get('/conversations', requireAuth, async (req, res) => {
   try {

@@ -1,3 +1,4 @@
+import { notifyUsers, notifyAdmins } from './notificationService'
 import { providerDirectoryPipeline } from './marketplaceQuery'
 import { paginationMeta, queryPage, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
@@ -555,12 +556,14 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
       }
     }
   }
+  const newlyPending = profile.moderation.status !== 'pending'
   profile.status = 'pending'
   profile.moderation = { status: 'pending' }
   await profile.save()
   if (changes.publicProfile?.photoUrl !== undefined || changes.publicProfile?.coverUrl !== undefined) {
     await deleteUploads(previousMedia)
   }
+  if (newlyPending) await notifyAdmins({ type: 'profile:pending', title: 'Profil për shqyrtim', href: '/dashboard/admin', eventKey: `profile:${profile._id}:pending:${profile.updatedAt.toISOString()}`, actorUid: uid })
   return profile
 }
 
@@ -585,9 +588,11 @@ export async function moderateProviderProfile(id: string, reviewerUid: string, d
     const business = await Business.findById(profile.business)
     if (!business || business.status !== 'active') throw new Error('Biznesi duhet të jetë aktiv')
   }
+  const changed = profile.moderation.status !== decision
   profile.moderation = { status: decision, reviewedAt: new Date(), reviewedBy: reviewer, reason: reason?.trim() || undefined }
   profile.status = decision === 'approved' ? 'published' : 'draft'
   await profile.save()
+  if (changed) await notifyUsers([profile.ownerUser], { type: 'profile:review', title: 'Profili juaj u shqyrtua', body: reason?.trim() || decision, href: '/dashboard', eventKey: `profile:${profile._id}:${profile.updatedAt.toISOString()}`, actorUid: reviewerUid })
   return profile
 }
 

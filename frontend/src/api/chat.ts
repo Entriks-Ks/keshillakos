@@ -75,3 +75,8 @@ export async function markConversationRead(conversationId: string) {
   )
   return data.conversation
 }
+
+export async function fetchChatUnreadCount(signal?: AbortSignal) {
+  const { data } = await api.get<{ unreadCount: number }>('/api/chat/unread-count', { signal })
+  return data.unreadCount
+}

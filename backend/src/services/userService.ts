@@ -1,3 +1,5 @@
+import { disconnectUser } from './realtime'
+import { notify, notifyAdmins } from './notificationService'
 import { queryPage, type PaginationInput } from './pagination'
 import { User, type UserDoc } from '../models/User'
 import { ProviderProfile } from '../models/ProviderProfile'
@@ -174,8 +176,10 @@ export async function requestRoleChange(uid: string, role: 'provider' | 'company
   if (existing.requestedRole && existing.requestedRole !== role && !roles.includes(existing.requestedRole)) {
     throw new Error('Ke tashmë një kërkesë roli në pritje')
   }
+  const changed = existing.requestedRole !== role
   existing.requestedRole = role
   await existing.save()
+  if (changed) await notifyAdmins({ type: 'role:requested', title: 'Kërkesë e re për rol', href: '/dashboard/admin/users', eventKey: `role:${uid}:${existing.updatedAt?.toISOString()}`, actorUid: uid })
   return toPublicUser(existing)
 }
 
@@ -195,9 +199,12 @@ export async function reviewRoleRequest(uid: string, action: 'accept' | 'reject'
   if (action === 'reject') {
     existing.requestedRole = undefined
     await existing.save()
+    await notify([uid], { type: 'role:review', title: 'Kërkesa për rol u refuzua', href: '/dashboard', eventKey: `role:${uid}:rejected:${existing.updatedAt?.toISOString()}` })
     return toPublicUser(existing)
   }
-  return grantCapability(uid, requested)
+  const granted = await grantCapability(uid, requested)
+  await notify([uid], { type: 'role:review', title: 'Kërkesa për rol u pranua', href: '/dashboard', eventKey: `role:${uid}:accepted:${existing.updatedAt?.toISOString()}` })
+  return granted
 }
 
 export async function findUserByUid(uid: string): Promise<PublicUser | null> {
@@ -375,6 +382,7 @@ export async function updateUserByUid(
   const existing = await User.findOne({ uid })
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
 
+  const previous = JSON.stringify({ roles: effectiveRoles(existing).sort(), status: existing.accountStatus })
   if (input.role !== undefined && !isUserRole(input.role)) {
     throw new Error('Roli nuk është i vlefshëm')
   }
@@ -408,12 +416,15 @@ export async function updateUserByUid(
   if (input.accountStatus !== undefined) existing.accountStatus = input.accountStatus
 
   await existing.save()
+  if (previous !== JSON.stringify({ roles: effectiveRoles(existing).sort(), status: existing.accountStatus })) await notify([uid], { type: 'account:changed', title: 'Administratori përditësoi llogarinë tuaj', href: '/dashboard', eventKey: `account:${uid}:${existing.updatedAt?.toISOString()}` })
+  if (existing.accountStatus !== 'active') disconnectUser(uid)
   return toPublicUser(existing)
 }
 
 export async function deleteUserByUid(uid: string) {
   const result = await User.deleteOne({ uid })
   if (result.deletedCount === 0) throw new Error('Përdoruesi nuk u gjet')
+  disconnectUser(uid)
   return { deleted: true, uid }
 }
 

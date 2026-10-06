@@ -24,7 +24,10 @@ import serviceOfferRoutes from './routes/serviceOffer.routes'
 import chatRoutes from './routes/chat.routes'
 import feedbackRoutes from './routes/feedback.routes'
 import mediaRoutes from './routes/media.routes'
-import { attachChatSocket } from './services/chatSocket'
+import { registerChatHandlers } from './services/chatSocket'
+import { attachRealtimeSocket } from './services/socketServer'
+import { Notification } from './models/Notification'
+import notificationRoutes from './routes/notification.routes'
 import { publicCache } from './middleware/publicCache'
 
 const app = express()
@@ -45,6 +48,7 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
+app.use('/api/notifications', notificationRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/onboarding', onboardingRoutes)
 app.use('/api/admin/users', adminUsersRoutes)
@@ -79,6 +83,7 @@ app.use(
 async function start() {
   try {
     await connectDB()
+    await Notification.init()
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('MongoDB connection failed:', message)
@@ -91,7 +96,8 @@ async function start() {
   }
 
   const server = http.createServer(app)
-  attachChatSocket(server)
+  const io = attachRealtimeSocket(server)
+  registerChatHandlers(io)
 
   server.listen(PORT, () => {
     console.log(`API running on http://localhost:${PORT}`)

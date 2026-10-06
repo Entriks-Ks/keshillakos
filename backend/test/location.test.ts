@@ -5,17 +5,34 @@ import { City, citySchema } from '../src/models/City'
 import { Country, countrySchema } from '../src/models/Country'
 import { citySlug, locations, seedLocations } from '../src/scripts/seedLocations'
 
-test('initial location seed has seven requested countries, no Serbia, and 49 distinct country/city pairs', () => {
+test('location seed has seven requested countries, no Serbia, and 80 distinct country/city pairs', () => {
   assert.deepEqual(locations.map((item) => item.slug), [
     'kosovo', 'albania', 'north-macedonia', 'montenegro',
     'bosnia-and-herzegovina', 'croatia', 'slovenia',
   ])
-  assert.equal(locations.reduce((count, item) => count + item.cities.length, 0), 49)
+  assert.equal(locations.reduce((count, item) => count + item.cities.length, 0), 80)
   const keys = locations.flatMap((item) => item.cities.map(([sq, en]) => {
     assert.ok(sq.trim() && en.trim())
     return `${item.slug}/${citySlug(en)}`
   }))
   assert.equal(new Set(keys).size, keys.length)
+})
+
+test('Kosovo includes all 38 municipalities while preserving the original seven city identities and order', () => {
+  const cities = locations.find(item => item.slug === 'kosovo')!.cities
+  assert.deepEqual(cities.slice(0, 7), [
+    ['Prishtinë', 'Pristina'], ['Prizren', 'Prizren'], ['Pejë', 'Peja'],
+    ['Gjakovë', 'Gjakova'], ['Ferizaj', 'Ferizaj'], ['Gjilan', 'Gjilan'], ['Mitrovicë', 'Mitrovica'],
+  ])
+  // Official municipality inventory, including the distinct northern municipality.
+  const expected = ['Deçan', 'Gjakovë', 'Gllogoc', 'Gjilan', 'Dragash', 'Istog', 'Kaçanik',
+    'Klinë', 'Fushë Kosovë', 'Kamenicë', 'Mitrovicë', 'Leposaviq', 'Lipjan', 'Novobërdë',
+    'Obiliq', 'Rahovec', 'Pejë', 'Podujevë', 'Prishtinë', 'Prizren', 'Skënderaj', 'Shtime',
+    'Shtërpcë', 'Suharekë', 'Ferizaj', 'Viti', 'Vushtrri', 'Zubin Potok', 'Zveçan',
+    'Malishevë', 'Junik', 'Mamushë', 'Hani i Elezit', 'Graçanicë', 'Ranillug', 'Partesh',
+    'Kllokot', 'Mitrovicë e Veriut']
+  assert.deepEqual(cities.map(([sq]) => sq).sort(), expected.sort())
+  assert.equal(new Set(cities.map(([sq]) => sq)).size, 38)
 })
 
 test('country and city schemas validate bilingual names, slugs and order', async () => {
@@ -59,7 +76,7 @@ test('seed reuses country identities and repeats city upserts without duplicate 
     City.updateOne = originalCityUpdate
   }
   assert.equal(identities.size, 7)
-  assert.equal(calls.length, 98)
-  assert.deepEqual(calls.slice(0, 49), calls.slice(49))
+  assert.equal(calls.length, 160)
+  assert.deepEqual(calls.slice(0, 80), calls.slice(80))
   assert.ok(calls.every((call) => (call.options as { upsert?: boolean }).upsert === true))
 })

@@ -15,6 +15,7 @@ exports.updateProviderPhoto = updateProviderPhoto;
 exports.updateProviderCover = updateProviderCover;
 exports.moderateProviderProfile = moderateProviderProfile;
 exports.providerProfilesToLegacyExperts = providerProfilesToLegacyExperts;
+const notificationService_1 = require("./notificationService");
 const marketplaceQuery_1 = require("./marketplaceQuery");
 const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
@@ -548,12 +549,15 @@ async function updateProviderProfile(uid, id, changes) {
             }
         }
     }
+    const newlyPending = profile.moderation.status !== 'pending';
     profile.status = 'pending';
     profile.moderation = { status: 'pending' };
     await profile.save();
     if (changes.publicProfile?.photoUrl !== undefined || changes.publicProfile?.coverUrl !== undefined) {
         await (0, mediaService_1.deleteUploads)(previousMedia);
     }
+    if (newlyPending)
+        await (0, notificationService_1.notifyAdmins)({ type: 'profile:pending', title: 'Profil për shqyrtim', href: '/dashboard/admin', eventKey: `profile:${profile._id}:pending:${profile.updatedAt.toISOString()}`, actorUid: uid });
     return profile;
 }
 async function updateProviderPhoto(uid, id, photoUrl) {
@@ -580,9 +584,12 @@ async function moderateProviderProfile(id, reviewerUid, decision, reason) {
         if (!business || business.status !== 'active')
             throw new Error('Biznesi duhet të jetë aktiv');
     }
+    const changed = profile.moderation.status !== decision;
     profile.moderation = { status: decision, reviewedAt: new Date(), reviewedBy: reviewer, reason: reason?.trim() || undefined };
     profile.status = decision === 'approved' ? 'published' : 'draft';
     await profile.save();
+    if (changed)
+        await (0, notificationService_1.notifyUsers)([profile.ownerUser], { type: 'profile:review', title: 'Profili juaj u shqyrtua', body: reason?.trim() || decision, href: '/dashboard', eventKey: `profile:${profile._id}:${profile.updatedAt.toISOString()}`, actorUid: reviewerUid });
     return profile;
 }
 async function providerProfilesToLegacyExperts(profiles) {
