@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const mongoose_1 = require("mongoose");
 const auth_1 = require("../middleware/auth");
@@ -9,9 +10,11 @@ const Review_1 = require("../models/Review");
 const User_1 = require("../models/User");
 const ratingService_1 = require("../services/ratingService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 router.get('/providers', auth_1.requireAuth, (0, auth_1.requireRole)('user', 'provider', 'company', 'admin'), async (req, res) => {
     try {
-        return res.json({ providers: await (0, ratingService_1.listRateableProviders)(req.user.uid) });
+        const providers = await (0, ratingService_1.listRateableProviders)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20));
+        return res.json({ providers, pagination: providers.pagination });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Nuk u ngarkuan ofruesit' });
@@ -22,7 +25,8 @@ router.get('/eligible/:providerId', auth_1.requireAuth, (0, auth_1.requireRole)(
         const providerId = String(req.params.providerId);
         if (!mongoose_1.Types.ObjectId.isValid(providerId))
             return res.status(400).json({ message: 'Provider ID i pavlefshëm' });
-        return res.json({ interactions: await (0, ratingService_1.eligibleInteractions)(req.user.uid, providerId) });
+        const result = await (0, ratingService_1.listEligibleInteractionPage)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20), [new mongoose_1.Types.ObjectId(providerId)]);
+        return res.json({ interactions: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Ndërveprimet nuk u ngarkuan' });
@@ -32,13 +36,16 @@ router.get('/eligible-uid/:providerUid', auth_1.requireAuth, (0, auth_1.requireR
     try {
         const providerUid = String(req.params.providerUid);
         const owner = await User_1.User.findOne({ uid: providerUid }).select('_id').lean();
-        if (!owner)
-            return res.json({ interactions: [], providerId: null });
+        if (!owner) {
+            const result = await (0, ratingService_1.listEligibleInteractionPage)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20), []);
+            return res.json({ interactions: result.items, providerId: null, pagination: result.pagination });
+        }
         const profiles = await ProviderProfile_1.ProviderProfile.find({ ownerUser: owner._id }).select('_id').lean();
-        const interactions = (await Promise.all(profiles.map((profile) => (0, ratingService_1.eligibleInteractions)(req.user.uid, String(profile._id))))).flat();
+        const result = await (0, ratingService_1.listEligibleInteractionPage)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20), profiles.map((profile) => profile._id));
         return res.json({
-            interactions,
-            providerId: interactions[0]?.providerId || (profiles[0] ? String(profiles[0]._id) : null),
+            interactions: result.items,
+            pagination: result.pagination,
+            providerId: result.items[0]?.providerId || (profiles[0] ? String(profiles[0]._id) : null),
         });
     }
     catch (err) {
@@ -48,8 +55,8 @@ router.get('/eligible-uid/:providerUid', auth_1.requireAuth, (0, auth_1.requireR
 router.get('/provider/:providerUid', async (req, res) => {
     try {
         const providerUid = String(req.params.providerUid);
-        const [stats, ratings] = await Promise.all([(0, ratingService_1.getProviderStats)(providerUid), (0, ratingService_1.listProviderRatings)(providerUid)]);
-        return res.json({ stats, ratings });
+        const [stats, ratings] = await Promise.all([(0, ratingService_1.getProviderStats)(providerUid), (0, ratingService_1.listProviderRatings)(providerUid, (0, pagination_1.paginationInput)(req.query, 12))]);
+        return res.json({ stats, ratings, pagination: ratings.pagination, buckets: ratings.buckets });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Nuk u ngarkuan vlerësimet' });
@@ -61,12 +68,10 @@ router.get('/subject/:scope/:id', async (req, res) => {
         const id = String(req.params.id);
         if ((scope !== 'provider' && scope !== 'business') || !mongoose_1.Types.ObjectId.isValid(id))
             return res.status(400).json({ message: 'Subjekti nuk është i vlefshëm' });
-        const [aggregate, reviews] = await Promise.all([
-            RatingAggregate_1.RatingAggregate.findOne({ portal: 'keshillakos', scope, subjectId: id }),
-            Review_1.Review.find({ portal: 'keshillakos', subjectType: scope, subjectId: id, 'moderation.status': 'published', 'abuse.status': 'clear', 'interaction.eligible': true, publishedAt: { $exists: true } })
-                .select('stars dimensions text language response.text publishedAt interaction.verified').sort({ publishedAt: -1 }).limit(20),
-        ]);
-        return res.json({ aggregate, reviews });
+        const query = { portal: 'keshillakos', subjectType: scope, subjectId: new mongoose_1.Types.ObjectId(id), 'moderation.status': 'published', 'abuse.status': 'clear', 'interaction.eligible': true, publishedAt: { $exists: true } };
+        const aggregate = await RatingAggregate_1.RatingAggregate.findOne({ portal: 'keshillakos', scope, subjectId: id });
+        const result = await (0, pagination_1.queryPage)((0, pagination_1.paginationInput)(req.query), () => Review_1.Review.countDocuments(query), (skip, limit) => Review_1.Review.find(query).select('stars dimensions text language response.text publishedAt interaction.verified').sort({ publishedAt: -1, _id: -1 }).skip(skip).limit(limit));
+        return res.json({ aggregate, reviews: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Vlerësimet nuk u ngarkuan' });
@@ -98,10 +103,10 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('user', 'provider',
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Vlerësimi dështoi' });
     }
 });
-router.get('/moderation/pending', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (_req, res) => {
+router.get('/moderation/pending', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
     try {
-        const queue = await (0, ratingService_1.listModerationQueue)();
-        return res.json({ reviews: queue.pending, published: queue.published });
+        const queue = await (0, ratingService_1.listModerationQueue)((0, pagination_1.paginationInput)(req.query, 20), (0, pagination_1.paginationInput)({ ...req.query, page: req.query.publishedPage }, 20));
+        return res.json({ reviews: queue.pending, published: queue.published, pagination: queue.pagination, publishedPagination: queue.publishedPagination });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Vlerësimet nuk u ngarkuan' });

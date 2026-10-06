@@ -3,6 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createExpert = createExpert;
 exports.listExpertsByCompany = listExpertsByCompany;
 exports.listActiveExperts = listActiveExperts;
+exports.listExpertPage = listExpertPage;
+const Business_1 = require("../models/Business");
+const ProviderProfile_1 = require("../models/ProviderProfile");
+const serviceOfferService_1 = require("./serviceOfferService");
+const pagination_1 = require("./pagination");
 const Expert_1 = require("../models/Expert");
 const domainService_1 = require("./domainService");
 const businessService_1 = require("./businessService");
@@ -77,9 +82,35 @@ async function listExpertsByCompany(companyUid) {
 }
 async function listActiveExperts(cityId) {
     const [legacy, profiles] = await Promise.all([
-        cityId ? Promise.resolve([]) : Expert_1.Expert.find({ active: true }).sort({ createdAt: -1 }).limit(50),
+        cityId ? Promise.resolve([]) : Expert_1.Expert.find({ active: true }).sort({ createdAt: -1 }),
         (0, providerProfileService_1.listPublishedProviderProfiles)(cityId),
     ]);
     return [...(await (0, providerProfileService_1.providerProfilesToLegacyExperts)(profiles)), ...legacy.map(toExpert)];
+}
+/** Compatibility directory: select IDs across both stores before serializing a page. */
+async function listExpertPage(input, companyUid) {
+    const managed = companyUid ? await (0, serviceOfferService_1.managedServiceOfferQuery)(companyUid) : undefined;
+    const branches = managed?.$or;
+    const profileQuery = branches ? { $or: branches.map((branch) => 'providerProfile' in branch ? { _id: branch.providerProfile } : branch) } : { status: 'published', 'moderation.status': 'approved' };
+    const pipeline = [
+        { $match: profileQuery },
+        ...(!companyUid ? [
+            { $lookup: { from: Business_1.Business.collection.name, localField: 'business', foreignField: '_id', as: '_business' } },
+            { $match: { $or: [{ business: { $exists: false } }, { business: null }, { '_business.status': 'active' }] } },
+        ] : []),
+        { $project: { _id: 1, createdAt: 1, source: { $literal: 'profile' }, rank: { $literal: 0 } } },
+        { $unionWith: { coll: Expert_1.Expert.collection.name, pipeline: [
+                    { $match: companyUid ? { companyUid } : { active: true } },
+                    { $project: { _id: 1, createdAt: 1, source: { $literal: 'legacy' }, rank: { $literal: 1 } } },
+                ] } },
+    ];
+    const result = await (0, pagination_1.queryPage)(input, async () => (await ProviderProfile_1.ProviderProfile.aggregate([...pipeline, { $count: 'total' }]))[0]?.total ?? 0, (skip, limit) => ProviderProfile_1.ProviderProfile.aggregate([...pipeline, { $sort: { rank: 1, createdAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }]));
+    const [profiles, legacy] = await Promise.all([
+        ProviderProfile_1.ProviderProfile.find({ _id: { $in: result.items.filter((item) => item.source === 'profile').map((item) => item._id) } }),
+        Expert_1.Expert.find({ _id: { $in: result.items.filter((item) => item.source === 'legacy').map((item) => item._id) } }),
+    ]);
+    const cards = [...await (0, providerProfileService_1.providerProfilesToLegacyExperts)(profiles), ...legacy.map(toExpert)];
+    const byId = new Map(cards.map((card) => [card.id, card]));
+    return { items: result.items.flatMap((item) => { const card = byId.get(String(item._id)); return card ? [card] : []; }), pagination: result.pagination };
 }
 //# sourceMappingURL=expertService.js.map

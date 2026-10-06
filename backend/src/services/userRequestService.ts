@@ -153,7 +153,7 @@ export async function updateUserRequestLifecycle(uid: string, id: string, status
   return listMyUserRequests(uid)
 }
 
-async function view(request: UserRequestDoc & { _id: Types.ObjectId }, delivery?: { _id: Types.ObjectId; providerProfile: Types.ObjectId; status: DeliveryStatus; response?: string; offer?: { description: string; amount?: number; currency?: string }; slotId?: string; requestedStartAt?: Date; requestedEndAt?: Date; sentAt: Date; readAt?: Date; respondedAt?: Date }, providerName = '', providerUid = '') {
+export async function requestView(request: UserRequestDoc & { _id: Types.ObjectId }, delivery?: { _id: Types.ObjectId; providerProfile: Types.ObjectId; status: DeliveryStatus; response?: string; offer?: { description: string; amount?: number; currency?: string }; slotId?: string; requestedStartAt?: Date; requestedEndAt?: Date; sentAt: Date; readAt?: Date; respondedAt?: Date }, providerName = '', providerUid = '') {
   const owner = await User.findById(request.user).select('uid firstName lastName name email').lean()
   const seekerName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ').trim() || owner?.name?.trim() || ''
   return {
@@ -187,8 +187,8 @@ async function viewsForRequests(requests: Array<UserRequestDoc & { _id: Types.Ob
   const output = []
   for (const request of requests) {
     const rows = byRequest.get(String(request._id)) ?? []
-    if (!rows.length && !providerFilter) output.push(await view(request))
-    for (const delivery of rows) output.push(await view(request, delivery, names.get(String(delivery.providerProfile)), uids.get(String(delivery.providerProfile))))
+    if (!rows.length && !providerFilter) output.push(await requestView(request))
+    for (const delivery of rows) output.push(await requestView(request, delivery, names.get(String(delivery.providerProfile)), uids.get(String(delivery.providerProfile))))
   }
   return output
 }
@@ -196,26 +196,26 @@ async function viewsForRequests(requests: Array<UserRequestDoc & { _id: Types.Ob
 export async function listMyUserRequests(uid: string) {
   const owner = await User.findOne({ uid }).select('_id').lean()
   if (!owner) return []
-  return viewsForRequests(await UserRequest.find({ user: owner._id }).sort({ createdAt: -1 }).limit(100))
+  return viewsForRequests(await UserRequest.find({ user: owner._id }).sort({ createdAt: -1 }))
 }
 
 export async function listProviderDeliveries(uid: string) {
   const profiles = await listMyProviderProfiles(uid)
   const ids = profiles.map((profile) => profile._id)
-  const deliveries = await RequestDelivery.find({ providerProfile: { $in: ids } }).sort({ sentAt: -1 }).limit(100)
+  const deliveries = await RequestDelivery.find({ providerProfile: { $in: ids } }).sort({ sentAt: -1 })
   const requests = await UserRequest.find({ _id: { $in: deliveries.map((delivery) => delivery.request) } })
   const byId = new Map(requests.map((request) => [String(request._id), request]))
   const names = new Map(profiles.map((profile) => [String(profile._id), profile.publicProfile.displayName]))
   const output = []
   for (const delivery of deliveries) {
     const request = byId.get(String(delivery.request))
-    if (request) output.push(await view(request, delivery, names.get(String(delivery.providerProfile)), uid))
+    if (request) output.push(await requestView(request, delivery, names.get(String(delivery.providerProfile)), uid))
   }
   return output
 }
 
 export async function listAllUserRequests() {
-  return viewsForRequests(await UserRequest.find().sort({ createdAt: -1 }).limit(100))
+  return viewsForRequests(await UserRequest.find().sort({ createdAt: -1 }))
 }
 
 export async function updateDeliveryStatus(uid: string, id: string, status: DeliveryStatus, response?: string, isAdmin = false, offer?: { description: string; amount?: number; currency?: string }) {
@@ -254,7 +254,7 @@ export async function updateDeliveryStatus(uid: string, id: string, status: Deli
   await delivery.save()
   if (delivery.slotId && ['rejected', 'pending'].includes(status)) await syncSlotWithRequestStatus({ requestId: String(delivery._id), status: status as 'rejected' | 'pending' })
   const profile = await ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName')
-  return view(request, delivery, profile?.publicProfile.displayName)
+  return requestView(request, delivery, profile?.publicProfile.displayName)
 }
 
 export async function countPendingDeliveries(uid: string) {

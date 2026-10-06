@@ -1,3 +1,5 @@
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Button, buttonVariants, Card, Chip, ProgressBar, toast } from '@heroui/react'
 import { Link, useLocation } from 'react-router-dom'
@@ -40,6 +42,7 @@ import {
   type TeamPerson,
 } from '../api/onboarding'
 import ExtensionFieldsForm, { categorySpecificFields, fieldLabel, optionLabel } from '../components/ExtensionFieldsForm'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import LocationSelector from '../components/LocationSelector'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { getErrorMessage } from '../utils/errors'
@@ -248,6 +251,8 @@ export default function ProviderServicesPanel() {
     options: catalogOptions,
     error: optionsError,
   } = useCatalogOptions()
+  const { page, setPage, pagination, receivePagination } = usePagination()
+  const [listRevision, setListRevision] = useState(0)
   const [services, setServices] = useState<ServiceItem[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -274,9 +279,12 @@ export default function ProviderServicesPanel() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<ServiceItem | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const [offerOwner, setOfferOwner] = useState<OfferOwner>('company')
   const [businessId, setBusinessId] = useState('')
   const [businessName, setBusinessName] = useState('')
+  const teamPaging = usePagination()
   const [teamExperts, setTeamExperts] = useState<TeamPerson[]>([])
   const [expertProviderId, setExpertProviderId] = useState('')
   const [responsibleExpertId, setResponsibleExpertId] = useState('')
@@ -342,12 +350,13 @@ export default function ProviderServicesPanel() {
         }
         setBusinessId(business._id)
         setBusinessName(business.publicName)
-        const team = await fetchBusinessTeam(business._id)
+        const team = await fetchBusinessTeam(business._id, { page: teamPaging.page, limit: 20 })
         if (cancelled) return
         const people = [...team.owners, ...team.members]
         const unique = new Map<string, TeamPerson>()
         for (const person of people) unique.set(person.id, person)
-        setTeamExperts([...unique.values()])
+        if (team.pagination) teamPaging.receivePagination(team.pagination)
+        setTeamExperts((previous) => [...unique.values(), ...previous.filter((person) => !unique.has(person.id) && (person.id === responsibleExpertId || person.providerProfileId === expertProviderId))])
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -358,7 +367,7 @@ export default function ProviderServicesPanel() {
     return () => {
       cancelled = true
     }
-  }, [isCompany])
+  }, [isCompany, teamPaging.page])
 
   useEffect(() => {
     if (!isCompany || offerOwner !== 'expert') return
@@ -426,9 +435,10 @@ export default function ProviderServicesPanel() {
 
   useEffect(() => {
     let cancelled = false
-    fetchMyServices()
+    setLoading(true)
+    fetchMyServices({ page, limit: 20 })
       .then((items) => {
-        if (!cancelled) setServices(items)
+        if (!cancelled) { setServices(items); receivePagination(items.pagination) }
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -439,7 +449,7 @@ export default function ProviderServicesPanel() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [page, listRevision])
 
   useEffect(() => {
     if (optionsError) setError(optionsError)
@@ -681,8 +691,9 @@ export default function ProviderServicesPanel() {
         setFormOpen(false)
         toast.success(sq ? 'Shërbimi u përditësua.' : 'Service updated.')
       } else {
-        const service = await createService(payload)
-        setServices((prev) => [service, ...prev])
+        await createService(payload)
+        setPage(1)
+        setListRevision((value) => value + 1)
         resetForm()
         setFormOpen(false)
         toast.success(sq ? 'Shërbimi u publikua dhe shfaqet te ofertat.' : 'Service published and visible in offers.')
@@ -694,15 +705,17 @@ export default function ProviderServicesPanel() {
     }
   }
 
-  async function onDelete(id: string) {
-    if (!window.confirm(sq ? 'A je i sigurt që do ta fshish këtë shërbim?' : 'Delete this service?')) return
+  async function onDelete() {
+    const id = deleteTarget?.id
+    if (!id || deletingId) return
     setError('')
     setDeletingId(id)
     try {
       await deleteService(id)
-      setServices((prev) => prev.filter((item) => item.id !== id))
+      setListRevision((value) => value + 1)
       if (editingId === id) resetForm()
       toast.success(sq ? 'Shërbimi u fshi.' : 'Service deleted.')
+      setDeleteTarget(null)
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -908,7 +921,7 @@ export default function ProviderServicesPanel() {
         <Card className="uo-card ur-card">
           <SectionHead
             title={sq ? 'Shërbimet e mia' : 'My services'}
-            meta={<span className="uo-card-meta">{services.length}</span>}
+            meta={<span className="uo-card-meta">{pagination.total}</span>}
           />
           <ul className="ur-list ds-divided">
             {services.map((service) => {
@@ -998,7 +1011,7 @@ export default function ProviderServicesPanel() {
                         variant="outline"
                         className="ds-danger-btn"
                         isPending={deletingId === service.id}
-                        onPress={() => void onDelete(service.id)}
+                        onPress={() => setDeleteTarget(service)}
                       >
                         <Trash2 size={14} aria-hidden />
                         {deletingId === service.id ? (sq ? 'Duke fshirë…' : 'Deleting…') : (sq ? 'Fshi' : 'Delete')}
@@ -1009,6 +1022,7 @@ export default function ProviderServicesPanel() {
               )
             })}
           </ul>
+          <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading} />
         </Card>
       )}
 
@@ -1155,6 +1169,8 @@ export default function ProviderServicesPanel() {
                 </FieldHint>
               </label>
             ) : null}
+
+            <KeshillaPagination pagination={teamPaging.pagination} onPageChange={teamPaging.setPage} isDisabled={companyContextLoading || Boolean(editingId)} />
 
             {!businessId && !companyContextLoading ? (
               <FieldHint>
@@ -1764,7 +1780,7 @@ export default function ProviderServicesPanel() {
                   {sq ? 'Mbrapa' : 'Back'}
                 </Button>
               ) : editingId || services.length > 0 ? (
-                <Button variant="outline" onPress={closeForm} isDisabled={submitting}>
+                <Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={submitting}>
                   {sq ? 'Anulo' : 'Cancel'}
                 </Button>
               ) : (
@@ -1798,6 +1814,8 @@ export default function ProviderServicesPanel() {
         </Card.Content>
       </Card>
       ) : null}
+      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(deletingId)} title={sq ? 'Fshi ofertën?' : 'Delete this offer?'} description={sq ? `“${deleteTarget?.title ?? ''}” do të fshihet përgjithmonë. Ky veprim nuk mund të zhbëhet.` : `“${deleteTarget?.title ?? ''}” will be permanently deleted. This cannot be undone.`} confirmLabel={sq ? 'Fshi' : 'Delete'} />
+      <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { closeForm(); setConfirmCancel(false) }} title={sq ? 'Hidh ndryshimet?' : 'Discard changes?'} description={sq ? 'Ndryshimet e paruajtura në ofertë do të humbasin.' : 'Unsaved changes to this offer will be lost.'} confirmLabel={sq ? 'Hidh ndryshimet' : 'Discard changes'} />
     </section>
   )
 }

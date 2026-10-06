@@ -1,3 +1,4 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
@@ -10,6 +11,7 @@ import { acceptBusinessInvitation, businessTeam, cancelBusinessInvitation, creat
 import type { Location } from '../models/location'
 
 const router = Router()
+router.use(validatePagination)
 
 router.get('/managed', requireAuth, requireRole('company', 'admin'), async (req, res) => {
   try { return res.json({ businesses: await listManagedBusinesses(req.user!.uid) }) }
@@ -17,7 +19,7 @@ router.get('/managed', requireAuth, requireRole('company', 'admin'), async (req,
 })
 
 router.get('/invitations/mine', requireAuth, requireRole('provider'), async (req, res) => {
-  try { return res.json({ invitations: await listMyBusinessInvitations(req.user!.uid) }) }
+  try { const invitations = await listMyBusinessInvitations(req.user!.uid, paginationInput(req.query, 20)); return res.json({ invitations, pagination: invitations.pagination }) }
   catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Ftesat nuk u ngarkuan' }) }
 })
 
@@ -32,7 +34,7 @@ router.post('/:id/invitations/reject', requireAuth, requireRole('provider'), asy
 })
 
 router.get('/:id/team', requireAuth, requireRole('company', 'admin'), async (req, res) => {
-  try { return res.json({ team: await businessTeam(req.user!.uid, String(req.params.id)) }) }
+  try { return res.json({ team: await businessTeam(req.user!.uid, String(req.params.id), paginationInput(req.query, 20), paginationInput({ ...req.query, page: req.query.invitationsPage }, 20)) }) }
   catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Ekipi nuk u ngarkua' }) }
 })
 

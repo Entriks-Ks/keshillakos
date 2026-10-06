@@ -21,14 +21,6 @@ import {
   type DashboardContext,
   type ProfileUpdatePayload,
 } from '../api/auth'
-import { FirebaseError } from 'firebase/app'
-import { signInWithPopup } from 'firebase/auth'
-import {
-  firebaseAuth,
-  googleProvider,
-  isFirebaseConfigured,
-  mapFirebaseClientError,
-} from '../firebase'
 
 type AuthContextValue = {
   user: AuthUser | null
@@ -78,6 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loginWithGoogle = useCallback(async () => {
+    const [{ FirebaseError }, { signInWithPopup }, { firebaseAuth, googleProvider, isFirebaseConfigured, mapFirebaseClientError }] = await Promise.all([
+      import('firebase/app'), import('firebase/auth'), import('../firebase'),
+    ])
     if (!isFirebaseConfigured()) {
       throw new Error('Hyrja me Google nuk është e konfiguruar')
     }

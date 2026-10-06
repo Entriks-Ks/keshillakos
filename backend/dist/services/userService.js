@@ -16,6 +16,7 @@ exports.updateProfilePhoto = updateProfilePhoto;
 exports.updateUserByUid = updateUserByUid;
 exports.deleteUserByUid = deleteUserByUid;
 exports.countUsersByRole = countUsersByRole;
+const pagination_1 = require("./pagination");
 const User_1 = require("../models/User");
 const ProviderProfile_1 = require("../models/ProviderProfile");
 const City_1 = require("../models/City");
@@ -141,9 +142,10 @@ async function requestRoleChange(uid, role) {
     await existing.save();
     return toPublicUser(existing);
 }
-async function listPendingRoleRequests() {
-    const users = await User_1.User.find({ requestedRole: { $in: ['provider', 'company'] } }).sort({ updatedAt: -1 }).lean();
-    return users.map(toPublicUser).filter((user) => user.requestedRole && !(user.roles ?? []).includes(user.requestedRole));
+async function listPendingRoleRequests(input = { page: 1, limit: 20 }) {
+    const query = { requestedRole: { $in: ['provider', 'company'] }, $expr: { $not: { $in: ['$requestedRole', { $ifNull: ['$roles', []] }] } } };
+    const result = await (0, pagination_1.queryPage)(input, () => User_1.User.countDocuments(query), (skip, limit) => User_1.User.find(query).sort({ updatedAt: -1, _id: -1 }).skip(skip).limit(limit).lean());
+    return Object.assign(result.items.map(toPublicUser), { pagination: result.pagination });
 }
 async function reviewRoleRequest(uid, action) {
     const existing = await User_1.User.findOne({ uid });
@@ -177,7 +179,7 @@ async function findUsersByUids(uids) {
     }
     return map;
 }
-async function listUsers(filters) {
+async function listUsers(filters, input = { page: 1, limit: 20 }) {
     const query = {};
     if (filters?.role && (0, roles_1.isUserRole)(filters.role)) {
         query.$or = filters.role === 'user'
@@ -194,8 +196,8 @@ async function listUsers(filters) {
                     { uid: { $regex: q, $options: 'i' } },
                 ] }];
     }
-    const users = await User_1.User.find(query).sort({ createdAt: -1 }).lean();
-    return users.map((u) => toPublicUser(u));
+    const result = await (0, pagination_1.queryPage)(input, () => User_1.User.countDocuments(query), (skip, limit) => User_1.User.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean());
+    return Object.assign(result.items.map(toPublicUser), { pagination: result.pagination });
 }
 function cleanStringList(values, maxItems = 20, itemMax = 48) {
     if (!values)

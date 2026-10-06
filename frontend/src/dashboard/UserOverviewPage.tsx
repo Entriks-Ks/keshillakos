@@ -1,3 +1,4 @@
+import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip, toast } from '@heroui/react'
@@ -31,7 +32,6 @@ import { formatAmount, formatWhen, REQUEST_STATUS } from './requestDisplay'
 const REQUESTS_PATH = '/dashboard/user/requests'
 const MESSAGES_PATH = '/dashboard/user/messages'
 const PROFILE_PATH = '/dashboard/user/profile'
-const ACTIVE_REQUEST_STATUSES = new Set(['open', 'pending', 'read', 'accepted'])
 
 type OverviewData = {
   requests: ServiceRequestItem[]
@@ -78,13 +78,13 @@ function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boo
   const requests = data?.requests ?? []
   const conversations = data?.conversations ?? []
   const upcoming = upcomingAppointments(data?.appointments ?? [])
-  const unread = conversations.reduce((sum, item) => sum + (item.unread || 0), 0)
-  const offers = requests.filter((item) => item.offer).length
+  const unread = collectionSummary(conversations).unread ?? 0
+  const offers = collectionSummary(requests).offers ?? 0
   const stats = [
     {
       label: 'Kërkesa aktive',
-      value: requests.filter((item) => ACTIVE_REQUEST_STATUSES.has(item.status)).length,
-      hint: `${requests.length} gjithsej`,
+      value: collectionSummary(requests).active ?? 0,
+      hint: `${collectionTotal(requests)} gjithsej`,
       to: REQUESTS_PATH,
     },
     {
@@ -95,14 +95,14 @@ function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boo
     },
     {
       label: 'Termine të ardhshme',
-      value: upcoming.length,
+      value: collectionSummary(data?.appointments).upcoming ?? upcoming.length,
       hint: upcoming[0] ? `Tjetri: ${formatWhen(upcoming[0].startAt)}` : 'Asnjë i planifikuar',
       to: REQUESTS_PATH,
     },
     {
       label: 'Mesazhe të palexuara',
       value: unread,
-      hint: `${conversations.length} biseda`,
+      hint: `${collectionTotal(conversations)} biseda`,
       to: MESSAGES_PATH,
       highlight: unread > 0,
     },

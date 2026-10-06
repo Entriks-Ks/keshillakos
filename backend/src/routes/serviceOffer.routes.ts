@@ -1,18 +1,20 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import type { ServiceOfferDoc } from '../models/ServiceOffer'
 import type { Location } from '../models/location'
-import { createServiceOffer, listMyServiceOffers, listPublishedServiceOffers, reviewServiceOffer, toPublicServiceOffer, updateServiceOffer } from '../services/serviceOfferService'
+import { createServiceOffer, listMyServiceOfferPage, listPublishedServiceOfferPage, reviewServiceOffer, updateServiceOffer } from '../services/serviceOfferService'
 
 const router = Router()
+router.use(validatePagination)
 
-router.get('/', async (_req, res) => {
-  try { return res.json({ offers: (await listPublishedServiceOffers()).map(toPublicServiceOffer) }) }
+router.get('/', async (req, res) => {
+  try { const result = await listPublishedServiceOfferPage(paginationInput(req.query)); return res.json({ offers: result.items, pagination: result.pagination }) }
   catch (err) { return res.status(500).json({ message: err instanceof Error ? err.message : 'Shërbimet nuk u ngarkuan' }) }
 })
 
 router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
-  try { return res.json({ offers: await listMyServiceOffers(req.user!.uid) }) }
+  try { const result = await listMyServiceOfferPage(req.user!.uid, paginationInput(req.query, 20)); return res.json({ offers: result.items, pagination: result.pagination }) }
   catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Shërbimet nuk u ngarkuan' }) }
 })
 

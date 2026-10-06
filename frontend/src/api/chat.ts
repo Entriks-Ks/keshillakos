@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type CollectionSummary, type PaginationMeta } from './pagination'
 import api from './auth'
 
 export type ChatPeer = {
@@ -28,9 +29,9 @@ export type ChatMessage = {
   createdAt: string
 }
 
-export async function fetchConversations() {
-  const { data } = await api.get<{ conversations: ConversationItem[] }>('/api/chat/conversations')
-  return data.conversations
+export async function fetchConversations(params: PageParams = {}) {
+  const { data } = await api.get<{ conversations: ConversationItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/chat/conversations', { params })
+  return pagedItems(data.conversations, data.pagination, data.summary)
 }
 
 export async function openConversation(payload: {
@@ -52,12 +53,12 @@ export async function fetchConversation(id: string) {
   return data.conversation
 }
 
-export async function fetchMessages(conversationId: string, params?: { before?: string; limit?: number }) {
-  const { data } = await api.get<{ messages: ChatMessage[] }>(
+export async function fetchMessages(conversationId: string, params?: PageParams & { before?: string }) {
+  const { data } = await api.get<{ messages: ChatMessage[]; pagination: PaginationMeta }>(
     `/api/chat/conversations/${conversationId}/messages`,
     { params },
   )
-  return data.messages
+  return pagedItems(data.messages, data.pagination)
 }
 
 export async function sendChatMessage(conversationId: string, body: string) {

@@ -1,3 +1,4 @@
+import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip } from '@heroui/react'
@@ -68,9 +69,9 @@ function websiteLabel(url: string) {
 }
 
 function contextSentence(data: OverviewData) {
-  const members = data.team?.members.length ?? 0
-  const invitations = data.team?.invitations.length ?? 0
-  const active = data.services.filter((item) => item.active).length
+  const members = data.team?.pagination?.total ?? data.team?.members.length ?? 0
+  const invitations = data.team?.invitationsPagination?.total ?? data.team?.invitations.length ?? 0
+  const active = collectionSummary(data.services).active ?? 0
   if (!data.hasCompany) return 'Krijo kompaninë që klientët dhe ekspertët ta gjejnë në KëshillaKos.'
   if (data.pendingCount > 0) {
     return `Kompania ka ${data.pendingCount} ${plural(data.pendingCount, 'kërkesë që pret', 'kërkesa që presin')} përgjigje.`
@@ -89,7 +90,7 @@ function CompanyIdentity({ business, team }: { business: BusinessProfile; team: 
   const [location, setLocation] = useState('')
   const status = business.status ? BUSINESS_STATUS[business.status] : null
   const verification = business.verification?.status
-  const members = team?.members.length ?? 0
+  const members = team?.pagination?.total ?? team?.members.length ?? 0
 
   useEffect(() => {
     if (!business.location) return
@@ -165,15 +166,15 @@ function CompanyIdentity({ business, team }: { business: BusinessProfile; team: 
 function StatsSection({ data, loading }: { data: OverviewData | null; loading: boolean }) {
   const services = data?.services ?? []
   const conversations = data?.conversations ?? []
-  const members = data?.team?.members.length ?? 0
-  const invitations = data?.team?.invitations.length ?? 0
-  const unread = conversations.reduce((sum, item) => sum + (item.unread || 0), 0)
+  const members = data?.team?.pagination?.total ?? data?.team?.members.length ?? 0
+  const invitations = data?.team?.invitationsPagination?.total ?? data?.team?.invitations.length ?? 0
+  const unread = collectionSummary(conversations).unread ?? 0
   const pending = data?.pendingCount ?? 0
   const stats: OverviewStat[] = [
     {
       label: 'Kërkesa në pritje',
       value: pending,
-      hint: `${data?.requests.length ?? 0} të marra gjithsej`,
+      hint: `${collectionTotal(data?.requests)} të marra gjithsej`,
       to: INBOX_PATH,
       highlight: pending > 0,
     },
@@ -185,14 +186,14 @@ function StatsSection({ data, loading }: { data: OverviewData | null; loading: b
     },
     {
       label: 'Shërbime aktive',
-      value: services.filter((item) => item.active).length,
-      hint: services.length > 0 ? `${services.length} gjithsej` : 'Asnjë e publikuar',
+      value: collectionSummary(services).active ?? 0,
+      hint: services.length > 0 ? `${collectionTotal(services)} gjithsej` : 'Asnjë e publikuar',
       to: SERVICES_PATH,
     },
     {
       label: 'Mesazhe të palexuara',
       value: unread,
-      hint: `${conversations.length} biseda`,
+      hint: `${collectionTotal(conversations)} biseda`,
       to: MESSAGES_PATH,
       highlight: unread > 0,
     },
@@ -243,7 +244,7 @@ function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boole
     <Card className="uo-card">
       <SectionHead
         title="Ekipi"
-        meta={members.length > 0 ? <span className="uo-card-meta">{members.length}</span> : null}
+        meta={members.length > 0 ? <span className="uo-card-meta">{team?.pagination?.total ?? members.length}</span> : null}
         action={members.length > 0 || invitations.length > 0 ? <TextLink to={EXPERTS_PATH}>Menaxho</TextLink> : null}
       />
       <Card.Content className="uo-card-body">
@@ -285,7 +286,7 @@ function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boole
                   </span>
                   <span className="uo-row-copy">
                     <strong>
-                      {invitations.length} {plural(invitations.length, 'ftesë në pritje', 'ftesa në pritje')}
+                      {team?.invitationsPagination?.total ?? invitations.length} {plural(team?.invitationsPagination?.total ?? invitations.length, 'ftesë në pritje', 'ftesa në pritje')}
                     </strong>
                     <span>Ekspertët i shohin ftesat te profili i tyre.</span>
                   </span>

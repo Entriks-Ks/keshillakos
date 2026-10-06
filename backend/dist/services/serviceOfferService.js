@@ -1,13 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createServiceOffer = createServiceOffer;
+exports.managedServiceOfferQuery = managedServiceOfferQuery;
 exports.listMyServiceOffers = listMyServiceOffers;
+exports.listMyServiceOfferPage = listMyServiceOfferPage;
 exports.listPublishedServiceOffers = listPublishedServiceOffers;
+exports.listPublishedServiceOfferPage = listPublishedServiceOfferPage;
 exports.toPublicServiceOffer = toPublicServiceOffer;
 exports.reviewServiceOffer = reviewServiceOffer;
 exports.updateServiceOffer = updateServiceOffer;
 exports.deleteServiceOffer = deleteServiceOffer;
 exports.offersToLegacyServices = offersToLegacyServices;
+const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Business_1 = require("../models/Business");
 const Category_1 = require("../models/Category");
@@ -146,24 +150,26 @@ async function createServiceOffer(input) {
         },
     });
 }
-async function listMyServiceOffers(uid) {
+async function managedServiceOfferQuery(uid) {
     const userId = await (0, businessService_1.userIdForUid)(uid);
-    const [profiles, managedBusinesses] = await Promise.all([
-        (0, providerProfileService_1.listMyProviderProfiles)(uid),
-        managedBusinessesFor(userId),
-    ]);
-    return ServiceOffer_1.ServiceOffer.find({
-        $or: [
+    const [profiles, managedBusinesses] = await Promise.all([(0, providerProfileService_1.listMyProviderProfiles)(uid), managedBusinessesFor(userId)]);
+    return { $or: [
             { providerProfile: { $in: profiles.map((profile) => profile._id) } },
             ...(managedBusinesses.length ? [{ business: { $in: managedBusinesses.map((business) => business._id) } }] : []),
-        ],
-    }).sort({ createdAt: -1 });
+        ] };
+}
+async function listMyServiceOffers(uid) {
+    return ServiceOffer_1.ServiceOffer.find(await managedServiceOfferQuery(uid)).sort({ createdAt: -1, _id: -1 });
+}
+async function listMyServiceOfferPage(uid, input) {
+    const query = await managedServiceOfferQuery(uid);
+    return (0, pagination_1.queryPage)(input, () => ServiceOffer_1.ServiceOffer.countDocuments(query), (skip, limit) => ServiceOffer_1.ServiceOffer.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit));
 }
 async function listPublishedServiceOffers(providerIds) {
     const offers = await ServiceOffer_1.ServiceOffer.find({
         status: 'published', visibility: 'public', 'moderation.status': 'approved',
         ...(providerIds ? { providerProfile: { $in: providerIds } } : {}),
-    }).sort({ updatedAt: -1 }).limit(providerIds ? 0 : 50);
+    }).sort({ updatedAt: -1 });
     const [profiles, categories, businesses] = await Promise.all([
         ProviderProfile_1.ProviderProfile.find({ _id: { $in: offers.map((offer) => offer.providerProfile) }, status: 'published', 'moderation.status': 'approved' }).select('_id'),
         Category_1.Category.find({ _id: { $in: offers.map((offer) => offer.category) }, status: 'active' }).select('_id'),
@@ -173,6 +179,21 @@ async function listPublishedServiceOffers(providerIds) {
     const categoryIds = new Set(categories.map((category) => String(category._id)));
     const businessIds = new Set(businesses.map((business) => String(business._id)));
     return offers.filter((offer) => profileIds.has(String(offer.providerProfile)) && categoryIds.has(String(offer.category)) && (!offer.business || businessIds.has(String(offer.business))));
+}
+async function listPublishedServiceOfferPage(input) {
+    const pipeline = [
+        { $match: { status: 'published', visibility: 'public', 'moderation.status': 'approved' } },
+        { $lookup: { from: ProviderProfile_1.ProviderProfile.collection.name, localField: 'providerProfile', foreignField: '_id', as: '_profile' } },
+        { $match: { '_profile.status': 'published', '_profile.moderation.status': 'approved' } },
+        { $lookup: { from: Category_1.Category.collection.name, localField: 'category', foreignField: '_id', as: '_category' } },
+        { $match: { '_category.status': 'active' } },
+        { $lookup: { from: Business_1.Business.collection.name, localField: 'business', foreignField: '_id', as: '_business' } },
+        { $match: { $or: [{ business: { $exists: false } }, { business: null }, { '_business.status': 'active' }] } },
+    ];
+    const result = await (0, pagination_1.queryPage)(input, async () => (await ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $count: 'total' }]))[0]?.total ?? 0, (skip, limit) => ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $sort: { updatedAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }, { $project: { _id: 1 } }]));
+    const offers = await ServiceOffer_1.ServiceOffer.find({ _id: { $in: result.items.map((item) => item._id) } });
+    const byId = new Map(offers.map((offer) => [String(offer._id), offer]));
+    return { items: result.items.flatMap((item) => { const offer = byId.get(String(item._id)); return offer ? [toPublicServiceOffer(offer)] : []; }), pagination: result.pagination };
 }
 function toPublicServiceOffer(offer) {
     const extensions = { ...offer.extensions };
@@ -281,7 +302,9 @@ async function deleteServiceOffer(uid, id) {
     await (0, mediaService_1.deleteUploads)(photos);
     return { deleted: true, id };
 }
-async function offersToLegacyServices(offers, publicOnly = false) {
+async function offersToLegacyServices(offers, publicOnly = false, marketplaceRatings) {
+    if (!offers.length)
+        return [];
     const [profiles, categories, businesses] = await Promise.all([
         ProviderProfile_1.ProviderProfile.find({ _id: { $in: offers.map((offer) => offer.providerProfile) } }),
         Category_1.Category.find({ _id: { $in: offers.map((offer) => offer.category) } }),
@@ -299,14 +322,14 @@ async function offersToLegacyServices(offers, publicOnly = false) {
         .select('uid firstName lastName name profilePhoto headline bio skills languages')
         .lean();
     const ownerById = new Map(users.map((user) => [String(user._id), user]));
-    const ratings = await (0, ratingService_1.getStatsForProviders)(users.map((user) => user.uid).filter(Boolean));
+    const ratings = marketplaceRatings ? undefined : await (0, ratingService_1.getStatsForProviders)(users.map((user) => user.uid).filter(Boolean));
     return offers.map((offer) => {
         const profile = profileById.get(String(offer.providerProfile));
         const category = categoryById.get(String(offer.category));
         const business = offer.business ? businessById.get(String(offer.business)) : undefined;
         const owner = profile ? ownerById.get(String(profile.ownerUser)) : undefined;
         const uid = owner?.uid || '';
-        const rating = ratings.get(uid);
+        const rating = marketplaceRatings?.get(String(offer._id)) ?? ratings?.get(uid);
         const providerName = profile?.providerType === 'business'
             ? (business?.publicName || profile.publicProfile.displayName || '')
             : (profile?.publicProfile.displayName || business?.publicName || '');

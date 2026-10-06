@@ -1,3 +1,4 @@
+import { queryPage, paginationMeta, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
 import { Appointment } from '../models/Appointment'
 import { AvailabilitySlot } from '../models/AvailabilitySlot'
@@ -58,15 +59,22 @@ export async function completeAppointmentFromDelivery(deliveryId: string) {
   return appointment
 }
 
-export async function listMyAppointments(uid: string) {
+export async function listMyAppointments(uid: string, input: PaginationInput = { page: 1, limit: 20 }, upcoming = false) {
   const user = await User.findOne({ uid }).select('_id').lean()
-  if (!user) return []
-  return Appointment.find({ user: user._id, status: { $ne: 'pending' } }).sort({ startAt: -1 }).limit(100)
+  if (!user) return Object.assign([], { pagination: paginationMeta(input, 0), summary: { upcoming: 0 } })
+  return appointmentPage({ user: user._id, status: { $ne: 'pending' } }, input, upcoming)
 }
 
-export async function listProviderAppointments(uid: string) {
+export async function listProviderAppointments(uid: string, input: PaginationInput = { page: 1, limit: 20 }, upcoming = false) {
   const profiles = await listMyProviderProfiles(uid)
-  return Appointment.find({ providerProfile: { $in: profiles.map((profile) => profile._id) }, status: { $ne: 'pending' } }).sort({ startAt: -1 }).limit(100)
+  return appointmentPage({ providerProfile: { $in: profiles.map((profile) => profile._id) }, status: { $ne: 'pending' } }, input, upcoming)
+}
+
+async function appointmentPage(query: Record<string, unknown>, input: PaginationInput, upcoming: boolean) {
+  const future: Record<string, unknown> = { ...query, status: 'confirmed', startAt: { $gte: new Date() } }
+  const selected: Record<string, unknown> = upcoming ? future : query
+  const result = await queryPage(input, () => Appointment.countDocuments(selected), (skip, limit) => Appointment.find(selected).sort({ startAt: upcoming ? 1 : -1, _id: 1 }).skip(skip).limit(limit))
+  return Object.assign(result.items, { pagination: result.pagination, summary: { upcoming: await Appointment.countDocuments(future) } })
 }
 
 export async function cancelAppointment(uid: string, id: string, reason?: string, asAdmin = false) {

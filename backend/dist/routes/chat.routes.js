@@ -1,9 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const chatService_1 = require("../services/chatService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 function paramId(value) {
     return Array.isArray(value) ? value[0] : value;
 }
@@ -15,8 +17,8 @@ function statusOf(err) {
 }
 router.get('/conversations', auth_1.requireAuth, async (req, res) => {
     try {
-        const conversations = await (0, chatService_1.listConversationsForUser)(req.user.uid);
-        return res.json({ conversations });
+        const conversations = await (0, chatService_1.listConversationsForUser)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20), typeof req.query.q === "string" ? req.query.q : "");
+        return res.json({ conversations, pagination: conversations.pagination, summary: conversations.summary });
     }
     catch (err) {
         return res.status(500).json({
@@ -64,14 +66,15 @@ router.get('/conversations/:id', auth_1.requireAuth, async (req, res) => {
 router.get('/conversations/:id/messages', auth_1.requireAuth, async (req, res) => {
     try {
         const before = typeof req.query.before === 'string' ? req.query.before : undefined;
-        const limit = req.query.limit ? Number(req.query.limit) : undefined;
+        const { page, limit } = (0, pagination_1.paginationInput)(req.query, 50);
         const messages = await (0, chatService_1.listMessages)({
             conversationId: paramId(req.params.id),
             uid: req.user.uid,
             before,
+            page,
             limit,
         });
-        return res.json({ messages });
+        return res.json({ messages, pagination: messages.pagination });
     }
     catch (err) {
         return res.status(statusOf(err)).json({

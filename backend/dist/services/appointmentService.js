@@ -5,6 +5,7 @@ exports.completeAppointmentFromDelivery = completeAppointmentFromDelivery;
 exports.listMyAppointments = listMyAppointments;
 exports.listProviderAppointments = listProviderAppointments;
 exports.cancelAppointment = cancelAppointment;
+const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Appointment_1 = require("../models/Appointment");
 const AvailabilitySlot_1 = require("../models/AvailabilitySlot");
@@ -76,15 +77,21 @@ async function completeAppointmentFromDelivery(deliveryId) {
     await appointment.save();
     return appointment;
 }
-async function listMyAppointments(uid) {
+async function listMyAppointments(uid, input = { page: 1, limit: 20 }, upcoming = false) {
     const user = await User_1.User.findOne({ uid }).select('_id').lean();
     if (!user)
-        return [];
-    return Appointment_1.Appointment.find({ user: user._id, status: { $ne: 'pending' } }).sort({ startAt: -1 }).limit(100);
+        return Object.assign([], { pagination: (0, pagination_1.paginationMeta)(input, 0), summary: { upcoming: 0 } });
+    return appointmentPage({ user: user._id, status: { $ne: 'pending' } }, input, upcoming);
 }
-async function listProviderAppointments(uid) {
+async function listProviderAppointments(uid, input = { page: 1, limit: 20 }, upcoming = false) {
     const profiles = await (0, providerProfileService_1.listMyProviderProfiles)(uid);
-    return Appointment_1.Appointment.find({ providerProfile: { $in: profiles.map((profile) => profile._id) }, status: { $ne: 'pending' } }).sort({ startAt: -1 }).limit(100);
+    return appointmentPage({ providerProfile: { $in: profiles.map((profile) => profile._id) }, status: { $ne: 'pending' } }, input, upcoming);
+}
+async function appointmentPage(query, input, upcoming) {
+    const future = { ...query, status: 'confirmed', startAt: { $gte: new Date() } };
+    const selected = upcoming ? future : query;
+    const result = await (0, pagination_1.queryPage)(input, () => Appointment_1.Appointment.countDocuments(selected), (skip, limit) => Appointment_1.Appointment.find(selected).sort({ startAt: upcoming ? 1 : -1, _id: 1 }).skip(skip).limit(limit));
+    return Object.assign(result.items, { pagination: result.pagination, summary: { upcoming: await Appointment_1.Appointment.countDocuments(future) } });
 }
 async function cancelAppointment(uid, id, reason, asAdmin = false) {
     if (!mongoose_1.Types.ObjectId.isValid(id))

@@ -8,11 +8,15 @@ exports.listPublishedProviderProfiles = listPublishedProviderProfiles;
 exports.assertCanManageProvider = assertCanManageProvider;
 exports.toPublicProvider = toPublicProvider;
 exports.listMarketplaceProviders = listMarketplaceProviders;
+exports.listMarketplaceProviderPage = listMarketplaceProviderPage;
+exports.getMarketplaceProviderByUid = getMarketplaceProviderByUid;
 exports.updateProviderProfile = updateProviderProfile;
 exports.updateProviderPhoto = updateProviderPhoto;
 exports.updateProviderCover = updateProviderCover;
 exports.moderateProviderProfile = moderateProviderProfile;
 exports.providerProfilesToLegacyExperts = providerProfilesToLegacyExperts;
+const marketplaceQuery_1 = require("./marketplaceQuery");
+const pagination_1 = require("./pagination");
 const mongoose_1 = require("mongoose");
 const Business_1 = require("../models/Business");
 const Category_1 = require("../models/Category");
@@ -168,7 +172,11 @@ async function listPublishedProviderProfiles(cityId) {
         ...(cityId ? { serviceAreaCityIds: new mongoose_1.Types.ObjectId(cityId) } : {}),
     })
         .select('-qualificationClaims -moderation.reason')
-        .sort({ updatedAt: -1 }).limit(50);
+        .sort({ updatedAt: -1, _id: -1 }).limit(0);
+    return withActiveBusiness(profiles);
+}
+/** Business profiles are only public while their business is active. */
+async function withActiveBusiness(profiles) {
     const ids = profiles.map((profile) => profile.business).filter((id) => Boolean(id));
     if (!ids.length)
         return profiles;
@@ -223,7 +231,84 @@ function toPublicProvider(profile) {
 }
 /** Marketplace directory cards (experts + companies) with owner uid and ratings. */
 async function listMarketplaceProviders(cityId) {
-    const profiles = await listPublishedProviderProfiles(cityId);
+    return serializeMarketplaceProviders(await listPublishedProviderProfiles(cityId));
+}
+async function listMarketplaceProviderPage(query, input) {
+    await (0, ratingService_1.backfillUnmoderatedPendingReviews)();
+    const pipeline = (0, marketplaceQuery_1.providerDirectoryPipeline)(query);
+    const counts = await ProviderProfile_1.ProviderProfile.aggregate([...pipeline, { $group: { _id: '$providerType', total: { $sum: 1 } } }]);
+    const experts = counts.find((item) => item._id === 'individual')?.total ?? 0;
+    const companies = counts.find((item) => item._id === 'business')?.total ?? 0;
+    if (query.countsOnly === 'true')
+        return { providers: [], pagination: (0, pagination_1.paginationMeta)(input, experts + companies), counts: { experts, companies } };
+    const type = query.tab === 'companies' ? 'business' : query.tab === 'experts' ? 'individual' : undefined;
+    const selected = type ? [...pipeline, { $match: { providerType: type } }] : pipeline;
+    const result = await (0, pagination_1.queryPage)(input, () => Promise.resolve(type === 'individual' ? experts : type === 'business' ? companies : experts + companies), (skip, limit) => ProviderProfile_1.ProviderProfile.aggregate([...selected, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, ratingAverage: 1, ratingCount: 1 } }]));
+    const profiles = await ProviderProfile_1.ProviderProfile.find({ _id: { $in: result.items.map((row) => row._id) } }).select('-qualificationClaims -moderation.reason');
+    const byId = new Map(profiles.map((profile) => [String(profile._id), profile]));
+    const ordered = result.items.flatMap((row) => { const profile = byId.get(String(row._id)); return profile ? [profile] : []; });
+    return { providers: await serializeMarketplaceProviders(ordered, new Map(result.items.map((row) => [String(row._id), { average: row.ratingAverage, count: row.ratingCount }]))), pagination: result.pagination, counts: { experts, companies } };
+}
+/**
+ * Public profile page: the owner's published profile, serialized exactly like the
+ * directory cards, plus the career and social fields only the profile page shows.
+ */
+async function getMarketplaceProviderByUid(uid, providerType) {
+    const owner = await User_1.User.findOne({ uid }).select('_id').lean();
+    if (!owner)
+        return null;
+    const found = await ProviderProfile_1.ProviderProfile.findOne({
+        ownerUser: owner._id,
+        providerType,
+        status: 'published',
+        'moderation.status': 'approved',
+    })
+        .select('-qualificationClaims -moderation.reason')
+        .sort({ updatedAt: -1 });
+    if (!found)
+        return null;
+    const [profile] = await withActiveBusiness([found]);
+    if (!profile)
+        return null;
+    const [card] = await serializeMarketplaceProviders([profile]);
+    if (!card)
+        return null;
+    const monthYear = (value) => value ? { month: value.month, year: value.year } : undefined;
+    const socialLinks = {};
+    for (const key of socialLinks_1.SOCIAL_LINK_KEYS) {
+        const url = profile.socialLinks?.[key];
+        if (url)
+            socialLinks[key] = url;
+    }
+    return {
+        ...card,
+        about: profile.publicProfile.description || profile.publicProfile.shortDescription || profile.experience || '',
+        socialLinks,
+        workExperience: (profile.workExperience ?? []).map((entry) => ({
+            position: entry.position,
+            organization: entry.organization,
+            from: monthYear(entry.from),
+            to: entry.current ? undefined : monthYear(entry.to),
+            current: Boolean(entry.current),
+            description: entry.description || '',
+        })),
+        education: (profile.education ?? []).map((entry) => ({
+            institution: entry.institution,
+            degree: entry.degree,
+            fieldOfStudy: entry.fieldOfStudy,
+            from: monthYear(entry.from),
+            to: entry.current ? undefined : monthYear(entry.to),
+            current: Boolean(entry.current),
+        })),
+        certifications: (profile.certifications ?? []).map((entry) => ({
+            name: entry.name,
+            issuer: entry.issuer,
+            year: entry.year,
+            credentialUrl: entry.credentialUrl || '',
+        })),
+    };
+}
+async function serializeMarketplaceProviders(profiles, marketplaceRatings) {
     if (!profiles.length)
         return [];
     const ownerIds = profiles.map((profile) => profile.ownerUser);
@@ -326,11 +411,11 @@ async function listMarketplaceProviders(cityId) {
             });
         }
     }
-    const ratings = await (0, ratingService_1.getStatsForProviders)([...uidByOwner.values()].filter(Boolean));
+    const ratings = marketplaceRatings ? undefined : await (0, ratingService_1.getStatsForProviders)([...uidByOwner.values()].filter(Boolean));
     return profiles.map((profile) => {
         const uid = uidByOwner.get(String(profile.ownerUser)) || '';
         const business = profile.business ? businessById.get(String(profile.business)) : undefined;
-        const rating = ratings.get(uid);
+        const rating = marketplaceRatings?.get(String(profile._id)) ?? ratings?.get(uid);
         const isCompany = profile.providerType === 'business';
         const locationLabel = (profile.location?.cityId && cityNameById.get(String(profile.location.cityId)))
             || (profile.serviceAreaCityIds[0] && cityNameById.get(String(profile.serviceAreaCityIds[0])))

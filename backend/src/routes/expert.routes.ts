@@ -1,17 +1,17 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
   createExpert,
-  listActiveExperts,
-  listExpertsByCompany,
+  listExpertPage,
 } from '../services/expertService'
 
 const router = Router()
+router.use(validatePagination)
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const experts = await listActiveExperts()
-    return res.json({ experts })
+    const result = await listExpertPage(paginationInput(req.query)); return res.json({ experts: result.items, pagination: result.pagination })
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan ekspertët',
@@ -21,8 +21,7 @@ router.get('/', async (_req, res) => {
 
 router.get('/mine', requireAuth, requireRole('company', 'admin'), async (req, res) => {
   try {
-    const experts = await listExpertsByCompany(req.user!.uid)
-    return res.json({ experts })
+    const result = await listExpertPage(paginationInput(req.query, 20), req.user!.uid); return res.json({ experts: result.items, pagination: result.pagination })
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan ekspertët',

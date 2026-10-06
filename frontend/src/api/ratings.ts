@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type PaginationMeta } from './pagination'
 import api from './auth'
 
 export type ProviderRatingStats = {
@@ -38,24 +39,27 @@ export type RateableProvider = {
   interaction?: EligibleInteraction
 }
 
-export async function fetchRateableProviders() {
-  const { data } = await api.get<{ providers: RateableProvider[] }>('/api/ratings/providers')
-  return data.providers
+export async function fetchRateableProviders(params: PageParams = {}) {
+  const { data } = await api.get<{ providers: RateableProvider[]; pagination: PaginationMeta }>('/api/ratings/providers', { params })
+  return pagedItems(data.providers, data.pagination)
 }
 
-export async function fetchEligibleByProviderUid(providerUid: string) {
+export async function fetchEligibleByProviderUid(providerUid: string, params: PageParams = {}) {
   const { data } = await api.get<{
     interactions: EligibleInteraction[]
+    pagination: PaginationMeta
     providerId: string | null
-  }>(`/api/ratings/eligible-uid/${providerUid}`)
+  }>(`/api/ratings/eligible-uid/${providerUid}`, { params })
   return data
 }
 
-export async function fetchProviderRatings(providerUid: string) {
+export async function fetchProviderRatings(providerUid: string, params: PageParams = {}) {
   const { data } = await api.get<{
     stats: ProviderRatingStats
     ratings: RatingItem[]
-  }>(`/api/ratings/provider/${providerUid}`)
+    pagination: PaginationMeta
+    buckets: Array<{ stars: number; count: number; pct: number }>
+  }>(`/api/ratings/provider/${providerUid}`, { params })
   return data
 }
 
@@ -86,11 +90,11 @@ export type AdminReviewItem = {
   createdAt: string
 }
 
-export async function fetchModerationQueue() {
-  const { data } = await api.get<{ reviews: AdminReviewItem[]; published: AdminReviewItem[] }>(
-    '/api/ratings/moderation/pending',
+export async function fetchModerationQueue(params: PageParams & { publishedPage?: number } = {}) {
+  const { data } = await api.get<{ reviews: AdminReviewItem[]; published: AdminReviewItem[]; pagination: PaginationMeta; publishedPagination: PaginationMeta }>(
+    '/api/ratings/moderation/pending', { params },
   )
-  return { pending: data.reviews || [], published: data.published || [] }
+  return { pending: pagedItems(data.reviews, data.pagination), published: pagedItems(data.published, data.publishedPagination) }
 }
 
 export async function moderateRating(

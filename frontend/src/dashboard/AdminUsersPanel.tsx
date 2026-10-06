@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Alert, Button, Card, Chip, toast } from '@heroui/react'
 import {
   createAdminUser,
@@ -14,6 +16,7 @@ import type { UserRole } from '../api/auth'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import ProfileAvatar from '../components/ProfileAvatar'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { getErrorMessage } from '../utils/errors'
 import { EmptyBlock, RowsSkeleton, SectionHead, StatsStrip } from './OverviewParts'
 import './UserOverview.css'
@@ -41,6 +44,8 @@ export default function AdminUsersPanel() {
   const [counts, setCounts] = useState<Record<UserRole, number> | null>(null)
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
   const [query, setQuery] = useState('')
+  const usersPaging = usePagination(`${roleFilter}:${query}`)
+  const pendingPaging = usePagination()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [createForm, setCreateForm] = useState(emptyCreate)
@@ -50,25 +55,32 @@ export default function AdminUsersPanel() {
   const [saving, setSaving] = useState(false)
   const [pending, setPending] = useState<AdminUser[]>([])
   const [reviewingUid, setReviewingUid] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
+  const loadVersion = useRef(0)
   const load = useCallback(async () => {
+    const version = ++loadVersion.current
     setLoading(true)
     setError('')
     try {
       const [list, meta, roleRequests] = await Promise.all([
-        fetchAdminUsers({ role: roleFilter, q: query }),
+        fetchAdminUsers({ role: roleFilter, q: query, page: usersPaging.page, limit: 20 }),
         fetchAdminUsersMeta(),
-        fetchPendingRoleRequests(),
+        fetchPendingRoleRequests({ page: pendingPaging.page, limit: 20 }),
       ])
+      if (version !== loadVersion.current) return
       setUsers(list)
+      usersPaging.receivePagination(list.pagination)
       setCounts(meta.counts)
       setPending(roleRequests)
+      pendingPaging.receivePagination(roleRequests.pagination)
     } catch (err) {
-      setError(getErrorMessage(err))
+      if (version === loadVersion.current) setError(getErrorMessage(err))
     } finally {
-      setLoading(false)
+      if (version === loadVersion.current) setLoading(false)
     }
-  }, [roleFilter, query])
+  }, [roleFilter, query, usersPaging.page, pendingPaging.page])
 
   useEffect(() => {
     void load()
@@ -132,21 +144,25 @@ export default function AdminUsersPanel() {
     }
   }
 
-  async function onDelete(user: AdminUser) {
+  async function onDelete() {
+    const user = deleteTarget
+    if (!user || deleting) return
     if (user.uid === me?.uid) {
       setError('Nuk mund ta fshish llogarinë tënde.')
       return
     }
-    const ok = window.confirm(`Fshi përdoruesin ${user.name} (${user.email})?`)
-    if (!ok) return
+    setDeleting(true)
     setError('')
     try {
       await deleteAdminUser(user.uid)
       toast.success('Përdoruesi u fshi.')
+      setDeleteTarget(null)
       if (editingUid === user.uid) setEditingUid(null)
       await load()
     } catch (err) {
       toast.danger(getErrorMessage(err))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -155,7 +171,7 @@ export default function AdminUsersPanel() {
       <header className="uo-head"><div className="uo-head-copy"><h1>Përdoruesit</h1><p>Menaxho llogaritë, rolet dhe kërkesat për akses në platformë.</p></div></header>
 
       <Card className="uo-card admin-role-requests">
-        <SectionHead title="Kërkesa për akses" meta={<span className="uo-card-meta">{pending.length}</span>} />
+        <SectionHead title="Kërkesa për akses" meta={<span className="uo-card-meta">{pendingPaging.pagination.total}</span>} />
         <Card.Content className="uo-card-body">
         {loading ? <RowsSkeleton rows={2} /> : pending.length === 0 ? (
           <EmptyBlock title="Nuk ka kërkesa në pritje" text="Kërkesat për t’u bërë ofrues ose kompani do të shfaqen këtu." />
@@ -180,6 +196,7 @@ export default function AdminUsersPanel() {
             ))}
           </ul>
         )}
+        {!loading ? <KeshillaPagination pagination={pendingPaging.pagination} onPageChange={pendingPaging.setPage} /> : null}
         </Card.Content>
       </Card>
 
@@ -260,7 +277,7 @@ export default function AdminUsersPanel() {
 
       {error ? <Alert status="danger" className="uo-alert"><Alert.Indicator /><Alert.Content><Alert.Title>Veprimi nuk u krye</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content></Alert> : null}
 
-      <Card className="uo-card"><SectionHead title="Të gjithë përdoruesit" meta={!loading ? <span className="uo-card-meta">{users.length}</span> : null} />
+      <Card className="uo-card"><SectionHead title="Të gjithë përdoruesit" meta={!loading ? <span className="uo-card-meta">{usersPaging.pagination.total}</span> : null} />
       {loading ? <Card.Content className="uo-card-body"><RowsSkeleton rows={4} /></Card.Content> : null}
       {!loading ? <div className="admin-users-table-wrap">
         <table className="admin-users-table">
@@ -333,7 +350,7 @@ export default function AdminUsersPanel() {
                     <td>
                       <div className="admin-row-actions">
                         <Button size="sm" variant="outline" onPress={() => startEdit(user)}>Ndrysho</Button>
-                        <Button size="sm" variant="ghost" className="ds-danger-btn" onPress={() => void onDelete(user)} isDisabled={user.uid === me?.uid}>Fshi</Button>
+                        <Button size="sm" variant="ghost" className="ds-danger-btn" onPress={() => setDeleteTarget(user)} isDisabled={user.uid === me?.uid}>Fshi</Button>
                       </div>
                     </td>
                   </>
@@ -345,6 +362,8 @@ export default function AdminUsersPanel() {
         {!loading && users.length === 0 ? <EmptyBlock title="Nuk u gjet asnjë përdorues" text="Provo një kërkim ose filtër tjetër." /> : null}
       </div> : null}
       </Card>
+      {!loading ? <KeshillaPagination pagination={usersPaging.pagination} onPageChange={usersPaging.setPage} /> : null}
+      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={deleting} title="Fshi përdoruesin?" description={`Llogaria e ${deleteTarget?.name ?? ''} (${deleteTarget?.email ?? ''}) do të fshihet përgjithmonë. Ky veprim nuk mund të zhbëhet.`} confirmLabel="Fshi" />
     </section>
   )
 }

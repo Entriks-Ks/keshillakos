@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { emptyPagination, type PaginationMeta } from '../api/pagination'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, SearchField, Tabs, ToggleButton } from '@heroui/react'
 import {
@@ -36,11 +38,6 @@ import { useSavedLocation } from '../hooks/useSavedLocation'
 import { getErrorMessage } from '../utils/errors'
 import { withCategoryLabels } from '../utils/marketplaceProvider'
 import {
-  filterMarketplaceProviders,
-  filterVisibleServices,
-  serviceDiscoveryRequest,
-  sortProviders,
-  sortServices,
   type DeliveryFilter,
   type MarketplaceFilters,
   type MarketplaceSort,
@@ -171,8 +168,22 @@ export default function OffersPage() {
   }
   const [sort, setSort] = useState<MarketplaceSort>(() => parseSort(searchParams.get('sort')))
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
+  const [debouncedQuery, setDebouncedQuery] = useState(query)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 300)
+    return () => window.clearTimeout(timer)
+  }, [query])
   const [categoryId, setCategoryId] = useState(searchParams.get('categoryId') || 'all')
   const [subcategoryId, setSubcategoryId] = useState(searchParams.get('subcategoryId') || 'all')
+  const urlFilters = JSON.stringify([searchParams.get('q'), searchParams.get('sort'), searchParams.get('categoryId'), searchParams.get('subcategoryId')])
+  const [syncedUrlFilters, setSyncedUrlFilters] = useState(urlFilters)
+  if (urlFilters !== syncedUrlFilters) {
+    setSyncedUrlFilters(urlFilters)
+    setQuery(searchParams.get('q') ?? '')
+    setSort(parseSort(searchParams.get('sort')))
+    setCategoryId(searchParams.get('categoryId') || 'all')
+    setSubcategoryId(searchParams.get('subcategoryId') || 'all')
+  }
   const [delivery, setDelivery] = useState<DeliveryFilter>('all')
   const [language, setLanguage] = useState('all')
   const [minRating, setMinRating] = useState('')
@@ -205,6 +216,27 @@ export default function OffersPage() {
     verification,
     availability: 'all',
   }), [query, categoryFilterKey, subcategoryId, delivery, language, minRating, verification])
+
+  const limitFromUrl = Number(searchParams.get('limit') || 12)
+  const limit = Number.isSafeInteger(limitFromUrl) && limitFromUrl > 0 ? Math.min(limitFromUrl, 100) : 12
+  const pageFromUrl = Number(searchParams.get('page') || 1)
+  const requestedPage = Number.isSafeInteger(pageFromUrl) && pageFromUrl > 0 ? pageFromUrl : 1
+  const extraFiltersKey = JSON.stringify([delivery, language, minRating, verification, cityId, limit])
+  const previousExtraFilters = useRef(extraFiltersKey)
+  const filtersChanged = previousExtraFilters.current !== extraFiltersKey
+    || query.trim() !== (searchParams.get('q') ?? '')
+    || sort !== parseSort(searchParams.get('sort'))
+    || tab !== parseTab(searchParams.get('tab'))
+    || categoryId !== (searchParams.get('categoryId') || 'all')
+    || subcategoryId !== (searchParams.get('subcategoryId') || 'all')
+  const page = filtersChanged ? 1 : requestedPage
+  const [pagination, setPagination] = useState<PaginationMeta>(emptyPagination)
+  const [counts, setCounts] = useState({ services: 0, experts: 0, companies: 0 })
+  function changePage(nextPage: number) {
+    const next = new URLSearchParams(searchParams)
+    if (nextPage > 1) next.set('page', String(nextPage)); else next.delete('page')
+    setSearchParams(next)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -244,16 +276,22 @@ export default function OffersPage() {
   }, [selectedCategory?._id])
 
   useEffect(() => {
-    if (locationLoading) return
+    if (locationLoading || query !== debouncedQuery) return
     const controller = new AbortController()
-    const request = serviceDiscoveryRequest(cityId)
-    setProvidersLoading(true)
-    setProvidersError('')
-    setServicesLoading(true)
-    setServicesError('')
-    fetchMarketplaceProviders(request, controller.signal)
+    const request = { cityId, page, limit, tab, q: query.trim() || undefined,
+      categoryId: categoryFilterKey === 'all' ? undefined : categoryFilterKey,
+      subcategoryId: subcategoryId === 'all' ? undefined : subcategoryId,
+      delivery, language, minRating, verification, sort }
+    if (tab === 'services') { setServicesLoading(true); setServicesError('') }
+    else { setProvidersLoading(true); setProvidersError('') }
+    if (tab !== 'services') fetchMarketplaceProviders(request, controller.signal)
       .then((providerItems) => {
-        if (!controller.signal.aborted) setProviders(providerItems)
+        if (!controller.signal.aborted) {
+          setProviders(providerItems)
+          setCounts((current) => ({ ...current, ...providerItems.counts }))
+          setPagination(providerItems.pagination)
+          if (providerItems.pagination.page !== page) changePage(providerItems.pagination.page)
+        }
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return
@@ -263,9 +301,14 @@ export default function OffersPage() {
       .finally(() => {
         if (!controller.signal.aborted) setProvidersLoading(false)
       })
-    fetchActiveServices(request, controller.signal)
+    if (tab === 'services') fetchActiveServices(request, controller.signal)
       .then((serviceItems) => {
-        if (!controller.signal.aborted) setServices(Array.isArray(serviceItems) ? serviceItems : [])
+        if (!controller.signal.aborted) {
+          setServices(serviceItems)
+          setCounts((current) => ({ ...current, services: serviceItems.pagination.total }))
+          setPagination(serviceItems.pagination)
+          if (serviceItems.pagination.page !== page) changePage(serviceItems.pagination.page)
+        }
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return
@@ -276,10 +319,37 @@ export default function OffersPage() {
         if (!controller.signal.aborted) setServicesLoading(false)
       })
     return () => controller.abort()
-  }, [cityId, locationLoading, reloadKey])
+  }, [cityId, locationLoading, reloadKey, page, limit, filters, sort, tab, debouncedQuery])
+
+  // Counts do not depend on page/limit/sort. Do not reload inactive rows on pagination.
+  useEffect(() => {
+    if (locationLoading || query !== debouncedQuery) return
+    const controller = new AbortController()
+    const request = { cityId, q: debouncedQuery.trim() || undefined,
+      categoryId: categoryFilterKey === 'all' ? undefined : categoryFilterKey,
+      subcategoryId: subcategoryId === 'all' ? undefined : subcategoryId,
+      delivery, language, minRating, verification, countsOnly: true }
+    if (tab === 'services') {
+      setProvidersLoading(true)
+      void fetchMarketplaceProviders(request, controller.signal)
+        .then((items) => { if (!controller.signal.aborted) setCounts((current) => ({ ...current, ...items.counts })) })
+        .catch(() => undefined)
+        .finally(() => { if (!controller.signal.aborted) setProvidersLoading(false) })
+    } else {
+      setServicesLoading(true)
+      void fetchActiveServices(request, controller.signal)
+        .then((items) => { if (!controller.signal.aborted) setCounts((current) => ({ ...current, services: items.pagination.total })) })
+        .catch(() => undefined)
+        .finally(() => { if (!controller.signal.aborted) setServicesLoading(false) })
+    }
+    return () => controller.abort()
+  }, [cityId, locationLoading, reloadKey, debouncedQuery, query, categoryFilterKey, subcategoryId, delivery, language, minRating, verification, tab])
 
   useEffect(() => {
-    const next = new URLSearchParams()
+    previousExtraFilters.current = extraFiltersKey
+    const next = new URLSearchParams(searchParams)
+    for (const key of ['tab', 'sort', 'q', 'categoryId', 'subcategoryId', 'page']) next.delete(key)
+    if (page > 1) next.set('page', String(page))
     if (tab !== 'services' || searchParams.has('tab')) next.set('tab', tab)
     if (sort !== 'relevance') next.set('sort', sort)
     if (query.trim()) next.set('q', query.trim())
@@ -287,7 +357,7 @@ export default function OffersPage() {
     if (subcategoryId !== 'all') next.set('subcategoryId', subcategoryId)
     const upcoming = next.toString()
     if (searchParams.toString() !== upcoming) setSearchParams(next, { replace: true })
-  }, [tab, sort, query, categoryId, subcategoryId, setSearchParams])
+  }, [tab, sort, query, categoryId, subcategoryId, page, extraFiltersKey, searchParams, setSearchParams])
 
   const labeledProviders = useMemo(
     () => providers.map((provider) => withCategoryLabels(provider, categories)),
@@ -297,27 +367,17 @@ export default function OffersPage() {
     () => new Map(providers.map((provider) => [provider.uid, provider])),
     [providers],
   )
-  const filteredExperts = useMemo(
-    () => sortProviders(filterMarketplaceProviders(labeledProviders, filters, 'experts'), sort, query),
-    [labeledProviders, filters, sort, query],
-  )
-  const filteredCompanies = useMemo(
-    () => sortProviders(filterMarketplaceProviders(labeledProviders, filters, 'companies'), sort, query),
-    [labeledProviders, filters, sort, query],
-  )
-
-  const filteredServices = useMemo(
-    () => sortServices(filterVisibleServices(services, filters), sort, query),
-    [services, filters, sort, query],
-  )
+  const filteredExperts = labeledProviders.filter((provider) => provider.providerType === 'individual')
+  const filteredCompanies = labeledProviders.filter((provider) => provider.providerType === 'business')
+  const filteredServices = services
 
   const copy = TAB_COPY[tab]
   const loading = tab === 'services' ? servicesLoading : providersLoading
   const error = tab === 'services' ? servicesError : providersError
   const tabCounts: Record<MarketplaceTab, number | null> = {
-    services: servicesLoading ? null : filteredServices.length,
-    companies: providersLoading ? null : filteredCompanies.length,
-    experts: providersLoading ? null : filteredExperts.length,
+    services: servicesLoading ? null : counts.services,
+    companies: providersLoading ? null : counts.companies,
+    experts: providersLoading ? null : counts.experts,
   }
   const resultCount = tabCounts[tab] ?? 0
   const resultLabel = copy.result(resultCount)
@@ -685,6 +745,7 @@ export default function OffersPage() {
                     {renderResults(id)}
                   </Tabs.Panel>
                 ))}
+                {!loading && !error ? <KeshillaPagination pagination={pagination} onPageChange={changePage} /> : null}
               </div>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import type { PaginationMeta } from '../api/pagination'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { API_BASE_URL } from '../api/auth'
@@ -19,6 +20,7 @@ type ConversationUpdated = {
 type AckResult = {
   ok: boolean
   messages?: ChatMessage[]
+  pagination?: PaginationMeta
   message?: ChatMessage
   error?: string
 }

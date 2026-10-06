@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip, ProgressBar, Separator, Skeleton, toast } from '@heroui/react'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import {
   Award,
   BriefcaseBusiness,
@@ -208,6 +209,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const [uploading, setUploading] = useState<'photo' | 'cover' | null>(null)
   const [loadError, setLoadError] = useState('')
   const [error, setError] = useState('')
@@ -814,7 +816,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
             </Card.Content>
           </Card>
           <div className="up-actions">
-            <Button variant="outline" onPress={cancelEdit} isDisabled={saving}>Anulo</Button>
+            <Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={saving}>Anulo</Button>
             <Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null}>{saving ? 'Duke ruajtur…' : 'Ruaj ndryshimet'}</Button>
           </div>
         </form>
@@ -1129,6 +1131,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       </div>
 
 
+      <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { cancelEdit(); setConfirmCancel(false) }} title="Hidh ndryshimet?" description="Ndryshimet e paruajtura në profilin e ekspertit do të humbasin." confirmLabel="Hidh ndryshimet" />
     </section>
   )
 }

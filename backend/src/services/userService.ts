@@ -1,3 +1,4 @@
+import { queryPage, type PaginationInput } from './pagination'
 import { User, type UserDoc } from '../models/User'
 import { ProviderProfile } from '../models/ProviderProfile'
 import { City } from '../models/City'
@@ -178,9 +179,10 @@ export async function requestRoleChange(uid: string, role: 'provider' | 'company
   return toPublicUser(existing)
 }
 
-export async function listPendingRoleRequests() {
-  const users = await User.find({ requestedRole: { $in: ['provider', 'company'] } }).sort({ updatedAt: -1 }).lean()
-  return users.map(toPublicUser).filter((user) => user.requestedRole && !(user.roles ?? []).includes(user.requestedRole))
+export async function listPendingRoleRequests(input: PaginationInput = { page: 1, limit: 20 }) {
+  const query: Record<string, unknown> = { requestedRole: { $in: ['provider', 'company'] }, $expr: { $not: { $in: ['$requestedRole', { $ifNull: ['$roles', []] }] } } }
+  const result = await queryPage(input, () => User.countDocuments(query), (skip, limit) => User.find(query).sort({ updatedAt: -1, _id: -1 }).skip(skip).limit(limit).lean())
+  return Object.assign(result.items.map(toPublicUser), { pagination: result.pagination })
 }
 
 export async function reviewRoleRequest(uid: string, action: 'accept' | 'reject') {
@@ -216,7 +218,7 @@ export async function findUsersByUids(uids: string[]) {
   return map
 }
 
-export async function listUsers(filters?: { role?: UserRole; q?: string }) {
+export async function listUsers(filters?: { role?: UserRole; q?: string }, input: PaginationInput = { page: 1, limit: 20 }) {
   const query: Record<string, unknown> = {}
   if (filters?.role && isUserRole(filters.role)) {
     query.$or = filters.role === 'user'
@@ -234,8 +236,8 @@ export async function listUsers(filters?: { role?: UserRole; q?: string }) {
     ] }]
   }
 
-  const users = await User.find(query).sort({ createdAt: -1 }).lean()
-  return users.map((u) => toPublicUser(u))
+  const result = await queryPage(input, () => User.countDocuments(query), (skip, limit) => User.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean())
+  return Object.assign(result.items.map(toPublicUser), { pagination: result.pagination })
 }
 
 function cleanStringList(values?: string[], maxItems = 20, itemMax = 48) {

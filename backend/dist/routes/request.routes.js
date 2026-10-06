@@ -1,5 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const requestPaginationService_1 = require("../services/requestPaginationService");
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const ServiceRequest_1 = require("../models/ServiceRequest");
@@ -8,6 +10,7 @@ const RequestDelivery_1 = require("../models/RequestDelivery");
 const chatService_1 = require("../services/chatService");
 const userRequestService_1 = require("../services/userRequestService");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('user', 'provider', 'company', 'admin'), async (req, res) => {
     try {
         const { providerUid, providerName, serviceId, serviceTitle, need, message, location, language, urgency, contactMethod, contactPhone, contactEmail, slotId, providerId, providerIds, categoryId, locationDetail, budget, preferredMode, portal, draft, } = req.body;
@@ -64,9 +67,7 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('user', 'provider',
 });
 router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('user', 'provider', 'company', 'admin'), async (req, res) => {
     try {
-        const [canonical, legacy] = await Promise.all([(0, userRequestService_1.listMyUserRequests)(req.user.uid), (0, requestService_1.listRequestsBySeeker)(req.user.uid)]);
-        const requests = [...canonical, ...legacy];
-        return res.json({ requests });
+        return res.json(await (0, requestPaginationService_1.listRequestPage)(req.user.uid, "mine", req.query, (0, pagination_1.paginationInput)(req.query, 20)));
     }
     catch (err) {
         return res.status(500).json({
@@ -76,13 +77,7 @@ router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('user', 'provide
 });
 router.get('/inbox', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
-        const [canonical, legacy, canonicalPending, legacyPending] = await Promise.all([
-            (0, userRequestService_1.listProviderDeliveries)(req.user.uid), (0, requestService_1.listRequestsByProvider)(req.user.uid),
-            (0, userRequestService_1.countPendingDeliveries)(req.user.uid), (0, requestService_1.countPendingForProvider)(req.user.uid),
-        ]);
-        const requests = [...canonical, ...legacy];
-        const pendingCount = canonicalPending + legacyPending;
-        return res.json({ requests, pendingCount });
+        return res.json(await (0, requestPaginationService_1.listRequestPage)(req.user.uid, "inbox", req.query, (0, pagination_1.paginationInput)(req.query, 20)));
     }
     catch (err) {
         return res.status(500).json({
@@ -90,11 +85,9 @@ router.get('/inbox', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'co
         });
     }
 });
-router.get('/all', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (_req, res) => {
+router.get('/all', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
     try {
-        const [canonical, legacy] = await Promise.all([(0, userRequestService_1.listAllUserRequests)(), (0, requestService_1.listAllRequests)()]);
-        const requests = [...canonical, ...legacy];
-        return res.json({ requests });
+        return res.json(await (0, requestPaginationService_1.listRequestPage)(req.user.uid, "all", req.query, (0, pagination_1.paginationInput)(req.query, 20)));
     }
     catch (err) {
         return res.status(500).json({

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.toRequest = toRequest;
 exports.createServiceRequest = createServiceRequest;
 exports.listRequestsBySeeker = listRequestsBySeeker;
 exports.listRequestsByProvider = listRequestsByProvider;
@@ -86,7 +87,7 @@ async function listRequestsByProvider(providerUid) {
     return docs.map((d) => toRequest(d));
 }
 async function listAllRequests() {
-    const docs = await ServiceRequest_1.ServiceRequest.find({}).sort({ createdAt: -1 }).limit(100);
+    const docs = await ServiceRequest_1.ServiceRequest.find({}).sort({ createdAt: -1 });
     return docs.map((d) => toRequest(d));
 }
 async function updateRequestStatus(input) {

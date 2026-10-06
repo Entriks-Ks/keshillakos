@@ -1,3 +1,5 @@
+import { providerDirectoryPipeline } from './marketplaceQuery'
+import { paginationMeta, queryPage, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
 import { Business } from '../models/Business'
 import { Category } from '../models/Category'
@@ -20,7 +22,7 @@ import {
 import { DEFAULT_PORTAL, findDomainById } from './domainService'
 import { canManageBusiness, ownedBusinessById, userIdForUid } from './businessService'
 import { deleteUploads, normalizeUploadPath } from './mediaService'
-import { getStatsForProviders } from './ratingService'
+import { backfillUnmoderatedPendingReviews, type ProviderRatingSummary, getStatsForProviders } from './ratingService'
 
 export type CreateProviderProfileInput = {
   ownerUid: string
@@ -173,7 +175,7 @@ export async function listPublishedProviderProfiles(cityId?: string) {
     ...(cityId ? { serviceAreaCityIds: new Types.ObjectId(cityId) } : {}),
   })
     .select('-qualificationClaims -moderation.reason')
-    .sort({ updatedAt: -1 }).limit(50)
+    .sort({ updatedAt: -1, _id: -1 }).limit(0)
   return withActiveBusiness(profiles)
 }
 
@@ -237,6 +239,22 @@ export async function listMarketplaceProviders(cityId?: string) {
   return serializeMarketplaceProviders(await listPublishedProviderProfiles(cityId))
 }
 
+export async function listMarketplaceProviderPage(query: Record<string, unknown>, input: PaginationInput) {
+  await backfillUnmoderatedPendingReviews()
+  const pipeline = providerDirectoryPipeline(query)
+  const counts = await ProviderProfile.aggregate<{ _id: string; total: number }>([...pipeline, { $group: { _id: '$providerType', total: { $sum: 1 } } }])
+  const experts = counts.find((item) => item._id === 'individual')?.total ?? 0
+  const companies = counts.find((item) => item._id === 'business')?.total ?? 0
+  if (query.countsOnly === 'true') return { providers: [], pagination: paginationMeta(input, experts + companies), counts: { experts, companies } }
+  const type = query.tab === 'companies' ? 'business' : query.tab === 'experts' ? 'individual' : undefined
+  const selected = type ? [...pipeline, { $match: { providerType: type } }] : pipeline
+  const result = await queryPage(input, () => Promise.resolve(type === 'individual' ? experts : type === 'business' ? companies : experts + companies), (skip, limit) => ProviderProfile.aggregate<{ _id: Types.ObjectId; ratingAverage: number; ratingCount: number }>([...selected, { $skip: skip }, { $limit: limit }, { $project: { _id: 1, ratingAverage: 1, ratingCount: 1 } }]))
+  const profiles = await ProviderProfile.find({ _id: { $in: result.items.map((row) => row._id) } }).select('-qualificationClaims -moderation.reason')
+  const byId = new Map(profiles.map((profile) => [String(profile._id), profile]))
+  const ordered = result.items.flatMap((row) => { const profile = byId.get(String(row._id)); return profile ? [profile] : [] })
+  return { providers: await serializeMarketplaceProviders(ordered, new Map(result.items.map((row) => [String(row._id), { average: row.ratingAverage, count: row.ratingCount }]))), pagination: result.pagination, counts: { experts, companies } }
+}
+
 /**
  * Public profile page: the owner's published profile, serialized exactly like the
  * directory cards, plus the career and social fields only the profile page shows.
@@ -293,7 +311,7 @@ export async function getMarketplaceProviderByUid(uid: string, providerType: 'in
   }
 }
 
-async function serializeMarketplaceProviders(profiles: Awaited<ReturnType<typeof listPublishedProviderProfiles>>) {
+async function serializeMarketplaceProviders(profiles: Awaited<ReturnType<typeof listPublishedProviderProfiles>>, marketplaceRatings?: Map<string, ProviderRatingSummary>) {
   if (!profiles.length) return []
 
   const ownerIds = profiles.map((profile) => profile.ownerUser)
@@ -399,12 +417,12 @@ async function serializeMarketplaceProviders(profiles: Awaited<ReturnType<typeof
       })
     }
   }
-  const ratings = await getStatsForProviders([...uidByOwner.values()].filter(Boolean))
+  const ratings = marketplaceRatings ? undefined : await getStatsForProviders([...uidByOwner.values()].filter(Boolean))
 
   return profiles.map((profile) => {
     const uid = uidByOwner.get(String(profile.ownerUser)) || ''
     const business = profile.business ? businessById.get(String(profile.business)) : undefined
-    const rating = ratings.get(uid)
+    const rating = marketplaceRatings?.get(String(profile._id)) ?? ratings?.get(uid)
     const isCompany = profile.providerType === 'business'
     const locationLabel = (profile.location?.cityId && cityNameById.get(String(profile.location.cityId)))
       || (profile.serviceAreaCityIds[0] && cityNameById.get(String(profile.serviceAreaCityIds[0])))

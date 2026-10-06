@@ -1,3 +1,4 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
@@ -10,6 +11,7 @@ import {
 } from '../services/availabilityService'
 
 const router = Router()
+router.use(validatePagination)
 
 router.get('/provider/:uid', async (req, res) => {
   try {
@@ -17,11 +19,11 @@ router.get('/provider/:uid', async (req, res) => {
     if (!uid) return res.status(400).json({ message: 'Mungon ofruesi' })
     const view = typeof req.query.view === 'string' ? req.query.view : 'open'
     if (view === 'schedule') {
-      const schedule = await listScheduleForProvider(uid)
+      const schedule = await listScheduleForProvider(uid, paginationInput(req.query, 50))
       return res.json(schedule)
     }
-    const slots = await listOpenAvailabilityForProvider(uid)
-    return res.json({ slots })
+    const slots = await listOpenAvailabilityForProvider(uid, paginationInput(req.query, 50))
+    return res.json({ slots, pagination: slots.pagination })
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan oraret',
@@ -31,8 +33,8 @@ router.get('/provider/:uid', async (req, res) => {
 
 router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
-    const slots = await listMyAvailability(req.user!.uid)
-    return res.json({ slots })
+    const slots = await listMyAvailability(req.user!.uid, paginationInput(req.query, 50))
+    return res.json({ slots, pagination: slots.pagination, summary: slots.summary })
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan oraret',

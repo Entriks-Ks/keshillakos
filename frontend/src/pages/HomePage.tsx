@@ -334,7 +334,14 @@ export default function HomePage() {
           className={`tt-hero${matching ? ' is-matching' : ''}`}
           aria-labelledby="tt-hero-heading"
         >
-          <div className="tt-hero-media" aria-hidden />
+          <div className="tt-hero-media" aria-hidden>
+            <picture>
+              <source media="(max-width: 640px)" type="image/avif" srcSet="/images/hero/mobile-480.avif 480w, /images/hero/mobile-768.avif 768w" sizes="100vw" />
+              <source media="(max-width: 640px)" type="image/webp" srcSet="/images/hero/mobile-480.webp 480w, /images/hero/mobile-768.webp 768w" sizes="100vw" />
+              <source type="image/avif" srcSet="/images/hero/desktop-960.avif 960w, /images/hero/desktop-1440.avif 1440w, /images/hero/desktop-1920.avif 1920w" sizes="100vw" />
+              <img src="/images/hero/desktop-1440.webp" srcSet="/images/hero/desktop-960.webp 960w, /images/hero/desktop-1440.webp 1440w, /images/hero/desktop-1920.webp 1920w" sizes="100vw" width={1440} height={810} alt="" fetchPriority="high" loading="eager" />
+            </picture>
+          </div>
           <div className="tt-hero-inner">
             <div className="tt-hero-copy">
               <p className="brand tt-hero-brand">KëshillaKos</p>
@@ -756,12 +763,14 @@ export default function HomePage() {
                       className="tt-service-tile"
                       onClick={() => browseOffers('', { categoryId: selectedCategoryId, subcategoryId: subcategory._id })}
                     >
-                      <img
-                        src={catalogCardImage(subcategory.slug, selectedCategory?.slug)}
-                        alt=""
-                        loading="lazy"
-                        onError={(event) => { event.currentTarget.src = heroPlaceholder }}
-                      />
+                      <span className="tt-service-tile-image">
+                        <img
+                          src={catalogCardImage(subcategory.slug, selectedCategory?.slug)}
+                          alt=""
+                          loading="lazy"
+                          onError={(event) => { event.currentTarget.src = heroPlaceholder }}
+                        />
+                      </span>
                       <span>{subcategory.name[catalogLanguage] || subcategory.name.sq}</span>
                     </button>
                   ))}

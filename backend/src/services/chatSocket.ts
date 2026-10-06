@@ -62,7 +62,7 @@ export function attachChatSocket(httpServer: HttpServer) {
         socket.join(`conversation:${conversationId}`)
         await markConversationRead(conversationId, user.uid)
         const messages = await listMessages({ conversationId, uid: user.uid, limit: 50 })
-        if (typeof ack === 'function') ack({ ok: true, messages })
+        if (typeof ack === 'function') ack({ ok: true, messages, pagination: messages.pagination })
       } catch (err) {
         if (typeof ack === 'function') {
           ack({ ok: false, error: err instanceof Error ? err.message : 'Gabim' })

@@ -4,6 +4,7 @@ exports.canSeeDelivery = canSeeDelivery;
 exports.createUserRequest = createUserRequest;
 exports.sendExistingRequest = sendExistingRequest;
 exports.updateUserRequestLifecycle = updateUserRequestLifecycle;
+exports.requestView = requestView;
 exports.listMyUserRequests = listMyUserRequests;
 exports.listProviderDeliveries = listProviderDeliveries;
 exports.listAllUserRequests = listAllUserRequests;
@@ -164,7 +165,7 @@ async function updateUserRequestLifecycle(uid, id, status) {
     }
     return listMyUserRequests(uid);
 }
-async function view(request, delivery, providerName = '', providerUid = '') {
+async function requestView(request, delivery, providerName = '', providerUid = '') {
     const owner = await User_1.User.findById(request.user).select('uid firstName lastName name email').lean();
     const seekerName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ').trim() || owner?.name?.trim() || '';
     return {
@@ -199,9 +200,9 @@ async function viewsForRequests(requests, providerFilter) {
     for (const request of requests) {
         const rows = byRequest.get(String(request._id)) ?? [];
         if (!rows.length && !providerFilter)
-            output.push(await view(request));
+            output.push(await requestView(request));
         for (const delivery of rows)
-            output.push(await view(request, delivery, names.get(String(delivery.providerProfile)), uids.get(String(delivery.providerProfile))));
+            output.push(await requestView(request, delivery, names.get(String(delivery.providerProfile)), uids.get(String(delivery.providerProfile))));
     }
     return output;
 }
@@ -209,12 +210,12 @@ async function listMyUserRequests(uid) {
     const owner = await User_1.User.findOne({ uid }).select('_id').lean();
     if (!owner)
         return [];
-    return viewsForRequests(await UserRequest_1.UserRequest.find({ user: owner._id }).sort({ createdAt: -1 }).limit(100));
+    return viewsForRequests(await UserRequest_1.UserRequest.find({ user: owner._id }).sort({ createdAt: -1 }));
 }
 async function listProviderDeliveries(uid) {
     const profiles = await (0, providerProfileService_1.listMyProviderProfiles)(uid);
     const ids = profiles.map((profile) => profile._id);
-    const deliveries = await RequestDelivery_1.RequestDelivery.find({ providerProfile: { $in: ids } }).sort({ sentAt: -1 }).limit(100);
+    const deliveries = await RequestDelivery_1.RequestDelivery.find({ providerProfile: { $in: ids } }).sort({ sentAt: -1 });
     const requests = await UserRequest_1.UserRequest.find({ _id: { $in: deliveries.map((delivery) => delivery.request) } });
     const byId = new Map(requests.map((request) => [String(request._id), request]));
     const names = new Map(profiles.map((profile) => [String(profile._id), profile.publicProfile.displayName]));
@@ -222,12 +223,12 @@ async function listProviderDeliveries(uid) {
     for (const delivery of deliveries) {
         const request = byId.get(String(delivery.request));
         if (request)
-            output.push(await view(request, delivery, names.get(String(delivery.providerProfile)), uid));
+            output.push(await requestView(request, delivery, names.get(String(delivery.providerProfile)), uid));
     }
     return output;
 }
 async function listAllUserRequests() {
-    return viewsForRequests(await UserRequest_1.UserRequest.find().sort({ createdAt: -1 }).limit(100));
+    return viewsForRequests(await UserRequest_1.UserRequest.find().sort({ createdAt: -1 }));
 }
 async function updateDeliveryStatus(uid, id, status, response, isAdmin = false, offer) {
     if (!mongoose_1.Types.ObjectId.isValid(id))
@@ -273,7 +274,7 @@ async function updateDeliveryStatus(uid, id, status, response, isAdmin = false, 
     if (delivery.slotId && ['rejected', 'pending'].includes(status))
         await (0, availabilityService_1.syncSlotWithRequestStatus)({ requestId: String(delivery._id), status: status });
     const profile = await ProviderProfile_1.ProviderProfile.findById(delivery.providerProfile).select('publicProfile.displayName');
-    return view(request, delivery, profile?.publicProfile.displayName);
+    return requestView(request, delivery, profile?.publicProfile.displayName);
 }
 async function countPendingDeliveries(uid) {
     const profiles = await (0, providerProfileService_1.listMyProviderProfiles)(uid);

@@ -1,6 +1,9 @@
+import { usePagination } from '../hooks/usePagination'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { emptyPagination, type PaginationMeta } from '../api/pagination'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Button, buttonVariants, Card, Chip, Skeleton, toast, Tooltip } from '@heroui/react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight,
   Award,
@@ -190,10 +193,20 @@ export default function ProviderProfilePage() {
   const uid = idFromPublicParam(param)
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const parsePage = (value: string | null) => { const number = Number(value || 1); return Number.isSafeInteger(number) && number > 0 ? number : 1 }
+  const page = parsePage(searchParams.get('page'))
+  const expertsPage = parsePage(searchParams.get('expertsPage'))
+  const [pagination, setPagination] = useState<PaginationMeta>(emptyPagination)
+  const [expertsPagination, setExpertsPagination] = useState<PaginationMeta>(emptyPagination)
+  function changePage(key: string, value: number) {
+    setSearchParams((current) => { const next = new URLSearchParams(current); if (value > 1) next.set(key, String(value)); else next.delete(key); return next })
+  }
   const [provider, setProvider] = useState<PublicProvider | null>(null)
   const [profile, setProfile] = useState<PublicProviderProfile | null>(null)
   const [services, setServices] = useState<ServiceItem[]>([])
   const [experts, setExperts] = useState<PublicExpert[]>([])
+  const schedulePaging = usePagination(uid)
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -209,12 +222,23 @@ export default function ProviderProfilePage() {
     setLoading(true)
     setError('')
 
-    fetchProviderProfile(uid)
+    fetchProviderProfile(uid, { page, expertsPage, limit: 12 })
       .then((data) => {
         if (cancelled) return
         setProvider(data.provider)
         setProfile(data.profile)
         setServices(data.services)
+        setPagination(data.pagination)
+        setExpertsPagination(data.expertsPagination)
+        if (data.pagination.page !== page || data.expertsPagination.page !== expertsPage) {
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current)
+            for (const [key, value] of [['page', data.pagination.page], ['expertsPage', data.expertsPagination.page]] as const) {
+              if (value > 1) next.set(key, String(value)); else next.delete(key)
+            }
+            return next
+          }, { replace: true })
+        }
         setExperts(data.experts ?? [])
       })
       .catch((err) => {
@@ -232,7 +256,7 @@ export default function ProviderProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [uid])
+  }, [uid, page, expertsPage])
 
   useEffect(() => {
     if (!provider || provider.uid !== uid) return
@@ -249,9 +273,9 @@ export default function ProviderProfilePage() {
     }
 
     let cancelled = false
-    fetchProviderSchedule(provider.uid)
+    fetchProviderSchedule(provider.uid, { page: schedulePaging.page, limit: 50 })
       .then((data) => {
-        if (!cancelled) setSchedule(data.slots)
+        if (!cancelled) { setSchedule(data.slots); schedulePaging.receivePagination(data.pagination) }
       })
       .catch(() => {
         if (!cancelled) setSchedule([])
@@ -260,7 +284,7 @@ export default function ProviderProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [provider?.uid])
+  }, [provider?.uid, schedulePaging.page])
 
   const isCompany = provider?.role === 'company'
   const displayLocation = profile?.location || provider?.location || ''
@@ -470,7 +494,7 @@ export default function ProviderProfilePage() {
                   <Section
                     title="Shërbimet"
                     id="sherbimet"
-                    meta={services.length ? <span className="pp-card-meta">{services.length}</span> : null}
+                    meta={services.length ? <span className="pp-card-meta">{pagination.total}</span> : null}
                   >
                     {services.length ? (
                       <ul className="pp-services">
@@ -479,6 +503,7 @@ export default function ProviderProfilePage() {
                     ) : (
                       <p className="pp-muted">Ky ofrues nuk ka ende shërbime të publikuara.</p>
                     )}
+                  <KeshillaPagination pagination={pagination} onPageChange={(value) => changePage("page", value)} />
                   </Section>
 
                   {workExperience.length ? (
@@ -539,7 +564,7 @@ export default function ProviderProfilePage() {
                   ) : null}
 
                   {experts.length > 0 ? (
-                    <Section title="Ekspertët" meta={<span className="pp-card-meta">{experts.length}</span>}>
+                    <Section title="Ekspertët" meta={<span className="pp-card-meta">{expertsPagination.total}</span>}>
                       <ul className="pp-experts">
                         {experts.map((expert) => (
                           <li key={expert.uid}>
@@ -570,6 +595,7 @@ export default function ProviderProfilePage() {
                           </li>
                         ))}
                       </ul>
+                        <KeshillaPagination pagination={expertsPagination} onPageChange={(value) => changePage("expertsPage", value)} />
                     </Section>
                   ) : null}
 
@@ -640,7 +666,7 @@ export default function ProviderProfilePage() {
                     ) : (
                       <>
                         <div className="pp-days">
-                          {openDays.slice(0, 6).map((day) => (
+                          {openDays.map((day) => (
                             <div key={day.key} className="pp-day">
                               <span>{day.weekday}</span>
                               <strong>{day.day}</strong>
@@ -683,6 +709,7 @@ export default function ProviderProfilePage() {
                           </li>
                         ))}
                       </ul>
+                        <KeshillaPagination pagination={schedulePaging.pagination} onPageChange={schedulePaging.setPage} />
                     </Section>
                   ) : null}
                 </aside>

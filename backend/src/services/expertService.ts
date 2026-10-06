@@ -1,3 +1,8 @@
+import { Types, type PipelineStage } from 'mongoose'
+import { Business } from '../models/Business'
+import { ProviderProfile } from '../models/ProviderProfile'
+import { managedServiceOfferQuery } from './serviceOfferService'
+import { queryPage, type PaginationInput } from './pagination'
 import { Expert, type ExpertDoc } from '../models/Expert'
 import { findDomainById } from './domainService'
 import { listManagedBusinesses } from './businessService'
@@ -96,8 +101,38 @@ export async function listExpertsByCompany(companyUid: string) {
 
 export async function listActiveExperts(cityId?: string) {
   const [legacy, profiles] = await Promise.all([
-    cityId ? Promise.resolve([]) : Expert.find({ active: true }).sort({ createdAt: -1 }).limit(50),
+    cityId ? Promise.resolve([]) : Expert.find({ active: true }).sort({ createdAt: -1 }),
     listPublishedProviderProfiles(cityId),
   ])
   return [...(await providerProfilesToLegacyExperts(profiles)), ...legacy.map(toExpert)]
+}
+
+/** Compatibility directory: select IDs across both stores before serializing a page. */
+export async function listExpertPage(input: PaginationInput, companyUid?: string) {
+  const managed = companyUid ? await managedServiceOfferQuery(companyUid) : undefined
+  const branches = managed?.$or as Array<Record<string, unknown>> | undefined
+  const profileQuery: Record<string, unknown> = branches ? { $or: branches.map((branch) => 'providerProfile' in branch ? { _id: branch.providerProfile } : branch) } : { status: 'published', 'moderation.status': 'approved' }
+  const pipeline: PipelineStage[] = [
+    { $match: profileQuery },
+    ...(!companyUid ? [
+      { $lookup: { from: Business.collection.name, localField: 'business', foreignField: '_id', as: '_business' } },
+      { $match: { $or: [{ business: { $exists: false } }, { business: null }, { '_business.status': 'active' }] } },
+    ] as PipelineStage[] : []),
+    { $project: { _id: 1, createdAt: 1, source: { $literal: 'profile' }, rank: { $literal: 0 } } },
+    { $unionWith: { coll: Expert.collection.name, pipeline: [
+      { $match: companyUid ? { companyUid } : { active: true } },
+      { $project: { _id: 1, createdAt: 1, source: { $literal: 'legacy' }, rank: { $literal: 1 } } },
+    ] } },
+  ]
+  const result = await queryPage(input,
+    async () => (await ProviderProfile.aggregate<{ total: number }>([...pipeline, { $count: 'total' }]))[0]?.total ?? 0,
+    (skip, limit) => ProviderProfile.aggregate<{ _id: Types.ObjectId; source: 'profile' | 'legacy' }>([...pipeline, { $sort: { rank: 1, createdAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }]),
+  )
+  const [profiles, legacy] = await Promise.all([
+    ProviderProfile.find({ _id: { $in: result.items.filter((item) => item.source === 'profile').map((item) => item._id) } }),
+    Expert.find({ _id: { $in: result.items.filter((item) => item.source === 'legacy').map((item) => item._id) } }),
+  ])
+  const cards = [...await providerProfilesToLegacyExperts(profiles), ...legacy.map(toExpert)]
+  const byId = new Map(cards.map((card) => [card.id, card]))
+  return { items: result.items.flatMap((item) => { const card = byId.get(String(item._id)); return card ? [card] : [] }), pagination: result.pagination }
 }

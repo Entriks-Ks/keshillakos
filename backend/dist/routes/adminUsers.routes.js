@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const firebaseAuth_1 = require("../services/firebaseAuth");
 const userService_1 = require("../services/userService");
 const roles_1 = require("../types/roles");
 const router = (0, express_1.Router)();
+router.use(pagination_1.validatePagination);
 router.use(auth_1.requireAuth, (0, auth_1.requireRole)('admin'));
 router.get('/meta', async (_req, res) => {
     try {
@@ -31,8 +33,9 @@ router.get('/', async (req, res) => {
         const users = await (0, userService_1.listUsers)({
             role: role && (0, roles_1.isUserRole)(role) ? role : undefined,
             q,
-        });
-        return res.json({ users });
+        }, (0, pagination_1.paginationInput)(req.query, 20));
+        const result = { items: users, pagination: users.pagination };
+        return res.json({ users: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(500).json({
@@ -40,10 +43,11 @@ router.get('/', async (req, res) => {
         });
     }
 });
-router.get('/role-requests', async (_req, res) => {
+router.get('/role-requests', async (req, res) => {
     try {
-        const users = await (0, userService_1.listPendingRoleRequests)();
-        return res.json({ users });
+        const users = await (0, userService_1.listPendingRoleRequests)((0, pagination_1.paginationInput)(req.query, 20));
+        const result = { items: users, pagination: users.pagination };
+        return res.json({ users: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(500).json({

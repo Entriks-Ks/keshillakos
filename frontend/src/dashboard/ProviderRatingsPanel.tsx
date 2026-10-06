@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import KeshillaPagination from '../components/KeshillaPagination'
+import { usePagination } from '../hooks/usePagination'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Label, TextArea, TextField } from '@heroui/react'
 import { BadgeCheck, ExternalLink, MessageSquareReply, Star } from 'lucide-react'
 import { fetchProviderRatings, respondToRating, type RatingItem } from '../api/ratings'
 import ProfileAvatar from '../components/ProfileAvatar'
-import { formatReviewDate, ratingBuckets, ratingWord, StarRow } from '../components/ratingUi'
+import { formatReviewDate, ratingWord, StarRow } from '../components/ratingUi'
 import { getErrorMessage } from '../utils/errors'
 import { RowsSkeleton, SectionHead } from './OverviewParts'
 import './UserRequests.css'
@@ -19,7 +21,9 @@ export default function ProviderRatingsPanel({
 }) {
   const [average, setAverage] = useState(0)
   const [count, setCount] = useState(0)
+  const [buckets, setBuckets] = useState<Array<{ stars: number; count: number; pct: number }>>([])
   const [ratings, setRatings] = useState<RatingItem[]>([])
+  const { page, setPage, pagination, receivePagination } = usePagination(providerUid)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
@@ -36,12 +40,16 @@ export default function ProviderRatingsPanel({
 
   useEffect(() => {
     let cancelled = false
-    fetchProviderRatings(providerUid)
+    setLoading(true)
+    setError('')
+    fetchProviderRatings(providerUid, { page, limit: 12 })
       .then((data) => {
         if (cancelled) return
         setAverage(data.stats.average)
         setCount(data.stats.count)
         setRatings(data.ratings)
+        receivePagination(data.pagination)
+        setBuckets(data.buckets)
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(getErrorMessage(err))
@@ -52,9 +60,8 @@ export default function ProviderRatingsPanel({
     return () => {
       cancelled = true
     }
-  }, [providerUid, reloadKey])
+  }, [providerUid, reloadKey, page])
 
-  const buckets = useMemo(() => ratingBuckets(ratings.map((item) => item.score)), [ratings])
 
   async function onReply(e: FormEvent, id: string) {
     e.preventDefault()
@@ -237,6 +244,7 @@ export default function ProviderRatingsPanel({
           </Card>
         </>
       )}
+      {!loading && !error ? <KeshillaPagination pagination={pagination} onPageChange={setPage} /> : null}
     </section>
   )
 }

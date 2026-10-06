@@ -1,3 +1,4 @@
+import { queryPage, type PaginationInput } from './pagination'
 import mongoose from 'mongoose'
 import { Conversation } from '../models/Conversation'
 import { Message } from '../models/Message'
@@ -149,14 +150,19 @@ export async function openOrGetConversation(input: {
   return { conversation: publicConv, message }
 }
 
-export async function listConversationsForUser(uid: string) {
-  const docs = await Conversation.find({
-    $or: [{ seekerUid: uid }, { providerUid: uid }],
-  })
-    .sort({ lastMessageAt: -1, updatedAt: -1 })
-    .limit(100)
-
-  return Promise.all(docs.map((doc) => toPublicConversation(doc, uid)))
+export async function listConversationsForUser(uid: string, input: PaginationInput = { page: 1, limit: 20 }, search = '') {
+  const query: Record<string, unknown> = { $or: [{ seekerUid: uid }, { providerUid: uid }] }
+  if (search.trim()) {
+    const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const peers = await User.find({ name: { $regex: escaped, $options: 'i' } }).select('uid').lean()
+    query.$and = [{ $or: [{ seekerUid: { $in: peers.map((peer) => peer.uid) } }, { providerUid: { $in: peers.map((peer) => peer.uid) } }, { serviceTitle: { $regex: escaped, $options: 'i' } }, { lastMessagePreview: { $regex: escaped, $options: 'i' } }] }]
+  }
+  const result = await queryPage(input, () => Conversation.countDocuments(query), (skip, limit) => Conversation.find(query).sort({ lastMessageAt: -1, updatedAt: -1, _id: -1 }).skip(skip).limit(limit))
+  const totals = await Conversation.aggregate<{ total: number; unread: number }>([
+    { $match: { $or: [{ seekerUid: uid }, { providerUid: uid }] } },
+    { $group: { _id: null, total: { $sum: 1 }, unread: { $sum: { $cond: [{ $eq: ['$seekerUid', uid] }, '$seekerUnread', '$providerUnread'] } } } },
+  ])
+  return Object.assign(await Promise.all(result.items.map((doc) => toPublicConversation(doc, uid))), { pagination: result.pagination, summary: { total: totals[0]?.total ?? 0, unread: totals[0]?.unread ?? 0 } })
 }
 
 export async function getConversationForUser(conversationId: string, uid: string) {
@@ -168,6 +174,7 @@ export async function listMessages(input: {
   conversationId: string
   uid: string
   limit?: number
+  page?: number
   before?: string
 }) {
   await assertParticipant(input.conversationId, input.uid)
@@ -183,8 +190,8 @@ export async function listMessages(input: {
     }
   }
 
-  const docs = await Message.find(query).sort({ createdAt: -1 }).limit(limit)
-  return docs.reverse().map(toMessage)
+  const result = await queryPage({ page: input.page ?? 1, limit }, () => Message.countDocuments(query), (skip, pageLimit) => Message.find(query).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageLimit))
+  return Object.assign(result.items.reverse().map(toMessage), { pagination: result.pagination })
 }
 
 export async function sendMessage(input: {

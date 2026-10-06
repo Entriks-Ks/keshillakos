@@ -1,13 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const expertService_1 = require("../services/expertService");
 const router = (0, express_1.Router)();
-router.get('/', async (_req, res) => {
+router.use(pagination_1.validatePagination);
+router.get('/', async (req, res) => {
     try {
-        const experts = await (0, expertService_1.listActiveExperts)();
-        return res.json({ experts });
+        const result = await (0, expertService_1.listExpertPage)((0, pagination_1.paginationInput)(req.query));
+        return res.json({ experts: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(500).json({
@@ -17,8 +19,8 @@ router.get('/', async (_req, res) => {
 });
 router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'admin'), async (req, res) => {
     try {
-        const experts = await (0, expertService_1.listExpertsByCompany)(req.user.uid);
-        return res.json({ experts });
+        const result = await (0, expertService_1.listExpertPage)((0, pagination_1.paginationInput)(req.query, 20), req.user.uid);
+        return res.json({ experts: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(500).json({

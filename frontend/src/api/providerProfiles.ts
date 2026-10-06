@@ -1,3 +1,4 @@
+import { pagedItems, type PaginationMeta } from './pagination'
 import api from './auth'
 import { normalizeMarketplaceProviders } from '../utils/marketplaceProvider'
 import { photoFormData, postPhotoUpload, validateImageFile, MAX_IMAGE_BYTES } from './media'
@@ -173,9 +174,9 @@ export type MarketplaceProvider = {
   createdAt?: string
 }
 
-export async function fetchMarketplaceProviders(params: { cityId?: string } = {}, signal?: AbortSignal) {
-  const { data } = await api.get<{ providers?: unknown }>('/api/providers', { params, signal })
-  return normalizeMarketplaceProviders(data?.providers)
+export async function fetchMarketplaceProviders(params: { cityId?: string; page?: number; limit?: number; tab?: string; q?: string; categoryId?: string; subcategoryId?: string; delivery?: string; language?: string; minRating?: string; verification?: string; sort?: string; countsOnly?: boolean } = {}, signal?: AbortSignal) {
+  const { data } = await api.get<{ providers?: unknown; pagination: PaginationMeta; counts: { experts: number; companies: number } }>('/api/providers', { params, signal })
+  return Object.assign(pagedItems(normalizeMarketplaceProviders(data?.providers), data.pagination), { counts: data.counts })
 }
 
 export async function fetchMyProviderProfiles(signal?: AbortSignal) {

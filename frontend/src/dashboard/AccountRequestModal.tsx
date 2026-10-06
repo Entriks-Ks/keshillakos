@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Button, Modal } from '@heroui/react'
+import { AlertDialog, Button, Modal, toast } from '@heroui/react'
 import { submitPlatformFeedback } from '../api/feedback'
 import type { AuthUser } from '../api/auth'
 import { getErrorMessage } from '../utils/errors'
@@ -61,6 +61,7 @@ export default function AccountRequestModal({
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!copy || (copy.confirm && !confirmed)) return
+    if (sending || sent) return
     setSending(true)
     setError('')
     try {
@@ -70,39 +71,42 @@ export default function AccountRequestModal({
         email: user.email,
       })
       setSent(true)
+      toast.success('Kërkesa u dërgua.')
     } catch (err) {
       setError(getErrorMessage(err))
+      toast.danger(getErrorMessage(err))
     } finally {
       setSending(false)
     }
   }
 
+  const Dialog = shownKind === 'deletion' ? AlertDialog : Modal
+
   return (
-    <Modal isOpen={Boolean(kind)} onOpenChange={handleOpenChange}>
-      <Modal.Backdrop isDismissable={!sending}>
-        <Modal.Container size="sm" placement="center">
-          <Modal.Dialog className={`st-modal${shownKind === 'deletion' ? ' is-danger' : ''}`}>
-            <Modal.CloseTrigger />
-            <Modal.Header className="st-modal-head">
-              <Modal.Heading>{copy?.title}</Modal.Heading>
+    <Dialog isOpen={Boolean(kind)} onOpenChange={handleOpenChange}>
+      <Dialog.Backdrop isDismissable={!sending} isKeyboardDismissDisabled={sending}>
+        <Dialog.Container size="sm" placement="center">
+          <Dialog.Dialog className={`st-modal${shownKind === 'deletion' ? ' is-danger' : ''}`}>
+            <Dialog.Header className="st-modal-head">
+              <Dialog.Heading>{copy?.title}</Dialog.Heading>
               {!sent ? <p>{copy?.intro}</p> : null}
-            </Modal.Header>
+            </Dialog.Header>
             {sent ? (
               <>
-                <Modal.Body>
+                <Dialog.Body>
                   <p className="st-modal-done" role="status">
                     {copy?.done} <strong>{user.email}</strong>.
                   </p>
-                </Modal.Body>
-                <Modal.Footer className="st-modal-foot">
+                </Dialog.Body>
+                <Dialog.Footer className="st-modal-foot">
                   <Button variant="primary" onPress={() => handleOpenChange(false)}>
                     Mbyll
                   </Button>
-                </Modal.Footer>
+                </Dialog.Footer>
               </>
             ) : (
               <form onSubmit={onSubmit} className="st-form">
-                <Modal.Body className="st-form-body">
+                <Dialog.Body className="st-form-body">
                   <label className="st-field">
                     <span>
                       Arsyeja <em>(opsionale)</em>
@@ -125,8 +129,8 @@ export default function AccountRequestModal({
                       {error}
                     </p>
                   ) : null}
-                </Modal.Body>
-                <Modal.Footer className="st-modal-foot">
+                </Dialog.Body>
+                <Dialog.Footer className="st-modal-foot">
                   <Button variant="ghost" isDisabled={sending} onPress={() => handleOpenChange(false)}>
                     Anulo
                   </Button>
@@ -137,12 +141,12 @@ export default function AccountRequestModal({
                   >
                     {sending ? 'Duke u dërguar…' : copy?.submit}
                   </Button>
-                </Modal.Footer>
+                </Dialog.Footer>
               </form>
             )}
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+          </Dialog.Dialog>
+        </Dialog.Container>
+      </Dialog.Backdrop>
+    </Dialog>
   )
 }

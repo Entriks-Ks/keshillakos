@@ -10,7 +10,7 @@ import {
   syncSlotWithRequestStatus,
 } from './availabilityService'
 
-function toRequest(doc: ServiceRequestDoc & { _id: { toString(): string } }) {
+export function toRequest(doc: ServiceRequestDoc & { _id: { toString(): string } }) {
   return {
     id: doc._id.toString(),
     seekerUid: doc.seekerUid,
@@ -110,7 +110,7 @@ export async function listRequestsByProvider(providerUid: string) {
 }
 
 export async function listAllRequests() {
-  const docs = await ServiceRequest.find({}).sort({ createdAt: -1 }).limit(100)
+  const docs = await ServiceRequest.find({}).sort({ createdAt: -1 })
   return docs.map((d) => toRequest(d))
 }
 

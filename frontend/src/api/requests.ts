@@ -1,3 +1,4 @@
+import { pagedItems, type PageParams, type CollectionSummary, type PaginationMeta } from './pagination'
 import api from './auth'
 
 export type RequestStatus = 'draft' | 'open' | 'pending' | 'read' | 'accepted' | 'rejected' | 'completed' | 'withdrawn'
@@ -62,22 +63,23 @@ export async function sendServiceRequest(payload: {
   return data.request
 }
 
-export async function fetchMyRequests() {
-  const { data } = await api.get<{ requests: ServiceRequestItem[] }>('/api/requests/mine')
-  return data.requests
+export async function fetchMyRequests(params: PageParams = {}) {
+  const { data } = await api.get<{ requests: ServiceRequestItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/requests/mine', { params })
+  return pagedItems(data.requests, data.pagination, data.summary)
 }
 
-export async function fetchRequestInbox() {
+export async function fetchRequestInbox(params: PageParams = {}) {
   const { data } = await api.get<{
     requests: ServiceRequestItem[]
     pendingCount: number
-  }>('/api/requests/inbox')
-  return data
+    pagination: PaginationMeta; summary: CollectionSummary
+  }>('/api/requests/inbox', { params })
+  return { ...data, requests: pagedItems(data.requests, data.pagination, data.summary) }
 }
 
-export async function fetchAllRequests() {
-  const { data } = await api.get<{ requests: ServiceRequestItem[] }>('/api/requests/all')
-  return data.requests
+export async function fetchAllRequests(params: PageParams = {}) {
+  const { data } = await api.get<{ requests: ServiceRequestItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/requests/all', { params })
+  return pagedItems(data.requests, data.pagination, data.summary)
 }
 
 export async function updateRequestStatus(

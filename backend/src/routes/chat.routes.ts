@@ -1,3 +1,4 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
@@ -11,6 +12,7 @@ import {
 } from '../services/chatService'
 
 const router = Router()
+router.use(validatePagination)
 
 function paramId(value: string | string[]): string {
   return Array.isArray(value) ? value[0] : value
@@ -25,8 +27,8 @@ function statusOf(err: unknown) {
 
 router.get('/conversations', requireAuth, async (req, res) => {
   try {
-    const conversations = await listConversationsForUser(req.user!.uid)
-    return res.json({ conversations })
+    const conversations = await listConversationsForUser(req.user!.uid, paginationInput(req.query, 20), typeof req.query.q === "string" ? req.query.q : "")
+    return res.json({ conversations, pagination: conversations.pagination, summary: conversations.summary })
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan bisedat',
@@ -89,14 +91,15 @@ router.get('/conversations/:id', requireAuth, async (req, res) => {
 router.get('/conversations/:id/messages', requireAuth, async (req, res) => {
   try {
     const before = typeof req.query.before === 'string' ? req.query.before : undefined
-    const limit = req.query.limit ? Number(req.query.limit) : undefined
+    const { page, limit } = paginationInput(req.query, 50)
     const messages = await listMessages({
       conversationId: paramId(req.params.id),
       uid: req.user!.uid,
       before,
+      page,
       limit,
     })
-    return res.json({ messages })
+    return res.json({ messages, pagination: messages.pagination })
   } catch (err) {
     return res.status(statusOf(err)).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan mesazhet',

@@ -10,6 +10,7 @@ exports.deleteAvailabilitySlot = deleteAvailabilitySlot;
 exports.holdSlotForRequest = holdSlotForRequest;
 exports.syncSlotWithRequestStatus = syncSlotWithRequestStatus;
 exports.getSlotById = getSlotById;
+const pagination_1 = require("./pagination");
 const node_crypto_1 = require("node:crypto");
 const mongoose_1 = require("mongoose");
 const AvailabilityLock_1 = require("../models/AvailabilityLock");
@@ -211,26 +212,40 @@ async function providerSlotFilter(identifier) {
     const profiles = user ? await ProviderProfile_1.ProviderProfile.find({ ownerUser: user._id }).select('_id').lean() : [];
     return { $or: [{ providerUid: identifier }, { providerProfile: { $in: profiles.map((profile) => profile._id) } }] };
 }
-async function listMyAvailability(uid) {
+async function listMyAvailability(uid, input = { page: 1, limit: 50 }) {
     const profiles = await (0, providerProfileService_1.listMyProviderProfiles)(uid);
-    const docs = await AvailabilitySlot_1.AvailabilitySlot.find({
-        $or: [{ providerUid: uid }, { providerProfile: { $in: profiles.map((profile) => profile._id) } }],
-        status: { $ne: 'cancelled' }, endAt: { $gte: new Date(Date.now() - 86400000) },
-    }).sort({ startAt: 1 });
-    return docs.map(toSlot);
+    const query = { $or: [{ providerUid: uid }, { providerProfile: { $in: profiles.map((profile) => profile._id) } }], status: { $ne: 'cancelled' }, endAt: { $gte: new Date(Date.now() - 86400000) } };
+    const result = await (0, pagination_1.queryPage)(input, () => AvailabilitySlot_1.AvailabilitySlot.countDocuments(query), (skip, limit) => AvailabilitySlot_1.AvailabilitySlot.find(query).sort({ startAt: 1, _id: 1 }).skip(skip).limit(limit));
+    const free = await AvailabilitySlot_1.AvailabilitySlot.countDocuments({ ...query, $expr: { $gt: [remainingCapacityExpression, 0] } });
+    return Object.assign(result.items.map(toSlot), { pagination: result.pagination, summary: { free, busy: result.pagination.total - free } });
 }
-async function listOpenAvailabilityForProvider(identifier) {
-    const docs = await AvailabilitySlot_1.AvailabilitySlot.find({
+// Match the legacy single-booking fields and the newer capacity/holds model.
+const remainingCapacityExpression = {
+    $cond: [
+        { $and: [
+                { $eq: [{ $size: { $ifNull: ['$holds', []] } }, 0] },
+                { $or: [{ $eq: ['$status', 'booked'] }, { $and: [{ $eq: ['$status', 'held'] }, { $ne: [{ $ifNull: ['$requestId', ''] }, ''] }] }] },
+            ] },
+        0,
+        { $max: [0, { $subtract: [{ $ifNull: ['$capacity', 1] }, { $size: { $ifNull: ['$holds', []] } }] }] },
+    ],
+};
+async function listOpenAvailabilityForProvider(identifier, input = { page: 1, limit: 50 }) {
+    const query = {
         ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() },
-    }).sort({ startAt: 1 }).limit(200);
-    return docs.map(toSlot).filter((slot) => slot.remainingCapacity > 0).slice(0, 120);
+        $expr: { $gt: [remainingCapacityExpression, 0] },
+    };
+    const result = await (0, pagination_1.queryPage)(input, () => AvailabilitySlot_1.AvailabilitySlot.countDocuments(query), (skip, limit) => AvailabilitySlot_1.AvailabilitySlot.find(query).sort({ startAt: 1, _id: 1 }).skip(skip).limit(limit));
+    return Object.assign(result.items.map(toSlot), { pagination: result.pagination });
 }
-async function listScheduleForProvider(identifier) {
-    const docs = await AvailabilitySlot_1.AvailabilitySlot.find({
-        ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() },
-    }).sort({ startAt: 1 }).limit(200);
-    const slots = docs.map(toSlot);
-    return { slots, free: slots.filter((slot) => slot.remainingCapacity > 0), busy: slots.filter((slot) => slot.remainingCapacity === 0) };
+async function listScheduleForProvider(identifier, input = { page: 1, limit: 50 }) {
+    const query = { ...(await providerSlotFilter(identifier)), status: { $in: ['open', 'held', 'booked'] }, startAt: { $gte: new Date() } };
+    const [result, freeTotal] = await Promise.all([
+        (0, pagination_1.queryPage)(input, () => AvailabilitySlot_1.AvailabilitySlot.countDocuments(query), (skip, limit) => AvailabilitySlot_1.AvailabilitySlot.find(query).sort({ startAt: 1, _id: 1 }).skip(skip).limit(limit)),
+        AvailabilitySlot_1.AvailabilitySlot.countDocuments({ ...query, $expr: { $gt: [remainingCapacityExpression, 0] } }),
+    ]);
+    const slots = result.items.map(toSlot);
+    return { slots, free: slots.filter((slot) => slot.remainingCapacity > 0), busy: slots.filter((slot) => slot.remainingCapacity === 0), freeTotal, busyTotal: result.pagination.total - freeTotal, pagination: result.pagination };
 }
 async function deleteAvailabilitySlot(input) {
     if (!mongoose_1.Types.ObjectId.isValid(input.id))

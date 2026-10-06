@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const serviceOfferService_1 = require("../services/serviceOfferService");
 const router = (0, express_1.Router)();
-router.get('/', async (_req, res) => {
+router.use(pagination_1.validatePagination);
+router.get('/', async (req, res) => {
     try {
-        return res.json({ offers: (await (0, serviceOfferService_1.listPublishedServiceOffers)()).map(serviceOfferService_1.toPublicServiceOffer) });
+        const result = await (0, serviceOfferService_1.listPublishedServiceOfferPage)((0, pagination_1.paginationInput)(req.query));
+        return res.json({ offers: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(500).json({ message: err instanceof Error ? err.message : 'Shërbimet nuk u ngarkuan' });
@@ -14,7 +17,8 @@ router.get('/', async (_req, res) => {
 });
 router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
-        return res.json({ offers: await (0, serviceOfferService_1.listMyServiceOffers)(req.user.uid) });
+        const result = await (0, serviceOfferService_1.listMyServiceOfferPage)(req.user.uid, (0, pagination_1.paginationInput)(req.query, 20));
+        return res.json({ offers: result.items, pagination: result.pagination });
     }
     catch (err) {
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Shërbimet nuk u ngarkuan' });

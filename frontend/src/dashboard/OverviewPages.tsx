@@ -1,3 +1,4 @@
+import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Button, Card, Chip, buttonVariants } from '@heroui/react'
@@ -46,8 +47,8 @@ export function AdminOverviewPage() {
         setData({
           counts: meta.counts,
           requests,
-          newFeedback: feedback.filter((item) => item.status === 'new').length,
-          pendingRoles: roleRequests.length,
+          newFeedback: collectionSummary(feedback).unread ?? 0,
+          pendingRoles: collectionTotal(roleRequests),
         })
       })
       .catch((err: unknown) => {
@@ -60,7 +61,7 @@ export function AdminOverviewPage() {
     return () => { cancelled = true }
   }, [reloadKey])
 
-  const pendingRequests = data?.requests.filter((item) => item.status === 'pending').length ?? 0
+  const pendingRequests = collectionSummary(data?.requests).statusCounts?.pending ?? 0
   const recent = [...(data?.requests ?? [])]
     .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
     .slice(0, 5)

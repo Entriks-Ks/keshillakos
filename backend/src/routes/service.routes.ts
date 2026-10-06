@@ -1,3 +1,4 @@
+import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { Types } from 'mongoose'
 import { z } from 'zod'
@@ -11,13 +12,14 @@ import {
   createService,
   deleteService,
   getActiveServiceById,
-  listActiveServices,
-  listServicesByProvider,
+  listPublicServicePage,
+  listProviderServicePage,
   updateService,
 } from '../services/serviceService'
 import type { ServiceDetails } from '../models/Service'
 
 const router = Router()
+router.use(validatePagination)
 const discoveryQuery = z.object({
   cityId: z.string().refine(Types.ObjectId.isValid, 'Invalid city ID').optional(),
   categoryId: z.string().trim().min(1).max(120).optional(),
@@ -58,8 +60,7 @@ router.get('/', async (req, res) => {
   try {
     const parsed = discoveryQuery.safeParse(req.query)
     if (!parsed.success) return res.status(400).json({ message: 'Filtrat nuk janë të vlefshëm', errors: parsed.error.issues })
-    const services = await listActiveServices(parsed.data)
-    return res.json({ services })
+    return res.json(await listPublicServicePage(req.query, paginationInput(req.query)))
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan shërbimet',
@@ -69,8 +70,7 @@ router.get('/', async (req, res) => {
 
 router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
-    const services = await listServicesByProvider(req.user!.uid)
-    return res.json({ services })
+    return res.json(await listProviderServicePage(req.user!.uid, paginationInput(req.query, 20)))
   } catch (err) {
     return res.status(500).json({
       message: err instanceof Error ? err.message : 'Nuk u ngarkuan shërbimet',
@@ -97,7 +97,7 @@ router.post(
 
 router.get('/:id', async (req, res) => {
   try {
-    const service = await getActiveServiceById(req.params.id)
+    const service = await getActiveServiceById(req.params.id, paginationInput(req.query))
     if (!service) {
       return res.status(404).json({ message: 'Shërbimi nuk u gjet' })
     }
