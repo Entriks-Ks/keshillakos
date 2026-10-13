@@ -72,7 +72,7 @@
   font-family: var(--font-display);
   font-size: 1.15rem;
   letter-spacing: -0.03em;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .tt-feedback-head p,
@@ -98,7 +98,7 @@
 
 .tt-feedback-close:hover {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .tt-feedback-form,

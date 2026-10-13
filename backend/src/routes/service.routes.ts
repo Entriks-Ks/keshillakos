@@ -17,6 +17,7 @@ import {
   updateService,
 } from '../services/serviceService'
 import type { ServiceDetails } from '../models/Service'
+import { PlanError, assertPro } from '../services/planService'
 
 const router = Router()
 router.use(validatePagination)
@@ -85,10 +86,13 @@ router.post(
   withImageUpload(imageUpload),
   async (req, res) => {
     try {
+      const audience = req.user!.activeContext === 'company' ? 'company' : 'provider'
+      await assertPro(req.user!.uid, audience)
       const url = await storeUploadedFile(req, 'services', req.user!.uid, 'Zgjidh një foto për shërbimin')
       return res.status(201).json({ url })
     } catch (err) {
-      return res.status(400).json({
+      const status = err instanceof PlanError ? err.status : 400
+      return res.status(status).json({
         message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi',
       })
     }

@@ -9,6 +9,8 @@ import { Types } from 'mongoose'
 import { applySocialLinks, normalizeSocialLinks, type SocialLinks } from '../models/socialLinks'
 import { isUserRole, type UserRole } from '../types/roles'
 import { deleteUploads, normalizeUploadPath } from './mediaService'
+import { isPro } from './planService'
+import { PLAN_LIMITS } from '../plans/catalog'
 
 export type SavedLocation = { countryId: string; cityId: string }
 export type PublicUser = Omit<UserDoc, 'location'> & { location: string; savedLocation?: SavedLocation }
@@ -327,7 +329,24 @@ export async function updateOwnProfile(
   }
   if (input.bio !== undefined) {
     const bio = input.bio.trim()
-    if (bio.length > 3000) throw new Error('Përshkrimi duhet të jetë deri në 3000 karaktere')
+    const roles = existing.roles ?? [existing.role]
+    const audience = existing.activeContext === 'company' && roles.includes('company')
+      ? 'company'
+      : existing.activeContext === 'provider' && roles.includes('provider')
+        ? 'provider'
+        : roles.includes('provider')
+          ? 'provider'
+          : roles.includes('company')
+            ? 'company'
+            : null
+    const max = audience ? ((await isPro(uid, audience)) ? PLAN_LIMITS.proBio : PLAN_LIMITS.basicBio) : 3000
+    if (bio.length > max) {
+      throw new Error(!audience
+        ? 'Përshkrimi duhet të jetë deri në 3000 karaktere'
+        : max === PLAN_LIMITS.basicBio
+          ? 'Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.'
+          : 'Përshkrimi në planin Pro mund të ketë deri në 2,000 karaktere.')
+    }
     existing.bio = bio || undefined
   }
   if (input.skills !== undefined) existing.skills = cleanStringList(input.skills)
@@ -362,6 +381,9 @@ export async function updateProfilePhoto(uid: string, profilePhoto: string): Pro
   if (!existing) throw new Error('Përdoruesi nuk u gjet')
   const nextPhoto = normalizeUploadPath(profilePhoto)
   if (!nextPhoto) throw new Error('Rruga e fotos nuk është e vlefshme')
+  const roles = existing.roles ?? [existing.role]
+  const audience = existing.activeContext === 'company' && roles.includes('company') ? 'company' : roles.includes('provider') ? 'provider' : roles.includes('company') ? 'company' : null
+  if (audience && !(await isPro(existing.uid, audience))) throw new Error('Fotoja e profilit është pjesë e planit Pro.')
   const previous = existing.profilePhoto
   const previousProviderPhotos = (await ProviderProfile.find({ ownerUser: existing._id }).select('publicProfile.photoUrl').lean())
     .map((profile) => profile.publicProfile?.photoUrl)

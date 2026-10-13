@@ -8,6 +8,8 @@ import type { ServiceRequestItem } from '../api/requests'
 import type { ServiceItem } from '../api/services'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { formatServicePrice } from '../utils/serviceDiscovery'
+import { useTranslation } from 'react-i18next'
+import i18n, { uiText } from '../i18n'
 import { formatAmount, formatWhen, REQUEST_STATUS, type ChipColor } from './requestDisplay'
 import './UserOverview.css'
 
@@ -33,9 +35,9 @@ export type OverviewStat = {
 }
 
 export function timeGreeting(hour: number) {
-  if (hour < 12) return 'Mirëmëngjes'
-  if (hour < 18) return 'Mirëdita'
-  return 'Mirëmbrëma'
+  if (hour < 12) return i18n.t('greet.morning')
+  if (hour < 18) return i18n.t('greet.day')
+  return i18n.t('greet.evening')
 }
 
 export function SectionHead({ title, meta, action }: { title: string; meta?: ReactNode; action?: ReactNode }) {
@@ -104,22 +106,22 @@ export function latestActivity(entries: ActivityEntry[], limit = 6) {
 }
 
 function receivedRequestDetail(item: ServiceRequestItem) {
-  const client = item.seekerName || 'Klienti'
+  const client = item.seekerName || uiText('Klienti', 'The client', 'Der Kunde')
   if (item.offer) {
     const amount = formatAmount(item.offer)
-    return `Dërgove ofertë te ${client}${amount ? ` · ${amount}` : ''}`
+    return `${uiText('Dërgove ofertë te', 'You sent an offer to', 'Du hast ein Angebot gesendet an')} ${client}${amount ? ` · ${amount}` : ''}`
   }
   switch (item.status) {
     case 'accepted':
-      return `Pranove kërkesën e ${client}`
+      return `${uiText('Pranove kërkesën e', 'You accepted the request from', 'Du hast die Anfrage angenommen von')} ${client}`
     case 'completed':
-      return `Përfunduar me ${client}`
+      return `${uiText('Përfunduar me', 'Completed with', 'Abgeschlossen mit')} ${client}`
     case 'rejected':
-      return `Refuzove kërkesën e ${client}`
+      return `${uiText('Refuzove kërkesën e', 'You declined the request from', 'Du hast die Anfrage abgelehnt von')} ${client}`
     case 'withdrawn':
-      return `${client} e tërhoqi kërkesën`
+      return `${client} ${uiText('e tërhoqi kërkesën', 'withdrew the request', 'hat die Anfrage zurückgezogen')}`
     default:
-      return `Kërkesë nga ${client}`
+      return `${uiText('Kërkesë nga', 'Request from', 'Anfrage von')} ${client}`
   }
 }
 
@@ -132,7 +134,7 @@ export function inboxActivity(
 ): ActivityEntry[] {
   const fromRequests = requests.map((item) => ({
     id: `r-${item.id}`,
-    title: item.need || item.serviceTitle || 'Kërkesë',
+    title: item.need || item.serviceTitle || uiText('Kërkesë', 'Request', 'Anfrage'),
     detail: receivedRequestDetail(item),
     at: item.updatedAt || item.createdAt,
     to: inboxPath,
@@ -143,6 +145,7 @@ export function inboxActivity(
 }
 
 export function ActivityRows({ entries }: { entries: ActivityEntry[] }) {
+  const { t } = useTranslation()
   return (
     <ul className="uo-rows">
       {entries.map((entry) => (
@@ -162,10 +165,10 @@ export function ActivityRows({ entries }: { entries: ActivityEntry[] }) {
             <span className="uo-row-end">
               {entry.status ? (
                 <Chip size="sm" variant="soft" color={entry.status.color}>
-                  <Chip.Label>{entry.status.label}</Chip.Label>
+                  <Chip.Label>{t(entry.status.label)}</Chip.Label>
                 </Chip>
               ) : entry.unread ? (
-                <span className="uo-unread" aria-label={`${entry.unread} të palexuara`}>
+                <span className="uo-unread" aria-label={uiText(`${entry.unread} të palexuara`, `${entry.unread} unread`, `${entry.unread} ungelesen`)}>
                   {entry.unread}
                 </span>
               ) : null}

@@ -10,7 +10,19 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
-    <title>KëshillaKos</title>
+    <title>KLAW</title>
+    <script>
+      try {
+        var theme = localStorage.getItem("kk-theme");
+        if (theme !== "light" && theme !== "dark") {
+          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = theme;
+        var lang = localStorage.getItem("kk-lang");
+        if (lang !== "sq" && lang !== "en" && lang !== "de") lang = "sq";
+        document.documentElement.lang = lang;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

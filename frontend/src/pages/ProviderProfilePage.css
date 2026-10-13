@@ -28,8 +28,8 @@
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
-  background: #fff;
-  color: var(--brand-navy);
+  background: var(--surface);
+  color: var(--heading);
   font: inherit;
   font-size: 0.9rem;
   font-weight: 700;
@@ -55,7 +55,7 @@
 .kk-profile-block {
   border: 1px solid var(--line);
   border-radius: 22px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .kk-profile-card {
@@ -89,7 +89,7 @@
 
 .kk-profile-card h1 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 1.35rem;
   letter-spacing: -0.03em;
 }
@@ -103,7 +103,7 @@
 }
 
 .kk-profile-rating strong {
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .kk-profile-actions {
@@ -132,7 +132,7 @@
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--accent);
   font-size: 0;
   cursor: pointer;
@@ -168,7 +168,7 @@
 .kk-profile-skills h2,
 .kk-profile-block h2 {
   margin: 0 0 12px;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 1rem;
 }
 
@@ -185,7 +185,7 @@
   padding: 7px 12px;
   border-radius: 999px;
   background: #f3f5f8;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.84rem;
   font-weight: 700;
 }
@@ -216,7 +216,7 @@
 
 .kk-profile-tabs button.is-active {
   border-bottom-color: var(--accent);
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .kk-profile-sections {
@@ -256,7 +256,7 @@
   border: 1px solid var(--line);
   border-radius: 16px;
   background: #f7f8fb;
-  color: var(--brand-navy);
+  color: var(--heading);
   text-align: center;
 }
 
@@ -305,7 +305,7 @@
 }
 
 .kk-profile-person strong {
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .kk-profile-person small {

@@ -1,5 +1,6 @@
 import { backfillUnmoderatedPendingReviews } from './ratingService'
 import { publicServicesPipeline } from './marketplaceQuery'
+import { PlanError, assertPro, isPro, proOwnerIds, recordPlanEvent } from './planService'
 import { paginationMeta, queryPage, type PaginationInput } from './pagination'
 import mongoose, { Types, type PipelineStage } from 'mongoose'
 import { Category } from '../models/Category'
@@ -144,6 +145,10 @@ async function resolveLegacyProvider(uid: string, providerName: string, category
 }
 
 export async function createService(input: CreateServiceInput) {
+  await assertPro(input.providerUid, input.businessId ? 'company' : 'provider')
+  if (input.description.trim().length > 2000) throw new PlanError('Përshkrimi i shërbimit mund të ketë deri në 2,000 karaktere.', 400)
+  const photos = cleanPhotos(input.details?.photos)
+  if (photos.length > 10) throw new PlanError('Galeria lejon deri në 10 fotografi.', 400)
   const category = await findDomainById(input.categoryId)
   if (!category) throw new Error('Kategoria nuk ekziston')
   const resolved = await resolveCatalogSubcategory(input.categoryId, input.subcategoryId, input.subcategory)
@@ -183,6 +188,11 @@ export async function createService(input: CreateServiceInput) {
 }
 
 export async function updateService(id: string, uid: string, input: Omit<CreateServiceInput, 'providerUid' | 'providerName' | 'providerId' | 'businessId'>) {
+  const offerAudience = await ServiceOffer.findById(id).select('business')
+  await assertPro(uid, offerAudience?.business ? 'company' : 'provider')
+  if (input.description.trim().length > 2000) throw new PlanError('Përshkrimi i shërbimit mund të ketë deri në 2,000 karaktere.', 400)
+  const photos = cleanPhotos(input.details?.photos)
+  if (photos.length > 10) throw new PlanError('Galeria lejon deri në 10 fotografi.', 400)
   const category = await findDomainById(input.categoryId)
   if (!category) throw new Error('Kategoria nuk ekziston')
   const resolved = await resolveCatalogSubcategory(input.categoryId, input.subcategoryId, input.subcategory)
@@ -323,7 +333,7 @@ export async function listPublicServicePage(query: Record<string, unknown>, inpu
     return { services: [], pagination: result.pagination, summary: { total: 0, active: 0 } }
   }
   await backfillUnmoderatedPendingReviews()
-  const pipeline = publicServicesPipeline(query)
+  const pipeline = publicServicesPipeline(query, await proOwnerIds())
   const count = async () => (await ServiceOffer.aggregate<{ total: number }>([...pipeline, { $count: 'total' }]))[0]?.total ?? 0
   if (query.countsOnly === 'true') {
     const total = await count()
@@ -353,12 +363,19 @@ export async function getActiveServiceById(id: string, input: PaginationInput = 
     'moderation.status': 'approved',
   })
   if (offer) {
+    const profile = await ProviderProfile.findById(offer.providerProfile).select('ownerUser providerType')
+    const ownerUser = profile ? await User.findById(profile.ownerUser).select('uid') : null
+    const audience = offer.business || profile?.providerType === 'business' ? 'company' as const : 'provider' as const
+    if (!ownerUser?.uid || !(await isPro(ownerUser.uid, audience))) return null
+    await recordPlanEvent(ownerUser.uid, audience, 'clicks')
     const [enriched] = await offersToLegacyServices([offer], true)
     if (enriched?.active) return withCompanyExperts(enriched, input)
   }
 
   const service = await Service.findOne({ _id: id, active: true })
   if (!service) return null
+  if (!(await isPro(service.providerUid, 'provider')) && !(await isPro(service.providerUid, 'company'))) return null
+  await recordPlanEvent(service.providerUid, 'provider', 'clicks')
   const [enriched] = await withLegacyProviders([service])
   if (!enriched) return null
   return withCompanyExperts(enriched, input)

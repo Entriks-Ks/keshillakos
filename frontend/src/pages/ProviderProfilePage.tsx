@@ -2,6 +2,8 @@ import { usePagination } from '../hooks/usePagination'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { emptyPagination, type PaginationMeta } from '../api/pagination'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import i18n, { uiText } from '../i18n'
 import { Button, buttonVariants, Card, Chip, Skeleton, toast, Tooltip } from '@heroui/react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
@@ -54,9 +56,16 @@ import { formatServicePrice } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
 import './PublicProfile.css'
 
-const MODE_LABELS: Record<'online' | 'on_site', string> = {
-  online: 'Online',
-  on_site: 'Në vend',
+function dateLocale() {
+  const language = (i18n.language || 'sq').toLowerCase()
+  if (language.startsWith('de')) return 'de-DE'
+  if (language.startsWith('en')) return 'en-GB'
+  return 'sq-AL'
+}
+
+function modeLabel(mode: 'online' | 'on_site') {
+  if (mode === 'on_site') return uiText('Në vend', 'On site', 'Vor Ort')
+  return 'Online'
 }
 
 function externalHref(url: string) {
@@ -70,17 +79,19 @@ function displayUrl(url: string) {
 function formatMonthYear(value?: MonthYear) {
   if (!value?.year) return ''
   return new Date(value.year, Math.max(0, (value.month || 1) - 1), 1)
-    .toLocaleDateString('sq-AL', { month: 'short', year: 'numeric' })
+    .toLocaleDateString(dateLocale(), { month: 'short', year: 'numeric' })
 }
 
 function formatPeriod(from?: MonthYear, to?: MonthYear, current?: boolean) {
   const start = formatMonthYear(from)
-  const end = current ? 'Tani' : formatMonthYear(to)
+  const end = current ? uiText('Tani', 'Now', 'Jetzt') : formatMonthYear(to)
   return [start, end].filter(Boolean).join(' – ')
 }
 
 function yearsLabel(years: number) {
-  return years === 1 ? '1 vit përvojë' : `${years} vite përvojë`
+  return years === 1
+    ? uiText('1 vit përvojë', '1 year of experience', '1 Jahr Erfahrung')
+    : uiText(`${years} vite përvojë`, `${years} years of experience`, `${years} Jahre Erfahrung`)
 }
 
 function Section({
@@ -148,6 +159,8 @@ function ProfileSkeleton() {
 }
 
 function ServiceRow({ service }: { service: ServiceItem }) {
+  const { i18n: ui } = useTranslation()
+  void ui.language
   const path = servicePath(service)
   const photo = mediaUrl(service.details?.photos?.[0])
   const price = formatServicePrice(service)
@@ -179,7 +192,7 @@ function ServiceRow({ service }: { service: ServiceItem }) {
             <span><MapPin size={14} aria-hidden />{service.location}</span>
           ) : <span />}
           <Link to={path} className="pp-text-link">
-            Shiko shërbimin
+            {uiText('Shiko shërbimin', 'View service', 'Dienst ansehen')}
             <ArrowRight size={14} aria-hidden />
           </Link>
         </div>
@@ -189,6 +202,8 @@ function ServiceRow({ service }: { service: ServiceItem }) {
 }
 
 export default function ProviderProfilePage() {
+  const { i18n: ui } = useTranslation()
+  void ui.language
   const { uid: param } = useParams<{ uid: string }>()
   const uid = idFromPublicParam(param)
   const navigate = useNavigate()
@@ -292,7 +307,7 @@ export default function ProviderProfilePage() {
     MatchIntake,
     'need' | 'location' | 'language' | 'urgency' | 'contact'
   > = {
-    need: provider?.headline || `Këshillim me ${provider?.name || 'ofruesin'}`,
+    need: provider?.headline || uiText(`Këshillim me ${provider?.name || 'ofruesin'}`, `Advice with ${provider?.name || 'the provider'}`, `Beratung mit ${provider?.name || 'dem Anbieter'}`),
     location: displayLocation || 'Online',
     language: 'Albanian',
     urgency: 'flexible',
@@ -318,13 +333,13 @@ export default function ProviderProfilePage() {
         const date = new Date(slots[0].startAt)
         return {
           key: slots[0].id,
-          weekday: date.toLocaleDateString('sq-AL', { weekday: 'short' }),
+          weekday: date.toLocaleDateString(dateLocale(), { weekday: 'short' }),
           day: date.getDate(),
-          month: date.toLocaleDateString('sq-AL', { month: 'short' }),
+          month: date.toLocaleDateString(dateLocale(), { month: 'short' }),
           count: slots.length,
         }
       })
-  }, [schedule])
+  }, [schedule, ui.language])
 
   const backFallback = provider
     ? marketplaceLink(provider.role === 'company' ? 'companies' : 'experts').to
@@ -332,7 +347,7 @@ export default function ProviderProfilePage() {
 
   async function shareProfile() {
     const url = window.location.href
-    const title = provider?.name || 'Profili'
+    const title = provider?.name || uiText('Profili', 'Profile', 'Profil')
     try {
       if (navigator.share) {
         await navigator.share({ title, url })
@@ -342,7 +357,7 @@ export default function ProviderProfilePage() {
       return
     }
     await navigator.clipboard.writeText(url)
-    toast.success('Linku i profilit u kopjua.')
+    toast.success(uiText('Linku i profilit u kopjua.', 'Profile link copied.', 'Profillink kopiert.'))
   }
 
   const specialties = profile
@@ -351,8 +366,8 @@ export default function ProviderProfilePage() {
   const name = profile?.name || provider?.name || ''
   const photo = profile?.photoUrl || provider?.profilePhoto
   const title = isCompany
-    ? specialties[0] || provider?.headline || 'Kompani'
-    : profile?.title?.trim() || provider?.headline || specialties[0] || 'Ekspert'
+    ? specialties[0] || provider?.headline || uiText('Kompani', 'Company', 'Unternehmen')
+    : profile?.title?.trim() || provider?.headline || specialties[0] || uiText('Ekspert', 'Expert', 'Experte')
   const about = profile?.about || provider?.bio || ''
   const languages = profile?.languages.length ? profile.languages : provider?.languages ?? []
   const verified = profile ? isProviderVerified(profile) : false
@@ -367,7 +382,7 @@ export default function ProviderProfilePage() {
   const certifications = profile?.certifications ?? []
 
   return (
-    <div className="tt-shell">
+    <div className="tt-shell pp-page">
       <SiteNav />
       <main className="pp">
         <div className="pp-inner">
@@ -378,10 +393,10 @@ export default function ProviderProfilePage() {
           {!loading && error ? (
             <Card className="pp-card pp-missing">
               <Card.Content className="pp-card-body">
-                <h1>Profili nuk u gjet</h1>
+                <h1>{uiText('Profili nuk u gjet', 'Profile not found', 'Profil nicht gefunden')}</h1>
                 <p>{error}</p>
                 <Link className={buttonVariants({ variant: 'primary' })} to="/ofertat">
-                  Shiko ofertat
+                  {uiText('Shiko ofertat', 'View offers', 'Angebote ansehen')}
                 </Link>
               </Card.Content>
             </Card>
@@ -407,10 +422,15 @@ export default function ProviderProfilePage() {
                   <div className="pp-identity">
                     <div className="pp-name">
                       <h1>{name}</h1>
+                      {provider.plan === 'pro' ? (
+                        <Chip size="sm" variant="soft" color="accent">
+                          <Chip.Label>Pro</Chip.Label>
+                        </Chip>
+                      ) : null}
                       {verified ? (
                         <Chip size="sm" variant="soft" color="success">
                           <BadgeCheck size={14} aria-hidden />
-                          <Chip.Label>I verifikuar</Chip.Label>
+                          <Chip.Label>{uiText('I verifikuar', 'Verified', 'Verifiziert')}</Chip.Label>
                         </Chip>
                       ) : null}
                     </div>
@@ -418,17 +438,17 @@ export default function ProviderProfilePage() {
                     <ul className="pp-meta">
                       <li>
                         {isCompany ? <Building2 size={15} aria-hidden /> : <Briefcase size={15} aria-hidden />}
-                        {isCompany ? 'Kompani' : 'Ekspert'}
+                        {isCompany ? uiText('Kompani', 'Company', 'Unternehmen') : uiText('Ekspert', 'Expert', 'Experte')}
                       </li>
                       {displayLocation ? <li><MapPin size={15} aria-hidden />{displayLocation}</li> : null}
                       {profile?.yearsOfExperience != null ? (
                         <li><Award size={15} aria-hidden />{yearsLabel(profile.yearsOfExperience)}</li>
                       ) : null}
                       {profile?.modes.length ? (
-                        <li><Video size={15} aria-hidden />{profile.modes.map((mode) => MODE_LABELS[mode]).join(' · ')}</li>
+                        <li><Video size={15} aria-hidden />{profile.modes.map((mode) => modeLabel(mode)).join(' · ')}</li>
                       ) : null}
                       {isCompany && profile?.expertCount ? (
-                        <li><Users size={15} aria-hidden />{profile.expertCount === 1 ? '1 ekspert' : `${profile.expertCount} ekspertë`}</li>
+                        <li><Users size={15} aria-hidden />{profile.expertCount === 1 ? uiText('1 ekspert', '1 expert', '1 Experte') : uiText(`${profile.expertCount} ekspertë`, `${profile.expertCount} experts`, `${profile.expertCount} Experten`)}</li>
                       ) : null}
                       {!isCompany && profile?.companyName ? (
                         <li><Building2 size={15} aria-hidden />{profile.companyName}</li>
@@ -437,8 +457,8 @@ export default function ProviderProfilePage() {
                         <a href="#vleresimet" className="pp-rating">
                           <Star size={15} aria-hidden className={provider.ratingCount > 0 ? 'is-filled' : undefined} />
                           {provider.ratingCount > 0
-                            ? `${provider.ratingAverage.toFixed(1)} (${provider.ratingCount} ${provider.ratingCount === 1 ? 'vlerësim' : 'vlerësime'})`
-                            : 'Ende pa vlerësime'}
+                            ? `${provider.ratingAverage.toFixed(1)} (${provider.ratingCount} ${provider.ratingCount === 1 ? uiText('vlerësim', 'rating', 'Bewertung') : uiText('vlerësime', 'ratings', 'Bewertungen')})`
+                            : uiText('Ende pa vlerësime', 'No ratings yet', 'Noch keine Bewertungen')}
                         </a>
                       </li>
                     </ul>
@@ -449,21 +469,21 @@ export default function ProviderProfilePage() {
                       providerName={provider.name}
                       intake={intakeDefaults}
                       compact
-                      ctaLabel="Cakto takim"
-                      guestLabel="Hyr për takim"
+                      ctaLabel={uiText('Cakto takim', 'Book a meeting', 'Termin buchen')}
+                      guestLabel={uiText('Hyr për takim', 'Log in to book', 'Anmelden zum Buchen')}
                     />
                     <StartChatButton
                       providerUid={provider.uid}
                       providerName={provider.name}
                       hideGuestHint
-                      label="Dërgo mesazh"
+                      label={uiText('Dërgo mesazh', 'Send a message', 'Nachricht senden')}
                       className="pp-chat-btn"
                     />
                     <Tooltip delay={300}>
-                      <Button isIconOnly variant="outline" aria-label="Ndaj profilin" onPress={() => void shareProfile()}>
+                      <Button isIconOnly variant="outline" aria-label={uiText('Ndaj profilin', 'Share profile', 'Profil teilen')} onPress={() => void shareProfile()}>
                         <Share2 size={17} />
                       </Button>
-                      <Tooltip.Content placement="bottom">Ndaj profilin</Tooltip.Content>
+                      <Tooltip.Content placement="bottom">{uiText('Ndaj profilin', 'Share profile', 'Profil teilen')}</Tooltip.Content>
                     </Tooltip>
                   </div>
                 </div>
@@ -471,15 +491,15 @@ export default function ProviderProfilePage() {
 
               <div className="pp-grid">
                 <div className="pp-main">
-                  <Section title={isCompany ? 'Rreth nesh' : 'Rreth meje'}>
+                  <Section title={isCompany ? uiText('Rreth nesh', 'About us', 'Über uns') : uiText('Rreth meje', 'About me', 'Über mich')}>
                     {about ? (
                       <p className="pp-about">{about}</p>
                     ) : (
-                      <p className="pp-muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>
+                      <p className="pp-muted">{uiText('Ofruesi nuk ka shtuar ende një përshkrim.', 'The provider has not added a description yet.', 'Der Anbieter hat noch keine Beschreibung hinzugefügt.')}</p>
                     )}
                     {specialties.length ? (
                       <div className="pp-subsection">
-                        <h3>{isCompany ? 'Fushat e shërbimit' : 'Specializimet'}</h3>
+                        <h3>{isCompany ? uiText('Fushat e shërbimit', 'Service areas', 'Leistungsbereiche') : uiText('Specializimet', 'Specialties', 'Spezialgebiete')}</h3>
                         <div className="pp-chips">
                           {specialties.map((item) => (
                             <Chip key={item} variant="soft" color="accent">
@@ -492,7 +512,7 @@ export default function ProviderProfilePage() {
                   </Section>
 
                   <Section
-                    title="Shërbimet"
+                    title={uiText('Shërbimet', 'Services', 'Dienste')}
                     id="sherbimet"
                     meta={services.length ? <span className="pp-card-meta">{pagination.total}</span> : null}
                   >
@@ -501,13 +521,13 @@ export default function ProviderProfilePage() {
                         {services.map((service) => <ServiceRow key={service.id} service={service} />)}
                       </ul>
                     ) : (
-                      <p className="pp-muted">Ky ofrues nuk ka ende shërbime të publikuara.</p>
+                      <p className="pp-muted">{uiText('Ky ofrues nuk ka ende shërbime të publikuara.', 'This provider has no published services yet.', 'Dieser Anbieter hat noch keine veröffentlichten Dienste.')}</p>
                     )}
                   <KeshillaPagination pagination={pagination} onPageChange={(value) => changePage("page", value)} />
                   </Section>
 
                   {workExperience.length ? (
-                    <Section title="Përvoja e punës">
+                    <Section title={uiText('Përvoja e punës', 'Work experience', 'Berufserfahrung')}>
                       <ul className="pp-timeline">
                         {workExperience.map((entry, index) => (
                           <li key={`${entry.position}-${entry.organization}-${index}`}>
@@ -525,7 +545,7 @@ export default function ProviderProfilePage() {
                   ) : null}
 
                   {education.length ? (
-                    <Section title="Arsimimi">
+                    <Section title={uiText('Arsimimi', 'Education', 'Ausbildung')}>
                       <ul className="pp-timeline">
                         {education.map((entry, index) => (
                           <li key={`${entry.institution}-${entry.degree}-${index}`}>
@@ -542,7 +562,7 @@ export default function ProviderProfilePage() {
                   ) : null}
 
                   {certifications.length ? (
-                    <Section title="Certifikimet">
+                    <Section title={uiText('Certifikimet', 'Certifications', 'Zertifikate')}>
                       <ul className="pp-timeline">
                         {certifications.map((entry, index) => (
                           <li key={`${entry.name}-${index}`}>
@@ -552,7 +572,7 @@ export default function ProviderProfilePage() {
                               <span>{[entry.issuer, entry.year].filter(Boolean).join(' · ')}</span>
                               {entry.credentialUrl ? (
                                 <a href={externalHref(entry.credentialUrl)} target="_blank" rel="noopener noreferrer" className="pp-text-link">
-                                  Shiko certifikatën
+                                  {uiText('Shiko certifikatën', 'View certificate', 'Zertifikat ansehen')}
                                   <ExternalLink size={13} aria-hidden />
                                 </a>
                               ) : null}
@@ -564,7 +584,7 @@ export default function ProviderProfilePage() {
                   ) : null}
 
                   {experts.length > 0 ? (
-                    <Section title="Ekspertët" meta={<span className="pp-card-meta">{expertsPagination.total}</span>}>
+                    <Section title={uiText('Ekspertët', 'Experts', 'Experten')} meta={<span className="pp-card-meta">{expertsPagination.total}</span>}>
                       <ul className="pp-experts">
                         {experts.map((expert) => (
                           <li key={expert.uid}>
@@ -576,20 +596,20 @@ export default function ProviderProfilePage() {
                               </span>
                             </Link>
                             <div className="pp-person-actions">
-                              <StartChatButton providerUid={expert.uid} providerName={expert.name} compact hideGuestHint label="Shkruaj" className="pp-chat-btn is-sm" />
+                              <StartChatButton providerUid={expert.uid} providerName={expert.name} compact hideGuestHint label={uiText('Shkruaj', 'Message', 'Schreiben')} className="pp-chat-btn is-sm" />
                               <SendRequestButton
                                 providerUid={expert.uid}
                                 providerName={expert.name}
                                 intake={{
-                                  need: expert.headline || `Takim me ${expert.name}`,
+                                  need: expert.headline || uiText(`Takim me ${expert.name}`, `Meeting with ${expert.name}`, `Termin mit ${expert.name}`),
                                   location: displayLocation || 'Online',
                                   language: 'Albanian',
                                   urgency: 'flexible',
                                   contact: 'chat',
                                 }}
                                 compact
-                                ctaLabel="Cakto takim"
-                                guestLabel="Hyr për takim"
+                                ctaLabel={uiText('Cakto takim', 'Book a meeting', 'Termin buchen')}
+                                guestLabel={uiText('Hyr për takim', 'Log in to book', 'Anmelden zum Buchen')}
                               />
                             </div>
                           </li>
@@ -600,7 +620,7 @@ export default function ProviderProfilePage() {
                   ) : null}
 
                   {gallery.length > 0 ? (
-                    <Section title="Galeria">
+                    <Section title={uiText('Galeria', 'Gallery', 'Galerie')}>
                       <div className="pp-gallery">
                         {gallery.map((src, index) => (
                           <img key={`${src}-${index}`} src={src} alt="" loading="lazy" />
@@ -630,13 +650,13 @@ export default function ProviderProfilePage() {
 
                 <aside className="pp-side">
                   {phone || email || website ? (
-                    <Section title="Kontakt">
+                    <Section title={uiText('Kontakt', 'Contact', 'Kontakt')}>
                       <ul className="pp-contact">
                         {phone ? (
                           <li>
                             <a href={`tel:${phone.replace(/\s+/g, '')}`}>
                               <span className="pp-contact-icon"><Phone size={16} aria-hidden /></span>
-                              <span><small>Thirr</small>{phone}</span>
+                              <span><small>{uiText('Thirr', 'Call', 'Anrufen')}</small>{phone}</span>
                             </a>
                           </li>
                         ) : null}
@@ -660,9 +680,9 @@ export default function ProviderProfilePage() {
                     </Section>
                   ) : null}
 
-                  <Section title="Disponueshmëria">
+                  <Section title={uiText('Disponueshmëria', 'Availability', 'Verfügbarkeit')}>
                     {openDays.length === 0 ? (
-                      <p className="pp-muted">Nuk ka orë të hapura për momentin.</p>
+                      <p className="pp-muted">{uiText('Nuk ka orë të hapura për momentin.', 'No open hours right now.', 'Gerade keine freien Stunden.')}</p>
                     ) : (
                       <>
                         <div className="pp-days">
@@ -671,14 +691,14 @@ export default function ProviderProfilePage() {
                               <span>{day.weekday}</span>
                               <strong>{day.day}</strong>
                               <span>{day.month}</span>
-                              <small>{day.count} orë</small>
+                              <small>{day.count} {uiText('orë', 'hours', 'Std.')}</small>
                             </div>
                           ))}
                         </div>
                         {openDays.length > 6 ? (
                           <p className="pp-muted pp-days-more">
                             <CalendarDays size={14} aria-hidden />
-                            +{openDays.length - 6} ditë të tjera me orë të lira
+                            {uiText(`+${openDays.length - 6} ditë të tjera me orë të lira`, `+${openDays.length - 6} more days with free hours`, `+${openDays.length - 6} weitere Tage mit freien Stunden`)}
                           </p>
                         ) : null}
                       </>
@@ -686,7 +706,7 @@ export default function ProviderProfilePage() {
                   </Section>
 
                   {languages.length ? (
-                    <Section title="Gjuhët">
+                    <Section title={uiText('Gjuhët', 'Languages', 'Sprachen')}>
                       <div className="pp-chips">
                         {languages.map((language) => (
                           <Chip key={language} variant="soft">
@@ -698,7 +718,7 @@ export default function ProviderProfilePage() {
                   ) : null}
 
                   {socialEntries.length ? (
-                    <Section title="Rrjetet sociale">
+                    <Section title={uiText('Rrjetet sociale', 'Social networks', 'Soziale Netzwerke')}>
                       <ul className="pp-social">
                         {socialEntries.map(([key, url]) => (
                           <li key={key}>

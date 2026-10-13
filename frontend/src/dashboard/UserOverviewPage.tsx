@@ -1,5 +1,6 @@
 import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip, toast } from '@heroui/react'
 import { ArrowRight, Plus } from 'lucide-react'
@@ -200,7 +201,7 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
         ) : list.length === 0 ? (
           <EmptyBlock
             title="Nuk ke publikuar shërbime ende"
-            text="Shërbimet e publikuara shfaqen në ofertat e KëshillaKos."
+            text="Shërbimet e publikuara shfaqen në ofertat e KLAW."
             action={
               <Button variant="outline" size="sm" isDisabled={switching} onPress={() => void openServices()}>
                 Shto shërbim
@@ -216,6 +217,7 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
 }
 
 export function UserOverviewPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -264,13 +266,13 @@ export function UserOverviewPage() {
       <header className="uo-head">
         <div className="uo-head-copy">
           <Chip size="sm" variant="soft" color="accent" className="uo-role">
-            <Chip.Label>{ROLE_LABELS.user}</Chip.Label>
+            <Chip.Label>{t(ROLE_LABELS.user)}</Chip.Label>
           </Chip>
           <h1>
             {timeGreeting(new Date().getHours())}
             {firstName ? `, ${firstName}` : ''}
           </h1>
-          <p>{ROLE_HINTS.user}</p>
+          <p>{t(ROLE_HINTS.user)}</p>
         </div>
         <Link to="/" className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
           <Plus size={16} aria-hidden />

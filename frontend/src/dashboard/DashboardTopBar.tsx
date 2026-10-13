@@ -1,11 +1,14 @@
 import MessageNavButton from '../chat/MessageNavButton'
 import NotificationBell from '../notifications/NotificationBell'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Drawer, Dropdown, Label, Tooltip } from '@heroui/react'
 import { ChevronDown, ExternalLink, Home, LogOut, Menu } from 'lucide-react'
 import type { AuthUser, UserRole } from '../api/auth'
 import ProfileAvatar from '../components/ProfileAvatar'
+import ThemeToggle from '../components/ThemeToggle'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import { providerPath } from '../utils/publicPaths'
 import { userDisplayName } from '../utils/siteNavMenu'
 import { CONTEXT_LABELS } from './nav'
@@ -24,6 +27,7 @@ type DashboardTopBarProps = {
 }
 
 function AccountMenu({ user, role, onLogout }: { user: AuthUser; role: UserRole; onLogout: () => void }) {
+  const { t } = useTranslation()
   const displayName = userDisplayName(user)
   const shortName = displayName.split(' ')[0]
   const publicProfile = user.role !== 'admin' && !user.roles?.includes('admin') && (role === 'provider' || role === 'company') ? providerPath(user) : null
@@ -44,7 +48,7 @@ function AccountMenu({ user, role, onLogout }: { user: AuthUser; role: UserRole;
           <div className="dtb-account-meta">
             <strong>{displayName || user.email}</strong>
             {displayName ? <span>{user.email}</span> : null}
-            <span className="dtb-account-role">{CONTEXT_LABELS[role]}</span>
+            <span className="dtb-account-role">{t(CONTEXT_LABELS[role])}</span>
           </div>
         </div>
         <Dropdown.Menu aria-label="Menuja e llogarisë">
@@ -74,6 +78,7 @@ export default function DashboardTopBar({
   showHome,
   onLogout,
 }: DashboardTopBarProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   return (
@@ -96,10 +101,11 @@ export default function DashboardTopBar({
                   <Link
                     to="/"
                     className="brand brand-link dsb-brand"
-                    aria-label="KëshillaKos, faqja kryesore"
+                    aria-label="KLAW, faqja kryesore"
                     onClick={() => onMenuOpenChange(false)}
                   >
-                    KëshillaKos
+                    <span className="dsb-mark" aria-hidden>K</span>
+                    <span>KLAW</span>
                   </Link>
                   <Drawer.CloseTrigger aria-label="Mbyll menunë" />
                 </Drawer.Header>
@@ -110,12 +116,14 @@ export default function DashboardTopBar({
         </Drawer>
 
         <div className="dtb-title">
-          <span className="dtb-kicker">{CONTEXT_LABELS[role]}</span>
+          <span className="dtb-kicker">{t(CONTEXT_LABELS[role])}</span>
           <p className="dtb-page">{pageTitle}</p>
         </div>
       </div>
 
       <div className="dtb-end">
+        <LanguageSwitcher />
+        <ThemeToggle />
         {showHome ? (
           <Tooltip delay={400}>
             <Button

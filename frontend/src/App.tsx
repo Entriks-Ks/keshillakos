@@ -23,10 +23,12 @@ const UserRequestsPanel = lazy(() => import('./dashboard/UserRequestsPage').then
 const MessagesPage = lazy(() => import('./dashboard/MessagesPage'))
 const CompanyExpertsPanel = lazy(() => import('./dashboard/CompanyExpertsPanel'))
 const ProviderServicesPanel = lazy(() => import('./dashboard/ProviderServicesPanel'))
+const DashboardPlansPage = lazy(() => import('./dashboard/DashboardPlansPage'))
 const AdminFeedbackPanel = lazy(() => import('./dashboard/AdminFeedbackPanel'))
 const AdminReportsPanel = lazy(() => import('./dashboard/AdminReportsPanel'))
 const DashboardRedirect = lazy(() => import('./pages/DashboardRedirect'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
+const PlansPage = lazy(() => import('./pages/PlansPage'))
 const LegalPage = lazy(() => import('./pages/LegalPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const OffersPage = lazy(() => import('./pages/OffersPage'))
@@ -82,6 +84,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/rreth-nesh" element={<AboutPage />} />
+            <Route path="/planet" element={<PlansPage />} />
             <Route path="/kushtet" element={<LegalPage kind="terms" />} />
             <Route path="/privatesia" element={<LegalPage kind="privacy" />} />
             <Route path="/cookies" element={<LegalPage kind="cookies" />} />
@@ -123,6 +126,7 @@ export default function App() {
                 <Route path="my-requests" element={<UserRequestsPanel />} />
                 <Route path="messages" element={<MessagesPage />} />
                 <Route path="services" element={<ProviderServicesPanel />} />
+                <Route path="plans" element={<DashboardPlansPage />} />
                 <Route path="availability" element={<AvailabilityPanel />} />
                 <Route path="ratings" element={<OwnRatingsPage />} />
                 <Route path="profile" element={<ProfilePage />} />
@@ -139,6 +143,7 @@ export default function App() {
                 <Route path="my-requests" element={<UserRequestsPanel />} />
                 <Route path="messages" element={<MessagesPage />} />
                 <Route path="services" element={<ProviderServicesPanel />} />
+                <Route path="plans" element={<DashboardPlansPage />} />
                 <Route path="experts" element={<CompanyExpertsPanel />} />
                 <Route path="availability" element={<AvailabilityPanel />} />
                 <Route path="ratings" element={<OwnRatingsPage />} />

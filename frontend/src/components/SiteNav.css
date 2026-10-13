@@ -1,10 +1,13 @@
 .kk-nav {
-  --kk-nav-height: 64px;
+  --kk-nav-height: 76px;
   position: sticky;
   top: 0;
   z-index: 40;
-  background: var(--surface);
-  border-bottom: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  background: color-mix(in srgb, #fff 78%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
 }
 
 .kk-nav .kk-nav-inner {
@@ -17,114 +20,82 @@
 }
 
 .kk-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   justify-self: start;
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.12rem;
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 1;
   color: var(--foreground);
   text-decoration: none;
-  border-radius: 6px;
+  border-radius: 12px;
+}
+
+.kk-nav-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: linear-gradient(160deg, #1a2fe0 0%, var(--brand-navy) 78%);
+  color: #fff;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .kk-nav-links {
   display: flex;
   align-items: center;
-  gap: clamp(20px, 3vw, 40px);
-  height: var(--kk-nav-height);
+  gap: 2px;
+  height: auto;
   margin: 0;
-  padding: 0;
+  padding: 4px;
   list-style: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 4.5%, transparent);
 }
 
 .kk-nav-links li {
-  height: 100%;
+  height: auto;
 }
 
-.kk-nav-offers {
-  display: flex;
-  align-items: center;
-  height: 100%;
-  gap: 2px;
-}
-
-.kk-nav-offers-toggle,
 .kk-nav-actions .kk-notification-bell {
   color: var(--ink-secondary);
-}
-
-.kk-nav-offers-parent {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  font-family: inherit;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-}
-
-.kk-nav-offers-parent svg {
-  margin-left: auto;
-  transition: transform 0.18s ease;
-}
-
-.kk-nav-offers-parent[aria-expanded='true'] svg {
-  transform: rotate(180deg);
-}
-
-.kk-nav-offers-subcategories {
-  display: grid;
-  grid-template-rows: 0fr;
-  visibility: hidden;
-  transition: grid-template-rows 0.18s ease, visibility 0.18s;
-}
-
-.kk-nav-offers-subcategories[data-expanded='true'] {
-  grid-template-rows: 1fr;
-  visibility: visible;
-}
-
-.kk-nav-offers-children {
-  min-height: 0;
-  overflow: hidden;
-  padding-left: 20px;
-}
-
-.kk-nav-offers-children .kk-nav-drawer-link {
-  font-size: 0.94rem;
-  font-weight: 500;
 }
 
 .kk-nav-link {
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 100%;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
   color: var(--ink-secondary);
-  font-size: 0.94rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 650;
   text-decoration: none;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .kk-nav-link:hover {
   color: var(--foreground);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+[data-theme="dark"] .kk-nav {
+  background: color-mix(in srgb, #0c1228 88%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
 }
 
 .kk-nav-link[aria-current='page'] {
   color: var(--accent);
-}
-
-.kk-nav-link[aria-current='page']::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: var(--accent);
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgb(5 10 68 / 8%),
+    0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .kk-nav-brand:focus-visible,
@@ -150,15 +121,18 @@
 }
 
 .kk-nav-login {
+  border-radius: 999px;
   color: var(--foreground);
-  font-weight: 600;
+  font-weight: 650;
   text-decoration: none;
 }
 
 .kk-nav-cta {
-  padding-inline: 18px;
+  border-radius: 999px;
+  padding-inline: 16px;
   font-weight: 650;
   text-decoration: none;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .kk-nav-cta:hover {
@@ -174,22 +148,24 @@
 .kk-nav-account {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  height: 42px;
-  padding: 0 10px 0 5px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px 0 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
   color: var(--foreground);
   font: inherit;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .kk-nav-account:hover,
 .kk-nav-account[data-pressed],
 .kk-nav-account[aria-expanded='true'] {
-  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+  box-shadow: 0 6px 16px rgb(5 10 68 / 6%);
 }
 
 .kk-nav-account[data-focus-visible] {
@@ -222,6 +198,13 @@
 .kk-nav-popover {
   min-width: 264px;
   padding: 6px;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgb(5 10 68 / 12%);
+}
+
+.kk-nav-actions .kk-message-nav-button,
+.kk-nav-actions .kk-notification-bell {
+  border-radius: 12px;
 }
 
 .kk-nav-account-head,
@@ -309,8 +292,9 @@
 
 .kk-nav-drawer-user {
   padding: 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--muted) 12%, #fff);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--foreground) 3%, var(--surface));
 }
 
 .kk-nav-drawer-list {
@@ -385,11 +369,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kk-nav-offers-parent svg,
-  .kk-nav-offers-subcategories,
   .kk-nav-link,
   .kk-nav-account,
   .kk-nav-account-caret {
     transition: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .kk-nav {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }

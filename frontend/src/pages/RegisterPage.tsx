@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FieldError, Input, Label, TextField, toast } from '@heroui/react'
 import { ArrowRight, Building2, Eye, EyeOff, Scale, UserRound } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -27,12 +28,13 @@ type RegisterField = keyof z.infer<typeof registerSchema>
 type RegisterErrors = Partial<Record<RegisterField | 'terms', string>>
 
 const roles = [
-  { label: 'Klient', icon: UserRound },
-  { label: 'Ekspert', icon: Scale },
-  { label: 'Kompani', icon: Building2 },
+  { label: 'auth.client', icon: UserRound },
+  { label: 'auth.expert', icon: Scale },
+  { label: 'auth.company', icon: Building2 },
 ]
 
 export default function RegisterPage() {
+  const { t } = useTranslation()
   const { register } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState<1 | 2>(1)
@@ -97,15 +99,15 @@ export default function RegisterPage() {
         <AuthShowcase />
         <div className="auth-panel">
         <Link to="/" className="brand brand-link">
-          KëshillaKos
+          KLAW
         </Link>
-        <h1>Krijo llogari</h1>
-        <p className="auth-lead">Regjistrohu për të gjetur avokatë, juristë dhe kontabilistë.</p>
+        <h1>{t('auth.create')}</h1>
+        <p className="auth-lead">{t('auth.registerLead')}</p>
 
         <div className="register-progress" aria-hidden="true">
           <div className="register-progress-meta">
-            <span>Hapi {step} nga 2</span>
-            <span>{step === 1 ? 'Llogaria' : 'Siguria'}</span>
+            <span>{t('home.progress', { step, total: 2 })}</span>
+            <span>{step === 1 ? t('auth.account') : t('auth.security')}</span>
           </div>
           <div className="register-progress-track">
             <span style={{ width: step === 1 ? '50%' : '100%' }} />
@@ -160,14 +162,14 @@ export default function RegisterPage() {
             </TextField>
 
             <div className="register-roles">
-              <span>Rolet</span>
+              <span>{t('auth.roles')}</span>
               <div className="register-role-grid">
                 {roles.map((item) => {
                   const Icon = item.icon
                   return (
                     <div key={item.label} className="register-role">
                       <Icon size={22} strokeWidth={1.8} />
-                      {item.label}
+                      {t(item.label)}
                     </div>
                   )
                 })}

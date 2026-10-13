@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Input, ProgressBar, toast } from '@heroui/react'
 import {
@@ -26,7 +27,6 @@ import {
   Search,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Trees,
   TrendingUp,
   WalletCards,
@@ -40,6 +40,7 @@ import SendRequestButton from '../components/SendRequestButton'
 import SiteNav from '../components/SiteNav'
 import SiteFooter from '../components/SiteFooter'
 import { catalogCardImage, catalogCategoryImage } from '../data/catalogImages'
+import { catalogLanguage } from '../i18n'
 import { getErrorMessage } from '../utils/errors'
 import { providerPath, servicePath } from '../utils/publicPaths'
 import { useSavedLocation } from '../hooks/useSavedLocation'
@@ -47,8 +48,8 @@ import heroPlaceholder from '../assets/hero.png'
 import './HomeCategories.css'
 
 const CATEGORY_LEADS: Record<string, string> = {
-  'legal-services': 'Avokatë dhe juristë për çështje civile, penale dhe biznesi.',
-  'accounting-and-business': 'Kontabilistë për tatime, regjistrim biznesi dhe pagat.',
+  'legal-services': 'home.leadLegal',
+  'accounting-and-business': 'home.leadAccounting',
 }
 
 const TOTAL_STEPS = 7
@@ -75,28 +76,12 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'other-services': LayoutGrid,
 }
 
-function currentCatalogLanguage(): 'sq' | 'en' {
-  return document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'sq'
-}
-
 const POPULAR_CATEGORY_COUNT = 6
 
 const HOW_STEPS = [
-  {
-    title: 'Zgjidh si të kërkosh',
-    text: 'Nëse e di shërbimin, kërko drejtpërdrejt. Nëse jo, të udhëheqim me 7 hapa.',
-    icon: Search,
-  },
-  {
-    title: 'Shiko përputhjet',
-    text: 'Të gjejmë ofrues lokalë ose online që përputhen me rastin tënd.',
-    icon: Sparkles,
-  },
-  {
-    title: 'Bisedo dhe rezervo',
-    text: 'Dërgo mesazh, kërkesë ose orar — pa thirrje të papritura.',
-    icon: MessageCircle,
-  },
+  { title: 'home.how1', text: 'home.how1Text' },
+  { title: 'home.how2', text: 'home.how2Text' },
+  { title: 'home.how3', text: 'home.how3Text' },
 ]
 
 type SearchMode = 'choose' | 'guided' | 'browse'
@@ -122,6 +107,8 @@ const INITIAL: IntakeState = {
 }
 
 export default function HomePage() {
+  const { t, i18n } = useTranslation()
+  const namesLang = catalogLanguage(i18n.language)
   const navigate = useNavigate()
   const heroRef = useRef<HTMLElement | null>(null)
   const needInputRef = useRef<HTMLInputElement | null>(null)
@@ -133,7 +120,6 @@ export default function HomePage() {
   const [discoveryContext, setDiscoveryContext] = useState<{ categoryId?: string; subcategoryId?: string }>({})
   const [resultMessage, setResultMessage] = useState('')
   const [engine, setEngine] = useState('')
-  const [catalogLanguage, setCatalogLanguage] = useState(currentCatalogLanguage)
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [subcategoriesResult, setSubcategoriesResult] = useState<{
@@ -156,14 +142,8 @@ export default function HomePage() {
   )
 
   useEffect(() => {
-    const observer = new MutationObserver(() => setCatalogLanguage(currentCatalogLanguage()))
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    setIntake((previous) => ({ ...previous, location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : '' }))
-  }, [selectedLocation, catalogLanguage])
+    setIntake((previous) => ({ ...previous, location: selectedLocation ? locationLabel(selectedLocation, namesLang) : '' }))
+  }, [selectedLocation, namesLang])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -237,7 +217,7 @@ export default function HomePage() {
       const payload: MatchIntake = {
         need: intake.need.trim(),
         audience: intake.audience,
-        location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : intake.location,
+        location: selectedLocation ? locationLabel(selectedLocation, namesLang) : intake.location,
         cityId: selectedLocation?.city._id,
         ...discoveryContext,
         language: intake.language,
@@ -281,7 +261,7 @@ export default function HomePage() {
   }
 
   function resetAll() {
-    setIntake({ ...INITIAL, location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : '' })
+    setIntake({ ...INITIAL, location: selectedLocation ? locationLabel(selectedLocation, namesLang) : '' })
     setDiscoveryContext({})
     setSearchMode('choose')
     setStep(1)
@@ -344,30 +324,28 @@ export default function HomePage() {
           </div>
           <div className="tt-hero-inner">
             <div className="tt-hero-copy">
-              <p className="brand tt-hero-brand">KëshillaKos</p>
-              <h1 id="tt-hero-heading">Për çdo nevojë që ke.</h1>
-              <p className="tt-hero-lead">
-                Gjej avokatë, juristë dhe kontabilistë — lokalë ose online, në një vend.
-              </p>
+              <p className="brand tt-hero-brand">KLAW</p>
+              <h1 id="tt-hero-heading">{t('home.title')}</h1>
+              <p className="tt-hero-lead">{t('home.lead')}</p>
 
               <div className={`tt-search${matching ? ' is-matching' : ''}`}>
                 {searchMode === 'choose' ? (
-                  <div className="tt-search-modes" role="group" aria-label="Si dëshiron të kërkosh?">
+                  <div className="tt-search-modes" role="group" aria-label={t('home.choose')}>
                     <button type="button" className="tt-search-mode" onClick={startGuided}>
                       <HelpCircle size={22} aria-hidden />
-                      <strong>Nuk e di saktësisht</strong>
-                      <span>Të udhëheqim me 7 hapa të shkurtra derisa të gjejmë ofruesin e duhur.</span>
+                      <strong>{t('home.unsureTitle')}</strong>
+                      <span>{t('home.unsureText')}</span>
                       <em>
-                        Fillo matching
+                        {t('home.startMatch')}
                         <ArrowRight size={16} />
                       </em>
                     </button>
                     <button type="button" className="tt-search-mode" onClick={startBrowse}>
                       <Search size={22} aria-hidden />
-                      <strong>E di çfarë më duhet</strong>
-                      <span>Kërko me fjalë ose zgjidh kategorinë dhe shiko ofertat menjëherë.</span>
+                      <strong>{t('home.sureTitle')}</strong>
+                      <span>{t('home.sureText')}</span>
                       <em>
-                        Kërko tani
+                        {t('home.searchNow')}
                         <ArrowRight size={16} />
                       </em>
                     </button>
@@ -382,16 +360,16 @@ export default function HomePage() {
                         ref={needInputRef}
                         value={intake.need}
                         onChange={(e) => update('need', e.target.value)}
-                        placeholder="Shkruaj shërbimin — kontrata, tatime, IT..."
+                        placeholder={t('home.needPlaceholder')}
                         fullWidth
-                        aria-label="Çfarë të duhet?"
+                        aria-label={t('home.needLabel')}
                       />
                     </label>
                     <div className="tt-search-location">
                       <LocationSelector value={selectedLocation} onChange={selectLocation} disabled={locationLoading || locationSaving} className="tt-location-selector--hero" />
                     </div>
                     <Button type="submit" variant="primary" className="tt-search-submit">
-                      Shiko ofertat
+                      {t('home.seeOffers')}
                       <ArrowRight size={18} />
                     </Button>
                   </form>
@@ -402,10 +380,10 @@ export default function HomePage() {
                 {searchMode === 'browse' ? (
                   <>
                     {popularCategories.length > 0 ? (
-                      <div className="tt-search-chips" aria-label="Kategori të popullarizuara">
+                      <div className="tt-search-chips" aria-label={t('home.popular')}>
                         {popularCategories.map((category) => {
                           const Icon = CATEGORY_ICONS[category.slug] ?? BriefcaseBusiness
-                          const label = category.name[catalogLanguage] || category.name.sq
+                          const label = category.name[namesLang] || category.name.sq
                           return (
                             <button
                               key={category._id}
@@ -421,7 +399,7 @@ export default function HomePage() {
                       </div>
                     ) : null}
                     <button type="button" className="tt-search-switch" onClick={startGuided}>
-                      Nuk e di saktësisht? Fillo matching me 7 hapa
+                      {t('home.unsureLink')}
                     </button>
                   </>
                 ) : null}
@@ -430,7 +408,7 @@ export default function HomePage() {
                   <div className="tt-match-flow">
                     <div className="wizard-meta">
                       <ProgressBar
-                        aria-label={`Progresi: hapi ${step} nga ${TOTAL_STEPS}`}
+                        aria-label={t('home.progress', { step, total: TOTAL_STEPS })}
                         value={(step / TOTAL_STEPS) * 100}
                         className="wizard-progress-bar"
                       >
@@ -439,28 +417,28 @@ export default function HomePage() {
                         </ProgressBar.Track>
                       </ProgressBar>
                       <p className="wizard-step-label">
-                        Hapi <strong>{step}</strong> / {TOTAL_STEPS}
+                        {t('home.step')} <strong>{step}</strong> / {TOTAL_STEPS}
                       </p>
                     </div>
 
                     <form onSubmit={onNext} className="wizard-body">
                       {step === 1 ? (
                         <fieldset className="wizard-fieldset">
-                          <legend>Çfarë të duhet?</legend>
-                          <p className="muted">Përshkruaj me fjalët e tua — edhe nëse nuk je i sigurt.</p>
+                          <legend>{t('home.what')}</legend>
+                          <p className="muted">{t('home.whatHint')}</p>
                           <Input
                             ref={needInputRef}
                             value={intake.need}
                             onChange={(e) => update('need', e.target.value)}
-                            placeholder="p.sh. dua të hap biznes, por nuk di nga t'ia nisi"
+                            placeholder={t('home.whatPlaceholder')}
                             fullWidth
-                            aria-label="Përshkruaj nevojën"
+                            aria-label={t('home.describe')}
                           />
                         </fieldset>
                       ) : null}
                       {step === 2 ? (
                         <fieldset className="wizard-fieldset">
-                          <legend>Për kë është?</legend>
+                          <legend>{t('home.who')}</legend>
                           <p className="tt-match-need">{intake.need}</p>
                           <div className="choice-row">
                             <button
@@ -468,14 +446,14 @@ export default function HomePage() {
                               className={`choice${intake.audience === 'individual' ? ' is-selected' : ''}`}
                               onClick={() => update('audience', 'individual')}
                             >
-                              Individ
+                              {t('home.individual')}
                             </button>
                             <button
                               type="button"
                               className={`choice${intake.audience === 'business' ? ' is-selected' : ''}`}
                               onClick={() => update('audience', 'business')}
                             >
-                              Biznes
+                              {t('home.business')}
                             </button>
                           </div>
                         </fieldset>
@@ -483,7 +461,7 @@ export default function HomePage() {
 
                       {step === 3 ? (
                         <fieldset className="wizard-fieldset">
-                          <legend>Ku?</legend>
+                          <legend>{t('home.where')}</legend>
                           <LocationSelector value={selectedLocation} onChange={selectLocation} disabled={locationLoading || locationSaving} className="tt-location-selector--wizard" />
                           {locationError ? <p className="tt-location-save-error" role="alert">{locationError}</p> : null}
                         </fieldset>
@@ -491,13 +469,13 @@ export default function HomePage() {
 
                       {step === 4 ? (
                         <fieldset className="wizard-fieldset">
-                          <legend>Gjuha</legend>
+                          <legend>{t('home.language')}</legend>
                           <div className="choice-row">
                             {(
                               [
-                                ['Albanian', 'Shqip'],
-                                ['German', 'Gjermanisht'],
-                                ['English', 'Anglisht'],
+                                ['Albanian', t('home.albanian')],
+                                ['German', t('home.german')],
+                                ['English', t('home.english')],
                               ] as const
                             ).map(([value, label]) => (
                               <button
@@ -515,13 +493,13 @@ export default function HomePage() {
 
                       {step === 5 ? (
                         <fieldset className="wizard-fieldset">
-                          <legend>Sa urgjente është?</legend>
+                          <legend>{t('home.urgent')}</legend>
                           <div className="choice-row">
                             {(
                               [
-                                ['today', 'Sot'],
-                                ['this_week', 'Këtë javë'],
-                                ['flexible', 'Fleksibël'],
+                                ['today', t('home.today')],
+                                ['this_week', t('home.week')],
+                                ['flexible', t('home.flexible')],
                               ] as const
                             ).map(([value, label]) => (
                               <button
@@ -539,11 +517,11 @@ export default function HomePage() {
 
                       {step === 6 ? (
                         <fieldset className="wizard-fieldset">
-                          <legend>Buxheti (opsionale)</legend>
+                          <legend>{t('home.budget')}</legend>
                           <Input
                             value={intake.budget}
                             onChange={(e) => update('budget', e.target.value)}
-                            placeholder="p.sh. deri €100 / fleksibël"
+                            placeholder={t('home.budgetPlaceholder')}
                             fullWidth
                           />
                         </fieldset>
@@ -551,12 +529,12 @@ export default function HomePage() {
 
                       {step === 7 ? (
                         <fieldset className="wizard-fieldset">
-                          <legend>Si të të kontaktojnë?</legend>
+                          <legend>{t('home.contact')}</legend>
                           <div className="choice-row">
                             {(
                               [
                                 ['chat', 'Chat'],
-                                ['phone', 'Telefon'],
+                                ['phone', t('home.phone')],
                                 ['email', 'Email'],
                               ] as const
                             ).map(([value, label]) => (
@@ -575,7 +553,7 @@ export default function HomePage() {
 
                       <div className="wizard-actions">
                         <Button type="button" variant="ghost" onPress={onBack} isDisabled={loading}>
-                          {step === 1 ? 'Ndrysho llojin e kërkimit' : 'Kthehu'}
+                          {step === 1 ? t('home.changeMode') : t('home.back')}
                         </Button>
                         <Button
                           type="submit"
@@ -584,10 +562,10 @@ export default function HomePage() {
                           className="wizard-submit"
                         >
                           {loading
-                            ? 'Duke gjetur ekspertë...'
+                            ? t('home.finding')
                             : step === TOTAL_STEPS
-                              ? 'Gjej ekspertë'
-                              : 'Vazhdo'}
+                              ? t('home.find')
+                              : t('home.next')}
                           {!loading ? <ArrowRight size={18} /> : null}
                         </Button>
                       </div>
@@ -597,25 +575,25 @@ export default function HomePage() {
 
                 {step === 8 ? (
                   <div className="tt-match-flow match-results">
-                    <h3>{resultMessage || 'Rezultatet e matching'}</h3>
+                    <h3>{resultMessage || t('home.results')}</h3>
                     <p className="muted">
-                      Bazuar në përgjigjet e tua
-                      {engine === 'gemini' ? ' · matching me AI' : null}
-                      {engine === 'heuristic' ? ' · matching bazë' : null}.
+                      {t('home.based')}
+                      {engine === 'gemini' ? ` · ${t('home.ai')}` : null}
+                      {engine === 'heuristic' ? ` · ${t('home.basic')}` : null}.
                     </p>
 
                     <div className="wizard-actions match-toolbar">
                       <Button type="button" variant="outline" onPress={onBack}>
-                        Ndrysho përgjigjet
+                        {t('home.edit')}
                       </Button>
                       <Button type="button" variant="ghost" onPress={resetAll}>
-                        Fillo nga e para
+                        {t('home.restart')}
                       </Button>
                     </div>
 
                     {!matches || matches.length === 0 ? (
                       <p className="muted home-services-status">
-                        Nuk u gjetën ekspertë. Provo lokacion Online ose një përshkrim tjetër.
+                        {t('home.none')}
                       </p>
                     ) : (
                       <ol className="match-list">
@@ -633,33 +611,33 @@ export default function HomePage() {
                                 <li>
                                   {m.languages.length > 0 ? m.languages.join(', ') : intake.language}
                                 </li>
-                                {m.verified ? <li className="match-verified">I verifikuar</li> : null}
+                                {m.verified ? <li className="match-verified">{t('home.verified')}</li> : null}
                                 <li>{m.respondsWithin}</li>
                               </ul>
                               <p>{m.reason}</p>
                               {m.bio ? <p className="match-bio">{m.bio}</p> : null}
 
                               <div className="provider-details">
-                                <p className="provider-details-label">Ofruesi i shërbimit</p>
+                                <p className="provider-details-label">{t('home.provider')}</p>
                                 <strong>{m.companyName || m.name}</strong>
                                 <ul className="match-meta">
                                   {m.providerRoleLabel ? <li>{m.providerRoleLabel}</li> : null}
                                   <li>
                                     ★ {m.ratingCount > 0 ? m.rating.toFixed(1) : '—'}
                                     {m.ratingCount > 0
-                                      ? ` (${m.ratingCount} vlerësime)`
-                                      : ' (pa vlerësime)'}
+                                      ? ` (${t('home.ratings', { count: m.ratingCount })})`
+                                      : ` (${t('home.noRatings')})`}
                                   </li>
                                 </ul>
                               </div>
 
                               {m.source === 'service' ? (
                                 <Link to={servicePath({ id: m.id, title: m.title })} className="ghost match-details-link">
-                                  Shiko detajet
+                                  {t('home.details')}
                                 </Link>
                               ) : (
                                 <Link to={providerPath({ uid: m.providerUid, name: m.companyName || m.name })} className="ghost match-details-link">
-                                  Shiko profilin
+                                  {t('home.profile')}
                                 </Link>
                               )}
 
@@ -672,7 +650,7 @@ export default function HomePage() {
                                 serviceTitle={m.title}
                                 intake={{
                                   need: intake.need,
-                                  location: selectedLocation ? locationLabel(selectedLocation, catalogLanguage) : intake.location,
+                                  location: selectedLocation ? locationLabel(selectedLocation, namesLang) : intake.location,
                                   language: intake.language as MatchIntake['language'],
                                   urgency: intake.urgency as MatchIntake['urgency'],
                                   contact: intake.contact as MatchIntake['contact'],
@@ -688,10 +666,10 @@ export default function HomePage() {
               </div>
 
               {searchMode === 'choose' ? (
-                <p className="tt-hero-note">Zgjidh si të kërkosh — matching me 7 hapa, ose kërkim i drejtpërdrejtë.</p>
+                <p className="tt-hero-note">{t('home.noteChoose')}</p>
               ) : null}
               {searchMode === 'browse' ? (
-                <p className="tt-hero-note">Pa thirrje derisa ti të dërgosh mesazh.</p>
+                <p className="tt-hero-note">{t('home.noteBrowse')}</p>
               ) : null}
             </div>
           </div>
@@ -701,20 +679,20 @@ export default function HomePage() {
         <section id="categories" className="tt-section tt-categories" aria-labelledby="categories-heading">
           <div className="tt-section-inner">
             <div className="tt-section-head">
-              <h2 id="categories-heading">Zgjidh një shërbim</h2>
-              <p>Eksploro kategoritë dhe zgjidh shërbimin që të duhet.</p>
+              <h2 id="categories-heading">{t('home.categories')}</h2>
+              <p>{t('home.categoriesLead')}</p>
             </div>
-            {categoriesLoading ? <p className="muted" role="status">Kategoritë po ngarkohen...</p> : null}
+            {categoriesLoading ? <p className="muted" role="status">{t('home.loadingCategories')}</p> : null}
             {catalogError ? <p className="error" role="alert">{catalogError}</p> : null}
-            {!categoriesLoading && !catalogError && categories.length === 0 ? <p className="muted">Nuk ka kategori të disponueshme.</p> : null}
+            {!categoriesLoading && !catalogError && categories.length === 0 ? <p className="muted">{t('home.noCategories')}</p> : null}
           </div>
           {categories.length > 0 ? (
-            <div className="tt-category-split" role="group" aria-label="Kategoritë">
+            <div className="tt-category-split" role="group" aria-label={t('home.categoryGroup')}>
               {[...categories]
                 .sort((a, b) => Number(a.slug !== 'legal-services') - Number(b.slug !== 'legal-services'))
                 .map((category) => {
                   const Icon = CATEGORY_ICONS[category.slug] ?? BriefcaseBusiness
-                  const name = category.name[catalogLanguage] || category.name.sq
+                  const name = category.name[namesLang] || category.name.sq
                   const selected = selectedCategoryId === category._id
                   return (
                     <Button
@@ -737,7 +715,7 @@ export default function HomePage() {
                         </span>
                         <span className="tt-category-panel-title">{name}</span>
                         <span className="tt-category-panel-lead">
-                          {CATEGORY_LEADS[category.slug] || 'Zgjidh për të parë shërbimet.'}
+                          {t(CATEGORY_LEADS[category.slug] || 'home.leadFallback')}
                         </span>
                       </span>
                     </Button>
@@ -748,12 +726,12 @@ export default function HomePage() {
           {categories.length > 0 ? (
             <div className="tt-section-inner tt-category-services">
               <div className="tt-subcategory-heading">
-                <h3>{selectedCategory?.name[catalogLanguage] || selectedCategory?.name.sq}</h3>
-                <p>Zgjidh një shërbim për të parë ofertat.</p>
+                <h3>{selectedCategory?.name[namesLang] || selectedCategory?.name.sq}</h3>
+                <p>{t('home.pickService')}</p>
               </div>
-              {subcategoriesLoading ? <p className="muted" role="status">Shërbimet po ngarkohen...</p> : null}
+              {subcategoriesLoading ? <p className="muted" role="status">{t('home.loadingServices')}</p> : null}
               {subcategoriesError ? <p className="error" role="alert">{subcategoriesError}</p> : null}
-              {!subcategoriesLoading && !subcategoriesError && selectedCategoryId && subcategories.length === 0 ? <p className="muted">Nuk ka shërbime të disponueshme.</p> : null}
+              {!subcategoriesLoading && !subcategoriesError && selectedCategoryId && subcategories.length === 0 ? <p className="muted">{t('home.noServices')}</p> : null}
               {!subcategoriesLoading && !subcategoriesError ? (
                 <div className="tt-service-list">
                   {subcategories.map((subcategory) => (
@@ -771,7 +749,7 @@ export default function HomePage() {
                           onError={(event) => { event.currentTarget.src = heroPlaceholder }}
                         />
                       </span>
-                      <span>{subcategory.name[catalogLanguage] || subcategory.name.sq}</span>
+                      <span>{subcategory.name[namesLang] || subcategory.name.sq}</span>
                     </button>
                   ))}
                 </div>
@@ -783,47 +761,45 @@ export default function HomePage() {
 
         <section id="how" className="tt-section tt-how" aria-labelledby="how-heading">
           <div className="tt-section-inner">
-            <div className="tt-section-head">
-              <h2 id="how-heading">Gjej ndihmën që të duhet</h2>
-              <p>Kërko drejtpërdrejt kur e di shërbimin, ose nis matching me 7 hapa kur nuk je i sigurt.</p>
-            </div>
-            <div className="tt-how-grid">
-              {HOW_STEPS.map((item, index) => {
-                const Icon = item.icon
-                return (
+            <div className="tt-how-panel">
+              <div className="tt-section-head">
+                <h2 id="how-heading">{t('home.howTitle')}</h2>
+                <p>{t('home.howLead')}</p>
+              </div>
+              <div className="tt-how-grid">
+                {HOW_STEPS.map((item, index) => (
                   <div key={item.title} className="tt-how-item">
-                    <span className="tt-how-num">{index + 1}</span>
-                    <Icon size={22} className="tt-how-icon" aria-hidden />
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
+                    <span className="tt-how-num">{String(index + 1).padStart(2, '0')}</span>
+                    <h3>{t(item.title)}</h3>
+                    <p>{t(item.text)}</p>
                   </div>
-                )
-              })}
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         <section id="trust" className="tt-section tt-trust" aria-labelledby="trust-heading">
           <div className="tt-section-inner">
-            <div className="tt-section-head">
-              <h2 id="trust-heading">Pse klientët zgjedhin KëshillaKos</h2>
-              <p>Çdo ditë njerëz si ti mbështeten te ofruesit tanë për probleme reale.</p>
+            <div className="tt-section-head tt-trust-head">
+              <h2 id="trust-heading">{t('home.trustTitle')}</h2>
+              <p>{t('home.trustLead')}</p>
             </div>
             <div className="tt-trust-grid">
               <div className="tt-trust-item">
                 <BadgeCheck size={26} aria-hidden />
-                <h3>Vetëm ofrues të besueshëm</h3>
-                <p>Shfaqim profile me shërbime publike, vlerësime dhe detaje të qarta.</p>
+                <h3>{t('home.trust1')}</h3>
+                <p>{t('home.trust1Text')}</p>
               </div>
               <div className="tt-trust-item">
                 <MessageCircle size={26} aria-hidden />
-                <h3>Ti kontrollon kontaktin</h3>
-                <p>Pa thirrje të papritura — nis chat ose kërkesë kur je gati.</p>
+                <h3>{t('home.trust2')}</h3>
+                <p>{t('home.trust2Text')}</p>
               </div>
               <div className="tt-trust-item">
                 <ShieldCheck size={26} aria-hidden />
-                <h3>Matching i thjeshtë</h3>
-                <p>Përshkruaj nevojën me fjalët e tua dhe merr përputhje të personalizuara.</p>
+                <h3>{t('home.trust3')}</h3>
+                <p>{t('home.trust3Text')}</p>
               </div>
             </div>
           </div>
@@ -831,15 +807,15 @@ export default function HomePage() {
 
         <section className="tt-cta-band" aria-labelledby="cta-heading">
           <div className="tt-section-inner tt-cta-inner">
-            <h2 id="cta-heading">Një vend për çdo ndihmë që të duhet.</h2>
-            <p>Nis tani — gjej ofruesin e duhur për rastin tënd.</p>
+            <h2 id="cta-heading">{t('home.ctaTitle')}</h2>
+            <p>{t('home.ctaLead')}</p>
             <div className="tt-cta-actions">
               <Button
                 variant="primary"
                 className="tt-cta-button"
                 onPress={startGuided}
               >
-                Fillo matching
+                {t('home.startMatch')}
                 <ArrowRight size={18} />
               </Button>
               <Button
@@ -847,7 +823,7 @@ export default function HomePage() {
                 className="tt-cta-button tt-cta-register"
                 onPress={startBrowse}
               >
-                Kërko drejtpërdrejt
+                {t('home.ctaBrowse')}
               </Button>
             </div>
           </div>

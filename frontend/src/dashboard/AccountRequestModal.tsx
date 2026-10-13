@@ -13,7 +13,7 @@ const COPY: Record<
   deletion: {
     title: 'Kërko fshirjen e llogarisë',
     intro:
-      'Kërkesa i dërgohet ekipit të KëshillaKos. Pasi ta verifikojmë, llogaria mbyllet dhe të dhënat e saj fshihen sipas politikës së privatësisë. Ky veprim nuk mund të kthehet.',
+      'Kërkesa i dërgohet ekipit të KLAW. Pasi ta verifikojmë, llogaria mbyllet dhe të dhënat e saj fshihen sipas politikës së privatësisë. Ky veprim nuk mund të kthehet.',
     subject: 'Kërkesë për fshirjen e llogarisë',
     confirm: 'Kuptoj që fshirja e llogarisë është e përhershme.',
     submit: 'Dërgo kërkesën për fshirje',
@@ -21,7 +21,7 @@ const COPY: Record<
   },
   export: {
     title: 'Kërko kopjen e të dhënave',
-    intro: 'Ekipi i KëshillaKos do të përgatisë një kopje të të dhënave personale që ruajmë për llogarinë tënde.',
+    intro: 'Ekipi i KLAW do të përgatisë një kopje të të dhënave personale që ruajmë për llogarinë tënde.',
     subject: 'Kërkesë për kopjen e të dhënave personale',
     submit: 'Dërgo kërkesën',
     done: 'Kërkesa u dërgua. Ekipi do të të kontaktojë në',

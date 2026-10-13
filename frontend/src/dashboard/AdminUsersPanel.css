@@ -4,15 +4,15 @@
 .admin-users .admin-role-requests ul { gap: 0; }
 .admin-users .admin-role-request { padding: 14px 0; }
 .admin-users .admin-role-request > div:first-child { gap: 4px; min-width: 0; }
-.admin-users .admin-role-request strong { color: var(--brand-navy); font-size: .92rem; }
+.admin-users .admin-role-request strong { color: var(--heading); font-size: .92rem; }
 .admin-users .admin-role-request .muted { font-size: .82rem; overflow-wrap: anywhere; }
 .admin-users .admin-users-filters { margin: 0; padding: 18px 22px; border: 0; border-radius: 0; background: transparent; }
-.admin-users .admin-users-filters label { color: var(--brand-navy); font-size: .84rem; font-weight: 600; }
+.admin-users .admin-users-filters label { color: var(--heading); font-size: .84rem; font-weight: 600; }
 .admin-users .admin-users-filters input, .admin-users .admin-users-filters select { min-height: 40px; border-color: var(--border); border-radius: 10px; }
 .admin-users .service-form { margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
 .admin-users .service-form input, .admin-users .service-form select { min-height: 40px; border-color: var(--border); border-radius: 10px; }
 .admin-users .service-form button:not(.password-toggle) { border-radius: 10px; }
-.admin-users .service-form .ad-secondary { border: 1px solid var(--border); background: var(--surface); color: var(--brand-navy); }
+.admin-users .service-form .ad-secondary { border: 1px solid var(--border); background: var(--surface); color: var(--heading); }
 .admin-users .service-form .ad-secondary:hover:not(:disabled) { background: var(--surface-muted); }
 .admin-users .password-control input { padding-right: 46px; }
 .admin-users .service-form button.password-toggle { top: 50%; right: 6px; width: 34px; height: 34px; min-height: 34px; margin: 0; padding: 0; border: 0; border-radius: 10px; background: var(--surface-muted); color: var(--accent); box-shadow: none; }
@@ -22,7 +22,7 @@
 .admin-users .admin-users-table td { padding: 14px 16px; border-bottom-color: var(--border); }
 .admin-users .admin-users-table tbody tr:hover td { background: var(--surface-muted); }
 .admin-users .admin-users-table .mono { max-width: 180px; color: var(--ink-secondary); font-size: .78rem; word-break: break-all; }
-.ad-user-name { display: inline-flex; align-items: center; gap: 9px; color: var(--brand-navy); font-weight: 650; }
+.ad-user-name { display: inline-flex; align-items: center; gap: 9px; color: var(--heading); font-weight: 650; }
 .admin-users .admin-row-actions { gap: 6px; }
 .admin-users .admin-edit-form { padding: 8px 0; }
 .admin-users .admin-edit-actions { justify-content: flex-end; }

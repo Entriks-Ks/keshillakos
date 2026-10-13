@@ -1,4 +1,5 @@
 import KeshillaPagination from '../components/KeshillaPagination'
+import { fetchMyPlan } from '../api/plans'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Button, buttonVariants, Card, Chip, ProgressBar, toast } from '@heroui/react'
@@ -52,11 +53,19 @@ import { RowsSkeleton, SectionHead } from './OverviewParts'
 import './UserRequests.css'
 import './DashboardSections.css'
 
+type UiLang = 'sq' | 'en' | 'de'
+
+function L(language: UiLang, sq: string, en: string, de: string) {
+  if (language === 'de') return de
+  return language === 'en' ? en : sq
+}
+
 type PricingMode = 'agreement' | 'from' | 'fixed' | 'range'
 type OfferOwner = 'company' | 'expert'
 
 function currentCatalogLanguage(): 'sq' | 'en' {
-  return document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'sq'
+  const language = document.documentElement.lang.toLowerCase()
+  return language.startsWith('sq') ? 'sq' : 'en'
 }
 
 function catalogLabel(item: { name: { sq: string; en: string } }, language: 'sq' | 'en') {
@@ -81,19 +90,19 @@ function FieldLabel({
   children: ReactNode
   required?: boolean
   optional?: boolean
-  language: 'sq' | 'en'
+  language: UiLang
 }) {
   return (
     <span className="service-field-label">
       <span>{children}</span>
       {required ? (
-        <span className="service-field-badge is-required" title={language === 'en' ? 'Required' : 'E detyrueshme'}>
-          {language === 'en' ? 'Required' : 'E detyrueshme'}
+        <span className="service-field-badge is-required" title={L(language, 'E detyrueshme', 'Required', 'Pflicht')}>
+          {L(language, 'E detyrueshme', 'Required', 'Pflicht')}
         </span>
       ) : null}
       {optional ? (
         <span className="service-field-badge is-optional">
-          {language === 'en' ? 'Optional' : 'Opsionale'}
+          {L(language, 'Opsionale', 'Optional', 'Optional')}
         </span>
       ) : null}
     </span>
@@ -152,11 +161,11 @@ function WizardStepper({
   current: number
   maxReachable: number
   onSelect: (index: number) => void
-  language: 'sq' | 'en'
+  language: UiLang
 }) {
   const next = labels[current + 1]
   return (
-    <nav className="ds-stepper" aria-label={language === 'sq' ? 'Hapat e formularit' : 'Form steps'}>
+    <nav className="ds-stepper" aria-label={L(language, 'Hapat e formularit', 'Form steps', 'Formularschritte')}>
       <ol className="ds-stepper-list">
         {labels.map((label, index) => {
           const state = index < current ? 'done' : index === current ? 'current' : 'todo'
@@ -181,12 +190,12 @@ function WizardStepper({
       <div className="ds-stepper-compact">
         <div className="ds-stepper-compact-top">
           <strong>
-            {language === 'sq' ? `Hapi ${current + 1} nga ${labels.length}` : `Step ${current + 1} of ${labels.length}`}
+            {L(language, `Hapi ${current + 1} nga ${labels.length}`, `Step ${current + 1} of ${labels.length}`, `Schritt ${current + 1} von ${labels.length}`)}
           </strong>
-          {next ? <span>{language === 'sq' ? `Tjetër: ${next}` : `Next: ${next}`}</span> : null}
+          {next ? <span>{L(language, `Tjetër: ${next}`, `Next: ${next}`, `Weiter: ${next}`)}</span> : null}
         </div>
         <ProgressBar
-          aria-label={language === 'sq' ? 'Përparimi i formularit' : 'Form progress'}
+          aria-label={L(language, 'Përparimi i formularit', 'Form progress', 'Formularfortschritt')}
           value={((current + 1) / labels.length) * 100}
           className="uo-progress"
         >
@@ -238,6 +247,14 @@ export default function ProviderServicesPanel() {
   const editingCatalogRef = useRef<{ categoryId?: string; subcategoryId?: string; subcategory?: string } | null>(null)
   const routeLocation = useLocation()
   const isCompany = routeLocation.pathname.includes('/dashboard/company')
+  const [plan, setPlan] = useState<'basic' | 'pro' | null>(null)
+  useEffect(() => {
+    let active = true
+    void fetchMyPlan(isCompany ? 'company' : 'provider')
+      .then((mine) => { if (active) setPlan(mine.plan) })
+      .catch(() => { if (active) setPlan(null) })
+    return () => { active = false }
+  }, [isCompany])
   const availabilityPath = isCompany
     ? '/dashboard/company/availability'
     : '/dashboard/provider/availability'
@@ -259,6 +276,7 @@ export default function ProviderServicesPanel() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [catalogLanguage, setCatalogLanguage] = useState(currentCatalogLanguage)
+  const [uiLang, setUiLang] = useState<UiLang>(() => (document.documentElement.lang || 'sq').toLowerCase().startsWith('de') ? 'de' : (document.documentElement.lang || 'sq').toLowerCase().startsWith('en') ? 'en' : 'sq')
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [categoryId, setCategoryId] = useState('')
   const [subcategories, setSubcategories] = useState<CatalogSubcategory[]>([])
@@ -293,7 +311,6 @@ export default function ProviderServicesPanel() {
   const [step, setStep] = useState(0)
   const wizardRef = useRef<HTMLDivElement>(null)
 
-  const sq = catalogLanguage === 'sq'
   const showForm = formOpen || editingId !== null || (!loading && services.length === 0)
   const expertsWithProfiles = useMemo(
     () => teamExperts.filter((person) => Boolean(person.providerProfileId)),
@@ -313,23 +330,30 @@ export default function ProviderServicesPanel() {
   const onlineOnly = deliveryModes.length > 0 && deliveryModes.every((mode) => mode === 'online')
   const isSlotsAvailability = availabilityMode === 'slots'
 
-  const availabilityHelp: Record<string, { sq: string; en: string }> = {
+  const availabilityHelp: Record<string, { sq: string; en: string; de: string }> = {
     request: {
       sq: 'Klienti dërgon kërkesë; ti përgjigjesh kur je i lirë.',
       en: 'Clients send a request; you reply when available.',
+      de: 'Der Kunde sendet eine Anfrage; du antwortest, wenn du Zeit hast.',
     },
     by_arrangement: {
       sq: 'Koha e takimit caktohet së bashku pas kontaktit.',
       en: 'Meeting time is agreed together after contact.',
+      de: 'Die Terminzeit wird nach dem Kontakt gemeinsam vereinbart.',
     },
     slots: {
       sq: 'Klienti zgjedh nga oraret e lira që ke hapur te Disponueshmëria.',
       en: 'Clients pick from open slots you manage under Availability.',
+      de: 'Der Kunde wählt aus freien Terminen, die du unter Verfügbarkeit öffnest.',
     },
   }
 
   useEffect(() => {
-    const observer = new MutationObserver(() => setCatalogLanguage(currentCatalogLanguage()))
+    const observer = new MutationObserver(() => {
+      setCatalogLanguage(currentCatalogLanguage())
+      const lang = (document.documentElement.lang || 'sq').toLowerCase()
+      setUiLang(lang.startsWith('de') ? 'de' : lang.startsWith('en') ? 'en' : 'sq')
+    })
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
     return () => observer.disconnect()
   }, [])
@@ -605,7 +629,7 @@ export default function ProviderServicesPanel() {
     try {
       const url = await uploadServicePhoto(file)
       setPhotos((prev) => [...prev, url].slice(0, MAX_SERVICE_PHOTOS))
-      toast.success(sq ? 'Fotoja u ngarkua.' : 'Photo uploaded.')
+      toast.success(L(uiLang, 'Fotoja u ngarkua.', 'Photo uploaded.', 'Foto hochgeladen.'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -617,38 +641,38 @@ export default function ProviderServicesPanel() {
     e.preventDefault()
     setError('')
     if (!categoryId || !subcategoryId || !selectedSubcategory) {
-      setError(sq ? 'Zgjidh kategorinë dhe nënkategorinë.' : 'Choose a category and subcategory.')
+      setError(L(uiLang, 'Zgjidh kategorinë dhe nënkategorinë.', 'Choose a category and subcategory.', 'Wähle eine Kategorie und eine Unterkategorie.'))
       return
     }
     if (!location) {
-      setError(sq ? 'Zgjidh lokacionin nga lista e qyteteve.' : 'Choose a location from the city list.')
+      setError(L(uiLang, 'Zgjidh lokacionin nga lista e qyteteve.', 'Choose a location from the city list.', 'Wähle einen Ort aus der Städteliste.'))
       return
     }
     if (pricingMode === 'from' && !priceFrom.trim()) {
-      setError(sq ? 'Shkruaj çmimin fillestar ose zgjidh “Me marrëveshje”.' : 'Enter a starting price or choose “By agreement”.')
+      setError(L(uiLang, 'Shkruaj çmimin fillestar ose zgjidh “Me marrëveshje”.', 'Enter a starting price or choose “By agreement”.', 'Gib einen Startpreis ein oder wähle „Nach Vereinbarung“.'))
       return
     }
     if (pricingMode === 'fixed' && !priceFrom.trim()) {
-      setError(sq ? 'Shkruaj çmimin fiks në euro.' : 'Enter the fixed price in euros.')
+      setError(L(uiLang, 'Shkruaj çmimin fiks në euro.', 'Enter the fixed price in euros.', 'Gib den Festpreis in Euro ein.'))
       return
     }
     if (pricingMode === 'range') {
       if (!priceFrom.trim() || !priceTo.trim()) {
-        setError(sq ? 'Plotëso çmimin nga dhe deri.' : 'Fill in both the from and to prices.')
+        setError(L(uiLang, 'Plotëso çmimin nga dhe deri.', 'Fill in both the from and to prices.', 'Fülle den Preis von und bis aus.'))
         return
       }
       if (Number(priceTo) < Number(priceFrom)) {
-        setError(sq ? 'Çmimi “deri” duhet të jetë më i madh ose i barabartë me “nga”.' : '“Price to” must be greater than or equal to “price from”.')
+        setError(L(uiLang, 'Çmimi “deri” duhet të jetë më i madh ose i barabartë me “nga”.', '“Price to” must be greater than or equal to “price from”.', '„Preis bis“ muss größer oder gleich „Preis von“ sein.'))
         return
       }
     }
     if (isCompany) {
       if (!businessId) {
-        setError(sq ? 'Krijo kompaninë para se të ofrosh shërbime.' : 'Create the company before offering services.')
+        setError(L(uiLang, 'Krijo kompaninë para se të ofrosh shërbime.', 'Create the company before offering services.', 'Lege das Unternehmen an, bevor du Dienste anbietest.'))
         return
       }
       if (offerOwner === 'expert' && !expertProviderId) {
-        setError(sq ? 'Zgjidh ekspertin e ekipit që e ofron shërbimin.' : 'Choose the team expert who offers this service.')
+        setError(L(uiLang, 'Zgjidh ekspertin e ekipit që e ofron shërbimin.', 'Choose the team expert who offers this service.', 'Wähle den Experten im Team, der diesen Dienst anbietet.'))
         return
       }
     }
@@ -667,7 +691,7 @@ export default function ProviderServicesPanel() {
       categoryId,
       subcategory: catalogLabel(selectedSubcategory, catalogLanguage),
       subcategoryId,
-      location: locationLabel(location, 'sq'),
+      location: locationLabel(location, catalogLanguage),
       priceFrom: resolvedFrom,
       details: collectDetails(),
       ...(isCompany
@@ -689,14 +713,14 @@ export default function ProviderServicesPanel() {
         setServices((prev) => prev.map((item) => (item.id === service.id ? service : item)))
         resetForm()
         setFormOpen(false)
-        toast.success(sq ? 'Shërbimi u përditësua.' : 'Service updated.')
+        toast.success(L(uiLang, 'Shërbimi u përditësua.', 'Service updated.', 'Dienst aktualisiert.'))
       } else {
         await createService(payload)
         setPage(1)
         setListRevision((value) => value + 1)
         resetForm()
         setFormOpen(false)
-        toast.success(sq ? 'Shërbimi u publikua dhe shfaqet te ofertat.' : 'Service published and visible in offers.')
+        toast.success(L(uiLang, 'Shërbimi u publikua dhe shfaqet te ofertat.', 'Service published and visible in offers.', 'Dienst veröffentlicht und in den Angeboten sichtbar.'))
       }
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -714,7 +738,7 @@ export default function ProviderServicesPanel() {
       await deleteService(id)
       setListRevision((value) => value + 1)
       if (editingId === id) resetForm()
-      toast.success(sq ? 'Shërbimi u fshi.' : 'Service deleted.')
+      toast.success(L(uiLang, 'Shërbimi u fshi.', 'Service deleted.', 'Dienst gelöscht.'))
       setDeleteTarget(null)
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -730,65 +754,75 @@ export default function ProviderServicesPanel() {
       : null
 
   const companyOwned = isCompany && offerOwner === 'company'
-  const stepLabels = sq
-    ? ['Informacioni bazë', 'Përshkrimi', 'Detajet e shërbimit', 'Foto dhe portofol', 'Përmbledhje']
-    : ['Basic information', 'Description', 'Service details', 'Photos & portfolio', 'Review']
-  const stepIntros = sq
+  const stepLabels = uiLang === 'de'
+    ? ['Grunddaten', 'Beschreibung', 'Dienstdetails', 'Fotos und Portfolio', 'Überblick']
+    : uiLang === 'en'
+      ? ['Basic information', 'Description', 'Service details', 'Photos & portfolio', 'Review']
+      : ['Informacioni bazë', 'Përshkrimi', 'Detajet e shërbimit', 'Foto dhe portofol', 'Përmbledhje']
+  const stepIntros = uiLang === 'de'
     ? [
-      'Emri i shërbimit dhe kategoria ku do ta gjejnë klientët.',
-      'Shpjego çfarë ofron, për kë është dhe çfarë përfshihet.',
-      'Si ofrohet shërbimi, ku, me çfarë çmimi dhe si rezervojnë klientët.',
-      'Opsionale: shembuj pune që e bëjnë ofertën më bindëse.',
-      'Kontrollo të dhënat para publikimit. Mund të kthehesh te çdo hap për ta ndryshuar.',
+      'Name des Dienstes und die Kategorie, in der Kunden ihn finden.',
+      'Erkläre, was du anbietest, für wen es ist und was enthalten ist.',
+      'Wie der Dienst erbracht wird, wo, zu welchem Preis und wie Kunden buchen.',
+      'Optional: Arbeitsbeispiele, die das Angebot überzeugender machen.',
+      'Prüfe alles vor der Veröffentlichung. Du kannst zu jedem Schritt zurück.',
     ]
-    : [
+    : uiLang === 'en'
+      ? [
       'The service name and the category where clients will find it.',
       'Explain what you offer, who it is for and what is included.',
       'How the service is delivered, where, at what price and how clients book.',
       'Optional: work samples that make the offer more convincing.',
       'Check everything before publishing. You can return to any step to change it.',
     ]
+      : [
+      'Emri i shërbimit dhe kategoria ku do ta gjejnë klientët.',
+      'Shpjego çfarë ofron, për kë është dhe çfarë përfshihet.',
+      'Si ofrohet shërbimi, ku, me çfarë çmimi dhe si rezervojnë klientët.',
+      'Opsionale: shembuj pune që e bëjnë ofertën më bindëse.',
+      'Kontrollo të dhënat para publikimit. Mund të kthehesh te çdo hap për ta ndryshuar.',
+    ]
 
   const basicIssues: string[] = []
   if (isCompany && !businessId) {
     basicIssues.push(companyContextLoading
-      ? (sq ? 'Duke ngarkuar kompaninë…' : 'Loading the company…')
-      : (sq ? 'Krijo kompaninë para se të ofrosh shërbime.' : 'Create the company before offering services.'))
+      ? (L(uiLang, 'Duke ngarkuar kompaninë…', 'Loading the company…', 'Unternehmen wird geladen…'))
+      : (L(uiLang, 'Krijo kompaninë para se të ofrosh shërbime.', 'Create the company before offering services.', 'Lege das Unternehmen an, bevor du Dienste anbietest.')))
   }
   if (isCompany && offerOwner === 'expert' && !expertProviderId) {
-    basicIssues.push(sq ? 'Zgjidh ekspertin e ekipit që e ofron shërbimin.' : 'Choose the team expert who offers this service.')
+    basicIssues.push(L(uiLang, 'Zgjidh ekspertin e ekipit që e ofron shërbimin.', 'Choose the team expert who offers this service.', 'Wähle den Experten im Team, der diesen Dienst anbietet.'))
   }
-  if (!title.trim()) basicIssues.push(sq ? 'Shkruaj titullin e shërbimit.' : 'Enter the service title.')
-  if (!categoryId) basicIssues.push(sq ? 'Zgjidh kategorinë.' : 'Choose a category.')
+  if (!title.trim()) basicIssues.push(L(uiLang, 'Shkruaj titullin e shërbimit.', 'Enter the service title.', 'Gib den Diensttitel ein.'))
+  if (!categoryId) basicIssues.push(L(uiLang, 'Zgjidh kategorinë.', 'Choose a category.', 'Wähle eine Kategorie.'))
   if (categoryId && (!subcategoryId || !selectedSubcategory)) {
     basicIssues.push(subcategoriesLoading
-      ? (sq ? 'Duke ngarkuar nënkategoritë…' : 'Loading subcategories…')
-      : (sq ? 'Zgjidh nënkategorinë.' : 'Choose a subcategory.'))
+      ? (L(uiLang, 'Duke ngarkuar nënkategoritë…', 'Loading subcategories…', 'Unterkategorien werden geladen…'))
+      : (L(uiLang, 'Zgjidh nënkategorinë.', 'Choose a subcategory.', 'Wähle eine Unterkategorie.')))
   }
 
   const descriptionIssues: string[] = []
-  if (!description.trim()) descriptionIssues.push(sq ? 'Shkruaj përshkrimin e shërbimit.' : 'Enter the service description.')
+  if (!description.trim()) descriptionIssues.push(L(uiLang, 'Shkruaj përshkrimin e shërbimit.', 'Enter the service description.', 'Gib die Dienstbeschreibung ein.'))
 
   const detailIssues: string[] = []
-  if (!location) detailIssues.push(sq ? 'Zgjidh lokacionin nga lista e qyteteve.' : 'Choose a location from the city list.')
+  if (!location) detailIssues.push(L(uiLang, 'Zgjidh lokacionin nga lista e qyteteve.', 'Choose a location from the city list.', 'Wähle einen Ort aus der Städteliste.'))
   if (pricingMode === 'from' && !priceFrom.trim()) {
-    detailIssues.push(sq ? 'Shkruaj çmimin fillestar ose zgjidh “Me marrëveshje”.' : 'Enter a starting price or choose “By agreement”.')
+    detailIssues.push(L(uiLang, 'Shkruaj çmimin fillestar ose zgjidh “Me marrëveshje”.', 'Enter a starting price or choose “By agreement”.', 'Gib einen Startpreis ein oder wähle „Nach Vereinbarung“.'))
   }
   if (pricingMode === 'fixed' && !priceFrom.trim()) {
-    detailIssues.push(sq ? 'Shkruaj çmimin fiks në euro.' : 'Enter the fixed price in euros.')
+    detailIssues.push(L(uiLang, 'Shkruaj çmimin fiks në euro.', 'Enter the fixed price in euros.', 'Gib den Festpreis in Euro ein.'))
   }
   if (pricingMode === 'range') {
     if (!priceFrom.trim() || !priceTo.trim()) {
-      detailIssues.push(sq ? 'Plotëso çmimin nga dhe deri.' : 'Fill in both the from and to prices.')
+      detailIssues.push(L(uiLang, 'Plotëso çmimin nga dhe deri.', 'Fill in both the from and to prices.', 'Fülle den Preis von und bis aus.'))
     } else if (Number(priceTo) < Number(priceFrom)) {
-      detailIssues.push(sq ? 'Çmimi “deri” duhet të jetë më i madh ose i barabartë me “nga”.' : '“Price to” must be greater than or equal to “price from”.')
+      detailIssues.push(L(uiLang, 'Çmimi “deri” duhet të jetë më i madh ose i barabartë me “nga”.', '“Price to” must be greater than or equal to “price from”.', '„Preis bis“ muss größer oder gleich „Preis von“ sein.'))
     }
   }
   if (
     pricingMode !== 'agreement'
     && [priceFrom, pricingMode === 'range' ? priceTo : ''].some((value) => value.trim() && !isWholeAmount(value))
   ) {
-    detailIssues.push(sq ? 'Çmimi duhet të jetë numër i plotë, 0 ose më shumë.' : 'The price must be a whole number, 0 or more.')
+    detailIssues.push(L(uiLang, 'Çmimi duhet të jetë numër i plotë, 0 ose më shumë.', 'The price must be a whole number, 0 or more.', 'Der Preis muss eine ganze Zahl ab 0 sein.'))
   }
   if (showCategoryFields) {
     for (const field of categorySpecificFields(extensionFields)) {
@@ -796,22 +830,22 @@ export default function ProviderServicesPanel() {
       const value = extensionValues[field.key]
       const required = Boolean(field.required || field.mustBeTrue)
       if (field.type === 'boolean') {
-        if (required && !value) detailIssues.push(sq ? `Konfirmo “${label}”.` : `Confirm “${label}”.`)
+        if (required && !value) detailIssues.push(L(uiLang, `Konfirmo “${label}”.`, `Confirm “${label}”.`, `Bestätige „${label}“.`))
         continue
       }
       if (field.type === 'stringArray' && field.allowedValues?.length) continue
       if (required && (value == null || String(value).trim() === '')) {
-        detailIssues.push(sq ? `Plotëso “${label}”.` : `Fill in “${label}”.`)
+        detailIssues.push(L(uiLang, `Plotëso “${label}”.`, `Fill in “${label}”.`, `Fülle „${label}“ aus.`))
       } else if (field.type === 'number' && value != null && value !== '' && !(Number.isInteger(value) && Number(value) >= 0)) {
-        detailIssues.push(sq ? `“${label}” duhet të jetë numër i plotë, 0 ose më shumë.` : `“${label}” must be a whole number, 0 or more.`)
+        detailIssues.push(L(uiLang, `“${label}” duhet të jetë numër i plotë, 0 ose më shumë.`, `“${label}” must be a whole number, 0 or more.`, `„${label}“ muss eine ganze Zahl ab 0 sein.`))
       }
     }
   }
 
   const mediaIssues: string[] = []
-  if (uploadingPhoto) mediaIssues.push(sq ? 'Prit sa të ngarkohet fotoja.' : 'Wait for the photo to finish uploading.')
+  if (uploadingPhoto) mediaIssues.push(L(uiLang, 'Prit sa të ngarkohet fotoja.', 'Wait for the photo to finish uploading.', 'Warte, bis das Foto hochgeladen ist.'))
   if (portfolioUrl.trim() && !isValidUrl(portfolioUrl.trim())) {
-    mediaIssues.push(sq ? 'Shkruaj një URL të vlefshme, p.sh. https://…' : 'Enter a valid URL, e.g. https://…')
+    mediaIssues.push(L(uiLang, 'Shkruaj një URL të vlefshme, p.sh. https://…', 'Enter a valid URL, e.g. https://…', 'Gib eine gültige URL ein, z. B. https://…'))
   }
 
   const stepIssues = [basicIssues, descriptionIssues, detailIssues, mediaIssues, []]
@@ -841,15 +875,15 @@ export default function ProviderServicesPanel() {
     void onSubmit(e)
   }
 
-  const notFilled = <span className="ds-review-empty">{sq ? 'Nuk është plotësuar' : 'Not provided'}</span>
+  const notFilled = <span className="ds-review-empty">{L(uiLang, 'Nuk është plotësuar', 'Not provided', 'Nicht angegeben')}</span>
   const reviewPrice =
     pricingMode === 'agreement'
-      ? (sq ? 'Me marrëveshje' : 'By agreement')
+      ? (L(uiLang, 'Me marrëveshje', 'By agreement', 'Nach Vereinbarung'))
       : pricingMode === 'fixed'
         ? `€${priceFrom}`
         : pricingMode === 'range'
           ? `€${priceFrom} – €${priceTo}`
-          : (sq ? `nga €${priceFrom}` : `from €${priceFrom}`)
+          : (L(uiLang, `nga €${priceFrom}`, `from €${priceFrom}`, `ab €${priceFrom}`))
   const reviewModes = deliveryModes.map(
     (mode) => deliveryModeOptions.find((item) => item.value === mode)?.label || mode,
   )
@@ -861,7 +895,7 @@ export default function ProviderServicesPanel() {
   const responsibleExpert = teamExperts.find((person) => person.id === responsibleExpertId)
 
   function extensionReviewValue(value: unknown) {
-    if (typeof value === 'boolean') return value ? (sq ? 'Po' : 'Yes') : (sq ? 'Jo' : 'No')
+    if (typeof value === 'boolean') return value ? (L(uiLang, 'Po', 'Yes', 'Ja')) : (L(uiLang, 'Jo', 'No', 'Nein'))
     if (Array.isArray(value)) {
       return value.length ? value.map((item) => optionLabel(String(item), catalogOptions, catalogLanguage)).join(', ') : notFilled
     }
@@ -873,28 +907,31 @@ export default function ProviderServicesPanel() {
     <section className="uo ds">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>{sq ? 'Shërbimet' : 'Services'}</h1>
+          <h1>{L(uiLang, 'Shërbimet', 'Services', 'Dienste')}</h1>
           <p>
             {isCompany
-              ? (sq
-                ? 'Menaxho shërbimet që kompania dhe ekspertët e saj ofrojnë. Shërbimet aktive shfaqen te ofertat publike.'
-                : 'Manage the services your company and its experts offer. Active services appear in public offers.')
-              : (sq
-                ? 'Menaxho shërbimet që ofron. Shërbimet aktive shfaqen te ofertat publike dhe në profilin tënd.'
-                : 'Manage the services you offer. Active services appear in public offers and on your profile.')}
+              ? (L(uiLang, 'Menaxho shërbimet që kompania dhe ekspertët e saj ofrojnë. Shërbimet aktive shfaqen te ofertat publike.', 'Manage the services your company and its experts offer. Active services appear in public offers.', 'Verwalte die Dienste, die dein Unternehmen und seine Experten anbieten. Aktive Dienste erscheinen in den öffentlichen Angeboten.'))
+              : (L(uiLang, 'Menaxho shërbimet që ofron. Shërbimet aktive shfaqen te ofertat publike dhe në profilin tënd.', 'Manage the services you offer. Active services appear in public offers and on your profile.', 'Verwalte die Dienste, die du anbietest. Aktive Dienste erscheinen in den öffentlichen Angeboten und in deinem Profil.'))}
           </p>
+          {plan === 'basic' ? (
+            <p>
+              <Link to={isCompany ? '/dashboard/company/plans' : '/dashboard/provider/plans'}>
+                {L(uiLang, 'Shërbimet publikohen vetëm me planin Pro.', 'Services are published only on the Pro plan.', 'Dienste werden nur mit dem Pro-Tarif veröffentlicht.')}
+              </Link>
+            </p>
+          ) : null}
         </div>
         {services.length > 0 ? (
           <Button variant="primary" className="uo-primary" onPress={openNewForm}>
             <Plus size={16} aria-hidden />
-            {sq ? 'Shto shërbim' : 'Add service'}
+            {L(uiLang, 'Shto shërbim', 'Add service', 'Dienst hinzufügen')}
           </Button>
         ) : null}
       </header>
 
       {loading ? (
         <Card className="uo-card">
-          <SectionHead title={sq ? 'Shërbimet e mia' : 'My services'} />
+          <SectionHead title={L(uiLang, 'Shërbimet e mia', 'My services', 'Meine Dienste')} />
           <Card.Content className="uo-card-body">
             <RowsSkeleton rows={3} />
           </Card.Content>
@@ -904,23 +941,21 @@ export default function ProviderServicesPanel() {
           <span className="ur-empty-icon" aria-hidden>
             <Briefcase size={22} />
           </span>
-          <h2>{sq ? 'Ende nuk ke publikuar asnjë shërbim' : 'No services published yet'}</h2>
+          <h2>{L(uiLang, 'Ende nuk ke publikuar asnjë shërbim', 'No services published yet', 'Noch keine Dienste veröffentlicht')}</h2>
           <p>
-            {sq
-              ? 'Krijo shërbimin e parë më poshtë. Pasi ta publikosh, klientët mund ta gjejnë te ofertat dhe të të dërgojnë kërkesë.'
-              : 'Create your first service below. Once published, clients can find it in offers and send you a request.'}
+            {L(uiLang, 'Krijo shërbimin e parë më poshtë. Pasi ta publikosh, klientët mund ta gjejnë te ofertat dhe të të dërgojnë kërkesë.', 'Create your first service below. Once published, clients can find it in offers and send you a request.', 'Erstelle unten deinen ersten Dienst. Nach der Veröffentlichung finden Kunden ihn in den Angeboten und können eine Anfrage senden.')}
           </p>
           <div className="ur-empty-actions">
             <Button variant="primary" onPress={openNewForm}>
               <Plus size={16} aria-hidden />
-              {sq ? 'Krijo shërbimin e parë' : 'Create your first service'}
+              {L(uiLang, 'Krijo shërbimin e parë', 'Create your first service', 'Erstelle deinen ersten Dienst')}
             </Button>
           </div>
         </Card>
       ) : (
         <Card className="uo-card ur-card">
           <SectionHead
-            title={sq ? 'Shërbimet e mia' : 'My services'}
+            title={L(uiLang, 'Shërbimet e mia', 'My services', 'Meine Dienste')}
             meta={<span className="uo-card-meta">{pagination.total}</span>}
           />
           <ul className="ur-list ds-divided">
@@ -947,11 +982,11 @@ export default function ProviderServicesPanel() {
                       <div className="ur-chips">
                         {editing ? (
                           <Chip size="sm" variant="soft" color="accent">
-                            <Chip.Label>{sq ? 'Në ndryshim' : 'Editing'}</Chip.Label>
+                            <Chip.Label>{L(uiLang, 'Në ndryshim', 'Editing', 'Bearbeitung')}</Chip.Label>
                           </Chip>
                         ) : null}
                         <Chip size="sm" variant="soft" color={service.active ? 'success' : 'default'}>
-                          <Chip.Label>{service.active ? (sq ? 'Aktiv' : 'Active') : (sq ? 'Joaktiv' : 'Inactive')}</Chip.Label>
+                          <Chip.Label>{service.active ? (L(uiLang, 'Aktiv', 'Active', 'Aktiv')) : (L(uiLang, 'Joaktiv', 'Inactive', 'Inaktiv'))}</Chip.Label>
                         </Chip>
                       </div>
                     </div>
@@ -992,7 +1027,7 @@ export default function ProviderServicesPanel() {
                       {isCompany && service.responsibleExpert ? (
                         <li>
                           <UserRound size={14} aria-hidden />
-                          {sq ? 'Përgjegjës' : 'Responsible'}: {service.responsibleExpert.name}
+                          {L(uiLang, 'Përgjegjës', 'Responsible', 'Verantwortlich')}: {service.responsibleExpert.name}
                         </li>
                       ) : null}
                     </ul>
@@ -1000,11 +1035,11 @@ export default function ProviderServicesPanel() {
                     <div className="ur-actions is-wrap ds-service-actions">
                       <Link className={buttonVariants({ variant: 'ghost', size: 'sm' })} to={servicePath(service)}>
                         <Eye size={14} aria-hidden />
-                        {sq ? 'Shiko' : 'View'}
+                        {L(uiLang, 'Shiko', 'View', 'Ansehen')}
                       </Link>
                       <Button size="sm" variant="outline" onPress={() => startEdit(service)} isDisabled={editing}>
                         <Pencil size={14} aria-hidden />
-                        {sq ? 'Ndrysho' : 'Edit'}
+                        {L(uiLang, 'Ndrysho', 'Edit', 'Bearbeiten')}
                       </Button>
                       <Button
                         size="sm"
@@ -1014,7 +1049,7 @@ export default function ProviderServicesPanel() {
                         onPress={() => setDeleteTarget(service)}
                       >
                         <Trash2 size={14} aria-hidden />
-                        {deletingId === service.id ? (sq ? 'Duke fshirë…' : 'Deleting…') : (sq ? 'Fshi' : 'Delete')}
+                        {deletingId === service.id ? (L(uiLang, 'Duke fshirë…', 'Deleting…', 'Löschen…')) : (L(uiLang, 'Fshi', 'Delete', 'Löschen'))}
                       </Button>
                     </div>
                   </div>
@@ -1029,16 +1064,16 @@ export default function ProviderServicesPanel() {
       {showForm ? (
       <Card className="uo-card ds-form-card">
         <SectionHead
-          title={editingId ? (sq ? 'Ndrysho shërbimin' : 'Edit service') : (sq ? 'Shto shërbim të ri' : 'Add a new service')}
+          title={editingId ? (L(uiLang, 'Ndrysho shërbimin', 'Edit service', 'Dienst bearbeiten')) : (L(uiLang, 'Shto shërbim të ri', 'Add a new service', 'Neuen Dienst hinzufügen'))}
           meta={
             <span className="uo-card-meta">
-              {sq ? `Hapi ${step + 1} nga ${stepLabels.length}` : `Step ${step + 1} of ${stepLabels.length}`}
+              {L(uiLang, `Hapi ${step + 1} nga ${stepLabels.length}`, `Step ${step + 1} of ${stepLabels.length}`, `Schritt ${step + 1} von ${stepLabels.length}`)}
             </span>
           }
           action={
             services.length > 0 ? (
               <Button size="sm" variant="ghost" onPress={closeForm} isDisabled={submitting}>
-                {sq ? 'Mbyll' : 'Close'}
+                {L(uiLang, 'Mbyll', 'Close', 'Schließen')}
               </Button>
             ) : null
           }
@@ -1050,7 +1085,7 @@ export default function ProviderServicesPanel() {
             current={step}
             maxReachable={maxReachableStep}
             onSelect={goToStep}
-            language={catalogLanguage}
+            language={uiLang}
           />
 
           <header className="ds-step-head">
@@ -1069,12 +1104,10 @@ export default function ProviderServicesPanel() {
           <>
         {isCompany ? (
           <FormSection
-            title={sq ? 'Kush e ofron këtë shërbim?' : 'Who offers this service?'}
-            description={sq
-              ? 'Zgjidh nëse oferta publikohet në emër të kompanisë ose të një eksperti të ekipit. Profili përkatës përdoret për përvojën dhe verifikimin.'
-              : 'Choose whether the offer is published under the company or a team expert. The matching profile supplies experience and verification.'}
+            title={L(uiLang, 'Kush e ofron këtë shërbim?', 'Who offers this service?', 'Wer bietet diesen Dienst an?')}
+            description={L(uiLang, 'Zgjidh nëse oferta publikohet në emër të kompanisë ose të një eksperti të ekipit. Profili përkatës përdoret për përvojën dhe verifikimin.', 'Choose whether the offer is published under the company or a team expert. The matching profile supplies experience and verification.', 'Wähle, ob das Angebot unter dem Unternehmen oder einem Team-Experten veröffentlicht wird. Das passende Profil liefert Erfahrung und Verifizierung.')}
           >
-            <div className="service-radio-list" role="radiogroup" aria-label={sq ? 'Kush e ofron këtë shërbim?' : 'Who offers this service?'}>
+            <div className="service-radio-list" role="radiogroup" aria-label={L(uiLang, 'Kush e ofron këtë shërbim?', 'Who offers this service?', 'Wer bietet diesen Dienst an?')}>
               <label className={`service-radio-card${offerOwner === 'company' ? ' is-selected' : ''}`}>
                 <input
                   type="radio"
@@ -1087,11 +1120,9 @@ export default function ProviderServicesPanel() {
                   }}
                 />
                 <span>
-                  <strong>{sq ? 'Kompania' : 'Company'}</strong>
+                  <strong>{L(uiLang, 'Kompania', 'Company', 'Unternehmen')}</strong>
                   <em>
-                    {sq
-                      ? `Publikohet nën ${businessName || 'kompaninë'} dhe përdor profilin e kompanisë.`
-                      : `Published under ${businessName || 'the company'} using the company profile.`}
+                    {L(uiLang, `Publikohet nën ${businessName || 'kompaninë'} dhe përdor profilin e kompanisë.`, `Published under ${businessName || 'the company'} using the company profile.`, `Veröffentlicht unter ${businessName || 'dem Unternehmen'} mit dem Unternehmensprofil.`)}
                   </em>
                 </span>
               </label>
@@ -1108,11 +1139,9 @@ export default function ProviderServicesPanel() {
                   }}
                 />
                 <span>
-                  <strong>{sq ? 'Ekspert i ekipit' : 'Team expert'}</strong>
+                  <strong>{L(uiLang, 'Ekspert i ekipit', 'Team expert', 'Team-Experte')}</strong>
                   <em>
-                    {sq
-                      ? 'Publikohet nën ekspertin e zgjedhur dhe përdor profilin e tij.'
-                      : 'Published under the selected expert using their profile.'}
+                    {L(uiLang, 'Publikohet nën ekspertin e zgjedhur dhe përdor profilin e tij.', 'Published under the selected expert using their profile.', 'Veröffentlicht unter dem gewählten Experten mit dessen Profil.')}
                   </em>
                 </span>
               </label>
@@ -1120,7 +1149,7 @@ export default function ProviderServicesPanel() {
 
             {offerOwner === 'expert' ? (
               <label>
-                <FieldLabel required language={catalogLanguage}>{sq ? 'Zgjidh ekspertin' : 'Choose expert'}</FieldLabel>
+                <FieldLabel required language={uiLang}>{L(uiLang, 'Zgjidh ekspertin', 'Choose expert', 'Experten wählen')}</FieldLabel>
                 <select
                   value={expertProviderId}
                   required
@@ -1128,10 +1157,10 @@ export default function ProviderServicesPanel() {
                   onChange={(e) => setExpertProviderId(e.target.value)}
                 >
                   {companyContextLoading ? (
-                    <option value="">{sq ? 'Duke u ngarkuar...' : 'Loading...'}</option>
+                    <option value="">{L(uiLang, 'Duke u ngarkuar...', 'Loading...', 'Laden...')}</option>
                   ) : null}
                   {!companyContextLoading && expertsWithProfiles.length === 0 ? (
-                    <option value="">{sq ? 'Nuk ka ekspertë me profil' : 'No experts with a profile'}</option>
+                    <option value="">{L(uiLang, 'Nuk ka ekspertë me profil', 'No experts with a profile', 'Keine Experten mit Profil')}</option>
                   ) : null}
                   {expertsWithProfiles.map((person) => (
                     <option key={person.id} value={person.providerProfileId || ''}>
@@ -1140,22 +1169,20 @@ export default function ProviderServicesPanel() {
                   ))}
                 </select>
                 <FieldHint>
-                  {sq
-                    ? 'Vetëm anëtarët e ekipit me profil eksperti mund të zgjidhen.'
-                    : 'Only team members with an expert profile can be selected.'}
+                  {L(uiLang, 'Vetëm anëtarët e ekipit me profil eksperti mund të zgjidhen.', 'Only team members with an expert profile can be selected.', 'Nur Teammitglieder mit Expertenprofil können gewählt werden.')}
                 </FieldHint>
               </label>
             ) : null}
 
             {offerOwner === 'company' ? (
               <label>
-                <FieldLabel optional language={catalogLanguage}>{sq ? 'Eksperti përgjegjës' : 'Responsible expert'}</FieldLabel>
+                <FieldLabel optional language={uiLang}>{L(uiLang, 'Eksperti përgjegjës', 'Responsible expert', 'Verantwortlicher Experte')}</FieldLabel>
                 <select
                   value={responsibleExpertId}
                   disabled={companyContextLoading || teamExperts.length === 0}
                   onChange={(e) => setResponsibleExpertId(e.target.value)}
                 >
-                  <option value="">{sq ? 'Pa caktuar (opsionale)' : 'Unassigned (optional)'}</option>
+                  <option value="">{L(uiLang, 'Pa caktuar (opsionale)', 'Unassigned (optional)', 'Nicht zugewiesen (optional)')}</option>
                   {teamExperts.map((person) => (
                     <option key={person.id} value={person.id}>
                       {person.name}{person.headline ? ` — ${person.headline}` : ''}
@@ -1163,9 +1190,7 @@ export default function ProviderServicesPanel() {
                   ))}
                 </select>
                 <FieldHint>
-                  {sq
-                    ? 'Mund ta caktosh tani ose më vonë pasi të krijosh shërbimin. Nuk zëvendëson profilin e kompanisë.'
-                    : 'Assign now or later after creating the service. This does not replace the company profile.'}
+                  {L(uiLang, 'Mund ta caktosh tani ose më vonë pasi të krijosh shërbimin. Nuk zëvendëson profilin e kompanisë.', 'Assign now or later after creating the service. This does not replace the company profile.', 'Jetzt oder später nach dem Erstellen zuweisen. Das ersetzt nicht das Unternehmensprofil.')}
                 </FieldHint>
               </label>
             ) : null}
@@ -1174,10 +1199,12 @@ export default function ProviderServicesPanel() {
 
             {!businessId && !companyContextLoading ? (
               <FieldHint>
-                {sq ? (
-                  <>Nuk ke kompani të menaxhueshme. <Link to="/dashboard/company/create">Krijo kompaninë</Link>.</>
-                ) : (
+                {uiLang === 'de' ? (
+                  <>Noch kein verwaltbares Unternehmen. <Link to="/dashboard/company/create">Unternehmen anlegen</Link>.</>
+                ) : uiLang === 'en' ? (
                   <>No manageable company yet. <Link to="/dashboard/company/create">Create the company</Link>.</>
+                ) : (
+                  <>Nuk ke kompani të menaxhueshme. <Link to="/dashboard/company/create">Krijo kompaninë</Link>.</>
                 )}
               </FieldHint>
             ) : null}
@@ -1185,31 +1212,27 @@ export default function ProviderServicesPanel() {
         ) : null}
 
         <FormSection
-          title={sq ? 'Emri i shërbimit' : 'Service name'}
-          description={sq
-            ? 'Titulli shfaqet te klientët në ofertat publike.'
-            : 'The title is shown to clients in public offers.'}
+          title={L(uiLang, 'Emri i shërbimit', 'Service name', 'Dienstname')}
+          description={L(uiLang, 'Titulli shfaqet te klientët në ofertat publike.', 'The title is shown to clients in public offers.', 'Der Titel wird Kunden in den öffentlichen Angeboten angezeigt.')}
         >
           <label className="full">
-            <FieldLabel required language={catalogLanguage}>{sq ? 'Titulli i shërbimit' : 'Service title'}</FieldLabel>
+            <FieldLabel required language={uiLang}>{L(uiLang, 'Titulli i shërbimit', 'Service title', 'Diensttitel')}</FieldLabel>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              placeholder={sq ? 'P.sh. Ndërtim website për biznese të vogla' : 'E.g. Website build for small businesses'}
+              placeholder={L(uiLang, 'P.sh. Ndërtim website për biznese të vogla', 'E.g. Website build for small businesses', 'z. B. Website für kleine Unternehmen')}
             />
-            <FieldHint>{sq ? 'I shkurtër dhe specifike — jo vetëm emri i kategorisë.' : 'Keep it short and specific — not just the category name.'}</FieldHint>
+            <FieldHint>{L(uiLang, 'I shkurtër dhe specifike — jo vetëm emri i kategorisë.', 'Keep it short and specific — not just the category name.', 'Kurz und konkret — nicht nur der Kategoriename.')}</FieldHint>
           </label>
         </FormSection>
 
         <FormSection
-          title={sq ? 'Kategoria e shërbimit' : 'Service category'}
-          description={sq
-            ? 'Zgjidh fushën e përgjithshme, pastaj nënkategorinë konkrete që e përshkruan më mirë ofertën.'
-            : 'Pick the general field first, then the specific subcategory that best describes the offer.'}
+          title={L(uiLang, 'Kategoria e shërbimit', 'Service category', 'Dienstkategorie')}
+          description={L(uiLang, 'Zgjidh fushën e përgjithshme, pastaj nënkategorinë konkrete që e përshkruan më mirë ofertën.', 'Pick the general field first, then the specific subcategory that best describes the offer.', 'Wähle zuerst das allgemeine Feld, dann die Unterkategorie, die das Angebot am besten beschreibt.')}
         >
           <label>
-            <FieldLabel required language={catalogLanguage}>{sq ? 'Kategoria' : 'Category'}</FieldLabel>
+            <FieldLabel required language={uiLang}>{L(uiLang, 'Kategoria', 'Category', 'Kategorie')}</FieldLabel>
             <select
               value={categoryId}
               required
@@ -1218,27 +1241,27 @@ export default function ProviderServicesPanel() {
                 setSubcategoryId('')
               }}
             >
-              {categories.length === 0 ? <option value="">{sq ? 'Duke u ngarkuar...' : 'Loading...'}</option> : null}
+              {categories.length === 0 ? <option value="">{L(uiLang, 'Duke u ngarkuar...', 'Loading...', 'Laden...')}</option> : null}
               {categories.map((category) => (
                 <option key={category._id} value={category._id}>
                   {catalogLabel(category, catalogLanguage)}
                 </option>
               ))}
             </select>
-            <FieldHint>{sq ? 'P.sh. IT, Ligj, Marketing.' : 'E.g. IT, Law, Marketing.'}</FieldHint>
+            <FieldHint>{L(uiLang, 'P.sh. IT, Ligj, Marketing.', 'E.g. IT, Law, Marketing.', 'z. B. IT, Recht, Marketing.')}</FieldHint>
           </label>
 
           <label>
-            <FieldLabel required language={catalogLanguage}>{sq ? 'Nënkategoria' : 'Subcategory'}</FieldLabel>
+            <FieldLabel required language={uiLang}>{L(uiLang, 'Nënkategoria', 'Subcategory', 'Unterkategorie')}</FieldLabel>
             <select
               value={subcategoryId}
               required
               disabled={!categoryId || subcategoriesLoading || subcategories.length === 0}
               onChange={(e) => setSubcategoryId(e.target.value)}
             >
-              {subcategoriesLoading ? <option value="">{sq ? 'Duke u ngarkuar...' : 'Loading...'}</option> : null}
+              {subcategoriesLoading ? <option value="">{L(uiLang, 'Duke u ngarkuar...', 'Loading...', 'Laden...')}</option> : null}
               {!subcategoriesLoading && subcategories.length === 0 ? (
-                <option value="">{sq ? 'Nuk ka nënkategori' : 'No subcategories'}</option>
+                <option value="">{L(uiLang, 'Nuk ka nënkategori', 'No subcategories', 'Keine Unterkategorien')}</option>
               ) : null}
               {subcategories.map((subcategory) => (
                 <option key={subcategory._id} value={subcategory._id}>
@@ -1248,10 +1271,8 @@ export default function ProviderServicesPanel() {
             </select>
             <FieldHint>
               {selectedCategory
-                ? (sq
-                  ? `Nënkategoritë për “${catalogLabel(selectedCategory, catalogLanguage)}”.`
-                  : `Subcategories for “${catalogLabel(selectedCategory, catalogLanguage)}”.`)
-                : (sq ? 'Zgjidh kategorinë më parë.' : 'Choose a category first.')}
+                ? (L(uiLang, `Nënkategoritë për “${catalogLabel(selectedCategory, catalogLanguage)}”.`, `Subcategories for “${catalogLabel(selectedCategory, catalogLanguage)}”.`, `Unterkategorien für „${catalogLabel(selectedCategory, catalogLanguage)}“.`))
+                : (L(uiLang, 'Zgjidh kategorinë më parë.', 'Choose a category first.', 'Wähle zuerst eine Kategorie.'))}
             </FieldHint>
           </label>
         </FormSection>
@@ -1262,21 +1283,17 @@ export default function ProviderServicesPanel() {
         {step === 1 ? (
           <>
         <FormSection
-          title={sq ? 'Përshkrimi i ofertës' : 'Offer description'}
-          description={sq
-            ? 'Përshkrimi shfaqet te klientët. Shkruaj qartë çfarë ofron dhe çfarë përfshihet.'
-            : 'The description is shown to clients. Be clear about what you offer and what is included.'}
+          title={L(uiLang, 'Përshkrimi i ofertës', 'Offer description', 'Angebotsbeschreibung')}
+          description={L(uiLang, 'Përshkrimi shfaqet te klientët. Shkruaj qartë çfarë ofron dhe çfarë përfshihet.', 'The description is shown to clients. Be clear about what you offer and what is included.', 'Die Beschreibung sehen die Kunden. Erkläre klar, was du anbietest und was enthalten ist.')}
         >
           <label className="full">
-            <FieldLabel required language={catalogLanguage}>{sq ? 'Përshkrimi' : 'Description'}</FieldLabel>
+            <FieldLabel required language={uiLang}>{L(uiLang, 'Përshkrimi', 'Description', 'Beschreibung')}</FieldLabel>
             <textarea
               value={description}
               rows={4}
               required
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={sq
-                ? 'Çfarë përfshihet, për kë është, sa zgjat dhe çfarë duhet të dije klienti.'
-                : 'What is included, who it is for, how long it takes, and what the client should know.'}
+              placeholder={L(uiLang, 'Çfarë përfshihet, për kë është, sa zgjat dhe çfarë duhet të dije klienti.', 'What is included, who it is for, how long it takes, and what the client should know.', 'Was enthalten ist, für wen es ist, wie lange es dauert und was der Kunde wissen sollte.')}
             />
           </label>
         </FormSection>
@@ -1293,16 +1310,14 @@ export default function ProviderServicesPanel() {
         {step === 2 ? (
           <>
         <FormSection
-          title={sq ? 'Si ofrohet shërbimi' : 'How the service is delivered'}
-          description={sq
-            ? 'Thuaj nëse punon online, fizikisht ose në grup, dhe në cilat gjuhë komunikoni.'
-            : 'Say whether you work online, in person, or in groups, and which languages you use.'}
+          title={L(uiLang, 'Si ofrohet shërbimi', 'How the service is delivered', 'Wie der Dienst erbracht wird')}
+          description={L(uiLang, 'Thuaj nëse punon online, fizikisht ose në grup, dhe në cilat gjuhë komunikoni.', 'Say whether you work online, in person, or in groups, and which languages you use.', 'Sag, ob du online, vor Ort oder in Gruppen arbeitest und welche Sprachen du nutzt.')}
         >
           <fieldset className="full checkbox-fieldset">
             <legend>
-              <FieldLabel optional language={catalogLanguage}>{sq ? 'Mënyra e ofrimit' : 'Delivery mode'}</FieldLabel>
+              <FieldLabel optional language={uiLang}>{L(uiLang, 'Mënyra e ofrimit', 'Delivery mode', 'Erbringungsart')}</FieldLabel>
             </legend>
-            <FieldHint>{sq ? 'Mund të zgjedhësh më shumë se një.' : 'You can select more than one.'}</FieldHint>
+            <FieldHint>{L(uiLang, 'Mund të zgjedhësh më shumë se një.', 'You can select more than one.', 'Du kannst mehr als eine wählen.')}</FieldHint>
             <div className="service-option-grid">
               {deliveryModeOptions.map((mode) => (
                 <label key={mode.id} className="check-row service-option-chip">
@@ -1323,9 +1338,9 @@ export default function ProviderServicesPanel() {
 
           <fieldset className="full checkbox-fieldset">
             <legend>
-              <FieldLabel optional language={catalogLanguage}>{sq ? 'Gjuhët e shërbimit' : 'Service languages'}</FieldLabel>
+              <FieldLabel optional language={uiLang}>{L(uiLang, 'Gjuhët e shërbimit', 'Service languages', 'Dienstsprachen')}</FieldLabel>
             </legend>
-            <FieldHint>{sq ? 'Zgjidh gjuhët në të cilat mund të komunikosh me klientin.' : 'Select the languages you can use with clients.'}</FieldHint>
+            <FieldHint>{L(uiLang, 'Zgjidh gjuhët në të cilat mund të komunikosh me klientin.', 'Select the languages you can use with clients.', 'Wähle die Sprachen, die du mit Kunden nutzen kannst.')}</FieldHint>
             <div className="service-option-grid">
               {languages.map((lang) => (
                 <label key={lang.id} className="check-row service-option-chip">
@@ -1345,55 +1360,53 @@ export default function ProviderServicesPanel() {
           </fieldset>
 
           <div className="full field">
-            <FieldLabel required language={catalogLanguage}>
+            <FieldLabel required language={uiLang}>
               {needsPhysicalLocation
-                ? (sq ? 'Qyteti ku ofron shërbimin' : 'City where you offer the service')
+                ? (L(uiLang, 'Qyteti ku ofron shërbimin', 'City where you offer the service', 'Stadt, in der du den Dienst anbietest'))
                 : onlineOnly
-                  ? (sq ? 'Qyteti ku bazohesh' : 'City you are based in')
-                  : (sq ? 'Lokacioni' : 'Location')}
+                  ? (L(uiLang, 'Qyteti ku bazohesh', 'City you are based in', 'Stadt, in der du ansässig bist'))
+                  : (L(uiLang, 'Lokacioni', 'Location', 'Ort'))}
             </FieldLabel>
             <LocationSelector value={location} onChange={setLocation} />
             <FieldHint>
               {needsPhysicalLocation
-                ? (sq ? 'Duhet për shërbime fizike ose në grup, që klientët të të gjejnë pranë tyre.' : 'Needed for in-person or group services so clients can find you nearby.')
+                ? (L(uiLang, 'Duhet për shërbime fizike ose në grup, që klientët të të gjejnë pranë tyre.', 'Needed for in-person or group services so clients can find you nearby.', 'Für Vor-Ort- oder Gruppendienste, damit Kunden dich in der Nähe finden.'))
                 : onlineOnly
-                  ? (sq ? 'Edhe për shërbime online, zgjidh qytetin ku bazohesh — përdoret për kërkim dhe filtra.' : 'Even for online services, pick your base city — it is used for search and filters.')
-                  : (sq ? 'Zgjidh qytetin nga lista. Mos shkruaj tekst të lirë.' : 'Pick a city from the list. Do not type free text.')}
+                  ? (L(uiLang, 'Edhe për shërbime online, zgjidh qytetin ku bazohesh — përdoret për kërkim dhe filtra.', 'Even for online services, pick your base city — it is used for search and filters.', 'Auch bei Online-Diensten wähle deine Basisstadt — sie wird für Suche und Filter genutzt.'))
+                  : (L(uiLang, 'Zgjidh qytetin nga lista. Mos shkruaj tekst të lirë.', 'Pick a city from the list. Do not type free text.', 'Wähle eine Stadt aus der Liste. Kein freier Text.'))}
             </FieldHint>
           </div>
         </FormSection>
 
         <FormSection
-          title={sq ? 'Çmimi' : 'Pricing'}
-          description={sq
-            ? 'Trego nëse çmimi është fiks, fillon nga një vlerë, është interval, ose caktohet me marrëveshje.'
-            : 'Say whether the price is fixed, starts from an amount, is a range, or is agreed later.'}
+          title={L(uiLang, 'Çmimi', 'Pricing', 'Preis')}
+          description={L(uiLang, 'Trego nëse çmimi është fiks, fillon nga një vlerë, është interval, ose caktohet me marrëveshje.', 'Say whether the price is fixed, starts from an amount, is a range, or is agreed later.', 'Sag, ob der Preis fest ist, ab einem Betrag startet, eine Spanne ist oder später vereinbart wird.')}
         >
           <fieldset className="full checkbox-fieldset service-pricing-modes">
             <legend>
-              <FieldLabel required language={catalogLanguage}>{sq ? 'Lloji i çmimit' : 'Pricing type'}</FieldLabel>
+              <FieldLabel required language={uiLang}>{L(uiLang, 'Lloji i çmimit', 'Pricing type', 'Preisart')}</FieldLabel>
             </legend>
             <div className="service-radio-list">
               {([
                 {
                   id: 'agreement' as const,
-                  label: sq ? 'Me marrëveshje' : 'By agreement',
-                  hint: sq ? 'Nuk shfaqet shumë fikse; çmimi diskutohen me klientin.' : 'No fixed amount; price is discussed with the client.',
+                  label: L(uiLang, 'Me marrëveshje', 'By agreement', 'Nach Vereinbarung'),
+                  hint: L(uiLang, 'Nuk shfaqet shumë fikse; çmimi diskutohen me klientin.', 'No fixed amount; price is discussed with the client.', 'Kein Festbetrag; der Preis wird mit dem Kunden besprochen.'),
                 },
                 {
                   id: 'from' as const,
-                  label: sq ? 'Nga (çmim fillestar)' : 'Starting from',
-                  hint: sq ? 'Shfaqet “nga €X”. Ideale kur çmimi varet nga rasti.' : 'Shows “from €X”. Ideal when price depends on the case.',
+                  label: L(uiLang, 'Nga (çmim fillestar)', 'Starting from', 'Ab'),
+                  hint: L(uiLang, 'Shfaqet “nga €X”. Ideale kur çmimi varet nga rasti.', 'Shows “from €X”. Ideal when price depends on the case.', 'Zeigt „ab €X“. Wenn der Preis vom Fall abhängt.'),
                 },
                 {
                   id: 'fixed' as const,
-                  label: sq ? 'Çmim fiks' : 'Fixed price',
-                  hint: sq ? 'Një shumë e qartë për të gjithë klientët.' : 'One clear amount for all clients.',
+                  label: L(uiLang, 'Çmim fiks', 'Fixed price', 'Festpreis'),
+                  hint: L(uiLang, 'Një shumë e qartë për të gjithë klientët.', 'One clear amount for all clients.', 'Ein klarer Betrag für alle Kunden.'),
                 },
                 {
                   id: 'range' as const,
-                  label: sq ? 'Interval çmimi' : 'Price range',
-                  hint: sq ? 'Shfaqet “nga €X deri €Y”.' : 'Shows “from €X to €Y”.',
+                  label: L(uiLang, 'Interval çmimi', 'Price range', 'Preisspanne'),
+                  hint: L(uiLang, 'Shfaqet “nga €X deri €Y”.', 'Shows “from €X to €Y”.', 'Zeigt „von €X bis €Y“.'),
                 },
               ]).map((option) => (
                 <label key={option.id} className={`service-radio-card${pricingMode === option.id ? ' is-selected' : ''}`}>
@@ -1414,8 +1427,8 @@ export default function ProviderServicesPanel() {
 
           {pricingMode === 'from' || pricingMode === 'fixed' ? (
             <label>
-              <FieldLabel required language={catalogLanguage}>
-                {pricingMode === 'fixed' ? (sq ? 'Çmimi (€)' : 'Price (€)') : (sq ? 'Çmimi nga (€)' : 'Price from (€)')}
+              <FieldLabel required language={uiLang}>
+                {pricingMode === 'fixed' ? (L(uiLang, 'Çmimi (€)', 'Price (€)', 'Preis (€)')) : (L(uiLang, 'Çmimi nga (€)', 'Price from (€)', 'Preis von (€)'))}
               </FieldLabel>
               <input
                 type="number"
@@ -1428,12 +1441,12 @@ export default function ProviderServicesPanel() {
                   setPriceFrom(value)
                   if (pricingMode === 'fixed') setPriceTo(value)
                 }}
-                placeholder={sq ? 'p.sh. 50' : 'e.g. 50'}
+                placeholder={L(uiLang, 'p.sh. 50', 'e.g. 50', 'z. B. 50')}
               />
               <FieldHint>
                 {pricingMode === 'fixed'
-                  ? (sq ? 'Shuma që paguan klienti për këtë shërbim.' : 'The amount the client pays for this service.')
-                  : (sq ? 'Çmimi minimal; mund të jetë më i lartë sipas rastit.' : 'Minimum price; it may be higher depending on the case.')}
+                  ? (L(uiLang, 'Shuma që paguan klienti për këtë shërbim.', 'The amount the client pays for this service.', 'Der Betrag, den der Kunde für diesen Dienst zahlt.'))
+                  : (L(uiLang, 'Çmimi minimal; mund të jetë më i lartë sipas rastit.', 'Minimum price; it may be higher depending on the case.', 'Mindestpreis; je nach Fall kann er höher sein.'))}
               </FieldHint>
             </label>
           ) : null}
@@ -1441,7 +1454,7 @@ export default function ProviderServicesPanel() {
           {pricingMode === 'range' ? (
             <>
               <label>
-                <FieldLabel required language={catalogLanguage}>{sq ? 'Çmimi nga (€)' : 'Price from (€)'}</FieldLabel>
+                <FieldLabel required language={uiLang}>{L(uiLang, 'Çmimi nga (€)', 'Price from (€)', 'Preis von (€)')}</FieldLabel>
                 <input
                   type="number"
                   min={0}
@@ -1449,11 +1462,11 @@ export default function ProviderServicesPanel() {
                   value={priceFrom}
                   required
                   onChange={(e) => setPriceFrom(e.target.value)}
-                  placeholder={sq ? 'p.sh. 40' : 'e.g. 40'}
+                  placeholder={L(uiLang, 'p.sh. 40', 'e.g. 40', 'z. B. 40')}
                 />
               </label>
               <label>
-                <FieldLabel required language={catalogLanguage}>{sq ? 'Çmimi deri (€)' : 'Price to (€)'}</FieldLabel>
+                <FieldLabel required language={uiLang}>{L(uiLang, 'Çmimi deri (€)', 'Price to (€)', 'Preis bis (€)')}</FieldLabel>
                 <input
                   type="number"
                   min={0}
@@ -1461,31 +1474,27 @@ export default function ProviderServicesPanel() {
                   value={priceTo}
                   required
                   onChange={(e) => setPriceTo(e.target.value)}
-                  placeholder={sq ? 'p.sh. 120' : 'e.g. 120'}
+                  placeholder={L(uiLang, 'p.sh. 120', 'e.g. 120', 'z. B. 120')}
                 />
-                <FieldHint>{sq ? 'Duhet të jetë ≥ çmimit “nga”.' : 'Must be ≥ the “from” price.'}</FieldHint>
+                <FieldHint>{L(uiLang, 'Duhet të jetë ≥ çmimit “nga”.', 'Must be ≥ the “from” price.', 'Muss ≥ dem Preis „von“ sein.')}</FieldHint>
               </label>
             </>
           ) : null}
 
           {pricingMode === 'agreement' ? (
             <p className="muted full">
-              {sq
-                ? 'Nuk do të shfaqet shumë në euro. Klienti do të kontaktojë për ofertë.'
-                : 'No euro amount will be shown. Clients will contact you for a quote.'}
+              {L(uiLang, 'Nuk do të shfaqet shumë në euro. Klienti do të kontaktojë për ofertë.', 'No euro amount will be shown. Clients will contact you for a quote.', 'Es wird kein Euro-Betrag angezeigt. Kunden kontaktieren dich für ein Angebot.')}
             </p>
           ) : null}
         </FormSection>
 
         <FormSection
-          title={sq ? 'Disponueshmëria' : 'Availability'}
-          description={sq
-            ? 'Si i pret klientët për takim ose punë. Nëse zgjedh orare fikse, hap slotet te Disponueshmëria.'
-            : 'How clients book time with you. If you choose fixed slots, open them under Availability.'}
+          title={L(uiLang, 'Disponueshmëria', 'Availability', 'Verfügbarkeit')}
+          description={L(uiLang, 'Si i pret klientët për takim ose punë. Nëse zgjedh orare fikse, hap slotet te Disponueshmëria.', 'How clients book time with you. If you choose fixed slots, open them under Availability.', 'Wie Kunden Zeit bei dir buchen. Bei festen Terminen öffne sie unter Verfügbarkeit.')}
         >
           <fieldset className="full checkbox-fieldset">
             <legend>
-              <FieldLabel required language={catalogLanguage}>{sq ? 'Si rezervojnë klientët' : 'How clients book'}</FieldLabel>
+              <FieldLabel required language={uiLang}>{L(uiLang, 'Si rezervojnë klientët', 'How clients book', 'Wie Kunden buchen')}</FieldLabel>
             </legend>
             <div className="service-radio-list">
               {availabilityOptions.map((option) => {
@@ -1503,7 +1512,7 @@ export default function ProviderServicesPanel() {
                     />
                     <span>
                       <strong>{option.label}</strong>
-                      {help ? <em>{help[catalogLanguage] || help.sq}</em> : null}
+                      {help ? <em>{L(uiLang, help.sq, help.en, help.de)}</em> : null}
                     </span>
                   </label>
                 )
@@ -1512,19 +1521,17 @@ export default function ProviderServicesPanel() {
           </fieldset>
           {isSlotsAvailability ? (
             <p className="full service-inline-note">
-              {sq ? 'Hap oraret e lira te ' : 'Open your free slots under '}
-              <Link to={availabilityPath}>{sq ? 'Disponueshmëria' : 'Availability'}</Link>
-              {sq ? ', përndryshe klientët nuk kanë termine për të zgjedhur.' : ', otherwise clients will have no slots to choose.'}
+              {L(uiLang, 'Hap oraret e lira te ', 'Open your free slots under ', 'Öffne freie Termine unter ')}
+              <Link to={availabilityPath}>{L(uiLang, 'Disponueshmëria', 'Availability', 'Verfügbarkeit')}</Link>
+              {L(uiLang, ', përndryshe klientët nuk kanë termine për të zgjedhur.', ', otherwise clients will have no slots to choose.', ', sonst haben Kunden keine Termine zur Auswahl.')}
             </p>
           ) : null}
         </FormSection>
 
         {showCategoryFields ? (
           <FormSection
-            title={sq ? 'Detaje sipas kategorisë' : 'Category-specific details'}
-            description={sq
-              ? `Fusha shtesë për “${catalogLabel(selectedCategory!, catalogLanguage)}”. Plotësoji sipas kërkesës.`
-              : `Extra fields for “${catalogLabel(selectedCategory!, catalogLanguage)}”. Fill them as required.`}
+            title={L(uiLang, 'Detaje sipas kategorisë', 'Category-specific details', 'Kategoriespezifische Angaben')}
+            description={L(uiLang, `Fusha shtesë për “${catalogLabel(selectedCategory!, catalogLanguage)}”. Plotësoji sipas kërkesës.`, `Extra fields for “${catalogLabel(selectedCategory!, catalogLanguage)}”. Fill them as required.`, `Zusatzfelder für „${catalogLabel(selectedCategory!, catalogLanguage)}“. Fülle sie wie verlangt aus.`)}
           >
             <ExtensionFieldsForm
               fields={extensionFields}
@@ -1541,45 +1548,37 @@ export default function ProviderServicesPanel() {
         {step === 3 ? (
           <>
         <FormSection
-          title={sq
-            ? (companyOwned ? 'Punët e këtij shërbimi' : 'Punët dhe portofoli')
-            : (companyOwned ? 'Work for this service' : 'Work and portfolio')}
+          title={companyOwned
+            ? L(uiLang, 'Punët e këtij shërbimi', 'Work for this service', 'Arbeit für diesen Dienst')
+            : L(uiLang, 'Punët dhe portofoli', 'Work and portfolio', 'Arbeit und Portfolio')}
           description={
             isCompany && offerOwner === 'company'
-              ? (sq
-                ? 'Shto vetëm materiale specifike për këtë shërbim. Informacioni i kompanisë merret automatikisht nga profili i kompanisë.'
-                : 'Add only materials specific to this service. Company information comes automatically from the company profile.')
-              : (sq
-                ? 'Shto vetëm materiale të lidhura me këtë shërbim. Përvoja, kualifikimet dhe certifikimet merren nga profili i ekspertit.'
-                : 'Add only materials related to this service. Experience, qualifications, and certifications come from the expert profile.')
+              ? (L(uiLang, 'Shto vetëm materiale specifike për këtë shërbim. Informacioni i kompanisë merret automatikisht nga profili i kompanisë.', 'Add only materials specific to this service. Company information comes automatically from the company profile.', 'Füge nur Material zu diesem Dienst hinzu. Unternehmensangaben kommen automatisch aus dem Unternehmensprofil.'))
+              : (L(uiLang, 'Shto vetëm materiale të lidhura me këtë shërbim. Përvoja, kualifikimet dhe certifikimet merren nga profili i ekspertit.', 'Add only materials related to this service. Experience, qualifications, and certifications come from the expert profile.', 'Füge nur Material zu diesem Dienst hinzu. Erfahrung, Qualifikationen und Zertifikate kommen aus dem Expertenprofil.'))
           }
         >
           {isCompany && offerOwner === 'company' ? (
             <p className="full service-inline-note">
-              {sq ? 'Emri, përshkrimi dhe detajet e kompanisë shfaqen automatikisht nga ' : 'Company name, description, and details are shown automatically from '}
-              <Link to={profilePath}>{sq ? 'profili i kompanisë' : 'the company profile'}</Link>
-              {sq ? '.' : '.'}
+              {L(uiLang, 'Emri, përshkrimi dhe detajet e kompanisë shfaqen automatikisht nga ', 'Company name, description, and details are shown automatically from ', 'Name, Beschreibung und Angaben des Unternehmens kommen automatisch aus ')}
+              <Link to={profilePath}>{L(uiLang, 'profili i kompanisë', 'the company profile', 'dem Unternehmensprofil')}</Link>
+              {L(uiLang, '.', '.', '.')}
             </p>
           ) : (
             <p className="full service-inline-note">
-              {sq
-                ? 'Vitet e përvojës, përvoja profesionale, kualifikimet, licencat/certifikimet dhe statusi i verifikimit shfaqen automatikisht nga '
-                : 'Years of experience, professional background, qualifications, licenses/certifications, and verification status are shown automatically from '}
+              {L(uiLang, 'Vitet e përvojës, përvoja profesionale, kualifikimet, licencat/certifikimet dhe statusi i verifikimit shfaqen automatikisht nga ', 'Years of experience, professional background, qualifications, licenses/certifications, and verification status are shown automatically from ', 'Jahre Erfahrung, beruflicher Hintergrund, Qualifikationen, Lizenzen/Zertifikate und der Verifizierungsstatus kommen automatisch aus ')}
               <Link to={profilePath}>
-                {sq ? 'profili i ekspertit' : 'the expert profile'}
+                {L(uiLang, 'profili i ekspertit', 'the expert profile', 'dem Expertenprofil')}
               </Link>
-              {sq ? '.' : '.'}
+              {L(uiLang, '.', '.', '.')}
             </p>
           )}
 
           <div className="full service-photo-picker">
-            <FieldLabel optional language={catalogLanguage}>
-              {sq ? `Foto të punës (deri ${MAX_SERVICE_PHOTOS})` : `Work photos (up to ${MAX_SERVICE_PHOTOS})`}
+            <FieldLabel optional language={uiLang}>
+              {L(uiLang, `Foto të punës (deri ${MAX_SERVICE_PHOTOS})`, `Work photos (up to ${MAX_SERVICE_PHOTOS})`, `Arbeitsfotos (bis zu ${MAX_SERVICE_PHOTOS})`)}
             </FieldLabel>
             <FieldHint>
-              {sq
-                ? `Shembuj vizualë për këtë shërbim. ${IMAGE_ACCEPT_HINT}. Opsionale.`
-                : `Visual samples for this service. ${IMAGE_ACCEPT_HINT}. Optional.`}
+              {L(uiLang, `Shembuj vizualë për këtë shërbim. ${IMAGE_ACCEPT_HINT}. Opsionale.`, `Visual samples for this service. ${IMAGE_ACCEPT_HINT}. Optional.`, `Visuelle Beispiele für diesen Dienst. ${IMAGE_ACCEPT_HINT}. Optional.`)}
             </FieldHint>
             <div className="service-photo-grid">
               {photos.map((url) => (
@@ -1588,7 +1587,7 @@ export default function ProviderServicesPanel() {
                   <button
                     type="button"
                     className="service-photo-remove"
-                    aria-label={sq ? 'Hiq foton' : 'Remove photo'}
+                    aria-label={L(uiLang, 'Hiq foton', 'Remove photo', 'Foto entfernen')}
                     onClick={() => setPhotos((prev) => prev.filter((item) => item !== url))}
                   >
                     ×
@@ -1614,7 +1613,7 @@ export default function ProviderServicesPanel() {
           </div>
 
           <label className="full">
-            <FieldLabel optional language={catalogLanguage}>{sq ? 'Portfolio URL' : 'Portfolio URL'}</FieldLabel>
+            <FieldLabel optional language={uiLang}>{L(uiLang, 'Portfolio URL', 'Portfolio URL', 'Portfolio-URL')}</FieldLabel>
             <input
               type="url"
               value={portfolioUrl}
@@ -1622,15 +1621,13 @@ export default function ProviderServicesPanel() {
               placeholder="https://..."
             />
             <FieldHint>
-              {sq
-                ? 'Linku i portofolit ose faqes me punë të ngjashme me këtë shërbim.'
-                : 'Link to a portfolio or page with work similar to this service.'}
+              {L(uiLang, 'Linku i portofolit ose faqes me punë të ngjashme me këtë shërbim.', 'Link to a portfolio or page with work similar to this service.', 'Link zu einem Portfolio oder einer Seite mit ähnlicher Arbeit.')}
             </FieldHint>
           </label>
 
           <label className="full">
-            <FieldLabel optional language={catalogLanguage}>
-              {sq ? 'Shembuj pune / projekte të ngjashme' : 'Work samples / similar projects'}
+            <FieldLabel optional language={uiLang}>
+              {L(uiLang, 'Shembuj pune / projekte të ngjashme', 'Work samples / similar projects', 'Arbeitsproben / ähnliche Projekte')}
             </FieldLabel>
             <textarea
               value={workSamples}
@@ -1638,22 +1635,14 @@ export default function ProviderServicesPanel() {
               onChange={(e) => setWorkSamples(e.target.value)}
               placeholder={
                 isCompany && offerOwner === 'company'
-                  ? (sq
-                    ? 'Përshkruaj shkurt projekte ose rezultate të ngjashme me këtë ofertë.'
-                    : 'Briefly describe projects or results similar to this offer.')
-                  : (sq
-                    ? 'Përshkruaj shkurt projekte ose rezultate të ngjashme me këtë ofertë (jo CV-në e plotë).'
-                    : 'Briefly describe projects or results similar to this offer (not your full CV).')
+                  ? (L(uiLang, 'Përshkruaj shkurt projekte ose rezultate të ngjashme me këtë ofertë.', 'Briefly describe projects or results similar to this offer.', 'Beschreibe kurz Projekte oder Ergebnisse, die diesem Angebot ähneln.'))
+                  : (L(uiLang, 'Përshkruaj shkurt projekte ose rezultate të ngjashme me këtë ofertë (jo CV-në e plotë).', 'Briefly describe projects or results similar to this offer (not your full CV).', 'Beschreibe kurz ähnliche Projekte oder Ergebnisse (nicht deinen ganzen Lebenslauf).'))
               }
             />
             <FieldHint>
               {isCompany && offerOwner === 'company'
-                ? (sq
-                  ? 'Vetëm shembuj për këtë shërbim.'
-                  : 'Only samples for this service.')
-                : (sq
-                  ? 'Vetëm shembuj për këtë shërbim. CV-ja dhe certifikimet qëndrojnë te profili.'
-                  : 'Only samples for this service. CV and certifications stay on the profile.')}
+                ? (L(uiLang, 'Vetëm shembuj për këtë shërbim.', 'Only samples for this service.', 'Nur Beispiele für diesen Dienst.'))
+                : (L(uiLang, 'Vetëm shembuj për këtë shërbim. CV-ja dhe certifikimet qëndrojnë te profili.', 'Only samples for this service. CV and certifications stay on the profile.', 'Nur Beispiele für diesen Dienst. Lebenslauf und Zertifikate bleiben im Profil.'))}
             </FieldHint>
           </label>
         </FormSection>
@@ -1662,38 +1651,38 @@ export default function ProviderServicesPanel() {
 
         {step === REVIEW_STEP ? (
           <>
-            <ReviewSection title={stepLabels[0]} editLabel={sq ? 'Ndrysho' : 'Edit'} onEdit={() => goToStep(0)}>
+            <ReviewSection title={stepLabels[0]} editLabel={L(uiLang, 'Ndrysho', 'Edit', 'Bearbeiten')} onEdit={() => goToStep(0)}>
               {isCompany ? (
-                <ReviewItem label={sq ? 'Ofruesi' : 'Offered by'}>
+                <ReviewItem label={L(uiLang, 'Ofruesi', 'Offered by', 'Angeboten von')}>
                   {offerOwner === 'company'
-                    ? businessName || (sq ? 'Kompania' : 'Company')
+                    ? businessName || (L(uiLang, 'Kompania', 'Company', 'Unternehmen'))
                     : selectedExpert?.name || notFilled}
                 </ReviewItem>
               ) : null}
               {companyOwned ? (
-                <ReviewItem label={sq ? 'Eksperti përgjegjës' : 'Responsible expert'}>
-                  {responsibleExpert?.name || (sq ? 'Pa caktuar' : 'Unassigned')}
+                <ReviewItem label={L(uiLang, 'Eksperti përgjegjës', 'Responsible expert', 'Verantwortlicher Experte')}>
+                  {responsibleExpert?.name || (L(uiLang, 'Pa caktuar', 'Unassigned', 'Nicht zugewiesen'))}
                 </ReviewItem>
               ) : null}
-              <ReviewItem label={sq ? 'Titulli' : 'Title'} wide>
+              <ReviewItem label={L(uiLang, 'Titulli', 'Title', 'Titel')} wide>
                 <strong>{title}</strong>
               </ReviewItem>
-              <ReviewItem label={sq ? 'Kategoria' : 'Category'}>
+              <ReviewItem label={L(uiLang, 'Kategoria', 'Category', 'Kategorie')}>
                 {selectedCategory ? catalogLabel(selectedCategory, catalogLanguage) : notFilled}
               </ReviewItem>
-              <ReviewItem label={sq ? 'Nënkategoria' : 'Subcategory'}>
+              <ReviewItem label={L(uiLang, 'Nënkategoria', 'Subcategory', 'Unterkategorie')}>
                 {selectedSubcategory ? catalogLabel(selectedSubcategory, catalogLanguage) : notFilled}
               </ReviewItem>
             </ReviewSection>
 
-            <ReviewSection title={stepLabels[1]} editLabel={sq ? 'Ndrysho' : 'Edit'} onEdit={() => goToStep(1)}>
-              <ReviewItem label={sq ? 'Përshkrimi' : 'Description'} wide>
+            <ReviewSection title={stepLabels[1]} editLabel={L(uiLang, 'Ndrysho', 'Edit', 'Bearbeiten')} onEdit={() => goToStep(1)}>
+              <ReviewItem label={L(uiLang, 'Përshkrimi', 'Description', 'Beschreibung')} wide>
                 <span className="ds-review-text">{description}</span>
               </ReviewItem>
             </ReviewSection>
 
-            <ReviewSection title={sq ? 'Detajet' : 'Details'} editLabel={sq ? 'Ndrysho' : 'Edit'} onEdit={() => goToStep(2)}>
-              <ReviewItem label={sq ? 'Mënyra e ofrimit' : 'Delivery mode'}>
+            <ReviewSection title={L(uiLang, 'Detajet', 'Details', 'Details')} editLabel={L(uiLang, 'Ndrysho', 'Edit', 'Bearbeiten')} onEdit={() => goToStep(2)}>
+              <ReviewItem label={L(uiLang, 'Mënyra e ofrimit', 'Delivery mode', 'Erbringungsart')}>
                 {reviewModes.length ? (
                   <span className="ds-review-chips">
                     {reviewModes.map((mode) => (
@@ -1704,16 +1693,16 @@ export default function ProviderServicesPanel() {
                   </span>
                 ) : notFilled}
               </ReviewItem>
-              <ReviewItem label={sq ? 'Gjuhët' : 'Languages'}>
+              <ReviewItem label={L(uiLang, 'Gjuhët', 'Languages', 'Sprachen')}>
                 {reviewLanguages.length ? reviewLanguages.join(', ') : notFilled}
               </ReviewItem>
-              <ReviewItem label={sq ? 'Lokacioni' : 'Location'}>
-                {location ? locationLabel(location, 'sq') : notFilled}
+              <ReviewItem label={L(uiLang, 'Lokacioni', 'Location', 'Ort')}>
+                {location ? locationLabel(location, catalogLanguage) : notFilled}
               </ReviewItem>
-              <ReviewItem label={sq ? 'Çmimi' : 'Price'}>
+              <ReviewItem label={L(uiLang, 'Çmimi', 'Price', 'Preis')}>
                 <strong>{reviewPrice}</strong>
               </ReviewItem>
-              <ReviewItem label={sq ? 'Rezervimi' : 'Booking'}>{reviewAvailability}</ReviewItem>
+              <ReviewItem label={L(uiLang, 'Rezervimi', 'Booking', 'Buchung')}>{reviewAvailability}</ReviewItem>
               {showCategoryFields
                 ? categorySpecificFields(extensionFields).map((field) => (
                   <ReviewItem key={field.key} label={fieldLabel(field, catalogLanguage)}>
@@ -1724,11 +1713,11 @@ export default function ProviderServicesPanel() {
             </ReviewSection>
 
             <ReviewSection
-              title={sq ? 'Foto dhe portofol' : 'Photos & portfolio'}
-              editLabel={sq ? 'Ndrysho' : 'Edit'}
+              title={L(uiLang, 'Foto dhe portofol', 'Photos & portfolio', 'Fotos & Portfolio')}
+              editLabel={L(uiLang, 'Ndrysho', 'Edit', 'Bearbeiten')}
               onEdit={() => goToStep(3)}
             >
-              <ReviewItem label={sq ? 'Foto' : 'Photos'} wide>
+              <ReviewItem label={L(uiLang, 'Foto', 'Photos', 'Fotos')} wide>
                 {photos.length ? (
                   <span className="ds-review-photos">
                     {photos.map((url) => (
@@ -1736,13 +1725,13 @@ export default function ProviderServicesPanel() {
                     ))}
                   </span>
                 ) : (
-                  <span className="ds-review-empty">{sq ? 'Pa foto (opsionale)' : 'No photos (optional)'}</span>
+                  <span className="ds-review-empty">{L(uiLang, 'Pa foto (opsionale)', 'No photos (optional)', 'Keine Fotos (optional)')}</span>
                 )}
               </ReviewItem>
               <ReviewItem label="Portfolio URL" wide>
                 {portfolioUrl.trim() ? <span className="ds-review-url">{portfolioUrl.trim()}</span> : notFilled}
               </ReviewItem>
-              <ReviewItem label={sq ? 'Shembuj pune' : 'Work samples'} wide>
+              <ReviewItem label={L(uiLang, 'Shembuj pune', 'Work samples', 'Arbeitsproben')} wide>
                 {workSamples.trim() ? <span className="ds-review-text">{workSamples}</span> : notFilled}
               </ReviewItem>
             </ReviewSection>
@@ -1755,7 +1744,7 @@ export default function ProviderServicesPanel() {
               <div className="ds-wizard-todo" role="status">
                 <Info size={16} aria-hidden />
                 <div>
-                  <strong>{sq ? 'Për të vazhduar:' : 'To continue:'}</strong>
+                  <strong>{L(uiLang, 'Për të vazhduar:', 'To continue:', 'Zum Fortfahren:')}</strong>
                   <ul>
                     {currentIssues.map((issue) => (
                       <li key={issue}>{issue}</li>
@@ -1766,9 +1755,7 @@ export default function ProviderServicesPanel() {
             ) : null}
             {step === REVIEW_STEP && firstInvalidStep !== -1 ? (
               <p className="ds-error">
-                {sq
-                  ? `Plotëso hapin “${stepLabels[firstInvalidStep]}” para publikimit.`
-                  : `Complete the “${stepLabels[firstInvalidStep]}” step before publishing.`}
+                {L(uiLang, `Plotëso hapin “${stepLabels[firstInvalidStep]}” para publikimit.`, `Complete the “${stepLabels[firstInvalidStep]}” step before publishing.`, `Schließe den Schritt „${stepLabels[firstInvalidStep]}“ ab, bevor du veröffentlichst.`)}
               </p>
             ) : null}
             {error ? <p className="ds-error">{error}</p> : null}
@@ -1777,18 +1764,18 @@ export default function ProviderServicesPanel() {
               {step > 0 ? (
                 <Button variant="outline" onPress={() => goToStep(step - 1)} isDisabled={submitting}>
                   <ArrowLeft size={16} aria-hidden />
-                  {sq ? 'Mbrapa' : 'Back'}
+                  {L(uiLang, 'Mbrapa', 'Back', 'Zurück')}
                 </Button>
               ) : editingId || services.length > 0 ? (
                 <Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={submitting}>
-                  {sq ? 'Anulo' : 'Cancel'}
+                  {L(uiLang, 'Anulo', 'Cancel', 'Abbrechen')}
                 </Button>
               ) : (
                 <span />
               )}
               {step < REVIEW_STEP ? (
                 <Button variant="primary" onPress={goNext} isDisabled={currentIssues.length > 0}>
-                  {sq ? 'Vazhdo' : 'Continue'}
+                  {L(uiLang, 'Vazhdo', 'Continue', 'Weiter')}
                   <ArrowRight size={16} aria-hidden />
                 </Button>
               ) : (
@@ -1801,11 +1788,11 @@ export default function ProviderServicesPanel() {
                 >
                   {submitting
                     ? editingId
-                      ? (sq ? 'Duke ruajtur…' : 'Saving…')
-                      : (sq ? 'Duke publikuar…' : 'Publishing…')
+                      ? (L(uiLang, 'Duke ruajtur…', 'Saving…', 'Speichern…'))
+                      : (L(uiLang, 'Duke publikuar…', 'Publishing…', 'Veröffentlichen…'))
                     : editingId
-                      ? (sq ? 'Ruaj ndryshimet' : 'Save changes')
-                      : (sq ? 'Publiko shërbimin' : 'Publish service')}
+                      ? (L(uiLang, 'Ruaj ndryshimet', 'Save changes', 'Änderungen speichern'))
+                      : (L(uiLang, 'Publiko shërbimin', 'Publish service', 'Dienst veröffentlichen'))}
                 </Button>
               )}
             </div>
@@ -1814,8 +1801,8 @@ export default function ProviderServicesPanel() {
         </Card.Content>
       </Card>
       ) : null}
-      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(deletingId)} title={sq ? 'Fshi ofertën?' : 'Delete this offer?'} description={sq ? `“${deleteTarget?.title ?? ''}” do të fshihet përgjithmonë. Ky veprim nuk mund të zhbëhet.` : `“${deleteTarget?.title ?? ''}” will be permanently deleted. This cannot be undone.`} confirmLabel={sq ? 'Fshi' : 'Delete'} />
-      <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { closeForm(); setConfirmCancel(false) }} title={sq ? 'Hidh ndryshimet?' : 'Discard changes?'} description={sq ? 'Ndryshimet e paruajtura në ofertë do të humbasin.' : 'Unsaved changes to this offer will be lost.'} confirmLabel={sq ? 'Hidh ndryshimet' : 'Discard changes'} />
+      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(deletingId)} title={L(uiLang, 'Fshi ofertën?', 'Delete this offer?', 'Dieses Angebot löschen?')} description={L(uiLang, `“${deleteTarget?.title ?? ''}” do të fshihet përgjithmonë. Ky veprim nuk mund të zhbëhet.`, `“${deleteTarget?.title ?? ''}” will be permanently deleted. This cannot be undone.`, `„${deleteTarget?.title ?? ''}“ wird dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.`)} confirmLabel={L(uiLang, 'Fshi', 'Delete', 'Löschen')} />
+      <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { closeForm(); setConfirmCancel(false) }} title={L(uiLang, 'Hidh ndryshimet?', 'Discard changes?', 'Änderungen verwerfen?')} description={L(uiLang, 'Ndryshimet e paruajtura në ofertë do të humbasin.', 'Unsaved changes to this offer will be lost.', 'Ungespeicherte Änderungen an diesem Angebot gehen verloren.')} confirmLabel={L(uiLang, 'Hidh ndryshimet', 'Discard changes', 'Änderungen verwerfen')} />
     </section>
   )
 }

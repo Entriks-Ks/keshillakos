@@ -2,28 +2,16 @@ import { collectionSummary, collectionTotal } from '../api/pagination'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Alert, Button, buttonVariants, Card, Chip, Dropdown, Label, Skeleton, Tabs } from '@heroui/react'
-import {
-  CalendarDays,
-  Clock,
-  Inbox,
-  Mail,
-  MapPin,
-  MessageCircle,
-  MoreHorizontal,
-  Phone,
-  Search,
-  Star,
-  UserRound,
-} from 'lucide-react'
+import { Alert, Button, buttonVariants, Card, Chip, Skeleton, Tabs } from '@heroui/react'
+import { CalendarDays, Inbox, Mail, MapPin, MessageCircle, Phone, Search } from 'lucide-react'
 import { fetchMyRequests, type RequestStatus, type ServiceRequestItem } from '../api/requests'
 import ProfileAvatar from '../components/ProfileAvatar'
 import RateProvider from '../components/RateProvider'
 import StartChatButton from '../components/StartChatButton'
 import { getErrorMessage } from '../utils/errors'
 import { providerPath } from '../utils/publicPaths'
-import { marketplaceLink } from '../utils/siteNavMenu'
 import { formatAmount, formatWhen, REQUEST_STATUS } from './requestDisplay'
 import './UserOverview.css'
 import './UserRequests.css'
@@ -31,27 +19,15 @@ import './UserRequests.css'
 type FilterId = 'all' | 'waiting' | 'accepted' | 'completed' | 'closed'
 
 const FILTERS: Array<{ id: FilterId; label: string; statuses?: RequestStatus[] }> = [
-  { id: 'all', label: 'Të gjitha' },
-  { id: 'waiting', label: 'Në pritje', statuses: ['open', 'pending', 'read'] },
-  { id: 'accepted', label: 'Pranuar', statuses: ['accepted'] },
-  { id: 'completed', label: 'Përfunduar', statuses: ['completed'] },
-  { id: 'closed', label: 'Refuzuar / tërhequr', statuses: ['rejected', 'withdrawn'] },
+  { id: 'all', label: 'req.all' },
+  { id: 'waiting', label: 'req.waiting', statuses: ['open', 'pending', 'read'] },
+  { id: 'accepted', label: 'req.accepted', statuses: ['accepted'] },
+  { id: 'completed', label: 'req.completed', statuses: ['completed'] },
+  { id: 'closed', label: 'req.closed', statuses: ['rejected', 'withdrawn'] },
 ]
 
 const AWAITING: RequestStatus[] = ['open', 'pending', 'read']
 const SCHEDULABLE: RequestStatus[] = ['open', 'pending', 'read', 'accepted']
-
-const CONTACT = {
-  chat: { label: 'Chat', icon: MessageCircle },
-  phone: { label: 'Telefon', icon: Phone },
-  email: { label: 'Email', icon: Mail },
-} as const
-
-const URGENCY_LABELS: Record<string, string> = {
-  today: 'Sot',
-  this_week: 'Këtë javë',
-  flexible: 'Fleksibël',
-}
 
 function formatAppointment(startAt?: string, endAt?: string) {
   if (!startAt || !endAt) return null
@@ -64,11 +40,8 @@ function formatAppointment(startAt?: string, endAt?: string) {
   return `${day} · ${from} – ${to}`
 }
 
-function wasUpdated(item: ServiceRequestItem) {
-  return new Date(item.updatedAt).getTime() - new Date(item.createdAt).getTime() > 60_000
-}
-
 function Stats({ requests, now }: { requests: ServiceRequestItem[]; now: number }) {
+  const { t } = useTranslation()
   const awaiting = AWAITING.reduce((sum, status) => sum + (collectionSummary(requests).statusCounts?.[status] ?? 0), 0)
   const offers = collectionSummary(requests).offers ?? 0
   const upcoming = requests
@@ -76,27 +49,18 @@ function Stats({ requests, now }: { requests: ServiceRequestItem[]; now: number 
     .sort((a, b) => new Date(a.requestedStartAt!).getTime() - new Date(b.requestedStartAt!).getTime())
 
   const stats = [
-    {
-      label: 'Në pritje të përgjigjes',
-      value: awaiting,
-      hint: awaiting > 0 ? 'Ofruesi ende s’është përgjigjur' : 'Të gjitha kanë përgjigje',
-    },
-    { label: 'Oferta të marra', value: offers, hint: offers > 0 ? 'Shiko detajet te kërkesa' : 'Asnjë ende' },
-    {
-      label: 'Termine të kërkuara',
-      value: collectionSummary(requests).upcoming ?? upcoming.length,
-      hint: upcoming[0]?.requestedStartAt ? `Tjetri: ${formatWhen(upcoming[0].requestedStartAt)}` : 'Asnjë i ardhshëm',
-    },
+    { label: t('req.waiting'), value: awaiting },
+    { label: t('req.offers'), value: offers },
+    { label: t('req.appointments'), value: collectionSummary(requests).upcoming ?? upcoming.length },
   ]
 
   return (
     <Card className="uo-card">
-      <ul className="ur-stats" aria-label="Përmbledhje e kërkesave">
+      <ul className="ur-stats" aria-label={t('req.summary')}>
         {stats.map((stat) => (
           <li key={stat.label} className="ur-stat">
             <span className="ur-stat-label">{stat.label}</span>
             <strong className="ur-stat-value">{stat.value}</strong>
-            <span className="ur-stat-hint">{stat.hint}</span>
           </li>
         ))}
       </ul>
@@ -117,22 +81,21 @@ function Response({ label, amount, children }: { label: string; amount?: string;
 }
 
 function RequestRow({ item, showRating }: { item: ServiceRequestItem; showRating: boolean }) {
+  const { t } = useTranslation()
   const status = REQUEST_STATUS[item.status] ?? { label: item.status, color: 'default' as const }
-  const provider = item.providerName || 'Ofruesi'
+  const provider = item.providerName || t('req.provider')
   const profileTo = item.providerUid ? providerPath({ uid: item.providerUid, name: item.providerName }) : null
   const appointment = formatAppointment(item.requestedStartAt, item.requestedEndAt)
-  const contact = CONTACT[item.contactMethod]
   const contactValue =
     item.contactPhone || (item.contactMethod === 'email' ? item.contactEmail || item.seekerEmail : '')
-  const title = item.serviceTitle || item.need || 'Kërkesë'
-  const showNeed = Boolean(item.serviceTitle && item.need)
-  const awaiting = AWAITING.includes(item.status)
+  const title = item.serviceTitle || item.need || t('req.request')
+  const detail = item.serviceTitle && item.need?.trim() && item.need.trim() !== item.serviceTitle ? item.need.trim() : ''
 
   return (
     <li className="ur-item">
-      <ProfileAvatar seed={item.providerUid || item.providerName} size={36} alt="" className="ur-avatar" />
       <div className="ur-main">
         <div className="ur-top">
+          <ProfileAvatar seed={item.providerUid || item.providerName} size={40} alt="" className="ur-avatar" />
           <div className="ur-titles">
             <h3 className="ur-title">{title}</h3>
             <p className="ur-sub">
@@ -144,16 +107,15 @@ function RequestRow({ item, showRating }: { item: ServiceRequestItem; showRating
                 <span className="ur-provider">{provider}</span>
               )}
               <span aria-hidden>·</span>
-              <time dateTime={item.createdAt}>Dërguar {formatWhen(item.createdAt)}</time>
+              <time dateTime={item.createdAt}>{formatWhen(item.createdAt)}</time>
             </p>
           </div>
           <Chip size="sm" variant="soft" color={status.color} className="ur-status">
-            <Chip.Label>{status.label}</Chip.Label>
+            <Chip.Label>{t(status.label)}</Chip.Label>
           </Chip>
         </div>
 
-        {showNeed ? <p className="ur-need">{item.need}</p> : null}
-        {item.message ? <p className="ur-message">{item.message}</p> : null}
+        {detail ? <p className="ur-need">{detail}</p> : null}
 
         <ul className="ur-facts">
           {appointment ? (
@@ -162,17 +124,10 @@ function RequestRow({ item, showRating }: { item: ServiceRequestItem; showRating
               {appointment}
             </li>
           ) : null}
-          {contact ? (
+          {contactValue ? (
             <li>
-              <contact.icon size={14} aria-hidden />
-              {contact.label}
-              {contactValue ? ` · ${contactValue}` : ''}
-            </li>
-          ) : null}
-          {item.urgency ? (
-            <li>
-              <Clock size={14} aria-hidden />
-              {URGENCY_LABELS[item.urgency] || item.urgency}
+              {item.contactMethod === 'email' ? <Mail size={14} aria-hidden /> : item.contactMethod === 'phone' ? <Phone size={14} aria-hidden /> : <MessageCircle size={14} aria-hidden />}
+              {contactValue}
             </li>
           ) : null}
           {item.location ? (
@@ -184,28 +139,13 @@ function RequestRow({ item, showRating }: { item: ServiceRequestItem; showRating
         </ul>
 
         {item.offer ? (
-          <Response label={`Oferta nga ${provider}`} amount={formatAmount(item.offer)}>
+          <Response label={t('req.offer')} amount={formatAmount(item.offer)}>
             {item.offer.description}
           </Response>
         ) : null}
-        {item.providerNote ? <Response label="Përgjigja e ofruesit">{item.providerNote}</Response> : null}
-        {!item.offer && !item.providerNote && (awaiting || item.status === 'accepted') ? (
-          <p className="ur-waiting">
-            <Clock size={14} aria-hidden />
-            {awaiting
-              ? `Në pritje të përgjigjes nga ${provider}.`
-              : 'Ofruesi do ta shënojë kërkesën si të përfunduar.'}
-          </p>
-        ) : null}
+        {item.providerNote ? <Response label={t('req.reply')}>{item.providerNote}</Response> : null}
 
         <div className="ur-foot">
-          {wasUpdated(item) ? (
-            <time className="ur-updated" dateTime={item.updatedAt}>
-              Përditësuar {formatWhen(item.updatedAt)}
-            </time>
-          ) : (
-            <span />
-          )}
           <div className="ur-actions">
             {item.providerUid ? (
               <StartChatButton
@@ -214,35 +154,14 @@ function RequestRow({ item, showRating }: { item: ServiceRequestItem; showRating
                 serviceId={item.serviceId}
                 serviceTitle={item.serviceTitle}
                 className={`${buttonVariants({ variant: 'outline', size: 'sm' })} ur-chat`}
-                label="Dërgo mesazh"
+                label={t('req.message')}
                 hideGuestHint
               />
-            ) : (
-              <Link to="/dashboard/user/messages" className={`${buttonVariants({ variant: 'outline', size: 'sm' })} ur-chat`}>
-                <MessageCircle size={16} aria-hidden />
-                Mesazhet
-              </Link>
-            )}
+            ) : null}
             {profileTo ? (
-              <Dropdown>
-                <Button isIconOnly variant="ghost" size="sm" className="ur-more" aria-label={`Më shumë për ${provider}`}>
-                  <MoreHorizontal size={18} aria-hidden />
-                </Button>
-                <Dropdown.Popover placement="bottom end" className="ur-menu">
-                  <Dropdown.Menu aria-label="Veprime për kërkesën">
-                    <Dropdown.Item id="profile" href={profileTo} textValue="Shiko profilin">
-                      <UserRound size={16} aria-hidden className="ur-menu-icon" />
-                      <Label>Shiko profilin</Label>
-                    </Dropdown.Item>
-                    {item.status === 'completed' ? (
-                      <Dropdown.Item id="reviews" href={`${profileTo}#vleresimet`} textValue="Shiko vlerësimet">
-                        <Star size={16} aria-hidden className="ur-menu-icon" />
-                        <Label>Shiko vlerësimet</Label>
-                      </Dropdown.Item>
-                    ) : null}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown>
+              <Link to={profileTo} className={`${buttonVariants({ variant: 'ghost', size: 'sm' })} ur-chat`}>
+                {t('req.profile')}
+              </Link>
             ) : null}
           </div>
         </div>
@@ -275,28 +194,18 @@ function ListSkeleton() {
 }
 
 function EmptyState() {
-  const experts = marketplaceLink('experts')
-  const companies = marketplaceLink('companies')
+  const { t } = useTranslation()
   return (
     <Card className="uo-card ur-empty">
       <span className="ur-empty-icon" aria-hidden>
         <Inbox size={22} />
       </span>
-      <h2>Ende nuk ke dërguar kërkesë</h2>
-      <p>
-        Zgjidh një shërbim, ekspert ose kompani dhe dërgo kërkesën tënde. Këtu do të ndjekësh statusin, përgjigjet dhe
-        ofertat e ofruesve.
-      </p>
+      <h2>{t('req.emptyMine')}</h2>
+      <p>{t('req.emptyMineText')}</p>
       <div className="ur-empty-actions">
         <Link to="/ofertat" className={buttonVariants({ variant: 'primary', size: 'sm' })}>
           <Search size={16} aria-hidden />
-          Shfleto shërbimet
-        </Link>
-        <Link to={experts.to} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-          {experts.label}
-        </Link>
-        <Link to={companies.to} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-          {companies.label}
+          {t('req.browse')}
         </Link>
       </div>
     </Card>
@@ -304,6 +213,7 @@ function EmptyState() {
 }
 
 export function UserRequestsPage() {
+  const { t } = useTranslation()
   const [requests, setRequests] = useState<ServiceRequestItem[]>([])
   const [loadedAt, setLoadedAt] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -360,15 +270,14 @@ export function UserRequestsPage() {
   }, [requests])
 
   return (
-    <section className="uo ur">
+    <section className="uo ur ur-simple">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>Kërkesat e mia</h1>
-          <p>Ndiq statusin e kërkesave që ke dërguar, lexo përgjigjet dhe ofertat e ofruesve dhe vazhdo bisedën me ta.</p>
+          <h1>{t('dash.myRequests')}</h1>
         </div>
         <Link to="/ofertat" className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
           <Search size={16} aria-hidden />
-          Shiko ofertat
+          {t('req.browse')}
         </Link>
       </header>
 
@@ -376,11 +285,11 @@ export function UserRequestsPage() {
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Kërkesat nuk u ngarkuan</Alert.Title>
+            <Alert.Title>{t('req.loadError')}</Alert.Title>
             <Alert.Description>{error}</Alert.Description>
           </Alert.Content>
           <Button size="sm" variant="outline" onPress={reload}>
-            Provo përsëri
+            {t('page.retry')}
           </Button>
         </Alert>
       ) : loading ? (
@@ -412,10 +321,10 @@ export function UserRequestsPage() {
               className="ur-tabs"
             >
               <Tabs.ListContainer className="ur-tabs-bar">
-                <Tabs.List aria-label="Filtro kërkesat sipas statusit">
+                <Tabs.List aria-label={t('req.filter')}>
                   {filters.map((item) => (
                     <Tabs.Tab key={item.id} id={item.id} className="ur-tab">
-                      {item.label}
+                      {t(item.label)}
                       <span className="ur-tab-count">{item.statuses ? item.statuses.reduce((sum, status) => sum + (collectionSummary(requests).statusCounts?.[status] ?? 0), 0) : collectionTotal(requests)}</span>
                       <Tabs.Indicator />
                     </Tabs.Tab>

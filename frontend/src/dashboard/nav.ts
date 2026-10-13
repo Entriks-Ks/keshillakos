@@ -2,6 +2,7 @@ import type { UserRole } from '../api/auth'
 import type { LucideIcon } from 'lucide-react'
 import {
   Briefcase,
+  CreditCard,
   CalendarDays,
   FolderKanban,
   Flag,
@@ -33,14 +34,14 @@ export type DashNavItem = {
 
 const profile = (base: string): DashNavItem => ({
   to: `${base}/profile`,
-  label: 'Profili',
+  label: 'dash.profile',
   icon: UserRound,
   section: 'account',
 })
 
 const settings = (base: string): DashNavItem => ({
   to: `${base}/settings`,
-  label: 'Cilësimet',
+  label: 'dash.settings',
   icon: Settings,
   section: 'account',
 })
@@ -51,30 +52,30 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
       return [
         {
           to: '/dashboard/user',
-          label: 'Përmbledhje',
-          shortLabel: 'Fillimi',
+          label: 'dash.overview',
+          shortLabel: 'dash.home',
           end: true,
           icon: LayoutDashboard,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/user/requests',
-          label: 'Kërkesat e mia',
-          shortLabel: 'Kërkesat',
+          label: 'dash.myRequests',
+          shortLabel: 'dash.requests',
           icon: Inbox,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/user/messages',
-          label: 'Mesazhet',
-          shortLabel: 'Chat',
+          label: 'dash.messages',
+          shortLabel: 'dash.chat',
           icon: MessageCircle,
           mobilePrimary: true,
         },
         {
           to: '/',
-          label: 'Kërko ndihmë',
-          shortLabel: 'Kërko',
+          label: 'dash.findHelp',
+          shortLabel: 'dash.search',
           end: true,
           icon: Search,
           mobilePrimary: true,
@@ -86,41 +87,46 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
       return [
         {
           to: '/dashboard/provider',
-          label: 'Përmbledhje',
-          shortLabel: 'Fillimi',
+          label: 'dash.overview',
+          shortLabel: 'dash.home',
           end: true,
           icon: LayoutDashboard,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/provider/inbox',
-          label: 'Kërkesat e marra',
-          shortLabel: 'Inbox',
+          label: 'dash.received',
+          shortLabel: 'dash.inbox',
           icon: Inbox,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/provider/my-requests',
-          label: 'Kërkesat e mia',
-          shortLabel: 'Të miat',
+          label: 'dash.myRequests',
+          shortLabel: 'dash.mine',
           icon: Send,
         },
         {
           to: '/dashboard/provider/messages',
-          label: 'Mesazhet',
-          shortLabel: 'Chat',
+          label: 'dash.messages',
+          shortLabel: 'dash.chat',
           icon: MessageCircle,
           mobilePrimary: true,
         },
         {
+          to: '/dashboard/provider/plans',
+          label: 'dash.plans',
+          icon: CreditCard,
+        },
+        {
           to: '/dashboard/provider/services',
-          label: 'Shërbimet',
-          shortLabel: 'Ofertat',
+          label: 'dash.services',
+          shortLabel: 'dash.offers',
           icon: Briefcase,
           mobilePrimary: true,
         },
-        { to: '/dashboard/provider/availability', label: 'Disponueshmëria', icon: CalendarDays },
-        { to: '/dashboard/provider/ratings', label: 'Vlerësimet', icon: Star },
+        { to: '/dashboard/provider/availability', label: 'dash.availability', icon: CalendarDays },
+        { to: '/dashboard/provider/ratings', label: 'dash.ratings', icon: Star },
         profile('/dashboard/provider'),
         settings('/dashboard/provider'),
       ]
@@ -128,47 +134,52 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
       return [
         {
           to: '/dashboard/company',
-          label: 'Përmbledhje',
-          shortLabel: 'Fillimi',
+          label: 'dash.overview',
+          shortLabel: 'dash.home',
           end: true,
           icon: LayoutDashboard,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/company/inbox',
-          label: 'Kërkesat e marra',
-          shortLabel: 'Inbox',
+          label: 'dash.received',
+          shortLabel: 'dash.inbox',
           icon: Inbox,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/company/my-requests',
-          label: 'Kërkesat e mia',
-          shortLabel: 'Të miat',
+          label: 'dash.myRequests',
+          shortLabel: 'dash.mine',
           icon: Send,
         },
         {
           to: '/dashboard/company/messages',
-          label: 'Mesazhet',
-          shortLabel: 'Chat',
+          label: 'dash.messages',
+          shortLabel: 'dash.chat',
           icon: MessageCircle,
           mobilePrimary: true,
         },
         {
+          to: '/dashboard/company/plans',
+          label: 'dash.plans',
+          icon: CreditCard,
+        },
+        {
           to: '/dashboard/company/services',
-          label: 'Shërbimet',
-          shortLabel: 'Ofertat',
+          label: 'dash.services',
+          shortLabel: 'dash.offers',
           icon: Briefcase,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/company/experts',
-          label: 'Ekspertët',
-          shortLabel: 'Ekipi',
+          label: 'dash.experts',
+          shortLabel: 'dash.team',
           icon: Users,
         },
-        { to: '/dashboard/company/availability', label: 'Disponueshmëria', icon: CalendarDays },
-        { to: '/dashboard/company/ratings', label: 'Vlerësimet', icon: Star },
+        { to: '/dashboard/company/availability', label: 'dash.availability', icon: CalendarDays },
+        { to: '/dashboard/company/ratings', label: 'dash.ratings', icon: Star },
         profile('/dashboard/company'),
         settings('/dashboard/company'),
       ]
@@ -176,40 +187,40 @@ export function getDashboardNav(role: UserRole): DashNavItem[] {
       return [
         {
           to: '/dashboard/admin',
-          label: 'Përmbledhje',
-          shortLabel: 'Fillimi',
+          label: 'dash.overview',
+          shortLabel: 'dash.home',
           end: true,
           icon: LayoutDashboard,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/admin/users',
-          label: 'Përdoruesit',
-          shortLabel: 'Llogaritë',
+          label: 'dash.users',
+          shortLabel: 'dash.accounts',
           icon: Users,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/admin/requests',
-          label: 'Të gjitha kërkesat',
-          shortLabel: 'Kërkesat',
+          label: 'dash.allRequests',
+          shortLabel: 'dash.requests',
           icon: FolderKanban,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/admin/messages',
-          label: 'Mesazhet',
-          shortLabel: 'Chat',
+          label: 'dash.messages',
+          shortLabel: 'dash.chat',
           icon: MessageCircle,
           mobilePrimary: true,
         },
         {
           to: '/dashboard/admin/feedback',
-          label: 'Feedback',
+          label: 'dash.feedback',
           icon: MessageSquarePlus,
           section: 'manage',
         },
-        { to: '/dashboard/admin/reports', label: 'Raportime', icon: Flag, section: 'manage' },
+        { to: '/dashboard/admin/reports', label: 'dash.reports', icon: Flag, section: 'manage' },
         profile('/dashboard/admin'),
         settings('/dashboard/admin'),
       ]
@@ -229,29 +240,29 @@ export function getMobilePrimaryNav(items: DashNavItem[]) {
 }
 
 export const NAV_GROUP_LABELS: Record<DashNavGroup, string> = {
-  main: 'Menu',
-  manage: 'Platforma',
-  account: 'Llogaria',
+  main: 'dash.menu',
+  manage: 'dash.platform',
+  account: 'dash.account',
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  user: 'Përdorues',
-  provider: 'Ofrues shërbimi',
-  company: 'Kompani',
-  admin: 'Admin',
+  user: 'role.user',
+  provider: 'role.provider',
+  company: 'role.company',
+  admin: 'role.admin',
 }
 
 /** Dashboard context names used by the shared shell (sidebar, top bar, context switch). */
 export const CONTEXT_LABELS: Record<UserRole, string> = {
-  user: 'Përdorues privat',
-  provider: 'Ekspert',
-  company: 'Kompani',
-  admin: 'Admin',
+  user: 'role.private',
+  provider: 'role.expert',
+  company: 'role.company',
+  admin: 'role.admin',
 }
 
 export const ROLE_HINTS: Record<UserRole, string> = {
-  user: 'Gjej ndihmë, ndiq kërkesat dhe flit me ofruesit.',
-  provider: 'Prano kërkesa, menaxho ofertat dhe oraret.',
-  company: 'Koordino ekipin, kërkesat dhe komunikimin.',
-  admin: 'Mbikëqyr përdoruesit, kërkesat dhe feedback-un.',
+  user: 'role.hintUser',
+  provider: 'role.hintProvider',
+  company: 'role.hintCompany',
+  admin: 'role.hintAdmin',
 }

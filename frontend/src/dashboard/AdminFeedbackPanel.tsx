@@ -61,7 +61,7 @@ export default function AdminFeedbackPanel() {
 
   return (
     <section className="uo ds ad">
-      <header className="uo-head"><div className="uo-head-copy"><h1>Feedback</h1><p>Mesazhet që vizitorët dhe përdoruesit dërgojnë për KëshillaKos nga fundi i faqes.</p></div></header>
+      <header className="uo-head"><div className="uo-head-copy"><h1>Feedback</h1><p>Mesazhet që vizitorët dhe përdoruesit dërgojnë për KLAW nga fundi i faqes.</p></div></header>
       {error ? <Alert status="danger" className="uo-alert"><Alert.Indicator /><Alert.Content><Alert.Title>Feedback nuk u ngarkua</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content></Alert> : null}
       <Card className="uo-card">
         <SectionHead title="Mesazhet" meta={!loading ? <span className="uo-card-meta">{fresh === 1 ? '1 i palexuar' : `${fresh} të palexuar`}</span> : null} />

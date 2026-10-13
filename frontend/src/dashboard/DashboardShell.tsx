@@ -1,5 +1,6 @@
 import MessageUnreadBadge from '../chat/MessageUnreadBadge'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from '@heroui/react'
 import type { DashboardContext } from '../api/auth'
@@ -13,6 +14,7 @@ import './Dashboard.css'
 import './DashboardNav.css'
 
 export default function DashboardShell() {
+  const { t } = useTranslation()
   const { user, logout, switchContext } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -30,7 +32,7 @@ export default function DashboardShell() {
       ? activePath === item.to
       : item.to !== '/' && activePath.startsWith(item.to),
   )
-  const pageTitle = active?.label ?? 'Dashboard'
+  const pageTitle = t(active?.label ?? 'dash.board')
   const roles = user.roles ?? [user.role]
   const contextOptions: ContextOption[] | null =
     roles.includes('provider') || roles.includes('company')
@@ -93,7 +95,7 @@ export default function DashboardShell() {
         </main>
       </div>
 
-      <nav className="dash-bottom-nav" aria-label="Navigimi mobil">
+      <nav className="dash-bottom-nav" aria-label={t('dash.mobileNav')}>
         {mobilePrimary.map((item) => {
           const Icon = item.icon
           return (
@@ -106,7 +108,7 @@ export default function DashboardShell() {
               {({ isActive }) => (
                 <>
                   <Icon size={20} strokeWidth={isActive ? 2.4 : 2} aria-hidden />
-                  <span>{item.shortLabel || item.label}{item.to.endsWith('/messages') && <MessageUnreadBadge />}</span>
+                  <span>{t(item.shortLabel || item.label)}{item.to.endsWith('/messages') && <MessageUnreadBadge />}</span>
                 </>
               )}
             </NavLink>

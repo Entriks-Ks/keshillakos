@@ -42,10 +42,14 @@ export default function ServiceOfferCard({ service, provider }: Props) {
   const servicePath = publicServicePath(service)
   const owner = service.provider
   const companyOwned = owner?.providerType === 'business' || owner?.role === 'company'
+  const listed = provider ?? fallbackProvider(service, companyOwned)
   const contact: MarketplaceProvider = {
-    ...(provider ?? fallbackProvider(service, companyOwned)),
+    ...listed,
     categories: [service.categoryId],
-    location: service.location || provider?.location || owner?.location,
+    location: service.location || listed.location || owner?.location,
+    publicPhone: listed.publicPhone || owner?.publicPhone,
+    publicEmail: listed.publicEmail || owner?.publicEmail,
+    website: listed.website || owner?.website,
   }
   const profilePath = providerPath(contact)
   const photo = provider?.photoUrl || owner?.profilePhoto

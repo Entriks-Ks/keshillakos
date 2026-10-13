@@ -1,6 +1,7 @@
 import KeshillaPagination from '../components/KeshillaPagination'
 import { emptyPagination, type PaginationMeta } from '../api/pagination'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { Button, SearchField, Tabs, ToggleButton } from '@heroui/react'
 import {
@@ -35,6 +36,7 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { useSavedLocation } from '../hooks/useSavedLocation'
+import { catalogLanguage } from '../i18n'
 import { getErrorMessage } from '../utils/errors'
 import { withCategoryLabels } from '../utils/marketplaceProvider'
 import {
@@ -61,8 +63,8 @@ const RATING_FILTERS = [
 
 const VISIBLE_CATEGORY_COUNT = 8
 
-function catalogLabel(item: { name: { sq: string; en: string } }) {
-  return item.name.sq || item.name.en
+function catalogLabel(item: { name: { sq: string; en: string } }, language: 'sq' | 'en') {
+  return item.name[language] || item.name.sq
 }
 
 function parseTab(value: string | null): MarketplaceTab {
@@ -70,37 +72,11 @@ function parseTab(value: string | null): MarketplaceTab {
   return 'services'
 }
 
-const TABS: Array<{ id: MarketplaceTab; label: string; icon: LucideIcon }> = [
-  { id: 'services', label: 'Shërbime', icon: BriefcaseBusiness },
-  { id: 'companies', label: 'Kompani', icon: Building2 },
-  { id: 'experts', label: 'Ekspertë', icon: UserRound },
+const TABS: Array<{ id: MarketplaceTab; icon: LucideIcon }> = [
+  { id: 'services', icon: BriefcaseBusiness },
+  { id: 'companies', icon: Building2 },
+  { id: 'experts', icon: UserRound },
 ]
-
-const TAB_COPY: Record<MarketplaceTab, {
-  placeholder: string
-  empty: string
-  error: string
-  result: (count: number) => string
-}> = {
-  services: {
-    placeholder: 'Kërko shërbim, fushë ose ofrues…',
-    empty: 'Shërbimet do të shfaqen këtu sapo të publikohen.',
-    error: 'Shërbimet nuk u ngarkuan',
-    result: (count) => (count === 1 ? 'shërbim' : 'shërbime'),
-  },
-  companies: {
-    placeholder: 'Kërko kompani ose fushë…',
-    empty: 'Kompanitë do të shfaqen këtu sapo të publikohen.',
-    error: 'Kompanitë nuk u ngarkuan',
-    result: () => 'kompani',
-  },
-  experts: {
-    placeholder: 'Kërko ekspert, profesion ose specialitet…',
-    empty: 'Ekspertët do të shfaqen këtu sapo të publikohen.',
-    error: 'Ekspertët nuk u ngarkuan',
-    result: (count) => (count === 1 ? 'ekspert' : 'ekspertë'),
-  },
-}
 
 function parseSort(value: string | null): MarketplaceSort {
   if (value === 'newest' || value === 'rating' || value === 'reviews' || value === 'relevance') return value
@@ -148,6 +124,8 @@ function ResultsState({
 type ActiveChip = { key: string; label: string; clear: () => void }
 
 export default function OffersPage() {
+  const { t, i18n } = useTranslation()
+  const namesLang = catalogLanguage(i18n.language)
   const [searchParams, setSearchParams] = useSearchParams()
   const { languages } = useCatalogOptions()
   const [providers, setProviders] = useState<MarketplaceProvider[]>([])
@@ -371,7 +349,6 @@ export default function OffersPage() {
   const filteredCompanies = labeledProviders.filter((provider) => provider.providerType === 'business')
   const filteredServices = services
 
-  const copy = TAB_COPY[tab]
   const loading = tab === 'services' ? servicesLoading : providersLoading
   const error = tab === 'services' ? servicesError : providersError
   const tabCounts: Record<MarketplaceTab, number | null> = {
@@ -380,17 +357,27 @@ export default function OffersPage() {
     experts: providersLoading ? null : counts.experts,
   }
   const resultCount = tabCounts[tab] ?? 0
-  const resultLabel = copy.result(resultCount)
+  const offerKey = tab === 'services' ? 'Services' : tab === 'companies' ? 'Companies' : 'Experts'
+  const copy = {
+    placeholder: t(`offers.placeholder${offerKey}`),
+    empty: t(`offers.empty${offerKey}`),
+    error: t(`offers.error${offerKey}`),
+  }
+  const resultLabel = tab === 'companies'
+    ? t('offers.nounCompany')
+    : resultCount === 1
+      ? t(tab === 'services' ? 'offers.nounService' : 'offers.nounExpert')
+      : t(tab === 'services' ? 'offers.nounServices' : 'offers.nounExperts')
 
   const languageLabel = languages.find((item) => item.value === language)?.label ?? language
-  const ratingLabel = RATING_FILTERS.find((item) => item.id === minRating)?.label
+  const ratingLabel = minRating === '4' ? t('offers.stars4') : minRating === '4.5' ? t('offers.stars45') : ''
 
   const activeChips: ActiveChip[] = []
   if (query.trim()) activeChips.push({ key: 'q', label: `“${query.trim()}”`, clear: () => setQuery('') })
   if (selectedCategory) {
     activeChips.push({
       key: 'category',
-      label: catalogLabel(selectedCategory),
+      label: catalogLabel(selectedCategory, namesLang),
       clear: () => {
         setCategoryId('all')
         setSubcategoryId('all')
@@ -398,16 +385,16 @@ export default function OffersPage() {
     })
   }
   if (selectedSubcategory) {
-    activeChips.push({ key: 'subcategory', label: catalogLabel(selectedSubcategory), clear: () => setSubcategoryId('all') })
+    activeChips.push({ key: 'subcategory', label: catalogLabel(selectedSubcategory, namesLang), clear: () => setSubcategoryId('all') })
   }
   if (minRating && ratingLabel) activeChips.push({ key: 'rating', label: ratingLabel, clear: () => setMinRating('') })
   if (selectedLocation && cityName) activeChips.push({ key: 'city', label: cityName, clear: () => { void changeLocation(null) } })
   if (delivery !== 'all') {
-    activeChips.push({ key: 'delivery', label: delivery === 'online' ? 'Online' : 'Fizikisht', clear: () => setDelivery('all') })
+    activeChips.push({ key: 'delivery', label: delivery === 'online' ? 'Online' : t('offers.inPerson'), clear: () => setDelivery('all') })
   }
   if (language !== 'all') activeChips.push({ key: 'language', label: languageLabel, clear: () => setLanguage('all') })
   if (verification === 'verified') {
-    activeChips.push({ key: 'verified', label: 'Të verifikuara', clear: () => setVerification('all') })
+    activeChips.push({ key: 'verified', label: t('offers.verified'), clear: () => setVerification('all') })
   }
   const hasActiveFilters = activeChips.length > 0
   const sheetFilterCount = activeChips.filter((chip) => chip.key !== 'q' && chip.key !== 'city').length
@@ -441,14 +428,14 @@ export default function OffersPage() {
 
   const filterSections = (
     <>
-      <FilterSection title="Kategoria">
+      <FilterSection title={t('offers.category')}>
         <div className="of-chip-list">
           <ToggleButton
             className="of-chip"
             isSelected={!selectedCategory}
             onChange={() => selectCategory('all')}
           >
-            Të gjitha
+            {t('offers.all')}
           </ToggleButton>
           {visibleCategories.map((category) => (
             <ToggleButton
@@ -457,26 +444,26 @@ export default function OffersPage() {
               isSelected={selectedCategory?._id === category._id}
               onChange={(selected) => selectCategory(selected ? category._id : 'all')}
             >
-              {catalogLabel(category)}
+              {catalogLabel(category, namesLang)}
             </ToggleButton>
           ))}
         </div>
         {categories.length > VISIBLE_CATEGORY_COUNT ? (
           <button type="button" className="of-link-btn" onClick={() => setShowAllCategories((value) => !value)}>
-            {showAllCategories ? 'Shfaq më pak' : `Shfaq të gjitha (${categories.length})`}
+            {showAllCategories ? t('offers.showLess') : t('offers.showAll', { count: categories.length })}
           </button>
         ) : null}
       </FilterSection>
 
       {selectedCategory && subcategories.length > 0 ? (
-        <FilterSection title="Nënkategoria">
+        <FilterSection title={t('offers.subcategory')}>
           <div className="of-chip-list">
             <ToggleButton
               className="of-chip"
               isSelected={subcategoryId === 'all'}
               onChange={() => setSubcategoryId('all')}
             >
-              Të gjitha
+              {t('offers.all')}
             </ToggleButton>
             {subcategories.map((subcategory) => (
               <ToggleButton
@@ -485,14 +472,14 @@ export default function OffersPage() {
                 isSelected={subcategoryId === subcategory._id}
                 onChange={(selected) => setSubcategoryId(selected ? subcategory._id : 'all')}
               >
-                {catalogLabel(subcategory)}
+                {catalogLabel(subcategory, namesLang)}
               </ToggleButton>
             ))}
           </div>
         </FilterSection>
       ) : null}
 
-      <FilterSection title="Vlerësimi">
+      <FilterSection title={t('offers.ratingTitle')}>
         <div className="of-chip-list">
           {RATING_FILTERS.map((item) => (
             <ToggleButton
@@ -502,13 +489,13 @@ export default function OffersPage() {
               onChange={() => setMinRating(item.id)}
             >
               {item.id ? <Star size={13} aria-hidden className="of-chip-star" /> : null}
-              {item.label}
+              {item.id === '4' ? t('offers.stars4') : item.id === '4.5' ? t('offers.stars45') : t('offers.all')}
             </ToggleButton>
           ))}
         </div>
       </FilterSection>
 
-      <FilterSection title="Mënyra e punës">
+      <FilterSection title={t('offers.delivery')}>
         <div className="of-chip-list">
           <ToggleButton
             className="of-chip"
@@ -522,13 +509,13 @@ export default function OffersPage() {
             isSelected={delivery === 'physical'}
             onChange={(selected) => setDelivery(selected ? 'physical' : 'all')}
           >
-            Fizikisht
+            {t('offers.inPerson')}
           </ToggleButton>
         </div>
       </FilterSection>
 
       {languages.length > 0 ? (
-        <FilterSection title="Gjuha">
+        <FilterSection title={t('offers.language')}>
           <div className="of-chip-list">
             {languages.map((item) => (
               <ToggleButton
@@ -544,14 +531,14 @@ export default function OffersPage() {
         </FilterSection>
       ) : null}
 
-      <FilterSection title="Besueshmëria">
+      <FilterSection title={t('offers.trust')}>
         <ToggleButton
           className="of-chip is-wide"
           isSelected={verification === 'verified'}
           onChange={(selected) => setVerification(selected ? 'verified' : 'all')}
         >
           <BadgeCheck size={15} aria-hidden />
-          Vetëm profilet e verifikuara
+          {t('offers.verifiedOnly')}
         </ToggleButton>
       </FilterSection>
     </>
@@ -576,7 +563,7 @@ export default function OffersPage() {
           text={error}
           action={(
             <Button variant="outline" onPress={() => setReloadKey((value) => value + 1)}>
-              Provo përsëri
+              {t('offers.retry')}
             </Button>
           )}
         />
@@ -586,14 +573,14 @@ export default function OffersPage() {
       return (
         <ResultsState
           icon={SearchX}
-          title={hasActiveFilters ? 'Asnjë rezultat me këto filtra' : 'Ende nuk ka rezultate'}
+          title={hasActiveFilters ? t('offers.noFilter') : t('offers.emptyTitle')}
           text={hasActiveFilters
-            ? 'Provo të heqësh disa filtra ose të kërkosh me fjalë të tjera.'
-            : cityId
-              ? 'Nuk ka rezultate të publikuara në qytetin e zgjedhur.'
+            ? t('offers.noFilterText')
+            : cityName
+              ? t('offers.emptyCity')
               : copy.empty}
           action={hasActiveFilters ? (
-            <Button variant="primary" onPress={clearFilters}>Pastro filtrat</Button>
+            <Button variant="primary" onPress={clearFilters}>{t('offers.clearFilters')}</Button>
           ) : undefined}
         />
       )
@@ -619,10 +606,10 @@ export default function OffersPage() {
       <select
         value={sort}
         onChange={(e) => setSort(e.target.value as MarketplaceSort)}
-        aria-label="Rendit rezultatet"
+        aria-label={t('offers.sort')}
       >
         {SORT_OPTIONS.map((item) => (
-          <option key={item.id} value={item.id}>{item.label}</option>
+          <option key={item.id} value={item.id}>{t(`offers.${item.id}`)}</option>
         ))}
       </select>
       <ChevronDown size={15} aria-hidden className="of-sort-caret" />
@@ -637,17 +624,14 @@ export default function OffersPage() {
         <Tabs selectedKey={tab} onSelectionChange={onTabChange} className="of-tabs">
           <header className="of-head">
             <div className="of-inner">
-              <h1 id="offers-heading">Ofertat</h1>
-              <p className="of-lead">
-                Zbulo shërbime, kompani dhe ekspertë në KëshillaKos. Krahaso sipas fushës, vlerësimeve dhe lokacionit,
-                pastaj kontakto direkt.
-              </p>
+              <h1 id="offers-heading">{t('offers.title')}</h1>
+              <p className="of-lead">{t('offers.lead')}</p>
               <Tabs.ListContainer className="of-tabs-bar">
-                <Tabs.List aria-label="Lloji i ofertave">
-                  {TABS.map(({ id, label, icon: Icon }) => (
+                <Tabs.List aria-label={t('offers.kinds')}>
+                  {TABS.map(({ id, icon: Icon }) => (
                     <Tabs.Tab key={id} id={id} className="of-tab">
                       <Icon size={16} aria-hidden className="of-tab-icon" />
-                      {label}
+                      {t(`offers.${id}`)}
                       {tabCounts[id] != null ? <span className="of-tab-count">{tabCounts[id]}</span> : null}
                       <Tabs.Indicator className="of-tab-indicator" />
                     </Tabs.Tab>
@@ -660,7 +644,7 @@ export default function OffersPage() {
           <div className="of-inner of-body">
             <div className="of-search" role="search">
               <SearchField
-                aria-label="Kërko oferta"
+                aria-label={t('offers.search')}
                 value={query}
                 onChange={setQuery}
                 fullWidth
@@ -669,7 +653,7 @@ export default function OffersPage() {
                 <SearchField.Group>
                   <SearchField.SearchIcon />
                   <SearchField.Input placeholder={copy.placeholder} />
-                  <SearchField.ClearButton aria-label="Pastro kërkimin" />
+                  <SearchField.ClearButton aria-label={t('offers.clearSearch')} />
                 </SearchField.Group>
               </SearchField>
               <div className="of-search-location">
@@ -682,22 +666,22 @@ export default function OffersPage() {
               </div>
               <Button variant="outline" className="of-filter-btn" onPress={() => setFiltersOpen(true)}>
                 <SlidersHorizontal size={16} aria-hidden />
-                Filtrat
+                {t('offers.filters')}
                 {sheetFilterCount > 0 ? <span className="of-badge">{sheetFilterCount}</span> : null}
               </Button>
             </div>
 
             <div className="of-layout">
-              <aside className="of-sidebar" aria-label="Filtrat">
+              <aside className="of-sidebar" aria-label={t('offers.filters')}>
                 <div className="of-sidebar-card">
                   <div className="of-sidebar-head">
                     <h2>
                       <SlidersHorizontal size={16} aria-hidden />
-                      Filtrat
+                      {t('offers.filters')}
                     </h2>
                     {hasActiveFilters ? (
                       <button type="button" className="of-link-btn" onClick={clearFilters}>
-                        Pastro
+                        {t('offers.clear')}
                       </button>
                     ) : null}
                   </div>
@@ -708,10 +692,10 @@ export default function OffersPage() {
               <div className="of-results">
                 <div className="of-results-head">
                   <p className="of-count" aria-live="polite">
-                    {loading ? 'Duke kërkuar…' : (
+                    {loading ? t('offers.searching') : (
                       <>
                         <strong>{resultCount}</strong> {resultLabel}
-                        {cityName ? ` në ${cityName}` : ''}
+                        {cityName ? ` ${t('offers.inCity', { city: cityName })}` : ''}
                       </>
                     )}
                   </p>
@@ -719,7 +703,7 @@ export default function OffersPage() {
                 </div>
 
                 {hasActiveFilters ? (
-                  <div className="of-active-chips" aria-label="Filtrat aktivë">
+                  <div className="of-active-chips" aria-label={t('offers.active')}>
                     {activeChips.map((chip) => (
                       <button
                         key={chip.key}
@@ -733,7 +717,7 @@ export default function OffersPage() {
                       </button>
                     ))}
                     <button type="button" className="of-link-btn" onClick={clearFilters}>
-                      Pastro të gjitha
+                      {t('offers.clearAll')}
                     </button>
                   </div>
                 ) : null}
@@ -757,11 +741,11 @@ export default function OffersPage() {
             <Drawer.Content className="tt-offers-drawer-content of-drawer" aria-describedby={undefined}>
               <div className="tt-offers-drawer-handle" aria-hidden />
               <div className="tt-offers-drawer-head">
-                <Drawer.Title className="tt-offers-drawer-title">Filtrat</Drawer.Title>
+                <Drawer.Title className="tt-offers-drawer-title">{t('offers.filters')}</Drawer.Title>
                 <button
                   type="button"
                   className="tt-offers-drawer-close"
-                  aria-label="Mbyll"
+                  aria-label={t('offers.close')}
                   onClick={() => setFiltersOpen(false)}
                 >
                   <X size={18} />
@@ -773,7 +757,7 @@ export default function OffersPage() {
               <div className="tt-offers-drawer-footer">
                 {hasActiveFilters ? (
                   <Button variant="ghost" onPress={clearFilters}>
-                    Pastro
+                    {t('offers.clear')}
                   </Button>
                 ) : <span />}
                 <Button className="tt-offers-drawer-apply" onPress={() => setFiltersOpen(false)}>

@@ -188,7 +188,7 @@ export default function ProviderRatingsPanel({
 
                     <p className={`ds-review-origin${item.verified ? ' is-verified' : ''}`}>
                       {item.verified ? <BadgeCheck size={14} aria-hidden /> : null}
-                      {item.verified ? 'Punë e përfunduar në KëshillaKos' : 'Klient në KëshillaKos'}
+                      {item.verified ? 'Punë e përfunduar në KLAW' : 'Klient në KLAW'}
                     </p>
 
                     {item.comment?.trim() ? (

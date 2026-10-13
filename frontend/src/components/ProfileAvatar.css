@@ -17,6 +17,6 @@
 
 .kk-avatar--contain .avatar__image {
   padding: 8px;
-  background: #fff;
+  background: var(--surface);
   object-fit: contain;
 }

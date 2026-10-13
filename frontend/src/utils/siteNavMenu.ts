@@ -52,31 +52,31 @@ export function getAccountMenu(user: MenuUser): AccountMenuItem[] {
   switch (context) {
     case 'admin':
       return [
-        { id: 'dashboard', label: 'Paneli administrativ', to: base },
-        { id: 'settings', label: 'Cilësimet', to: `${base}/settings` },
+        { id: 'dashboard', label: 'menu.adminDashboard', to: base },
+        { id: 'settings', label: 'menu.settings', to: `${base}/settings` },
       ]
     case 'company':
       return [
-        { id: 'profile', label: 'Profili i kompanisë', to: `${base}/profile` },
-        { id: 'dashboard', label: 'Paneli im', to: base },
-        { id: 'offers', label: 'Ofertat e mia', to: `${base}/services` },
-        { id: 'team', label: 'Ekspertët', to: `${base}/experts` },
-        { id: 'messages', label: 'Mesazhet', to: `${base}/messages` },
-        { id: 'settings', label: 'Cilësimet', to: `${base}/settings` },
+        { id: 'profile', label: 'menu.companyProfile', to: `${base}/profile` },
+        { id: 'dashboard', label: 'menu.myDashboard', to: base },
+        { id: 'offers', label: 'menu.myOffers', to: `${base}/services` },
+        { id: 'team', label: 'menu.experts', to: `${base}/experts` },
+        { id: 'messages', label: 'menu.messages', to: `${base}/messages` },
+        { id: 'settings', label: 'menu.settings', to: `${base}/settings` },
       ]
     case 'provider':
       return [
-        { id: 'profile', label: 'Profili im', to: `${base}/profile` },
-        { id: 'dashboard', label: 'Paneli im', to: base },
-        { id: 'offers', label: 'Ofertat e mia', to: `${base}/services` },
-        { id: 'messages', label: 'Mesazhet', to: `${base}/messages` },
-        { id: 'settings', label: 'Cilësimet', to: `${base}/settings` },
+        { id: 'profile', label: 'menu.myProfile', to: `${base}/profile` },
+        { id: 'dashboard', label: 'menu.myDashboard', to: base },
+        { id: 'offers', label: 'menu.myOffers', to: `${base}/services` },
+        { id: 'messages', label: 'menu.messages', to: `${base}/messages` },
+        { id: 'settings', label: 'menu.settings', to: `${base}/settings` },
       ]
     case 'user':
     default:
       return [
-        { id: 'profile', label: 'Profili im', to: `${base}/profile` },
-        { id: 'dashboard', label: 'Paneli im', to: base },
+        { id: 'profile', label: 'menu.myProfile', to: `${base}/profile` },
+        { id: 'dashboard', label: 'menu.myDashboard', to: base },
       ]
   }
 }

@@ -3,6 +3,7 @@ import { ProviderProfile } from '../models/ProviderProfile'
 import { User } from '../models/User'
 import { ROLE_LABELS, type UserRole } from '../types/roles'
 import { getStatsForProviders } from './ratingService'
+import { clampBio, isPro, recordPlanEvent } from './planService'
 import { findUserByUid, findUsersByUids } from './userService'
 
 export type ProviderPublicDetails = {
@@ -20,6 +21,7 @@ export type ProviderPublicDetails = {
   coverPhoto: string
   ratingAverage: number
   ratingCount: number
+  plan: 'basic' | 'pro'
 }
 
 const PUBLIC_PROFILE_ROLES: UserRole[] = ['provider', 'company']
@@ -68,6 +70,7 @@ export async function getProvidersPublicDetails(
       coverPhoto: '',
       ratingAverage: rating?.average ?? 0,
       ratingCount: rating?.count ?? 0,
+      plan: 'basic',
     })
   }
 
@@ -105,18 +108,23 @@ export async function getPublicProviderProfile(uid: string) {
     }
   }
 
+  const audience = role === 'company' ? 'company' as const : 'provider' as const
+  const pro = await isPro(user.uid, audience)
+  if (pro) await recordPlanEvent(user.uid, audience, 'visits')
+  const publicBio = clampBio(bio, pro)
   return {
     uid: provider.uid,
     name,
     role,
     roleLabel: ROLE_LABELS[role],
     headline: provider.headline,
-    bio,
+    bio: publicBio,
     location: provider.location,
-    skills: provider.skills,
-    languages: provider.languages,
-    profilePhoto,
-    coverPhoto,
+    skills: pro ? provider.skills : [],
+    languages: pro ? provider.languages : [],
+    profilePhoto: pro ? profilePhoto : '',
+    coverPhoto: pro ? coverPhoto : '',
+    plan: pro ? 'pro' as const : 'basic' as const,
     ratingAverage: provider.ratingAverage,
     ratingCount: provider.ratingCount,
   }

@@ -1,16 +1,24 @@
 import { Star } from 'lucide-react'
+import i18n, { uiText } from '../i18n'
+
+function dateLocale() {
+  const language = (i18n.language || 'sq').toLowerCase()
+  if (language.startsWith('de')) return 'de-DE'
+  if (language.startsWith('en')) return 'en-GB'
+  return 'sq-AL'
+}
 
 export function ratingWord(average: number, count: number) {
-  if (count <= 0) return 'Ende pa vlerësime'
-  if (average >= 4.8) return 'Shkëlqyeshëm'
-  if (average >= 4) return 'Shumë mirë'
-  if (average >= 3) return 'Mirë'
-  return 'Në përmirësim'
+  if (count <= 0) return uiText('Ende pa vlerësime', 'No ratings yet', 'Noch keine Bewertungen')
+  if (average >= 4.8) return uiText('Shkëlqyeshëm', 'Excellent', 'Ausgezeichnet')
+  if (average >= 4) return uiText('Shumë mirë', 'Very good', 'Sehr gut')
+  if (average >= 3) return uiText('Mirë', 'Good', 'Gut')
+  return uiText('Në përmirësim', 'Needs improvement', 'Ausbaufähig')
 }
 
 export function formatReviewDate(value: string) {
   try {
-    return new Date(value).toLocaleDateString('sq-AL', { day: 'numeric', month: 'short', year: 'numeric' })
+    return new Date(value).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
   } catch {
     return value
   }
