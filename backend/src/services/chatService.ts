@@ -10,6 +10,7 @@ import { ServiceRequest } from '../models/ServiceRequest'
 import { User } from '../models/User'
 import { UserRequest } from '../models/UserRequest'
 import { publicProfileRole } from './providerPublicService'
+import { isPro, recordPlanEvent } from './planService'
 import { assertChatUnblocked } from './chatSafetyService'
 import { ServiceOffer } from '../models/ServiceOffer'
 import { Service } from '../models/Service'
@@ -121,6 +122,8 @@ export async function openOrGetConversation(input: {
   if (input.seekerUid === input.providerUid) {
     throw Object.assign(new Error('Nuk mund të chatosh me veten'), { status: 400 })
   }
+  const audience = await isPro(input.providerUid, 'company') ? 'company' as const : 'provider' as const
+  await recordPlanEvent(input.providerUid, audience, 'contacts')
   if (input.initialMessage !== undefined && (typeof input.initialMessage !== 'string' || input.initialMessage.trim().length > MAX_BODY)) throw Object.assign(new Error('Mesazhi është i pavlefshëm'), { status: 400 })
 
   const provider = await findUserByUid(input.providerUid)

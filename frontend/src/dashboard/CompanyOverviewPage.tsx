@@ -1,5 +1,6 @@
 import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip } from '@heroui/react'
 import { Building2, Globe, MailPlus, MapPin, Plus, Users } from 'lucide-react'
@@ -13,6 +14,7 @@ import { fetchMyServices, type ServiceItem } from '../api/services'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
+import i18n, { uiText } from '../i18n'
 import { CONTEXT_LABELS, ROLE_HINTS } from './nav'
 import {
   ActivityRows,
@@ -24,6 +26,7 @@ import {
   ServiceRows,
   StatsStrip,
   TextLink,
+  timeGreeting,
   type OverviewStat,
 } from './OverviewParts'
 import type { ChipColor } from './requestDisplay'
@@ -39,10 +42,10 @@ const PROFILE_PATH = '/dashboard/company/profile'
 const CREATE_PATH = '/dashboard/company/create'
 
 const BUSINESS_STATUS: Record<string, { label: string; color: ChipColor }> = {
-  active: { label: 'Aktive', color: 'success' },
-  draft: { label: 'Draft', color: 'default' },
-  suspended: { label: 'Pezulluar', color: 'danger' },
-  closed: { label: 'E mbyllur', color: 'default' },
+  active: { label: 'status.active', color: 'success' },
+  draft: { label: 'status.draft', color: 'default' },
+  suspended: { label: 'status.suspended', color: 'danger' },
+  closed: { label: 'status.closed', color: 'default' },
 }
 
 type OverviewData = {
@@ -72,21 +75,35 @@ function contextSentence(data: OverviewData) {
   const members = data.team?.pagination?.total ?? data.team?.members.length ?? 0
   const invitations = data.team?.invitationsPagination?.total ?? data.team?.invitations.length ?? 0
   const active = collectionSummary(data.services).active ?? 0
-  if (!data.hasCompany) return 'Krijo kompaninë që klientët dhe ekspertët ta gjejnë në KëshillaKos.'
+  if (!data.hasCompany) return uiText('Krijo kompaninë që klientët dhe ekspertët ta gjejnë në KLAW.', 'Create the company so clients and experts can find it on KLAW.', 'Lege das Unternehmen an, damit Kunden und Experten es auf KLAW finden.')
   if (data.pendingCount > 0) {
-    return `Kompania ka ${data.pendingCount} ${plural(data.pendingCount, 'kërkesë që pret', 'kërkesa që presin')} përgjigje.`
+    const count = data.pendingCount
+    return uiText(
+      `Kompania ka ${count} ${plural(count, 'kërkesë që pret', 'kërkesa që presin')} përgjigje.`,
+      `The company has ${count} ${plural(count, 'request', 'requests')} waiting for a reply.`,
+      `Das Unternehmen hat ${count} ${plural(count, 'Anfrage', 'Anfragen')}, die auf eine Antwort warten.`,
+    )
   }
   if (invitations > 0) {
-    return `${invitations} ${plural(invitations, 'ftesë për ekspert është', 'ftesa për ekspertë janë')} ende në pritje.`
+    return uiText(
+      `${invitations} ${plural(invitations, 'ftesë për ekspert është', 'ftesa për ekspertë janë')} ende në pritje.`,
+      `${invitations} expert ${plural(invitations, 'invitation is', 'invitations are')} still pending.`,
+      `${invitations} ${plural(invitations, 'Experteneinladung ist', 'Experteneinladungen sind')} noch offen.`,
+    )
   }
-  if (members === 0) return 'Fto ekspertët e parë që klientët të shohin kush punon në kompani.'
+  if (members === 0) return uiText('Fto ekspertët e parë që klientët të shohin kush punon në kompani.', 'Invite the first experts so clients can see who works at the company.', 'Lade die ersten Experten ein, damit Kunden sehen, wer im Unternehmen arbeitet.')
   if (active > 0) {
-    return `${active} ${plural(active, 'shërbim aktiv i kompanisë shfaqet', 'shërbime aktive të kompanisë shfaqen')} në ofertat e KëshillaKos.`
+    return uiText(
+      `${active} ${plural(active, 'shërbim aktiv i kompanisë shfaqet', 'shërbime aktive të kompanisë shfaqen')} në ofertat e KLAW.`,
+      `${active} active company ${plural(active, 'service appears', 'services appear')} in KLAW offers.`,
+      `${active} ${plural(active, 'aktiver Unternehmensdienst erscheint', 'aktive Unternehmensdienste erscheinen')} in den Angeboten von KLAW.`,
+    )
   }
-  return ROLE_HINTS.company
+  return i18n.t(ROLE_HINTS.company)
 }
 
 function CompanyIdentity({ business, team }: { business: BusinessProfile; team: BusinessTeam | null }) {
+  const { t } = useTranslation()
   const [location, setLocation] = useState('')
   const status = business.status ? BUSINESS_STATUS[business.status] : null
   const verification = business.verification?.status
@@ -121,7 +138,7 @@ function CompanyIdentity({ business, team }: { business: BusinessProfile; team: 
             <h2>{business.publicName}</h2>
             {status ? (
               <Chip size="sm" variant="soft" color={status.color}>
-                <Chip.Label>{status.label}</Chip.Label>
+                <Chip.Label>{t(status.label)}</Chip.Label>
               </Chip>
             ) : null}
             {verification === 'verified' ? (
@@ -218,7 +235,7 @@ function ActivityCard({ data, loading }: { data: OverviewData | null; loading: b
             text={
               hasServices
                 ? 'Kërkesat për kompaninë dhe bisedat me klientët do të shfaqen këtu sapo të vijnë.'
-                : 'Kërkesat nga klientët vijnë pasi kompania të publikojë një shërbim në ofertat e KëshillaKos.'
+                : 'Kërkesat nga klientët vijnë pasi kompania të publikojë një shërbim në ofertat e KLAW.'
             }
             action={
               hasServices ? null : (
@@ -253,7 +270,7 @@ function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boole
         ) : members.length === 0 && invitations.length === 0 ? (
           <EmptyBlock
             title="Ende nuk ka ekspertë në ekip"
-            text="Fto ekspertë që janë në KëshillaKos me email-in e tyre. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë."
+            text="Fto ekspertë që janë në KLAW me email-in e tyre. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë."
             action={
               <Link to={EXPERTS_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Fto ekspert
@@ -314,7 +331,7 @@ function ServicesCard({ services, loading }: { services: ServiceItem[]; loading:
         ) : services.length === 0 ? (
           <EmptyBlock
             title="Kompania nuk ka publikuar shërbime"
-            text="Shërbimet aktive shfaqen në ofertat e KëshillaKos dhe klientët i dërgojnë kërkesa kompanisë."
+            text="Shërbimet aktive shfaqen në ofertat e KLAW dhe klientët i dërgojnë kërkesa kompanisë."
             action={
               <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Shto shërbim
@@ -330,6 +347,7 @@ function ServicesCard({ services, loading }: { services: ServiceItem[]; loading:
 }
 
 export function CompanyOverviewPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -390,16 +408,20 @@ export function CompanyOverviewPage() {
   const completion = data?.completion
   const showSetup = !loading && completion?.overallPercent != null && completion.overallPercent < 100
   const noCompany = !loading && !error && data !== null && !data.hasCompany
+  const firstName = user?.firstName || user?.name?.split(' ')[0] || ''
 
   return (
     <section className="uo">
       <header className="uo-head">
         <div className="uo-head-copy">
           <Chip size="sm" variant="soft" color="accent" className="uo-role">
-            <Chip.Label>{CONTEXT_LABELS.company}</Chip.Label>
+            <Chip.Label>{t(CONTEXT_LABELS.company)}</Chip.Label>
           </Chip>
-          <h1>Përmbledhje</h1>
-          <p>{data && !loading ? contextSentence(data) : ROLE_HINTS.company}</p>
+          <h1>
+            {timeGreeting(new Date().getHours())}
+            {firstName ? `, ${firstName}` : ''}
+          </h1>
+          <p>{data && !loading ? contextSentence(data) : t(ROLE_HINTS.company)}</p>
         </div>
         {noCompany ? null : (
           <Link to={EXPERTS_PATH} className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>

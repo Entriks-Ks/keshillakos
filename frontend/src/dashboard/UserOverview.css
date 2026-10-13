@@ -30,7 +30,7 @@
 
 .uo-head h1 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 2.6vw, 2rem);
   letter-spacing: -0.03em;
@@ -60,8 +60,8 @@
   display: grid;
   gap: 0;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 18px;
   background: var(--surface);
   box-shadow: none;
 }
@@ -85,7 +85,7 @@
 
 .uo-card-title {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
@@ -99,7 +99,7 @@
 }
 
 .uo-card-meta.is-strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 700;
 }
 
@@ -173,7 +173,7 @@
 }
 
 .uo-stat-value {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.75rem;
   font-weight: 700;
@@ -264,7 +264,7 @@ a.uo-row:hover {
 }
 
 .uo-row-copy strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.92rem;
   font-weight: 600;
 }
@@ -279,7 +279,7 @@ a.uo-row:hover {
 }
 
 .uo-row.is-unread .uo-row-copy span {
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .uo-row-end {
@@ -318,7 +318,7 @@ a.uo-row:hover {
 }
 
 .uo-empty strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.94rem;
 }
 

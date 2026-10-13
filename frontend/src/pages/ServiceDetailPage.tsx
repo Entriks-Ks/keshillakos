@@ -1,6 +1,8 @@
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import { uiText } from '../i18n'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Breadcrumbs, Button, buttonVariants, Card, Chip, Modal, Separator, Skeleton } from '@heroui/react'
 import {
@@ -35,34 +37,39 @@ import { formatServicePrice, isVerified } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
 import './ServiceDetailPage.css'
 
-const DELIVERY_LABELS: Record<string, string> = {
-  online: 'Online',
-  physical: 'Fizikisht',
-  group: 'Grup',
+function deliveryLabel(mode: string) {
+  if (mode === 'physical') return uiText('Fizikisht', 'In person', 'Vor Ort')
+  if (mode === 'group') return uiText('Grup', 'Group', 'Gruppe')
+  if (mode === 'online') return 'Online'
+  return mode
 }
 
-const AUDIENCE_LABELS: Record<string, string> = {
-  b2c: 'Individë',
-  b2b: 'Kompani',
-  both: 'Individë & kompani',
+function audienceLabel(audience: string) {
+  if (audience === 'b2c') return uiText('Individë', 'Individuals', 'Privatpersonen')
+  if (audience === 'b2b') return uiText('Kompani', 'Companies', 'Unternehmen')
+  if (audience === 'both') return uiText('Individë & kompani', 'Individuals & companies', 'Privatpersonen & Unternehmen')
+  return audience
 }
 
-const OFFER_LABELS: Record<string, string> = {
-  package: 'Paketë',
-  project: 'Projekt',
-  service: 'Shërbim',
+function offerLabel(offer: string) {
+  if (offer === 'package') return uiText('Paketë', 'Package', 'Paket')
+  if (offer === 'project') return uiText('Projekt', 'Project', 'Projekt')
+  if (offer === 'service') return uiText('Shërbim', 'Service', 'Dienst')
+  return offer
 }
 
-const AVAILABILITY_LABELS: Record<string, string> = {
-  request: 'Me kërkesë — ofruesi të përgjigjet kur është i lirë',
-  by_arrangement: 'Me marrëveshje — koha caktohet pas kontaktit',
-  slots: 'Me orar — zgjidh një orë të lirë',
+function availabilityLabel(mode: string) {
+  if (mode === 'request') return uiText('Me kërkesë — ofruesi të përgjigjet kur është i lirë', 'On request — the provider replies when free', 'Auf Anfrage — der Anbieter antwortet, wenn er Zeit hat')
+  if (mode === 'by_arrangement') return uiText('Me marrëveshje — koha caktohet pas kontaktit', 'By agreement — the time is set after contact', 'Nach Vereinbarung — die Zeit wird nach dem Kontakt festgelegt')
+  if (mode === 'slots') return uiText('Me orar — zgjidh një orë të lirë', 'By schedule — pick a free hour', 'Nach Termin — wähle eine freie Stunde')
+  return mode
 }
 
-const AVAILABILITY_SHORT: Record<string, string> = {
-  request: 'Me kërkesë',
-  by_arrangement: 'Me marrëveshje',
-  slots: 'Me orar',
+function availabilityShort(mode: string) {
+  if (mode === 'request') return uiText('Me kërkesë', 'On request', 'Auf Anfrage')
+  if (mode === 'by_arrangement') return uiText('Me marrëveshje', 'By agreement', 'Nach Vereinbarung')
+  if (mode === 'slots') return uiText('Me orar', 'By schedule', 'Nach Termin')
+  return mode
 }
 
 const GALLERY_VISIBLE = 5
@@ -84,22 +91,22 @@ function money(amount: number, currency?: string) {
 function priceSummary(service: ServiceItem): { value: string; note: string } {
   const pricing = service.pricing
   const to = pricing?.amountTo ?? service.details?.priceTo
-  if (pricing?.model === 'free') return { value: 'Falas', note: 'Pa kosto për klientin' }
+  if (pricing?.model === 'free') return { value: uiText('Falas', 'Free', 'Kostenlos'), note: uiText('Pa kosto për klientin', 'No cost for the client', 'Keine Kosten für den Kunden') }
   if (pricing?.model === 'quote' || (!pricing && service.priceFrom == null && to == null)) {
-    return { value: 'Sipas ofertës', note: 'Çmimi caktohet pasi ofruesi sheh kërkesën tënde' }
+    return { value: uiText('Sipas ofertës', 'On quote', 'Nach Angebot'), note: uiText('Çmimi caktohet pasi ofruesi sheh kërkesën tënde', 'The price is set after the provider sees your request', 'Der Preis wird festgelegt, nachdem der Anbieter deine Anfrage sieht') }
   }
   const from = pricing?.amountFrom ?? service.priceFrom
   if (pricing?.model === 'hourly' && from != null) {
-    return { value: `${money(from, pricing.currency)} / orë`, note: 'Çmim për orë' }
+    return { value: `${money(from, pricing.currency)} / ${uiText('orë', 'hour', 'Stunde')}`, note: uiText('Çmim për orë', 'Price per hour', 'Preis pro Stunde') }
   }
   if (pricing?.model === 'fixed' && from != null) {
-    return { value: money(from, pricing.currency), note: 'Çmim fiks' }
+    return { value: money(from, pricing.currency), note: uiText('Çmim fiks', 'Fixed price', 'Festpreis') }
   }
   if (from != null && to != null && to !== from) {
-    return { value: `${money(from, pricing?.currency)} – ${money(to, pricing?.currency)}`, note: 'Diapazoni i çmimit' }
+    return { value: `${money(from, pricing?.currency)} – ${money(to, pricing?.currency)}`, note: uiText('Diapazoni i çmimit', 'Price range', 'Preisspanne') }
   }
-  if (from != null) return { value: `nga ${money(from, pricing?.currency)}`, note: 'Çmimi fillestar' }
-  return { value: formatServicePrice(service) || 'Sipas ofertës', note: 'Çmimi përfundimtar konfirmohet nga ofruesi' }
+  if (from != null) return { value: `${uiText('nga', 'from', 'ab')} ${money(from, pricing?.currency)}`, note: uiText('Çmimi fillestar', 'Starting price', 'Startpreis') }
+  return { value: formatServicePrice(service) || uiText('Sipas ofertës', 'On quote', 'Nach Angebot'), note: uiText('Çmimi përfundimtar konfirmohet nga ofruesi', 'The final price is confirmed by the provider', 'Der Endpreis wird vom Anbieter bestätigt') }
 }
 
 function durationLabel(minutes?: number) {
@@ -107,65 +114,65 @@ function durationLabel(minutes?: number) {
   if (minutes < 60) return `${minutes} min`
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
-  return rest ? `${hours} orë ${rest} min` : `${hours} orë`
+  return rest ? `${hours} ${uiText('orë', 'h', 'Std.')} ${rest} min` : `${hours} ${uiText('orë', 'h', 'Std.')}`
 }
 
 function includedRows(service: ServiceItem) {
   const details = service.details || {}
   const rows: Array<{ label: string; value: string }> = []
-  if (details.serviceTypeDetail) rows.push({ label: 'Lloji', value: details.serviceTypeDetail })
-  if (details.offerType) rows.push({ label: 'Oferta', value: OFFER_LABELS[details.offerType] || details.offerType })
-  if (details.audience) rows.push({ label: 'Për kë', value: AUDIENCE_LABELS[details.audience] || details.audience })
+  if (details.serviceTypeDetail) rows.push({ label: uiText('Lloji', 'Type', 'Art'), value: details.serviceTypeDetail })
+  if (details.offerType) rows.push({ label: uiText('Oferta', 'Offer', 'Angebot'), value: offerLabel(details.offerType) })
+  if (details.audience) rows.push({ label: uiText('Për kë', 'For whom', 'Für wen'), value: audienceLabel(details.audience) })
   if (details.languageFrom && details.languageTo) {
     rows.push({
-      label: 'Përkthimi',
-      value: `${details.languageFrom} → ${details.languageTo}${details.certifiedTranslation ? ' · i certifikuar' : ''}`,
+      label: uiText('Përkthimi', 'Translation', 'Übersetzung'),
+      value: `${details.languageFrom} → ${details.languageTo}${details.certifiedTranslation ? ` · ${uiText('i certifikuar', 'certified', 'zertifiziert')}` : ''}`,
     })
   }
-  if (details.documentsNote) rows.push({ label: 'Dokumente', value: details.documentsNote })
-  if (details.deadlineNote) rows.push({ label: 'Afatet', value: details.deadlineNote })
-  if (details.licenseVerified) rows.push({ label: 'Licenca', value: 'E verifikuar' })
+  if (details.documentsNote) rows.push({ label: uiText('Dokumente', 'Documents', 'Dokumente'), value: details.documentsNote })
+  if (details.deadlineNote) rows.push({ label: uiText('Afatet', 'Deadlines', 'Fristen'), value: details.deadlineNote })
+  if (details.licenseVerified) rows.push({ label: uiText('Licenca', 'License', 'Lizenz'), value: uiText('E verifikuar', 'Verified', 'Verifiziert') })
   if (details.portfolioUrl) rows.push({ label: 'Portfolio', value: details.portfolioUrl })
-  if (details.references) rows.push({ label: 'Shembuj pune', value: details.references })
+  if (details.references) rows.push({ label: uiText('Shembuj pune', 'Work samples', 'Arbeitsbeispiele'), value: details.references })
   return rows
 }
 
 function keyFacts(service: ServiceItem) {
   const details = service.details || {}
   const facts: Array<{ key: string; icon: typeof MapPin; label: string; value: string; hint?: string }> = []
-  facts.push({ key: 'location', icon: MapPin, label: 'Lokacioni', value: service.location || 'Online' })
+  facts.push({ key: 'location', icon: MapPin, label: uiText('Lokacioni', 'Location', 'Ort'), value: service.location || 'Online' })
   if (details.deliveryModes?.length) {
     facts.push({
       key: 'delivery',
       icon: Globe,
-      label: 'Si ofrohet',
-      value: details.deliveryModes.map((mode) => DELIVERY_LABELS[mode] || mode).join(', '),
+      label: uiText('Si ofrohet', 'How it’s offered', 'Wie es angeboten wird'),
+      value: details.deliveryModes.map((mode) => deliveryLabel(mode)).join(', '),
     })
   }
   const duration = durationLabel(service.durationMinutes)
-  if (duration) facts.push({ key: 'duration', icon: Clock, label: 'Kohëzgjatja', value: duration })
+  if (duration) facts.push({ key: 'duration', icon: Clock, label: uiText('Kohëzgjatja', 'Duration', 'Dauer'), value: duration })
   if (details.supportLanguages?.length) {
-    facts.push({ key: 'languages', icon: Languages, label: 'Gjuhët', value: details.supportLanguages.join(', ') })
+    facts.push({ key: 'languages', icon: Languages, label: uiText('Gjuhët', 'Languages', 'Sprachen'), value: details.supportLanguages.join(', ') })
   }
   if (details.availabilityMode) {
     facts.push({
       key: 'availability',
       icon: CalendarClock,
-      label: 'Rezervimi',
-      value: AVAILABILITY_SHORT[details.availabilityMode] || details.availabilityMode,
-      hint: AVAILABILITY_LABELS[details.availabilityMode],
+      label: uiText('Rezervimi', 'Booking', 'Buchung'),
+      value: availabilityShort(details.availabilityMode),
+      hint: availabilityLabel(details.availabilityMode),
     })
   }
   return facts
 }
 
 function ProviderRatingLine({ average, count }: { average: number; count: number }) {
-  if (count <= 0) return <span className="sd-rating is-empty">Ende pa vlerësime</span>
+  if (count <= 0) return <span className="sd-rating is-empty">{uiText('Ende pa vlerësime', 'No ratings yet', 'Noch keine Bewertungen')}</span>
   return (
     <span className="sd-rating">
       <Star size={13} aria-hidden />
       <strong>{average.toFixed(1)}</strong>
-      <span>({count} {count === 1 ? 'vlerësim' : 'vlerësime'})</span>
+      <span>({count} {count === 1 ? uiText('vlerësim', 'rating', 'Bewertung') : uiText('vlerësime', 'ratings', 'Bewertungen')})</span>
     </span>
   )
 }
@@ -193,9 +200,11 @@ function Gallery({ photos, title, onOpen }: { photos: string[]; title: string; o
             <button
               type="button"
               onClick={() => onOpen(index)}
-              aria-label={hidden > 0 && isLast ? `Shiko të gjitha ${photos.length} fotot` : `Hap foton ${index + 1}`}
+              aria-label={hidden > 0 && isLast
+                ? uiText(`Shiko të gjitha ${photos.length} fotot`, `View all ${photos.length} photos`, `Alle ${photos.length} Fotos ansehen`)
+                : uiText(`Hap foton ${index + 1}`, `Open photo ${index + 1}`, `Foto ${index + 1} öffnen`)}
             >
-              <img src={src} alt={`${title} — foto ${index + 1}`} loading="lazy" />
+              <img src={src} alt={`${title} — ${uiText('foto', 'photo', 'Foto')} ${index + 1}`} loading="lazy" />
               {hidden > 0 && isLast ? <span className="sd-gallery-more">+{hidden}</span> : null}
             </button>
           </li>
@@ -240,6 +249,8 @@ function DetailSkeleton() {
 }
 
 export default function ServiceDetailPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const { id: param } = useParams<{ id: string }>()
   const id = idFromPublicParam(param)
   const navigate = useNavigate()
@@ -254,7 +265,7 @@ export default function ServiceDetailPage() {
 
   useEffect(() => {
     if (!id) {
-      setError('Shërbimi nuk u gjet')
+      setError(uiText('Shërbimi nuk u gjet', 'Service not found', 'Dienst nicht gefunden'))
       setLoading(false)
       return
     }
@@ -339,8 +350,8 @@ export default function ServiceDetailPage() {
   const providerLocation = provider?.location?.trim() || ''
   const providerBio = provider?.bio?.trim() || ''
   const providerYears = provider?.yearsOfExperience && provider.yearsOfExperience > 0 ? provider.yearsOfExperience : 0
-  const kindLabel = companyOwned ? 'Kompani' : 'Ekspert'
-  const availabilityNote = details.availabilityMode ? AVAILABILITY_LABELS[details.availabilityMode] : undefined
+  const kindLabel = companyOwned ? uiText('Kompani', 'Company', 'Unternehmen') : uiText('Ekspert', 'Expert', 'Experte')
+  const availabilityNote = details.availabilityMode ? availabilityLabel(details.availabilityMode) : undefined
   const hasIncluded = rows.length > 0 || Boolean(details.regulatoryNotice) || Boolean(details.coachingDisclaimerAccepted)
 
   function openPhoto(index: number) {
@@ -376,10 +387,10 @@ export default function ServiceDetailPage() {
           {!loading && error ? (
             <Card className="sd-card sd-missing">
               <Card.Content className="sd-card-body">
-                <h1>Shërbimi nuk u gjet</h1>
+                <h1>{uiText('Shërbimi nuk u gjet', 'Service not found', 'Dienst nicht gefunden')}</h1>
                 <p>{error}</p>
                 <Link className={buttonVariants({ variant: 'primary', size: 'md' })} to="/ofertat">
-                  Shiko shërbimet
+                  {uiText('Shiko shërbimet', 'View services', 'Dienste ansehen')}
                 </Link>
               </Card.Content>
             </Card>
@@ -390,7 +401,7 @@ export default function ServiceDetailPage() {
               <Card className="sd-card sd-hero">
                 <Card.Content className="sd-hero-body">
                   <Breadcrumbs className="sd-crumbs">
-                    <Breadcrumbs.Item href={marketplaceLink('services').to}>Shërbimet</Breadcrumbs.Item>
+                    <Breadcrumbs.Item href={marketplaceLink('services').to}>{uiText('Shërbimet', 'Services', 'Dienste')}</Breadcrumbs.Item>
                     {categoryLabel ? (
                       <Breadcrumbs.Item href={categoryHref}>{categoryLabel}</Breadcrumbs.Item>
                     ) : null}
@@ -406,7 +417,7 @@ export default function ServiceDetailPage() {
                     <Link
                       to={providerPath}
                       className={`sd-byline-avatar${companyOwned ? ' is-company' : ''}`}
-                      aria-label={`Shiko profilin e ${providerName}`}
+                      aria-label={uiText(`Shiko profilin e ${providerName}`, `View ${providerName}'s profile`, `Profil von ${providerName} ansehen`)}
                     >
                       <ProfileAvatar
                         src={provider?.profilePhoto}
@@ -418,10 +429,10 @@ export default function ServiceDetailPage() {
                     <div className="sd-byline-copy">
                       <p className="sd-byline-text">
                         <Link to={providerPath} className="sd-byline-name">{providerName}</Link>
-                        {verified ? <BadgeCheck size={15} className="sd-verified" aria-label="I verifikuar" /> : null}
+                        {verified ? <BadgeCheck size={15} className="sd-verified" aria-label={uiText('I verifikuar', 'Verified', 'Verifiziert')} /> : null}
                         {responsibleExpert ? (
                           <span className="sd-byline-expert">
-                            me <Link to={publicProviderPath(responsibleExpert)}>{responsibleExpert.name}</Link>
+                            {uiText('me', 'with', 'mit')} <Link to={publicProviderPath(responsibleExpert)}>{responsibleExpert.name}</Link>
                           </span>
                         ) : null}
                       </p>
@@ -451,11 +462,11 @@ export default function ServiceDetailPage() {
                 </Card.Content>
               </Card>
 
-              <aside className="sd-aside" aria-label="Kërko shërbimin">
+              <aside className="sd-aside" aria-label={uiText('Kërko shërbimin', 'Request the service', 'Dienst anfragen')}>
                 <Card className="sd-card sd-book">
                   <Card.Content className="sd-book-body">
                     <div className="sd-price">
-                      <span className="sd-label">Çmimi</span>
+                      <span className="sd-label">{uiText('Çmimi', 'Price', 'Preis')}</span>
                       <strong>{price.value}</strong>
                       <small>{price.note}</small>
                     </div>
@@ -470,7 +481,9 @@ export default function ServiceDetailPage() {
                       {openSlots > 0 ? (
                         <li>
                           <CalendarClock size={15} aria-hidden />
-                          {openSlots === 1 ? '1 orë e lirë' : `${openSlots} orë të lira`}
+                          {openSlots === 1
+                            ? uiText('1 orë e lirë', '1 free hour', '1 freie Stunde')
+                            : uiText(`${openSlots} orë të lira`, `${openSlots} free hours`, `${openSlots} freie Stunden`)}
                         </li>
                       ) : null}
                       <li>
@@ -489,7 +502,7 @@ export default function ServiceDetailPage() {
                         serviceTitle={service.title}
                         intake={intake}
                         compact
-                        ctaLabel="Kërko shërbimin"
+                        ctaLabel={uiText('Kërko shërbimin', 'Request the service', 'Dienst anfragen')}
                         ctaIcon="mail"
                       />
                       <StartChatButton
@@ -511,7 +524,7 @@ export default function ServiceDetailPage() {
                       <Link
                         to={providerPath}
                         className={`sd-book-avatar${companyOwned ? ' is-company' : ''}`}
-                        aria-label={`Shiko profilin e ${providerName}`}
+                        aria-label={uiText(`Shiko profilin e ${providerName}`, `View ${providerName}'s profile`, `Profil von ${providerName} ansehen`)}
                       >
                         <ProfileAvatar
                           src={provider?.profilePhoto}
@@ -536,16 +549,16 @@ export default function ServiceDetailPage() {
               </aside>
 
               <div className="sd-body">
-                <Section title="Përshkrimi">
+                <Section title={uiText('Përshkrimi', 'Description', 'Beschreibung')}>
                   {service.description ? (
                     <p className="sd-description">{service.description}</p>
                   ) : (
-                    <p className="sd-muted">Ofruesi nuk ka shtuar ende një përshkrim.</p>
+                    <p className="sd-muted">{uiText('Ofruesi nuk ka shtuar ende një përshkrim.', 'The provider has not added a description yet.', 'Der Anbieter hat noch keine Beschreibung hinzugefügt.')}</p>
                   )}
                 </Section>
 
                 {hasIncluded ? (
-                  <Section title="Çfarë përfshin">
+                  <Section title={uiText('Çfarë përfshin', 'What’s included', 'Was enthalten ist')}>
                     {rows.length > 0 ? (
                       <dl className="sd-included">
                         {rows.map((row) => (
@@ -564,23 +577,23 @@ export default function ServiceDetailPage() {
                     ) : null}
                     {details.regulatoryNotice ? <p className="sd-notice">{details.regulatoryNotice}</p> : null}
                     {details.coachingDisclaimerAccepted ? (
-                      <p className="sd-notice">Coaching nuk është terapi ose trajtim mjekësor.</p>
+                      <p className="sd-notice">{uiText('Coaching nuk është terapi ose trajtim mjekësor.', 'Coaching is not therapy or medical treatment.', 'Coaching ist keine Therapie und keine medizinische Behandlung.')}</p>
                     ) : null}
                   </Section>
                 ) : null}
 
                 {gallery.length > 0 ? (
-                  <Section title="Fotot" id="sd-photos">
+                  <Section title={uiText('Fotot', 'Photos', 'Fotos')} id="sd-photos">
                     <Gallery photos={gallery} title={service.title} onOpen={openPhoto} />
                   </Section>
                 ) : null}
 
-                <Section title="Kush e ofron këtë shërbim" id="ofruesi">
+                <Section title={uiText('Kush e ofron këtë shërbim', 'Who offers this service', 'Wer diesen Dienst anbietet')} id="ofruesi">
                   <div className="sd-provider">
                     <Link
                       to={providerPath}
                       className={`sd-provider-avatar${companyOwned ? ' is-company' : ''}`}
-                      aria-label={`Shiko profilin e ${providerName}`}
+                      aria-label={uiText(`Shiko profilin e ${providerName}`, `View ${providerName}'s profile`, `Profil von ${providerName} ansehen`)}
                     >
                       <ProfileAvatar
                         src={provider?.profilePhoto}
@@ -597,7 +610,7 @@ export default function ServiceDetailPage() {
                         {verified ? (
                           <Chip size="sm" variant="soft" color="success">
                             <BadgeCheck size={12} aria-hidden />
-                            <Chip.Label>{companyOwned ? 'E verifikuar' : 'I verifikuar'}</Chip.Label>
+                            <Chip.Label>{uiText('I verifikuar', 'Verified', 'Verifiziert')}</Chip.Label>
                           </Chip>
                         ) : null}
                       </div>
@@ -613,7 +626,9 @@ export default function ServiceDetailPage() {
                         {providerYears ? (
                           <li>
                             <Briefcase size={14} aria-hidden />
-                            {providerYears === 1 ? '1 vit përvojë' : `${providerYears} vite përvojë`}
+                            {providerYears === 1
+                              ? uiText('1 vit përvojë', '1 year of experience', '1 Jahr Erfahrung')
+                              : uiText(`${providerYears} vite përvojë`, `${providerYears} years of experience`, `${providerYears} Jahre Erfahrung`)}
                           </li>
                         ) : null}
                         <li>
@@ -625,7 +640,9 @@ export default function ServiceDetailPage() {
                       to={providerPath}
                       className={`${buttonVariants({ variant: 'outline', size: 'sm' })} sd-provider-link`}
                     >
-                      {companyOwned ? 'Profili i kompanisë' : 'Profili i ekspertit'}
+                      {companyOwned
+                        ? uiText('Profili i kompanisë', 'Company profile', 'Unternehmensprofil')
+                        : uiText('Profili i ekspertit', 'Expert profile', 'Expertenprofil')}
                       <ChevronRight size={15} aria-hidden />
                     </Link>
                   </div>
@@ -636,7 +653,7 @@ export default function ServiceDetailPage() {
 
                   {responsibleExpert ? (
                     <div className="sd-people">
-                      <h4 className="sd-label">Eksperti përgjegjës</h4>
+                      <h4 className="sd-label">{uiText('Eksperti përgjegjës', 'Responsible expert', 'Verantwortlicher Experte')}</h4>
                       <div className="sd-person">
                         <Link to={publicProviderPath(responsibleExpert)} className="sd-person-link">
                           <span className="sd-person-photo" aria-hidden>
@@ -648,7 +665,7 @@ export default function ServiceDetailPage() {
                           </span>
                         </Link>
                         <Link to={publicProviderPath(responsibleExpert)} className="sd-text-link">
-                          Profili
+                          {uiText('Profili', 'Profile', 'Profil')}
                           <ChevronRight size={15} aria-hidden />
                         </Link>
                       </div>
@@ -657,7 +674,7 @@ export default function ServiceDetailPage() {
 
                   {teamExperts.length > 0 ? (
                     <div className="sd-people">
-                      <h4 className="sd-label">Ekspertët e kompanisë</h4>
+                      <h4 className="sd-label">{uiText('Ekspertët e kompanisë', 'Company experts', 'Experten des Unternehmens')}</h4>
                       <ul>
                         {teamExperts.map((expert) => (
                           <li key={expert.uid} className="sd-person">
@@ -678,7 +695,7 @@ export default function ServiceDetailPage() {
                               serviceTitle={service.title}
                               intake={intake}
                               compact
-                              ctaLabel="Cakto takim"
+                              ctaLabel={uiText('Cakto takim', 'Book a meeting', 'Termin buchen')}
                             />
                           </li>
                         ))}
@@ -693,18 +710,18 @@ export default function ServiceDetailPage() {
                 <Modal isOpen={viewerOpen} onOpenChange={setViewerOpen}>
                   <Modal.Backdrop>
                     <Modal.Container size="lg" placement="center">
-                      <Modal.Dialog className="sd-viewer" aria-label={`Fotot e shërbimit ${service.title}`}>
+                      <Modal.Dialog className="sd-viewer" aria-label={uiText(`Fotot e shërbimit ${service.title}`, `Photos of ${service.title}`, `Fotos von ${service.title}`)}>
                         <Modal.CloseTrigger />
                         <Modal.Body className="sd-viewer-body">
-                          <img src={viewerPhoto} alt={`${service.title} — foto ${activePhoto + 1}`} />
+                          <img src={viewerPhoto} alt={`${service.title} — ${uiText('foto', 'photo', 'Foto')} ${activePhoto + 1}`} />
                         </Modal.Body>
                         {gallery.length > 1 ? (
                           <Modal.Footer className="sd-viewer-nav">
-                            <Button variant="ghost" size="sm" isIconOnly aria-label="Foto e mëparshme" onPress={() => stepPhoto(-1)}>
+                            <Button variant="ghost" size="sm" isIconOnly aria-label={uiText('Foto e mëparshme', 'Previous photo', 'Vorheriges Foto')} onPress={() => stepPhoto(-1)}>
                               <ChevronLeft size={18} aria-hidden />
                             </Button>
                             <span>{activePhoto + 1} / {gallery.length}</span>
-                            <Button variant="ghost" size="sm" isIconOnly aria-label="Foto tjetër" onPress={() => stepPhoto(1)}>
+                            <Button variant="ghost" size="sm" isIconOnly aria-label={uiText('Foto tjetër', 'Next photo', 'Nächstes Foto')} onPress={() => stepPhoto(1)}>
                               <ChevronRight size={18} aria-hidden />
                             </Button>
                           </Modal.Footer>

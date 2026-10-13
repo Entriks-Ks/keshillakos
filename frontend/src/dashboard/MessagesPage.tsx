@@ -3,6 +3,7 @@ import { useNotifications } from '../notifications/NotificationProvider'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, Send } from 'lucide-react'
 import {
@@ -90,6 +91,7 @@ function formatListTime(iso?: string) {
 }
 
 export default function MessagesPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeId = searchParams.get('c') || ''
@@ -552,7 +554,7 @@ export default function MessagesPage() {
                   <ConversationActions conversationId={activeId} onAvailability={socket.onAvailability} onDetails={setChatDetails} />
                 </header>
                 {currentDetails?.requestContext && <div className="msg-request-context">
-                  <div><span>Kërkesë për shërbim</span><strong>{currentDetails.requestContext.title}</strong><span>Statusi: {REQUEST_STATUS[currentDetails.requestContext.status as keyof typeof REQUEST_STATUS]?.label || (currentDetails.requestContext.status === 'cancelled' ? 'Anuluar' : currentDetails.requestContext.status)}</span></div>
+                  <div><span>{t('req.serviceRequest')}</span><strong>{currentDetails.requestContext.title}</strong><span>{t('req.statusLine')}: {t(REQUEST_STATUS[currentDetails.requestContext.status as keyof typeof REQUEST_STATUS]?.label || (currentDetails.requestContext.status === 'cancelled' ? 'status.cancelled' : currentDetails.requestContext.status))}</span></div>
                   <Link to={`${getDashboardPath(user?.role || 'user')}/${user?.role === 'provider' || user?.role === 'company' ? active?.seekerUid === user?.uid ? 'my-requests' : 'inbox' : 'requests'}`} className="uo-link">Shiko kërkesën</Link>
                 </div>}
                 {currentDetails?.messagingBlocked && <p className="msg-blocked-note" role="status">{currentDetails.blockedByMe ? 'E ke bllokuar këtë përdorues. Zhbllokoje nga menuja për të dërguar mesazhe.' : 'Mesazhet nuk janë të disponueshme për këtë bisedë.'}</p>}

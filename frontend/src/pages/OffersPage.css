@@ -4,6 +4,14 @@
   background: var(--surface);
 }
 
+[data-theme="dark"] .of-page {
+  background: var(--background);
+}
+
+[data-theme="dark"] .pc-card {
+  box-shadow: 0 16px 40px rgb(0 0 0 / 28%);
+}
+
 .of-marketplace .tt-nav-inner,
 .of-inner {
   width: var(--tt-wide-content-width);
@@ -38,7 +46,7 @@
   flex-direction: column;
   gap: 14px;
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 3vw, 2.2rem);
   font-weight: 700;
@@ -94,7 +102,7 @@
 .of-tabs .of-tab:hover {
   border-radius: 8px 8px 0 0;
   background: color-mix(in srgb, var(--accent) 4%, transparent);
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .of-tabs .of-tab-icon {
@@ -137,7 +145,7 @@
 }
 
 .of-tab[data-selected='true'] .of-tab-count {
-  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
   color: var(--accent);
 }
 
@@ -266,7 +274,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
@@ -328,14 +336,14 @@
 
 .of-chip:hover {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border)) !important;
-  background: color-mix(in srgb, var(--accent) 3%, #fff) !important;
-  color: var(--brand-navy) !important;
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface)) !important;
+  color: var(--heading) !important;
 }
 
 .of-chip[data-selected],
 .of-chip[aria-pressed='true'] {
   border-color: var(--accent) !important;
-  background: color-mix(in srgb, var(--accent) 7%, #fff) !important;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface)) !important;
   color: var(--accent) !important;
 }
 
@@ -422,7 +430,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
-  color: var(--brand-navy);
+  color: var(--heading);
   font: inherit;
   font-size: 0.88rem;
   font-weight: 600;
@@ -461,7 +469,7 @@
   padding: 3px 9px 3px 11px;
   border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 6%, #fff);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
   color: var(--accent);
   font: inherit;
   font-size: 0.82rem;
@@ -470,7 +478,7 @@
 }
 
 .of-active-chip:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 
 .of-inline-error {
@@ -481,7 +489,7 @@
 
 .of-tabs .of-list {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -508,18 +516,18 @@
   height: 48px;
   margin-bottom: 4px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
   color: var(--accent);
 }
 
 .of-state.is-danger .of-state-icon {
-  background: color-mix(in srgb, #d92d20 8%, #fff);
+  background: color-mix(in srgb, #d92d20 8%, var(--surface));
   color: #b42318;
 }
 
 .of-state h2 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 700;

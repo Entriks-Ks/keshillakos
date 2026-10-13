@@ -26,11 +26,13 @@ export function CardShell({ href, label, media, mediaKind = 'person', children, 
       tabIndex={0}
       aria-label={label}
     >
-      <div className={`pc-main${media ? '' : ' no-media'}`}>
-        {media ? <div className={`pc-media is-${mediaKind}`} aria-hidden>{media}</div> : null}
-        <div className="pc-body">{children}</div>
+      <div className="pc-row">
+        <div className={`pc-main${media ? '' : ' no-media'}`}>
+          {media ? <div className={`pc-media is-${mediaKind}`} aria-hidden>{media}</div> : null}
+          <div className="pc-body">{children}</div>
+        </div>
+        {footer ? <div className="pc-aside">{footer}</div> : null}
       </div>
-      {footer}
     </Card>
   )
 }
@@ -124,20 +126,23 @@ export function ProviderTags({ items, max }: { items: string[]; max: number }) {
 export function CardSkeleton() {
   return (
     <Card className="pc-card pc-skeleton" aria-hidden>
-      <div className="pc-main">
-        <Skeleton className="pc-media is-person" />
-        <div className="pc-body">
-          <Skeleton className="pc-skel-line is-title" />
-          <Skeleton className="pc-skel-line is-mid" />
-          <Skeleton className="pc-skel-line is-wide" />
-          <Skeleton className="pc-skel-line is-wide" />
+      <div className="pc-row">
+        <div className="pc-main">
+          <Skeleton className="pc-media is-person" />
+          <div className="pc-body">
+            <Skeleton className="pc-skel-line is-title" />
+            <Skeleton className="pc-skel-line is-mid" />
+            <Skeleton className="pc-skel-line is-wide" />
+          </div>
         </div>
-      </div>
-      <div className="pc-skel-actions">
-        <Skeleton className="pc-skel-button is-primary" />
-        <Skeleton className="pc-skel-button" />
-        <Skeleton className="pc-skel-button" />
-        <Skeleton className="pc-skel-button" />
+        <div className="pc-aside">
+          <div className="pc-skel-actions">
+            <Skeleton className="pc-skel-button is-primary" />
+            <Skeleton className="pc-skel-button" />
+            <Skeleton className="pc-skel-button" />
+            <Skeleton className="pc-skel-button" />
+          </div>
+        </div>
       </div>
     </Card>
   )

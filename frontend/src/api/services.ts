@@ -40,6 +40,9 @@ export type ServiceProvider = {
   skills?: string[]
   languages?: string[]
   profilePhoto?: string
+  publicPhone?: string
+  publicEmail?: string
+  website?: string
   ratingAverage: number
   ratingCount: number
   yearsOfExperience?: number

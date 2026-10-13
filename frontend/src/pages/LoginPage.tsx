@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FieldError, Input, InputGroup, Label, TextField, toast } from '@heroui/react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -9,14 +10,15 @@ import GoogleAuthButton from '../components/GoogleAuthButton'
 import { getErrorMessage } from '../utils/errors'
 import './LoginPage.css'
 
-const loginSchema = z.object({
-  email: z.string().trim().min(1, 'Email është i detyrueshëm').email('Email i pavlefshëm'),
-  password: z.string().min(6, 'Fjalëkalimi duhet të ketë të paktën 6 karaktere'),
+const loginSchema = (t: (key: string) => string) => z.object({
+  email: z.string().trim().min(1, t('auth.emailRequired')).email(t('auth.emailInvalid')),
+  password: z.string().min(6, t('auth.passwordShort')),
 })
 
-type LoginField = keyof z.infer<typeof loginSchema>
+type LoginField = 'email' | 'password'
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -27,7 +29,7 @@ export default function LoginPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    const result = loginSchema.safeParse({ email, password })
+    const result = loginSchema(t).safeParse({ email, password })
     if (!result.success) {
       const next: Partial<Record<LoginField, string>> = {}
       for (const issue of result.error.issues) {
@@ -41,7 +43,7 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       await login(email, password)
-      toast.success('Mirë se erdhe! Hyrja u krye me sukses.')
+      toast.success(t('auth.hello'))
       navigate('/dashboard', { replace: true })
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -56,10 +58,10 @@ export default function LoginPage() {
         <AuthShowcase />
         <div className="auth-panel">
         <Link to="/" className="brand brand-link">
-          KëshillaKos
+          KLAW
         </Link>
-        <h1>Mirë se erdhe</h1>
-        <p className="auth-lead">Hyr në llogarinë tënde për të vazhduar.</p>
+        <h1>{t('auth.welcome')}</h1>
+        <p className="auth-lead">{t('auth.loginLead')}</p>
 
         <form onSubmit={onSubmit} className="auth-form login-form" noValidate>
           <TextField isInvalid={Boolean(fieldErrors.email)} validationBehavior="aria" fullWidth>
@@ -76,7 +78,7 @@ export default function LoginPage() {
             <FieldError>{fieldErrors.email}</FieldError>
           </TextField>
           <TextField isInvalid={Boolean(fieldErrors.password)} validationBehavior="aria" fullWidth>
-            <Label>Fjalëkalimi</Label>
+            <Label>{t('auth.password')}</Label>
             <InputGroup fullWidth>
               <InputGroup.Input
                 type={passwordVisible ? 'text' : 'password'}
@@ -93,7 +95,7 @@ export default function LoginPage() {
                   variant="ghost"
                   size="sm"
                   isIconOnly
-                  aria-label={passwordVisible ? 'Fshih fjalëkalimin' : 'Shfaq fjalëkalimin'}
+                  aria-label={passwordVisible ? t('auth.hide') : t('auth.show')}
                   aria-pressed={passwordVisible}
                   onPress={() => setPasswordVisible((visible) => !visible)}
                 >
@@ -105,14 +107,14 @@ export default function LoginPage() {
           </TextField>
 
           <Button type="submit" size="md" className="auth-submit" isDisabled={submitting} fullWidth>
-            {submitting ? 'Duke hyrë...' : 'Hyr'}
+            {submitting ? t('auth.entering') : t('auth.login')}
           </Button>
         </form>
 
         <GoogleAuthButton disabled={submitting} />
 
         <p className="switch">
-          Nuk ke llogari? <Link to="/register">Regjistrohu</Link>
+          {t('auth.noAccount')} <Link to="/register">{t('auth.register')}</Link>
         </p>
         </div>
       </div>

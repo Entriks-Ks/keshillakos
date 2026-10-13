@@ -36,7 +36,7 @@ function formatInviteDate(value: string) {
 }
 
 const LOOKUP_HINT: Record<Exclude<ExpertLookup['status'], 'ready' | 'invalid'>, string> = {
-  missing: 'Ky email nuk është i regjistruar në KëshillaKos.',
+  missing: 'Ky email nuk është i regjistruar në KLAW.',
   not_expert: 'Ky përdorues nuk ka profil eksperti. Duhet të regjistrohet si ekspert fillimisht.',
   member: 'Ky ekspert është tashmë në ekip.',
   invited: 'Ftesa është dërguar. Pret që eksperti ta pranojë.',
@@ -218,7 +218,7 @@ export default function CompanyExpertsPanel() {
           <h1>Ekspertët</h1>
           <p>
             {companyName ? `Ekipi i ${companyName}. ` : ''}
-            Fto ekspertë që janë tashmë në KëshillaKos. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë,
+            Fto ekspertë që janë tashmë në KLAW. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë,
             u shkruajnë dhe caktojnë takim.
           </p>
         </div>
@@ -305,7 +305,7 @@ export default function CompanyExpertsPanel() {
                   <p>
                     {invitations.length > 0
                       ? 'Ekspertët e ftuar shfaqen këtu sapo ta pranojnë ftesën te profili i tyre.'
-                      : 'Fto ekspertin e parë me email-in që përdor në KëshillaKos. Pasi ta pranojë ftesën, shfaqet këtu dhe te profili i kompanisë.'}
+                      : 'Fto ekspertin e parë me email-in që përdor në KLAW. Pasi ta pranojë ftesën, shfaqet këtu dhe te profili i kompanisë.'}
                   </p>
                   {canInviteExperts ? (
                     <div className="ur-empty-actions">
@@ -442,7 +442,7 @@ export default function CompanyExpertsPanel() {
                 <Card.Content className="uo-card-body">
                   <form className="ds-form ds-invite" onSubmit={onInvite}>
                     <p className="ds-hint">
-                      Shkruaj email-in me të cilin eksperti është regjistruar në KëshillaKos. Eksperti e pranon ftesën te
+                      Shkruaj email-in me të cilin eksperti është regjistruar në KLAW. Eksperti e pranon ftesën te
                       profili i tij.
                     </p>
                     <div className="ds-field">

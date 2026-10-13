@@ -24,6 +24,7 @@ export type PublicProvider = {
   coverPhoto?: string
   ratingAverage: number
   ratingCount: number
+  plan?: 'basic' | 'pro'
 }
 
 export type PublicExpert = {

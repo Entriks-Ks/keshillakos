@@ -1,12 +1,13 @@
+import { useTranslation } from 'react-i18next'
 import { Calculator, CalendarCheck, Scale } from 'lucide-react'
 
-const pills = [
-  { icon: Scale, label: 'Shërbime juridike' },
-  { icon: Calculator, label: 'Kontabilitet dhe biznes' },
-  { icon: CalendarCheck, label: 'Cakto takim' },
-]
-
 export default function AuthShowcase() {
+  const { t } = useTranslation()
+  const pills = [
+    { icon: Scale, label: t('auth.legal') },
+    { icon: Calculator, label: t('auth.accounting') },
+    { icon: CalendarCheck, label: t('auth.book') },
+  ]
   return (
     <aside className="login-visual" aria-hidden="true">
       <div className="login-scene">

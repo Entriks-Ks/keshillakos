@@ -1,126 +1,122 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { BadgeCheck, MessageCircle, ShieldCheck, Users } from 'lucide-react'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import './AboutPage.css'
 
 const STEPS = [
-  {
-    title: 'Përshkruaj nevojën',
-    text: 'Kërko drejtpërdrejt kur e di shërbimin, ose nis matching me disa hapa kur nuk je i sigurt.',
-  },
-  {
-    title: 'Shiko përputhjet',
-    text: 'Të gjejmë ofrues lokalë ose online që përputhen me rastin, gjuhën dhe mënyrën e punës.',
-  },
-  {
-    title: 'Bisedo dhe rezervo',
-    text: 'Dërgo mesazh ose kërkesë kur je gati — pa thirrje të papritura.',
-  },
+  { title: 'about.step1', text: 'about.step1Text' },
+  { title: 'about.step2', text: 'about.step2Text' },
+  { title: 'about.step3', text: 'about.step3Text' },
 ]
 
 const VALUES = [
-  {
-    title: 'Ofrues me profil të qartë',
-    text: 'Shërbimet publike, vlerësimet dhe detajet e kontaktit janë të dukshme para se të nisësh bisedën.',
-    icon: BadgeCheck,
-  },
-  {
-    title: 'Ti kontrollon kontaktin',
-    text: 'Asnjë ndërmjetësim i detyruar. Ti vendos kur dhe me kë flet.',
-    icon: MessageCircle,
-  },
-  {
-    title: 'Për Kosovën dhe diasporën',
-    text: 'Shërbime fizike në qytetin tënd, ose online kur puna mund të bëhet nga kudo.',
-    icon: Users,
-  },
+  { title: 'about.value1', text: 'about.value1Text', icon: BadgeCheck },
+  { title: 'about.value2', text: 'about.value2Text', icon: MessageCircle },
+  { title: 'about.value3', text: 'about.value3Text', icon: Users },
 ]
 
 export default function AboutPage() {
+  const { t } = useTranslation()
   return (
     <div className="tt-shell tt-home">
       <SiteNav />
 
-      <main>
-        <section className="tt-section tt-about-page" aria-labelledby="about-heading">
-          <div className="tt-section-inner">
-            <header className="tt-about-intro">
-              <p className="tt-about-kicker">Rreth nesh</p>
-              <h1 id="about-heading">Një vend për të gjetur ndihmën<br /><em>profesionale</em> që të duhet.</h1>
-              <p>
-                KëshillaKos lidh njerëzit në Kosovë dhe diasporë me ofrues profesionalë —
-                nga çështjet ligjore dhe kontabiliteti, te IT, marketingu, përkthimi dhe shërbimet e përditshme.
-              </p>
-            </header>
-
-            <div className="tt-about-story">
-              <div>
-                <h2>Çfarë bëjmë</h2>
-                <p>
-                  Shumë njerëz e dinë se u duhet ndihmë, por jo se cilin profesionist të zgjedhin.
-                  Ne e bëjmë këtë hap më të thjeshtë: përshkruan nevojën me fjalët e tua dhe sheh ofrues
-                  që përputhen me rastin, qytetin dhe mënyrën e punës.
-                </p>
-                <p>
-                  Platforma është e hapur edhe për profesionistët. Nëse ofron një shërbim, publikon profilin,
-                  orarin dhe ofertat — klientët të gjejnë ty, jo anasjelltas.
-                </p>
+      <main className="ab">
+        <section className="ab-hero" aria-labelledby="about-heading">
+          <div className="tt-section-inner ab-hero-grid">
+            <div className="ab-hero-copy">
+              <p className="ab-kicker">{t('about.kicker')}</p>
+              <h1 id="about-heading">
+                {t('about.title')}
+                <em>{t('about.titleEm')}</em>
+              </h1>
+              <p className="ab-lead">{t('about.lead')}</p>
+              <div className="ab-actions">
+                <Link to="/ofertat" className="ab-btn">{t('about.offers')}</Link>
+                <Link to="/register" className="ab-btn is-quiet">{t('about.become')}</Link>
               </div>
-              <aside className="tt-about-aside" aria-label="Si e përdorin njerëzit">
-                <span className="tt-about-mark" aria-hidden>
-                  <ShieldCheck size={22} />
-                </span>
-                <h2>Për klientë dhe ofrues</h2>
-                <p>Klientët kërkojnë dhe rezervojnë. Ofruesit dhe kompanitë publikojnë shërbimet e tyre.</p>
-                <Link to="/ofertat">Shiko ofertat</Link>
-              </aside>
+            </div>
+
+            <div className="ab-stage">
+              <img
+                src="/images/hero/desktop-1440.webp"
+                srcSet="/images/hero/desktop-960.webp 960w, /images/hero/desktop-1440.webp 1440w"
+                sizes="(max-width: 900px) 100vw, 640px"
+                alt=""
+                width={1440}
+                height={810}
+              />
+              <ul className="ab-pills" aria-label={t('about.pills')}>
+                <li>{t('about.pill1')}</li>
+                <li>{t('about.pill2')}</li>
+                <li>{t('about.pill3')}</li>
+              </ul>
             </div>
           </div>
         </section>
 
-        <section className="tt-about-block" aria-labelledby="about-how-heading">
+        <section className="ab-how" aria-labelledby="about-how-heading">
           <div className="tt-section-inner">
-            <h2 id="about-how-heading">Si funksionon</h2>
-            <div className="tt-about-grid">
-              {STEPS.map((item, index) => (
-                <article key={item.title} className="tt-about-card">
-                  <span>{index + 1}</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
+            <div className="ab-how-panel">
+              <h2 id="about-how-heading">{t('about.how')}</h2>
+              <ol className="ab-steps">
+                {STEPS.map((item, index) => (
+                  <li key={item.title}>
+                    <span>{String(index + 1).padStart(2, '0')}</span>
+                    <h3>{t(item.title)}</h3>
+                    <p>{t(item.text)}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section className="ab-board" aria-labelledby="about-story-heading">
+          <div className="tt-section-inner ab-bento">
+            <article className="ab-story">
+              <h2 id="about-story-heading">{t('about.story')}</h2>
+              <p>{t('about.story1')}</p>
+              <p>{t('about.story2')}</p>
+            </article>
+
+            {VALUES.map((item) => {
+              const Icon = item.icon
+              return (
+                <article key={item.title} className="ab-tile">
+                  <Icon size={20} aria-hidden />
+                  <h3>{t(item.title)}</h3>
+                  <p>{t(item.text)}</p>
                 </article>
-              ))}
-            </div>
+              )
+            })}
+
+            <aside className="ab-aside" aria-label={t('about.asideLabel')}>
+              <ShieldCheck size={22} aria-hidden />
+              <h2>{t('about.aside')}</h2>
+              <p>{t('about.asideText')}</p>
+              <Link to="/ofertat">{t('about.offers')}</Link>
+            </aside>
           </div>
         </section>
 
-        <section className="tt-about-block" aria-labelledby="about-values-heading">
-          <div className="tt-section-inner">
-            <h2 id="about-values-heading">Pse ekziston KëshillaKos</h2>
-            <div className="tt-about-grid">
-              {VALUES.map((item) => {
-                const Icon = item.icon
-                return (
-                  <article key={item.title} className="tt-about-card">
-                    <Icon size={22} aria-hidden />
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
-                  </article>
-                )
-              })}
+        <section className="ab-end" aria-labelledby="about-cta-heading">
+          <div className="tt-section-inner ab-end-inner">
+            <div className="ab-end-copy">
+              <h2 id="about-cta-heading">{t('about.cta')}</h2>
+              <p>{t('about.ctaLead')}</p>
             </div>
-          </div>
-        </section>
-
-        <section className="tt-about-block tt-about-end" aria-labelledby="about-cta-heading">
-          <div className="tt-section-inner tt-about-end-inner">
-            <div>
-              <h2 id="about-cta-heading">Gati të gjesh ofruesin e duhur?</h2>
-              <p>Nis nga ballina, ose publiko shërbimin tënd nëse je profesionist.</p>
-            </div>
-            <div className="tt-about-end-actions">
-              <Link to="/" className="tt-about-btn">Fillo kërkimin</Link>
-              <Link to="/register" className="tt-about-btn is-quiet">Bëhu ofrues</Link>
+            <div className="ab-end-choices">
+              <Link to="/" className="ab-choice">
+                <span>{t('about.start')}</span>
+                <small>{t('about.startHint')}</small>
+              </Link>
+              <Link to="/register" className="ab-choice is-quiet">
+                <span>{t('about.become')}</span>
+                <small>{t('about.publish')}</small>
+              </Link>
             </div>
           </div>
         </section>

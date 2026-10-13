@@ -51,7 +51,7 @@
 
 .ds-danger-btn:hover {
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
-  background: color-mix(in srgb, var(--danger) 5%, #fff);
+  background: color-mix(in srgb, var(--danger) 5%, var(--surface));
 }
 
 .ds-clamp-2 {
@@ -76,7 +76,7 @@
 
 .ds-label {
   padding: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.86rem;
   font-weight: 600;
 }
@@ -162,7 +162,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
-  color: var(--brand-navy);
+  color: var(--heading);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -177,13 +177,13 @@
 .ds-day:hover,
 .ds-hour:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  background: color-mix(in srgb, var(--accent) 4%, #fff);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
 }
 
 .ds-day.is-selected,
 .ds-hour.is-selected {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   color: var(--accent);
 }
 
@@ -242,7 +242,7 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   color: var(--accent);
 }
 
@@ -309,7 +309,7 @@
 }
 
 .ds-rating-num {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 2.5rem;
   font-weight: 700;
@@ -324,7 +324,7 @@
 }
 
 .ds-rating-word {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.92rem;
   font-weight: 700;
 }
@@ -383,7 +383,7 @@
 }
 
 .ds-review-origin.is-verified {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 600;
 }
 
@@ -424,7 +424,7 @@
 }
 
 .ds-service.is-editing {
-  background: color-mix(in srgb, var(--accent) 3%, #fff);
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface));
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -558,8 +558,8 @@
 }
 
 .ds-step.is-done .ds-step-dot {
-  border-color: color-mix(in srgb, var(--accent) 35%, #fff);
-  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--surface));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   color: var(--accent);
 }
 
@@ -571,7 +571,7 @@
 
 .ds-step.is-current .ds-step-label,
 .ds-step.is-done .ds-step-label {
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .ds-stepper-compact {
@@ -614,7 +614,7 @@
 
 .ds-step-head h3 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 700;
@@ -635,8 +635,8 @@
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 4%, #fff);
-  color: var(--brand-navy);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  color: var(--heading);
 }
 
 .ds-tip svg {
@@ -681,7 +681,7 @@
 
 .ds-review-head h4 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.95rem;
   font-weight: 700;
 }
@@ -719,7 +719,7 @@
 }
 
 .ds-review-item dd strong {
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .ds-review-empty {
@@ -784,7 +784,7 @@
 }
 
 .ds-wizard-todo strong {
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .ds-wizard-todo ul {
@@ -818,7 +818,7 @@
 
 .ds-company-hero .up-hero-title h2 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: clamp(1.1rem, 1.8vw, 1.3rem);
   letter-spacing: -0.02em;
@@ -886,7 +886,7 @@
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 4%, #fff);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
 }
 
 @media (max-width: 1024px) {

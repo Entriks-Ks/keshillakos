@@ -1,6 +1,8 @@
 import KeshillaPagination from './KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+import { uiText } from '../i18n'
 import { toast } from '@heroui/react'
 import { Link } from 'react-router-dom'
 import { Star } from 'lucide-react'
@@ -27,7 +29,15 @@ type Props = {
   className?: string
 }
 
-const STAR_HINTS = ['Shumë keq', 'Keq', 'Në rregull', 'Mirë', 'Shkëlqyeshëm'] as const
+function starHints() {
+  return [
+    uiText('Shumë keq', 'Very bad', 'Sehr schlecht'),
+    uiText('Keq', 'Bad', 'Schlecht'),
+    uiText('Në rregull', 'Okay', 'In Ordnung'),
+    uiText('Mirë', 'Good', 'Gut'),
+    uiText('Shkëlqyeshëm', 'Excellent', 'Ausgezeichnet'),
+  ]
+}
 
 export default function RateProvider({
   providerUid,
@@ -40,6 +50,8 @@ export default function RateProvider({
   quiet = false,
   className = '',
 }: Props) {
+  const { i18n } = useTranslation()
+  void i18n.language
   const { user } = useAuth()
   const { page, setPage, pagination, receivePagination } = usePagination(providerUid)
   const [eligibleRevision, setEligibleRevision] = useState(0)
@@ -116,8 +128,8 @@ export default function RateProvider({
       setCount(fresh.stats.count)
       toast.success(
         published
-          ? 'Faleminderit! Vlerësimi u ruajt dhe tani shfaqet te profili i ofruesit.'
-          : 'Faleminderit! Vlerësimi u ruajt dhe do të shfaqet pasi të miratohet.',
+          ? uiText('Faleminderit! Vlerësimi u ruajt dhe tani shfaqet te profili i ofruesit.', 'Thank you! The rating was saved and now shows on the provider profile.', 'Danke! Die Bewertung wurde gespeichert und erscheint jetzt im Profil des Anbieters.')
+          : uiText('Faleminderit! Vlerësimi u ruajt dhe do të shfaqet pasi të miratohet.', 'Thank you! The rating was saved and will appear after approval.', 'Danke! Die Bewertung wurde gespeichert und erscheint nach der Freigabe.'),
       )
       setRated(true)
       setInteractions((prev) => prev.filter((item) => item.id !== selected.id))
@@ -144,40 +156,40 @@ export default function RateProvider({
           ★ {count > 0 ? average.toFixed(1) : '—'}
           <span className="muted">
             {' '}
-            · {count} {count === 1 ? 'vlerësim' : 'vlerësime'}
+            · {count} {count === 1 ? uiText('vlerësim', 'rating', 'Bewertung') : uiText('vlerësime', 'ratings', 'Bewertungen')}
           </span>
         </p>
       ) : null}
 
       {!user && !quiet ? (
         <p className="muted">
-          <Link to="/login">Hyr</Link> për të lënë një vlerësim pasi ofruesi të përfundojë shërbimin.
+          <Link to="/login">{uiText('Hyr', 'Log in', 'Anmelden')}</Link> {uiText('për të lënë një vlerësim pasi ofruesi të përfundojë shërbimin.', 'to leave a rating after the provider finishes the service.', 'um eine Bewertung zu hinterlassen, nachdem der Anbieter den Dienst abschließt.')}
         </p>
       ) : null}
 
       {user && !canRate && !quiet ? (
-        <p className="muted">Vlerësimin e lënë vetëm klientët.</p>
+        <p className="muted">{uiText('Vlerësimin e lënë vetëm klientët.', 'Only clients can leave a rating.', 'Nur Kunden können eine Bewertung hinterlassen.')}</p>
       ) : null}
 
-      {canRate && loadingEligible && !quiet ? <p className="muted">Duke kontrolluar…</p> : null}
+      {canRate && loadingEligible && !quiet ? <p className="muted">{uiText('Duke kontrolluar…', 'Checking…', 'Wird geprüft…')}</p> : null}
 
       {canRate && !loadingEligible && interactions.length === 0 && !rated && !quiet ? (
         <p className="muted">
-          Mund ta vlerësosh <strong>{providerName}</strong> pasi ofruesi të përfundojë shërbimin.
+          {uiText('Mund ta vlerësosh', 'You can rate', 'Du kannst')} <strong>{providerName}</strong> {uiText('pasi ofruesi të përfundojë shërbimin.', 'after the provider finishes the service.', 'bewerten, nachdem der Anbieter den Dienst abschließt.')}
         </p>
       ) : null}
 
       {readyToRate ? (
         <form onSubmit={onSubmit} className="rate-form">
-          <p className="rate-form-title">Si ishte bashkëpunimi me {providerName}?</p>
-          <p className="muted rate-form-hint">Zgjidh yjet — komenti është opsional.</p>
-          {!interactionProp && interactions.length > 1 ? <label className="muted">Shërbimi i përfunduar
+          <p className="rate-form-title">{uiText(`Si ishte bashkëpunimi me ${providerName}?`, `How was working with ${providerName}?`, `Wie war die Zusammenarbeit mit ${providerName}?`)}</p>
+          <p className="muted rate-form-hint">{uiText('Zgjidh yjet — komenti është opsional.', 'Pick the stars — a comment is optional.', 'Wähle die Sterne — ein Kommentar ist optional.')}</p>
+          {!interactionProp && interactions.length > 1 ? <label className="muted">{uiText('Shërbimi i përfunduar', 'Finished service', 'Abgeschlossener Dienst')}
             <select value={selectedId} onChange={(event) => { const choice = interactions.find((item) => item.id === event.target.value); setSelectedId(event.target.value); if (choice) setProviderId(choice.providerId) }}>
-              {interactions.map((item, index) => <option key={item.id} value={item.id}>{item.kind === 'appointment' ? 'Takim' : 'Kërkesë'} {(page - 1) * 20 + index + 1}</option>)}
+              {interactions.map((item, index) => <option key={item.id} value={item.id}>{item.kind === 'appointment' ? uiText('Takim', 'Meeting', 'Termin') : uiText('Kërkesë', 'Request', 'Anfrage')} {(page - 1) * 20 + index + 1}</option>)}
             </select>
           </label> : null}
           {!interactionProp ? <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loadingEligible || submitting} /> : null}
-          <div className="star-row" role="group" aria-label="Vlerësimi me yje" onMouseLeave={() => setHover(0)}>
+          <div className="star-row" role="group" aria-label={uiText('Vlerësimi me yje', 'Star rating', 'Sternebewertung')} onMouseLeave={() => setHover(0)}>
             {[1, 2, 3, 4, 5].map((value) => (
               <button
                 key={value}
@@ -185,22 +197,22 @@ export default function RateProvider({
                 className={`star-btn${shownScore >= value ? ' is-active' : ''}`}
                 onClick={() => setScore(value)}
                 onMouseEnter={() => setHover(value)}
-                aria-label={`${value} yje, ${STAR_HINTS[value - 1]}`}
+                aria-label={uiText(`${value} yje, ${starHints()[value - 1]}`, `${value} stars, ${starHints()[value - 1]}`, `${value} Sterne, ${starHints()[value - 1]}`)}
               >
                 <Star size={26} strokeWidth={1.6} />
               </button>
             ))}
-            {shownScore > 0 ? <span className="rate-star-hint">{STAR_HINTS[shownScore - 1]}</span> : null}
+            {shownScore > 0 ? <span className="rate-star-hint">{starHints()[shownScore - 1]}</span> : null}
           </div>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Çfarë shkoi mirë? Çfarë mund të përmirësohej?"
+            placeholder={uiText('Çfarë shkoi mirë? Çfarë mund të përmirësohej?', 'What went well? What could be better?', 'Was lief gut? Was könnte besser sein?')}
             maxLength={500}
             rows={3}
           />
           <button type="submit" className="primary-btn" disabled={submitting || score < 1}>
-            {submitting ? 'Duke ruajtur…' : 'Dërgo vlerësimin'}
+            {submitting ? uiText('Duke ruajtur…', 'Saving…', 'Wird gespeichert…') : uiText('Dërgo vlerësimin', 'Send rating', 'Bewertung senden')}
           </button>
         </form>
       ) : null}

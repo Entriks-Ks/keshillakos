@@ -1,4 +1,5 @@
 import MessageUnreadBadge from '../chat/MessageUnreadBadge'
+import { useTranslation } from 'react-i18next'
 import { useNotifications } from '../notifications/NotificationProvider'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Dropdown, Label, Separator } from '@heroui/react'
@@ -22,6 +23,7 @@ type DashboardSidebarProps = {
 }
 
 function SidebarLink({ item, onNavigate }: { item: DashNavItem; onNavigate?: () => void }) {
+  const { t } = useTranslation()
   const Icon = item.icon
   const location = useLocation()
   const { messageUnreadCount } = useNotifications()
@@ -37,7 +39,7 @@ function SidebarLink({ item, onNavigate }: { item: DashNavItem; onNavigate?: () 
         onClick={onNavigate}
       >
         <Icon size={18} strokeWidth={2} aria-hidden />
-        <span>{item.label}</span>
+        <span>{t(item.label)}</span>
         {isMessages && <MessageUnreadBadge />}
       </NavLink>
     </li>
@@ -55,31 +57,32 @@ function ContextSwitch({
   switching: boolean
   onSwitch: (next: DashboardContext) => void
 }) {
+  const { t } = useTranslation()
   const current: DashboardContext = role === 'admin' ? 'user' : role
   const unavailable = options.filter((option) => !option.available).map((option) => option.context)
 
   return (
     <Dropdown>
-      <Dropdown.Trigger className="dsb-context" isDisabled={switching} aria-label="Ndrysho kontekstin e dashboard">
+      <Dropdown.Trigger className="dsb-context" isDisabled={switching} aria-label={t('dash.switchContext')}>
         <span className="dsb-context-meta">
-          <span className="dsb-context-label">Konteksti</span>
-          <span className="dsb-context-value">{CONTEXT_LABELS[role]}</span>
+          <span className="dsb-context-label">{t('dash.context')}</span>
+          <span className="dsb-context-value">{t(CONTEXT_LABELS[role])}</span>
         </span>
         <ChevronsUpDown size={16} aria-hidden className="dsb-context-caret" />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom start" className="dsb-context-popover">
         <Dropdown.Menu
-          aria-label="Konteksti i dashboard"
+          aria-label={t('dash.contextMenu')}
           disabledKeys={unavailable}
           onAction={(key) => onSwitch(key as DashboardContext)}
         >
           {options.map((option) => (
-            <Dropdown.Item key={option.context} id={option.context} textValue={CONTEXT_LABELS[option.context]}>
-              <Label>{CONTEXT_LABELS[option.context]}</Label>
+            <Dropdown.Item key={option.context} id={option.context} textValue={t(CONTEXT_LABELS[option.context])}>
+              <Label>{t(CONTEXT_LABELS[option.context])}</Label>
               {option.context === current ? (
                 <Check size={16} aria-hidden className="dsb-context-check" />
               ) : !option.available ? (
-                <span className="dsb-context-note">Jo aktiv</span>
+                <span className="dsb-context-note">{t('dash.inactive')}</span>
               ) : null}
             </Dropdown.Item>
           ))}
@@ -98,14 +101,16 @@ export default function DashboardSidebar({
   onNavigate,
   inDrawer = false,
 }: DashboardSidebarProps) {
+  const { t } = useTranslation()
   const { main, manage, account } = groupDashboardNav(nav)
 
   return (
     <div className={`dsb${inDrawer ? ' is-drawer' : ''}`}>
       <div className="dsb-head">
         {inDrawer ? null : (
-          <Link to="/" className="brand brand-link dsb-brand" aria-label="KëshillaKos, faqja kryesore">
-            KëshillaKos
+          <Link to="/" className="brand brand-link dsb-brand" aria-label={t('dash.homeAria')}>
+            <span className="dsb-mark" aria-hidden>K</span>
+            <span>KLAW</span>
           </Link>
         )}
         {contextOptions ? (
@@ -113,14 +118,14 @@ export default function DashboardSidebar({
         ) : (
           <div className="dsb-context is-static">
             <span className="dsb-context-meta">
-              <span className="dsb-context-label">Konteksti</span>
-              <span className="dsb-context-value">{CONTEXT_LABELS[role]}</span>
+              <span className="dsb-context-label">{t('dash.context')}</span>
+              <span className="dsb-context-value">{t(CONTEXT_LABELS[role])}</span>
             </span>
           </div>
         )}
       </div>
 
-      <nav className="dsb-nav" aria-label="Navigimi i dashboard">
+      <nav className="dsb-nav" aria-label={t('dash.nav')}>
         <ul className="dsb-list">
           {main.map((item) => (
             <SidebarLink key={item.to} item={item} onNavigate={onNavigate} />
@@ -128,7 +133,7 @@ export default function DashboardSidebar({
         </ul>
         {manage.length > 0 ? (
           <>
-            <p className="dsb-group-label">{NAV_GROUP_LABELS.manage}</p>
+            <p className="dsb-group-label">{t(NAV_GROUP_LABELS.manage)}</p>
             <ul className="dsb-list">
               {manage.map((item) => (
                 <SidebarLink key={item.to} item={item} onNavigate={onNavigate} />
@@ -139,7 +144,7 @@ export default function DashboardSidebar({
       </nav>
 
       {account.length > 0 ? (
-        <nav className="dsb-foot" aria-label={NAV_GROUP_LABELS.account}>
+        <nav className="dsb-foot" aria-label={t(NAV_GROUP_LABELS.account)}>
           <Separator />
           <ul className="dsb-list is-secondary">
             {account.map((item) => (

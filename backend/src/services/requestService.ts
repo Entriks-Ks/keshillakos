@@ -1,4 +1,5 @@
 import { notify } from './notificationService'
+import { isPro, recordPlanEvent } from './planService'
 import {
   ServiceRequest,
   type ContactMethod,
@@ -56,6 +57,9 @@ export async function createServiceRequest(input: {
   if (input.seekerUid === input.providerUid) {
     throw new Error('Nuk mund t’i dërgosh kërkesë vetes')
   }
+  if (!(await isPro(input.providerUid, 'provider')) && !(await isPro(input.providerUid, 'company'))) {
+    throw new Error('Ky ofrues pranon vetëm kontakt bazik. Formulari i kërkesës është pjesë e planit Pro.')
+  }
 
   let requestedStartAt: Date | undefined
   let requestedEndAt: Date | undefined
@@ -83,6 +87,8 @@ export async function createServiceRequest(input: {
     requestedEndAt,
     status: 'pending',
   })
+  const audience = await isPro(input.providerUid, 'company') ? 'company' as const : 'provider' as const
+  await recordPlanEvent(input.providerUid, audience, 'requests')
 
   if (slotId) {
     try {

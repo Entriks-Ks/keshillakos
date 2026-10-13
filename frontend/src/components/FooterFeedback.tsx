@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { MessageSquare, X } from 'lucide-react'
 import { submitPlatformFeedback } from '../api/feedback'
@@ -7,6 +8,7 @@ import { getErrorMessage } from '../utils/errors'
 import './FooterFeedback.css'
 
 export default function FooterFeedback() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const titleId = useId()
   const [open, setOpen] = useState(false)
@@ -61,7 +63,7 @@ export default function FooterFeedback() {
     <>
       <button type="button" className="tt-feedback-open" onClick={() => setOpen(true)}>
         <MessageSquare size={15} aria-hidden />
-        Dërgo feedback
+        {t('feedback.open')}
       </button>
       {open
         ? createPortal(
@@ -79,27 +81,27 @@ export default function FooterFeedback() {
                       <MessageSquare size={18} />
                     </span>
                     <div>
-                      <h2 id={titleId}>Feedback për KëshillaKos</h2>
-                      <p>Na ndihmo ta përmirësojmë platformën.</p>
+                      <h2 id={titleId}>{t('feedback.title')}</h2>
+                      <p>{t('feedback.lead')}</p>
                     </div>
                   </div>
-                  <button type="button" className="tt-feedback-close" onClick={close} aria-label="Mbyll">
+                  <button type="button" className="tt-feedback-close" onClick={close} aria-label={t('feedback.close')}>
                     <X size={18} />
                   </button>
                 </header>
                 {sent ? (
                   <div className="tt-feedback-done">
-                    <p role="status">Faleminderit. Feedback-u iu dërgua adminit.</p>
-                    <button type="button" className="tt-feedback-submit" onClick={close}>Mbyll</button>
+                    <p role="status">{t('feedback.thanks')}</p>
+                    <button type="button" className="tt-feedback-submit" onClick={close}>{t('feedback.close')}</button>
                   </div>
                 ) : (
                   <form className="tt-feedback-form" onSubmit={onSubmit}>
                     {user ? (
-                      <p className="tt-feedback-as">Po dërgon si {user.name}</p>
+                      <p className="tt-feedback-as">{t('feedback.as', { name: user.name })}</p>
                     ) : (
                       <div className="tt-feedback-fields">
                         <label>
-                          Emri
+                          {t('feedback.name')}
                           <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" maxLength={80} />
                         </label>
                         <label>
@@ -116,7 +118,7 @@ export default function FooterFeedback() {
                       </div>
                     )}
                     <label>
-                      Mesazhi
+                      {t('feedback.message')}
                       <textarea
                         value={message}
                         onChange={(event) => setMessage(event.target.value)}
@@ -124,12 +126,12 @@ export default function FooterFeedback() {
                         minLength={5}
                         maxLength={1000}
                         rows={4}
-                        placeholder="Si po të duket KëshillaKos?"
+                        placeholder={t('feedback.placeholder')}
                       />
                     </label>
                     {error ? <p className="tt-feedback-error" role="alert">{error}</p> : null}
                     <button type="submit" className="tt-feedback-submit" disabled={sending}>
-                      {sending ? 'Duke u dërguar…' : 'Dërgo'}
+                      {sending ? t('feedback.sending') : t('feedback.send')}
                     </button>
                   </form>
                 )}

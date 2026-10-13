@@ -1,6 +1,7 @@
 import MessageNavButton from '../chat/MessageNavButton'
 import MessageUnreadBadge from '../chat/MessageUnreadBadge'
-import { useId, useState } from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { Button, Drawer, Dropdown, Label, Separator, buttonVariants } from '@heroui/react'
 import {
@@ -16,11 +17,13 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { AuthUser } from '../api/auth'
+import ThemeToggle from './ThemeToggle'
+import LanguageSwitcher from './LanguageSwitcher'
 import { useAuth } from '../auth/AuthContext'
 import { ROLE_LABELS } from '../dashboard/nav'
+import i18n from '../i18n'
 import { resolveActiveContext } from '../utils/dashboardPath'
 import {
-  MARKETPLACE_LINKS,
   activeMarketplaceLink,
   getAccountMenu,
   userDisplayName,
@@ -41,10 +44,11 @@ const ACCOUNT_ICONS: Record<AccountMenuId, LucideIcon> = {
 
 function roleLabel(user: AuthUser) {
   const context = resolveActiveContext(user)
-  return context === 'user' ? 'Përdorues privat' : ROLE_LABELS[context]
+  return i18n.t(context === 'user' ? 'role.private' : ROLE_LABELS[context])
 }
 
 function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
+  const { t } = useTranslation()
   const items = getAccountMenu(user)
   const displayName = userDisplayName(user)
   const shortName = displayName.split(' ')[0]
@@ -78,15 +82,15 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void 
           {items.map((item) => {
             const Icon = ACCOUNT_ICONS[item.id]
             return (
-              <Dropdown.Item key={item.id} id={item.id} href={item.to} textValue={item.label}>
+              <Dropdown.Item key={item.id} id={item.id} href={item.to} textValue={t(item.label)}>
                 <Icon size={16} aria-hidden className="kk-nav-menu-icon" />
-                <Label>{item.label}{item.id === 'messages' && <MessageUnreadBadge />}</Label>
+                <Label>{t(item.label)}{item.id === 'messages' && <MessageUnreadBadge />}</Label>
               </Dropdown.Item>
             )
           })}
-          <Dropdown.Item id="logout" textValue="Dil" variant="danger" onAction={onLogout}>
+          <Dropdown.Item id="logout" textValue={t('nav.logout')} variant="danger" onAction={onLogout}>
             <LogOut size={16} aria-hidden className="kk-nav-menu-icon" />
-            <Label>Dil</Label>
+            <Label>{t('nav.logout')}</Label>
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
@@ -94,75 +98,8 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   )
 }
 
-function OffersNavigation({ active, mobile = false, onNavigate }: {
-  active: ReturnType<typeof activeMarketplaceLink>
-  mobile?: boolean
-  onNavigate?: () => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const subcategoriesId = useId()
-
-  if (mobile) {
-    return (
-      <div className="kk-nav-offers-mobile">
-        <button
-          type="button"
-          className="kk-nav-drawer-link kk-nav-offers-parent"
-          aria-expanded={expanded}
-          aria-controls={subcategoriesId}
-          onClick={() => setExpanded(open => !open)}
-        >
-          Ofertat
-          <ChevronDown size={16} aria-hidden />
-        </button>
-        <div id={subcategoriesId} className="kk-nav-offers-subcategories" data-expanded={expanded} inert={!expanded}>
-          <ul className="kk-nav-drawer-list kk-nav-offers-children">
-            {MARKETPLACE_LINKS.map(link => (
-              <li key={link.id}>
-                <Link to={link.to} className="kk-nav-drawer-link"
-                  aria-current={active === link.id ? 'page' : undefined} onClick={onNavigate}>
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="kk-nav-offers">
-      <Link
-        to="/ofertat"
-        className="kk-nav-link"
-        aria-current={active ? 'page' : undefined}
-        onClick={onNavigate}
-      >
-        Ofertat
-      </Link>
-      <Dropdown>
-        <Dropdown.Trigger>
-          <Button isIconOnly variant="ghost" size="sm" className="kk-nav-offers-toggle" aria-label="Hap menunë e ofertave">
-            <ChevronDown size={16} aria-hidden />
-          </Button>
-        </Dropdown.Trigger>
-        <Dropdown.Popover placement="bottom start" className="kk-nav-popover">
-          <Dropdown.Menu aria-label="Ofertat" className="kk-nav-menu">
-            {MARKETPLACE_LINKS.map(link => (
-              <Dropdown.Item key={link.id} id={link.id} href={link.to} textValue={link.label}
-                aria-current={active === link.id ? 'page' : undefined} onAction={onNavigate}>
-                <Label>{link.label}</Label>
-              </Dropdown.Item>
-            ))}
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown>
-    </div>
-  )
-}
-
 export default function SiteNav() {
+  const { t } = useTranslation()
   const { user, loading, logout } = useAuth()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -178,26 +115,46 @@ export default function SiteNav() {
   return (
     <header className="kk-nav">
       <div className="tt-nav-inner kk-nav-inner">
-        <Link to="/" className="kk-nav-brand" aria-label="KëshillaKos, faqja kryesore">
-          KëshillaKos
+        <Link to="/" className="kk-nav-brand" aria-label={t('nav.home')}>
+          <span className="kk-nav-mark" aria-hidden>K</span>
+          <span>KLAW</span>
         </Link>
 
-        <nav className="kk-nav-center" aria-label="Kryesore">
+        <nav className="kk-nav-center" aria-label={t('nav.main')}>
           <ul className="kk-nav-links">
-            <li><OffersNavigation active={active} /></li>
+            <li>
+              <Link
+                to="/ofertat"
+                className="kk-nav-link"
+                aria-current={active ? 'page' : undefined}
+              >
+                {t('nav.offers')}
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/planet"
+                className="kk-nav-link"
+                aria-current={location.pathname === '/planet' ? 'page' : undefined}
+              >
+                {t('nav.plans')}
+              </Link>
+            </li>
             <li>
               <Link
                 to="/rreth-nesh"
                 className="kk-nav-link"
                 aria-current={location.pathname === '/rreth-nesh' ? 'page' : undefined}
               >
-                Rreth nesh
+                {t('nav.about')}
               </Link>
             </li>
           </ul>
         </nav>
 
         <div className="kk-nav-actions">
+          <LanguageSwitcher />
+          <ThemeToggle />
           {loading ? (
             <span className="kk-nav-pending" aria-hidden />
           ) : user ? (
@@ -209,10 +166,10 @@ export default function SiteNav() {
           ) : (
             <div className="kk-nav-guest">
               <Link to="/login" className={`${buttonVariants({ variant: 'ghost', size: 'sm' })} kk-nav-login`}>
-                Hyr
+                {t('nav.login')}
               </Link>
               <Link to="/register" className={`${buttonVariants({ variant: 'primary', size: 'sm' })} kk-nav-cta`}>
-                Regjistrohu
+                {t('nav.register')}
               </Link>
             </div>
           )}
@@ -223,19 +180,20 @@ export default function SiteNav() {
               variant="ghost"
               size="sm"
               className="kk-nav-toggle"
-              aria-label={menuOpen ? 'Mbyll menunë' : 'Hap menunë'}
+              aria-label={menuOpen ? t('nav.close') : t('nav.open')}
               aria-expanded={menuOpen}
             >
               <Menu size={20} aria-hidden />
             </Button>
             <Drawer.Backdrop className="kk-nav-drawer-backdrop">
               <Drawer.Content placement="right" className="kk-nav-drawer">
-                <Drawer.Dialog aria-label="Menuja kryesore" className="kk-nav-drawer-dialog">
+                <Drawer.Dialog aria-label={t('nav.main')} className="kk-nav-drawer-dialog">
                   <Drawer.Header className="kk-nav-drawer-head">
                     <Link to="/" className="kk-nav-brand" onClick={closeMenu}>
-                      KëshillaKos
+                      <span className="kk-nav-mark" aria-hidden>K</span>
+                      <span>KLAW</span>
                     </Link>
-                    <Drawer.CloseTrigger aria-label="Mbyll menunë" />
+                    <Drawer.CloseTrigger aria-label={t('nav.close')} />
                   </Drawer.Header>
 
                   <Drawer.Body className="kk-nav-drawer-body">
@@ -249,9 +207,28 @@ export default function SiteNav() {
                       </div>
                     ) : null}
 
-                    <nav aria-label="Menuja mobile">
+                    <nav aria-label={t('nav.mobile')}>
                       <ul className="kk-nav-drawer-list">
-                        <li><OffersNavigation active={active} mobile onNavigate={closeMenu} /></li>
+                        <li>
+                          <Link
+                            to="/ofertat"
+                            className="kk-nav-drawer-link"
+                            aria-current={active ? 'page' : undefined}
+                            onClick={closeMenu}
+                          >
+                            {t('nav.offers')}
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/planet"
+                            className="kk-nav-drawer-link"
+                            aria-current={location.pathname === '/planet' ? 'page' : undefined}
+                            onClick={closeMenu}
+                          >
+                            {t('nav.plans')}
+                          </Link>
+                        </li>
                         <li>
                           <Link
                             to="/rreth-nesh"
@@ -259,7 +236,7 @@ export default function SiteNav() {
                             aria-current={location.pathname === '/rreth-nesh' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
-                            Rreth nesh
+                            {t('nav.about')}
                           </Link>
                         </li>
                       </ul>
@@ -279,7 +256,7 @@ export default function SiteNav() {
                                     onClick={closeMenu}
                                   >
                                     <Icon size={18} aria-hidden />
-                                    <span>{item.label}{item.id === 'messages' && <MessageUnreadBadge />}</span>
+                                    <span>{t(item.label)}{item.id === 'messages' && <MessageUnreadBadge />}</span>
                                   </Link>
                                 </li>
                               )
@@ -294,7 +271,7 @@ export default function SiteNav() {
                     {user ? (
                       <Button variant="danger-soft" fullWidth onPress={handleLogout}>
                         <LogOut size={16} aria-hidden />
-                        Dil
+                        {t('nav.logout')}
                       </Button>
                     ) : (
                       <>
@@ -303,14 +280,14 @@ export default function SiteNav() {
                           className={buttonVariants({ variant: 'outline', fullWidth: true })}
                           onClick={closeMenu}
                         >
-                          Hyr
+                          {t('nav.login')}
                         </Link>
                         <Link
                           to="/register"
                           className={buttonVariants({ variant: 'primary', fullWidth: true })}
                           onClick={closeMenu}
                         >
-                          Regjistrohu
+                          {t('nav.register')}
                         </Link>
                       </>
                     )}

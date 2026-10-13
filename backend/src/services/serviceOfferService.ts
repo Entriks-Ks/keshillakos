@@ -334,7 +334,7 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
   const [profiles, categories, businesses] = await Promise.all([
     ProviderProfile.find({ _id: { $in: offers.map((offer) => offer.providerProfile) } }),
     Category.find({ _id: { $in: offers.map((offer) => offer.category) } }),
-    Business.find({ _id: { $in: offers.map((offer) => offer.business).filter(Boolean) } }).select('publicName'),
+    Business.find({ _id: { $in: offers.map((offer) => offer.business).filter(Boolean) } }).select('publicName contactPhone contactEmail website'),
   ])
   const profileById = new Map(profiles.map((profile) => [String(profile._id), profile]))
   const cityIds = profiles.flatMap((profile) => [profile.location?.cityId, ...profile.serviceAreaCityIds].filter((id): id is Types.ObjectId => Boolean(id)))
@@ -399,6 +399,9 @@ export async function offersToLegacyServices(offers: ServiceOfferDoc[], publicOn
         headline: profile?.publicProfile.title || owner?.headline || '', bio: profile?.publicProfile.description || owner?.bio || '',
         location: area, skills: owner?.skills || [], languages: profile?.languages?.length ? profile.languages : owner?.languages || [],
         profilePhoto: profile?.publicProfile.photoUrl || owner?.profilePhoto || '',
+        publicPhone: profile?.publicProfile.publicPhone || business?.contactPhone || '',
+        publicEmail: profile?.publicProfile.publicEmail || business?.contactEmail || '',
+        website: business?.website || '',
         ratingAverage: rating?.average ?? 0, ratingCount: rating?.count ?? 0,
         yearsOfExperience: profile?.yearsOfExperience,
         experience: profile?.experience || '',

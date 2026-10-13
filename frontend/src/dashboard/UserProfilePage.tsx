@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -107,6 +108,7 @@ export function EmptyNote({ text, action, onAction }: { text: string; action: st
 }
 
 export function UserProfile({ completion, onSaved }: Props) {
+  const { t } = useTranslation()
   const { user, switchContext } = useAuth()
   const navigate = useNavigate()
   const route = useLocation()
@@ -222,7 +224,7 @@ export function UserProfile({ completion, onSaved }: Props) {
                 </Chip>
               ) : null}
             </div>
-            <p className="up-hero-role">{user.headline || ROLE_LABELS[user.role]}</p>
+            <p className="up-hero-role">{user.headline || t(ROLE_LABELS[user.role])}</p>
             <ul className="up-hero-meta">
               {cityLoading ? (
                 <li><Skeleton className="up-skel-line" /></li>

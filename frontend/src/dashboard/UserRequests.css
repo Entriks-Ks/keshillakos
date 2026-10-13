@@ -29,7 +29,7 @@
 }
 
 .ur-stat-value {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: 700;
@@ -75,7 +75,7 @@
 }
 
 .ur-tabs .ur-tab[data-selected='true'] {
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .ur-tab-count {
@@ -93,7 +93,7 @@
 }
 
 .ur-tab[data-selected='true'] .ur-tab-count {
-  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
   color: var(--accent);
 }
 
@@ -145,7 +145,7 @@
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
@@ -167,7 +167,7 @@
 }
 
 .ur-provider {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 600;
   text-decoration: none;
 }
@@ -193,7 +193,7 @@ a.ur-provider:hover {
   align-items: center;
   gap: 5px;
   min-width: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -264,7 +264,7 @@ a.ur-provider:hover {
 }
 
 .ur-facts li.is-strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 600;
 }
 
@@ -296,7 +296,7 @@ a.ur-provider:hover {
 }
 
 .ur-response-amount {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
 }
@@ -397,13 +397,13 @@ a.ur-provider:hover {
   height: 44px;
   margin-bottom: 4px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   color: var(--accent);
 }
 
 .ur-empty h2 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.1rem;
 }
@@ -454,6 +454,99 @@ a.ur-provider:hover {
   width: 40px;
   height: 28px;
   border-radius: 8px;
+}
+
+/* Received requests — provider and company */
+
+.ur-simple .ur-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.ur-simple .ur-list {
+  gap: 0;
+}
+
+.ur-simple .ur-item,
+.ur-simple .ur-item + .ur-item {
+  display: block;
+  padding: 20px 22px;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.ur-simple .ur-item + .ur-item {
+  border-top: 1px solid var(--border);
+}
+
+.ur-simple .ur-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ur-simple .ur-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.ur-simple .ur-title {
+  font-size: 1.02rem;
+}
+
+.ur-simple .ur-need,
+.ur-simple .ur-message {
+  display: -webkit-box;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ur-simple .ur-facts {
+  gap: 8px 18px;
+}
+
+.ur-simple .ur-facts li {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ur-simple .ur-facts svg {
+  color: var(--ink-secondary);
+}
+
+.ur-simple .ur-response {
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.ur-simple .ur-foot {
+  padding-top: 4px;
+}
+
+.ur-simple .ur-actions button,
+.ur-simple .ur-actions .ur-chat {
+  border-radius: 999px;
+}
+
+.ur-simple .ur-item.is-action .ur-actions {
+  margin-left: auto;
 }
 
 @media (max-width: 640px) {

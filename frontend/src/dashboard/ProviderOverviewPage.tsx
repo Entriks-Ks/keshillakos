@@ -1,5 +1,7 @@
 import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import i18n, { uiText } from '../i18n'
 import { Link } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip } from '@heroui/react'
 import { Plus } from 'lucide-react'
@@ -50,14 +52,29 @@ function contextSentence(data: OverviewData) {
   const next = upcomingAppointments(data.appointments)[0]
   const active = collectionSummary(data.services).active ?? 0
   if (data.pendingCount > 0) {
-    return `Ke ${data.pendingCount} ${plural(data.pendingCount, 'kërkesë që pret', 'kërkesa që presin')} përgjigjen tënde.`
+    const count = data.pendingCount
+    return uiText(
+      `Ke ${count} ${plural(count, 'kërkesë që pret', 'kërkesa që presin')} përgjigjen tënde.`,
+      `You have ${count} ${plural(count, 'request', 'requests')} waiting for your reply.`,
+      `Du hast ${count} ${plural(count, 'Anfrage', 'Anfragen')}, die auf deine Antwort warten.`,
+    )
   }
-  if (next) return `Termini yt i radhës është më ${formatWhen(next.startAt)}.`
+  if (next) {
+    return uiText(
+      `Termini yt i radhës është më ${formatWhen(next.startAt)}.`,
+      `Your next appointment is ${formatWhen(next.startAt)}.`,
+      `Dein nächster Termin ist am ${formatWhen(next.startAt)}.`,
+    )
+  }
   if (active > 0) {
-    return `${active} ${plural(active, 'shërbim aktiv shfaqet', 'shërbime aktive shfaqen')} në ofertat e KëshillaKos.`
+    return uiText(
+      `${active} ${plural(active, 'shërbim aktiv shfaqet', 'shërbime aktive shfaqen')} në ofertat e KLAW.`,
+      `${active} active ${plural(active, 'service appears', 'services appear')} in KLAW offers.`,
+      `${active} aktive ${plural(active, 'Dienst erscheint', 'Dienste erscheinen')} in den Angeboten von KLAW.`,
+    )
   }
-  if (data.services.length > 0) return 'Asnjë nga shërbimet e tua nuk është aktiv për momentin.'
-  return 'Publiko shërbimin e parë që klientët të të gjejnë në ofertat e KëshillaKos.'
+  if (data.services.length > 0) return uiText('Asnjë nga shërbimet e tua nuk është aktiv për momentin.', 'None of your services is active right now.', 'Keiner deiner Dienste ist gerade aktiv.')
+  return i18n.t(ROLE_HINTS.provider)
 }
 
 function StatsSection({ data, loading }: { data: OverviewData | null; loading: boolean }) {
@@ -114,7 +131,7 @@ function ActivityCard({ data, loading, publicPath }: { data: OverviewData | null
             text={
               hasServices
                 ? 'Kërkesat nga klientët dhe bisedat me ta do të shfaqen këtu sapo të vijnë.'
-                : 'Kërkesat nga klientët vijnë pasi të publikosh një shërbim në ofertat e KëshillaKos.'
+                : 'Kërkesat nga klientët vijnë pasi të publikosh një shërbim në ofertat e KLAW.'
             }
             action={
               hasServices ? (
@@ -152,7 +169,7 @@ function ServicesCard({ services, loading }: { services: ServiceItem[]; loading:
         ) : services.length === 0 ? (
           <EmptyBlock
             title="Nuk ke publikuar shërbime ende"
-            text="Krijo shërbimin e parë. Shërbimet aktive shfaqen në ofertat e KëshillaKos dhe klientët të dërgojnë kërkesa."
+            text="Krijo shërbimin e parë. Shërbimet aktive shfaqen në ofertat e KLAW dhe klientët të dërgojnë kërkesa."
             action={
               <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Shto shërbim
@@ -168,6 +185,7 @@ function ServicesCard({ services, loading }: { services: ServiceItem[]; loading:
 }
 
 export function ProviderOverviewPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -224,13 +242,13 @@ export function ProviderOverviewPage() {
       <header className="uo-head">
         <div className="uo-head-copy">
           <Chip size="sm" variant="soft" color="accent" className="uo-role">
-            <Chip.Label>{CONTEXT_LABELS.provider}</Chip.Label>
+            <Chip.Label>{t(CONTEXT_LABELS.provider)}</Chip.Label>
           </Chip>
           <h1>
             {timeGreeting(new Date().getHours())}
             {firstName ? `, ${firstName}` : ''}
           </h1>
-          <p>{data && !loading ? contextSentence(data) : ROLE_HINTS.provider}</p>
+          <p>{data && !loading ? contextSentence(data) : t(ROLE_HINTS.provider)}</p>
         </div>
         <Link to={SERVICES_PATH} className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
           <Plus size={16} aria-hidden />

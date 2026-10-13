@@ -1,6 +1,7 @@
 // Load the popup SDK with the lazy auth page, before the user's click.
 import '../firebase'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@heroui/react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -8,6 +9,7 @@ import { getErrorMessage } from '../utils/errors'
 
 export default function GoogleAuthButton({ disabled }: { disabled?: boolean }) {
   const { loginWithGoogle } = useAuth()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
 
@@ -16,7 +18,7 @@ export default function GoogleAuthButton({ disabled }: { disabled?: boolean }) {
     try {
       const signedIn = await loginWithGoogle()
       if (signedIn) {
-        toast.success('Hyrja me Google u krye me sukses.')
+        toast.success(t('auth.google'))
         navigate('/dashboard', { replace: true })
       }
     } catch (err) {
@@ -29,7 +31,7 @@ export default function GoogleAuthButton({ disabled }: { disabled?: boolean }) {
   return (
     <div className="auth-google-wrap">
       <p className="auth-divider">
-        <span>ose vazhdo me</span>
+        <span>{t('auth.or')}</span>
       </p>
       <button type="button" className="auth-google" disabled={disabled || busy} onClick={() => void onClick()}>
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -38,7 +40,7 @@ export default function GoogleAuthButton({ disabled }: { disabled?: boolean }) {
           <path fill="#FBBC05" d="M3.97 10.71A5.41 5.41 0 0 1 3.69 9c0-.59.1-1.17.26-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.04l3.01-2.33z" />
           <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
         </svg>
-        {busy ? 'Duke hyrë...' : 'Vazhdo me Google'}
+        {busy ? t('auth.entering') : t('auth.googleButton')}
       </button>
     </div>
   )

@@ -7,7 +7,7 @@
   width: 100%;
   height: 100%;
   color: color-mix(in srgb, var(--ink-secondary) 70%, transparent);
-  background: color-mix(in srgb, var(--brand-navy) 4%, #fff);
+  background: color-mix(in srgb, var(--brand-navy) 4%, var(--surface));
   font-size: 0.85rem;
   font-weight: 550;
 }

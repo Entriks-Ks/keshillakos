@@ -1,6 +1,7 @@
 import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
+import { assertPro, isPro } from '../services/planService'
 import {
   createAvailabilitySlot,
   createAvailabilitySlotsBulk,
@@ -17,6 +18,9 @@ router.get('/provider/:uid', async (req, res) => {
   try {
     const uid = String(req.params.uid || '').trim()
     if (!uid) return res.status(400).json({ message: 'Mungon ofruesi' })
+    if (!(await isPro(uid, 'provider')) && !(await isPro(uid, 'company'))) {
+      return res.json({ slots: [], schedule: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } })
+    }
     const view = typeof req.query.view === 'string' ? req.query.view : 'open'
     if (view === 'schedule') {
       const schedule = await listScheduleForProvider(uid, paginationInput(req.query, 50))
@@ -44,6 +48,7 @@ router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), as
 
 router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
+    await assertPro(req.user!.uid, req.user!.activeContext === 'company' ? 'company' : 'provider')
     const { startAt, endAt, note, providerId, businessId, serviceOfferId, staffUserId, resourceKey, timezone, mode, location, capacity } = req.body as {
       startAt?: string
       endAt?: string
@@ -83,6 +88,7 @@ router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async
 
 router.post('/bulk', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
   try {
+    await assertPro(req.user!.uid, req.user!.activeContext === 'company' ? 'company' : 'provider')
     const { slots, note, timezone, mode, providerId } = req.body as {
       slots?: Array<{ startAt?: string; endAt?: string }>
       note?: string

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button, buttonVariants, Card, Chip, Label, Separator, Switch, toast } from '@heroui/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -64,6 +65,7 @@ function SettingsNav({ active }: { active: SectionId }) {
 }
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const { user, updateProfile } = useAuth()
   const [searchParams] = useSearchParams()
   const [passwordOpen, setPasswordOpen] = useState(false)
@@ -89,7 +91,7 @@ export function SettingsPage() {
     setPendingConsent(next)
     try {
       await updateProfile({ marketingConsent: next })
-      toast.success(next ? 'Do të marrësh lajme dhe oferta nga KëshillaKos.' : 'Nuk do të marrësh më komunikime promovuese.')
+      toast.success(next ? 'Do të marrësh lajme dhe oferta nga KLAW.' : 'Nuk do të marrësh më komunikime promovuese.')
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -160,7 +162,7 @@ export function SettingsPage() {
                   <span className="st-chips">
                     {roles.map((role) => (
                       <Chip key={role} size="sm" variant="soft" color={role === 'user' ? 'default' : 'accent'}>
-                        <Chip.Label>{CONTEXT_LABELS[role]}</Chip.Label>
+                        <Chip.Label>{t(CONTEXT_LABELS[role])}</Chip.Label>
                       </Chip>
                     ))}
                   </span>
@@ -170,7 +172,7 @@ export function SettingsPage() {
           ) : null}
 
           {active === 'security' ? (
-            <SettingsSection id="siguria" title="Siguria" description="Si hyn në KëshillaKos dhe si mbrohet llogaria jote.">
+            <SettingsSection id="siguria" title="Siguria" description="Si hyn në KLAW dhe si mbrohet llogaria jote.">
               <SettingsRow
                 label="Fjalëkalimi"
                 value={signedInWithGoogle ? undefined : '••••••••'}
@@ -215,7 +217,7 @@ export function SettingsPage() {
             >
               <SettingsRow
                 label="Komunikime promovuese"
-                description="Lejo KëshillaKos të të dërgojë lajme dhe oferta me email. Mund ta ndryshosh kurdo."
+                description="Lejo KLAW të të dërgojë lajme dhe oferta me email. Mund ta ndryshosh kurdo."
                 action={
                   <Switch
                     isSelected={consent}

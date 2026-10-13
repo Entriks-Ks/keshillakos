@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import i18next from 'i18next'
 import {
   catalogOptionLabel,
   catalogOptionValue,
@@ -6,6 +7,7 @@ import {
   type CatalogOption,
   type CatalogOptionGroup,
 } from '../api/catalog'
+import { catalogLanguage } from '../i18n'
 
 export type CatalogOptionChoice = {
   id: string
@@ -15,7 +17,8 @@ export type CatalogOptionChoice = {
 }
 
 function currentLanguage(): 'sq' | 'en' {
-  return document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'sq'
+  const language = i18next.isInitialized ? i18next.language : document.documentElement.lang
+  return catalogLanguage(language)
 }
 
 export function useCatalogOptions() {
@@ -28,7 +31,8 @@ export function useCatalogOptions() {
     const update = () => setLanguage(currentLanguage())
     const observer = new MutationObserver(update)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
-    return () => observer.disconnect()
+    i18next.on('languageChanged', update)
+    return () => { observer.disconnect(); i18next.off('languageChanged', update) }
   }, [])
 
   useEffect(() => {

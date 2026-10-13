@@ -5,36 +5,20 @@
   gap: 0;
   padding: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 22px;
   background: var(--surface);
-  box-shadow: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--brand-navy) 6%, transparent);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .pc-card.is-clickable {
   cursor: pointer;
 }
 
-.pc-card.is-clickable::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  pointer-events: none;
-}
-
 .pc-card.is-clickable:hover {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  background: color-mix(in srgb, var(--accent) 1.5%, #fff);
-}
-
-.pc-card.is-clickable:hover::before,
-.pc-card.is-clickable:focus-visible::before {
-  opacity: 1;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .pc-card.is-clickable:focus-visible {
@@ -43,11 +27,23 @@
   outline-offset: 0;
 }
 
+.pc-card {
+  container-type: inline-size;
+}
+
+.pc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px;
+  align-items: stretch;
+  min-width: 0;
+}
+
 .pc-main {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 20px;
-  padding: 22px 22px 20px;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 20px;
 }
 
 .pc-main.no-media {
@@ -59,10 +55,11 @@
 .pc-media {
   position: relative;
   display: block;
-  width: 64px;
-  height: 64px;
+  width: 76px;
+  height: 76px;
   overflow: hidden;
   border-radius: 999px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, var(--surface));
 }
 
 .pc-media.is-company {
@@ -72,17 +69,18 @@
 .pc-media.is-company .avatar__image {
   object-fit: contain;
   padding: 6px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: inherit;
 }
 
 .pc-media.is-photo {
-  width: 120px;
-  height: 90px;
+  width: 112px;
+  height: 84px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 16px;
   background: var(--surface-muted);
+  box-shadow: none;
 }
 
 .pc-media.is-photo img {
@@ -126,7 +124,7 @@
 
 .pc-name {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.12rem;
   font-weight: 700;
@@ -192,8 +190,14 @@
 }
 
 .pc-meta li.is-strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 700;
+}
+
+.pc-rating:not(.is-empty) {
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #f59e0b 16%, var(--surface));
 }
 
 .pc-rating > svg {
@@ -202,7 +206,7 @@
 }
 
 .pc-rating strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 700;
 }
 
@@ -305,7 +309,7 @@
 }
 
 .pc-sub-person strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 650;
 }
 
@@ -335,7 +339,7 @@
 .pc-sub-photo.is-company .avatar__image {
   object-fit: contain;
   padding: 2px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: inherit;
 }
@@ -350,7 +354,7 @@
 }
 
 .pc-sub-muted a {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 650;
   text-decoration: none;
 }
@@ -394,18 +398,55 @@
 
 /* Actions (ProviderCardActions) */
 
+.pc-aside {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 16px 16px 16px 0;
+}
+
 .pc-card .pc-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 3fr);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
+  width: 100%;
   margin: 0;
-  padding: 12px 22px 14px;
-  border-top: 1px solid var(--border);
+  padding: 0;
+  border: 0;
   background: transparent;
 }
 
 .pc-card .tt-dir-actions-secondary {
-  gap: 8px;
+  flex: none;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.pc-card .tt-dir-actions-secondary .tt-dir-action,
+.pc-card .tt-dir-action-slot .send-request-cta,
+.pc-card .tt-dir-action-slot .chat-start-btn {
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 2px !important;
+  font-size: 0.68rem !important;
+}
+
+.pc-card .tt-dir-actions-secondary .tt-dir-action-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .pc-card .tt-dir-action,
@@ -413,13 +454,13 @@
 .pc-card .tt-dir-action-slot .chat-start-btn,
 .pc-card .tt-dir-action-slot a.primary-btn,
 .pc-card .tt-dir-action-slot button {
-  min-height: 40px;
+  min-height: 36px;
   padding: 6px 10px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 10px !important;
-  background: var(--surface) !important;
-  color: var(--brand-navy) !important;
-  font-size: 0.86rem !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  color: var(--ink-secondary) !important;
+  font-size: 0.84rem !important;
   font-weight: 650 !important;
 }
 
@@ -430,9 +471,12 @@
 
 .pc-card .tt-dir-action.is-primary,
 .pc-card .pc-actions > .tt-dir-action.is-primary {
-  border-color: var(--accent) !important;
+  flex: none;
+  width: 100%;
+  border-radius: 999px !important;
   background: var(--accent) !important;
   color: var(--accent-foreground) !important;
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .pc-card .tt-dir-action.is-primary svg {
@@ -440,7 +484,6 @@
 }
 
 .pc-card .pc-actions > a.tt-dir-action.is-primary:hover {
-  border-color: var(--accent-hover) !important;
   background: var(--accent-hover) !important;
 }
 
@@ -450,19 +493,8 @@
 .pc-card .tt-dir-action-slot .chat-start-btn:hover,
 .pc-card .tt-dir-action-slot a.tt-dir-action:hover,
 .pc-card .tt-dir-action-slot button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border)) !important;
-  background: var(--surface-muted) !important;
-  color: var(--brand-navy) !important;
-}
-
-.pc-actions .tt-dir-action.is-primary[aria-disabled='true'] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pc-actions .tt-dir-action.is-primary[aria-disabled='true']:hover {
-  border-color: var(--accent) !important;
-  background: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface)) !important;
+  color: var(--foreground) !important;
 }
 
 .pc-actions .tt-dir-action.is-icon[aria-disabled='true'] {
@@ -509,10 +541,13 @@
 
 .pc-skel-actions {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
-  padding: 12px 22px 14px;
-  border-top: 1px solid var(--border);
+  width: 100%;
+}
+
+.pc-skel-button.is-primary {
+  grid-column: 1 / -1;
 }
 
 .pc-skel-button {
@@ -520,9 +555,50 @@
   border-radius: 10px;
 }
 
-@media (max-width: 860px) {
-  .pc-card .pc-actions {
+@container (max-width: 680px) {
+  .pc-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pc-aside {
+    padding: 0 16px 16px;
+  }
+
+  .pc-card .pc-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .pc-card .tt-dir-actions-secondary {
+    flex: 1;
+  }
+
+  .pc-card .pc-actions.has-call .tt-dir-action.is-primary,
+  .pc-card .tt-dir-action.is-primary {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 132px;
+  }
+}
+
+@media (max-width: 860px) {
+  .pc-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pc-aside {
+    padding: 0 16px 16px;
+  }
+
+  .pc-card .pc-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .pc-card .pc-actions.has-call .tt-dir-action.is-primary {
+    flex: 1 1 140px;
+    width: auto;
   }
 
   .pc-card .tt-dir-actions-secondary .tt-dir-action,
@@ -540,8 +616,8 @@
   }
 
   .pc-media {
-    width: 52px;
-    height: 52px;
+    width: 60px;
+    height: 60px;
   }
 
   .pc-media.is-photo {
@@ -564,11 +640,6 @@
   .pc-meta {
     gap: 4px 12px;
     font-size: 0.84rem;
-  }
-
-  .pc-card .pc-actions,
-  .pc-skel-actions {
-    padding: 12px 16px 14px;
   }
 
   .pc-card .tt-dir-action.is-primary {

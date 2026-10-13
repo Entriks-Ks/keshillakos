@@ -6,7 +6,7 @@
 .dash-layout[data-role='company'],
 .dash-layout[data-role='admin'] {
   --dash-role: var(--accent);
-  --dash-role-soft: color-mix(in srgb, var(--accent) 10%, #fff);
+  --dash-role-soft: color-mix(in srgb, var(--accent) 10%, var(--surface));
 }
 
 .dash-layout .dash-bottom-link.is-active {
@@ -23,7 +23,7 @@
   width: fit-content;
   padding: 5px 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--dash-role) 12%, #fff);
+  background: color-mix(in srgb, var(--dash-role) 12%, var(--surface));
   color: var(--dash-role);
   font-size: 0.72rem;
   font-weight: 700;
@@ -39,7 +39,7 @@
   padding: 16px 18px;
   border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--dash-role) 16%, var(--border));
-  background: #fff;
+  background: var(--surface);
   text-decoration: none;
   color: inherit;
   box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-navy) 4%, transparent);
@@ -68,7 +68,7 @@
   font-family: var(--font-display);
   font-size: 1.12rem;
   letter-spacing: -0.02em;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .dash-next-step > div span {
@@ -136,7 +136,7 @@
   font-size: clamp(1.85rem, 3vw, 2.4rem);
   letter-spacing: -0.03em;
   line-height: 1.1;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .dash-overview-hello {
@@ -146,7 +146,7 @@
   font-weight: 650;
   letter-spacing: 0;
   line-height: 1.35;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .dash-overview-sub {
@@ -175,7 +175,7 @@
 
 .dash-overview-error {
   border: 1px solid color-mix(in srgb, #dc2626 28%, var(--border));
-  background: color-mix(in srgb, #dc2626 6%, #fff);
+  background: color-mix(in srgb, #dc2626 6%, var(--surface));
 }
 
 .dash-overview-error [data-slot='card-content'],
@@ -186,7 +186,7 @@
 }
 
 .dash-overview-error strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
 }
 
@@ -221,8 +221,8 @@
   width: 30px;
   height: 30px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--brand-navy) 6%, #fff);
-  color: var(--brand-navy);
+  background: color-mix(in srgb, var(--brand-navy) 6%, var(--surface));
+  color: var(--heading);
 }
 
 .dash-stat-card.is-featured {
@@ -302,7 +302,7 @@
   font-family: var(--font-display);
   font-size: 1.15rem;
   letter-spacing: -0.02em;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .dash-panel-card-head [data-slot='card-description'],
@@ -386,7 +386,7 @@ a.dash-activity-row:hover {
 
 .dash-activity-copy strong {
   font-size: 0.95rem;
-  color: var(--brand-navy);
+  color: var(--heading);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -428,7 +428,7 @@ a.dash-activity-row:hover {
 .dash-reminder-card strong {
   font-family: var(--font-display);
   font-size: 1.15rem;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .dash-reminder-card span,
@@ -440,7 +440,7 @@ a.dash-activity-row:hover {
 
 .dash-reminder-card em {
   font-weight: 650;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .dash-reminder-cta {
@@ -477,7 +477,7 @@ a.dash-activity-row:hover {
   font-family: var(--font-display);
   font-size: 1.8rem;
   letter-spacing: -0.03em;
-  color: var(--brand-navy);
+  color: var(--heading);
 }
 
 .dash-progress-card p {
@@ -494,7 +494,7 @@ a.dash-activity-row:hover {
 .dash-bar-track {
   max-width: 36px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--brand-navy) 5%, #fff);
+  background: color-mix(in srgb, var(--brand-navy) 5%, var(--surface));
   overflow: hidden;
 }
 

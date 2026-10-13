@@ -11,6 +11,8 @@ import { applySocialLinks, normalizeSocialLinks, type SocialLinks } from '../mod
 import { findDomainById } from './domainService'
 import { deleteUploads, normalizeUploadPath } from './mediaService'
 import { effectiveRoles } from './userService'
+import { isPro } from './planService'
+import { PLAN_LIMITS } from '../plans/catalog'
 
 export async function userIdForUid(uid: string) {
   const user = await User.findOne({ uid }).select('_id').lean()
@@ -389,6 +391,15 @@ export async function updateBusiness(uid: string, businessId: string, changes: {
   branches?: Array<{ name: string; location: Location }>
 }) {
   const { business } = await ownedBusinessById(uid, businessId)
+  const pro = await isPro(uid, 'company')
+  if (!pro) {
+    if (changes.logoUrl || changes.coverUrl) throw new Error('Logoja dhe fotoja e kopertinës janë pjesë e planit Pro.')
+    if (changes.website) throw new Error('Website është pjesë e planit Pro.')
+    if (changes.socialLinks && Object.values(changes.socialLinks).some(Boolean)) throw new Error('Rrjetet sociale janë pjesë e planit Pro.')
+    if ((changes.description?.trim().length ?? 0) > PLAN_LIMITS.basicBio) throw new Error('Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.')
+  } else if ((changes.description?.trim().length ?? 0) > PLAN_LIMITS.proBio) {
+    throw new Error('Përshkrimi në planin Pro mund të ketë deri në 2,000 karaktere.')
+  }
   const previousMedia = [business.logoUrl, business.coverUrl]
   if (changes.publicName !== undefined) business.publicName = changes.publicName.trim()
   if (changes.legalName !== undefined) business.legalName = changes.legalName?.trim() || undefined

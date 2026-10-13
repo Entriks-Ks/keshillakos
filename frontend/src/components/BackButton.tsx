@@ -1,5 +1,6 @@
 import { Button } from '@heroui/react'
 import { ArrowLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import './BackButton.css'
 
@@ -13,6 +14,7 @@ function hasAppHistory() {
 }
 
 export default function BackButton({ fallback }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   function goBack() {
@@ -26,7 +28,7 @@ export default function BackButton({ fallback }: Props) {
   return (
     <Button type="button" variant="ghost" size="sm" className="kk-back-btn" onPress={goBack}>
       <ArrowLeft size={16} aria-hidden />
-      Kthehu
+      {t('home.back')}
     </Button>
   )
 }

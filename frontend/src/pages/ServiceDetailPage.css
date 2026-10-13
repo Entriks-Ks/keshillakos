@@ -43,7 +43,7 @@
 
 .sd-card-title {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
@@ -105,7 +105,7 @@
 }
 
 .sd-rating strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 700;
 }
 
@@ -156,7 +156,7 @@
 
 .sd-title {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: clamp(1.6rem, 2.8vw, 2.15rem);
   font-weight: 700;
@@ -199,7 +199,7 @@
 .sd-provider-avatar.is-company .avatar__image {
   object-fit: contain;
   padding: 4px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: inherit;
 }
@@ -231,7 +231,7 @@
 }
 
 .sd-byline-name {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 700;
   text-decoration: none;
 }
@@ -246,7 +246,7 @@
 }
 
 .sd-byline-expert a {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 650;
   text-decoration: none;
 }
@@ -282,7 +282,7 @@
 
 .sd-facts dd {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.93rem;
   font-weight: 650;
   overflow-wrap: anywhere;
@@ -503,7 +503,7 @@
 
 .sd-provider-name h3 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.08rem;
   font-weight: 700;
@@ -619,7 +619,7 @@
 }
 
 .sd-person-copy strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-size: 0.93rem;
 }
 
@@ -652,7 +652,7 @@
 }
 
 .sd-price strong {
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.65rem;
   font-weight: 700;
@@ -724,7 +724,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
-  color: var(--brand-navy);
+  color: var(--heading);
   font: inherit;
   font-size: 0.94rem;
   font-weight: 650;
@@ -765,7 +765,7 @@
 
 .sd-book-provider-copy a {
   overflow: hidden;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -816,7 +816,7 @@
 
 .sd-missing h1 {
   margin: 0;
-  color: var(--brand-navy);
+  color: var(--heading);
   font-family: var(--font-display);
   font-size: 1.4rem;
 }
