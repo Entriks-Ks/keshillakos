@@ -15,15 +15,12 @@ router.get('/:uid', async (req, res) => {
       return res.status(404).json({ message: 'Profili i ofruesit nuk u gjet' })
     }
 
-    const entitled = provider.plan === 'pro'
     const [services, experts, profile] = await Promise.all([
       listProviderServicePage(provider.uid, paginationInput(req.query), true),
       publicExpertPageForOwner(provider.uid, paginationInput({ ...req.query, page: req.query.expertsPage })),
       getMarketplaceProviderByUid(provider.uid, provider.role === 'company' ? 'business' : 'individual'),
     ])
-    const servicesPage = entitled
-      ? { items: services.services, pagination: services.pagination }
-      : { items: [], pagination: { ...services.pagination, total: 0, totalPages: 0 } }
+    const servicesPage = { items: services.services, pagination: services.pagination }
     const expertsPage = { items: experts.experts, pagination: experts.pagination }
     return res.json({ provider, services: servicesPage.items, experts: expertsPage.items, profile, pagination: servicesPage.pagination, expertsPagination: expertsPage.pagination })
   } catch (err) {

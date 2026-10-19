@@ -1,6 +1,6 @@
 import { backfillUnmoderatedPendingReviews } from './ratingService'
 import { publicServicesPipeline } from './marketplaceQuery'
-import { PlanError, assertPro, isPro, proOwnerIds, recordPlanEvent } from './planService'
+import { PlanError, assertPro, recordPlanEvent } from './planService'
 import { paginationMeta, queryPage, type PaginationInput } from './pagination'
 import mongoose, { Types, type PipelineStage } from 'mongoose'
 import { Category } from '../models/Category'
@@ -333,7 +333,7 @@ export async function listPublicServicePage(query: Record<string, unknown>, inpu
     return { services: [], pagination: result.pagination, summary: { total: 0, active: 0 } }
   }
   await backfillUnmoderatedPendingReviews()
-  const pipeline = publicServicesPipeline(query, await proOwnerIds())
+  const pipeline = publicServicesPipeline(query)
   const count = async () => (await ServiceOffer.aggregate<{ total: number }>([...pipeline, { $count: 'total' }]))[0]?.total ?? 0
   if (query.countsOnly === 'true') {
     const total = await count()
@@ -355,6 +355,9 @@ export async function listPublicServicePage(query: Record<string, unknown>, inpu
 
 export async function getActiveServiceById(id: string, input: PaginationInput = { page: 1, limit: 12 }) {
   if (!mongoose.isValidObjectId(id)) return null
+  // Detail pages must use the same public eligibility as marketplace cards.
+  const visible = await ServiceOffer.aggregate([...publicServicesPipeline({ serviceId: id }), { $limit: 1 }, { $project: { _id: 1 } }])
+  if (!visible.length) return null
 
   const offer = await ServiceOffer.findOne({
     _id: id,
@@ -366,7 +369,7 @@ export async function getActiveServiceById(id: string, input: PaginationInput = 
     const profile = await ProviderProfile.findById(offer.providerProfile).select('ownerUser providerType')
     const ownerUser = profile ? await User.findById(profile.ownerUser).select('uid') : null
     const audience = offer.business || profile?.providerType === 'business' ? 'company' as const : 'provider' as const
-    if (!ownerUser?.uid || !(await isPro(ownerUser.uid, audience))) return null
+    if (!ownerUser?.uid) return null
     await recordPlanEvent(ownerUser.uid, audience, 'clicks')
     const [enriched] = await offersToLegacyServices([offer], true)
     if (enriched?.active) return withCompanyExperts(enriched, input)
@@ -374,7 +377,6 @@ export async function getActiveServiceById(id: string, input: PaginationInput = 
 
   const service = await Service.findOne({ _id: id, active: true })
   if (!service) return null
-  if (!(await isPro(service.providerUid, 'provider')) && !(await isPro(service.providerUid, 'company'))) return null
   await recordPlanEvent(service.providerUid, 'provider', 'clicks')
   const [enriched] = await withLegacyProviders([service])
   if (!enriched) return null
