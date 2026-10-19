@@ -1,5 +1,14 @@
 const sq = {
   notifications: {
+    delete: {
+      loading: "Duke fshirë njoftimin…",
+      "action": "Fshi njoftimin",
+      "accessibility": "Fshi njoftimin: {{title}}",
+      "confirmTitle": "Të fshihet ky njoftim?",
+      "confirmMessage": "Ky njoftim do të fshihet përgjithmonë nga historiku yt. Ky veprim nuk mund të zhbëhet.",
+      "success": "Njoftimi u fshi.",
+      "error": "Njoftimi nuk mund të fshihej. Provo përsëri."
+    },
     "title": "Njoftime",
     "badge": "Njoftime, {{count}} të palexuara",
     "markAll": "Shëno të gjitha si të lexuara",

@@ -2,12 +2,12 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { Types } from 'mongoose'
 import { Notification } from '../src/models/Notification'
-import { notify, markRead, notificationHistory } from '../src/services/notificationService'
+import { notify, markRead, notificationHistory, deleteNotification } from '../src/services/notificationService'
 import { setRealtimeServer } from '../src/services/realtime'
 import type { Server } from 'socket.io'
 
 test('notifications persist before emitting, deduplicate non-chat events, and isolate history/read state', async () => {
-  const originals = [Notification.create, Notification.exists, Notification.countDocuments, Notification.updateMany, Notification.find] as const
+  const originals = [Notification.create, Notification.exists, Notification.countDocuments, Notification.updateMany, Notification.find, Notification.deleteOne] as const
   const rows: any[] = [], events: any[] = []
   const matches = (row: any, query: any) => Object.entries(query).every(([key, value]: [string, any]) => value && typeof value === 'object' && '$ne' in value ? row[key] !== value.$ne : String(row[key]) === String(value))
   Notification.exists = (async (query: any) => rows.find(r => matches(r, query)) || null) as any
@@ -17,6 +17,11 @@ test('notifications persist before emitting, deduplicate non-chat events, and is
     const row = { ...input, _id: new Types.ObjectId(), createdAt: new Date(), readAt: null }; rows.push(row); return row
   }) as any
   Notification.updateMany = (async (query: any, update: any) => { rows.filter(r => matches(r, query)).forEach(r => Object.assign(r, update.$set)) }) as any
+  Notification.deleteOne = (async (query: any) => {
+    const index = rows.findIndex(r => matches(r, query))
+    if (index >= 0) rows.splice(index, 1)
+    return { deletedCount: index >= 0 ? 1 : 0 }
+  }) as any
   Notification.find = ((query: any) => {
     let skip = 0, limit = 20
     const chain = { sort: () => chain, skip: (n: number) => { skip = n; return chain }, limit: (n: number) => { limit = n; return chain }, lean: async () => rows.filter(r => matches(r, query)).slice(skip, skip + limit) }
@@ -44,8 +49,16 @@ test('notifications persist before emitting, deduplicate non-chat events, and is
     assert.equal((await notificationHistory('alice')).unreadCount, 0, 'legacy chat notifications do not inflate the bell')
     assert.equal((await notificationHistory('alice', 2)).notifications.length, 0)
     assert.ok(events.some(e => e.event === 'notification:read' && e.room === 'user:alice'))
+    const ownId = String(rows[0]._id), otherId = String(rows[1]._id)
+    await deleteNotification('alice', otherId)
+    assert.ok(rows.some(r => String(r._id) === otherId), 'cannot delete another account notification')
+    await deleteNotification('alice', ownId)
+    assert.equal(rows.some(r => String(r._id) === ownId), false)
+    await deleteNotification('alice', ownId) // Concurrent duplicate deletion is idempotent.
+    assert.ok(events.some(e => e.event === 'notification:deleted' && e.room === 'user:alice'))
+    await assert.rejects(deleteNotification('alice', 'invalid'))
   } finally {
-    [Notification.create, Notification.exists, Notification.countDocuments, Notification.updateMany, Notification.find] = originals
+    [Notification.create, Notification.exists, Notification.countDocuments, Notification.updateMany, Notification.find, Notification.deleteOne] = originals
   }
 })
 
@@ -106,7 +119,7 @@ test('a committed clear remains successful if the follow-up count or socket broa
   setRealtimeServer({ to: () => { throw Error('socket unavailable') } } as unknown as Server)
   console.error = () => undefined
   try {
-    assert.deepEqual(await clearNotifications('alice'), { unreadCount: 0 })
+    assert.deepEqual(await clearNotifications('alice'), { unreadCount: null, requiresSync: true })
     assert.equal(deletes, 1)
   } finally {
     [Notification.deleteMany, Notification.countDocuments] = originals

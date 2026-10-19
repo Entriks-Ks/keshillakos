@@ -9,8 +9,10 @@ export async function notificationRequest<T>(path = '', method = 'GET', signal?:
   return response.json()
 }
 
+export type NotificationMutation = { unreadCount: number | null; requiresSync?: boolean }
 export const notificationApi = {
+  remove: (id: string) => notificationRequest<NotificationMutation>(`/${encodeURIComponent(id)}`, 'DELETE'),
   list: (page: number) => notificationRequest<NotificationPage>(`?page=${page}`),
-  read: (id?: string) => notificationRequest<{ unreadCount: number }>(id ? `/${encodeURIComponent(id)}/read` : '/read-all', 'PATCH'),
-  clear: () => notificationRequest<{ unreadCount: number }>('', 'DELETE'),
+  read: (id?: string) => notificationRequest<NotificationMutation>(id ? `/${encodeURIComponent(id)}/read` : '/read-all', 'PATCH'),
+  clear: () => notificationRequest<NotificationMutation>('', 'DELETE'),
 }

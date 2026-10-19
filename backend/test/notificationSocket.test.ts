@@ -62,7 +62,7 @@ test('notification HTTP APIs authenticate and scope all history/read operations 
   const { Notification } = await import('../src/models/Notification')
   const router = (await import('../src/routes/notification.routes')).default
   const originalFetch = global.fetch, originalFindUser = User.findOne
-  const originals = [Notification.find, Notification.countDocuments, Notification.updateMany, Notification.deleteMany] as const
+  const originals = [Notification.find, Notification.countDocuments, Notification.updateMany, Notification.deleteMany, Notification.deleteOne] as const
   const queries: any[] = []
   global.fetch = (async (url: any, init: any) => {
     if (!String(url).startsWith('https://identitytoolkit.googleapis.com/')) return originalFetch(url, init)
@@ -73,6 +73,7 @@ test('notification HTTP APIs authenticate and scope all history/read operations 
   Notification.countDocuments = (async (query: any) => { queries.push(query); return 0 }) as any
   Notification.updateMany = (async (query: any) => { queries.push(query); return { modifiedCount: 0 } }) as any
   Notification.deleteMany = (async (query: any) => { queries.push(query); return { deletedCount: 0 } }) as any
+  Notification.deleteOne = (async (query: any) => { queries.push(query); return { deletedCount: 0 } }) as any
   const app = express(); app.use('/api/notifications', router)
   app.use((_error: unknown, _req: any, res: any, _next: any) => res.status(500).json({ message: 'Internal error' }))
   const server = app.listen(0, '127.0.0.1')
@@ -92,6 +93,8 @@ test('notification HTTP APIs authenticate and scope all history/read operations 
     const cleared = await fetch(`${base}?recipientUid=bob`, { method: 'DELETE', headers })
     assert.equal(cleared.status, 200)
     assert.deepEqual(await cleared.json(), { unreadCount: 0 })
+    assert.equal((await fetch(`${base}/invalid`, { method: 'DELETE', headers })).status, 400)
+    assert.equal((await fetch(`${base}/000000000000000000000000?recipientUid=bob`, { method: 'DELETE', headers })).status, 200)
     assert.ok(queries.length >= 4)
     assert.ok(queries.every(query => query.recipientUid === 'alice'))
     Notification.deleteMany = (async () => { throw Error('database unavailable') }) as any
@@ -99,7 +102,7 @@ test('notification HTTP APIs authenticate and scope all history/read operations 
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()))
     global.fetch = originalFetch; User.findOne = originalFindUser
-    ;[Notification.find, Notification.countDocuments, Notification.updateMany, Notification.deleteMany] = originals
+    ;[Notification.find, Notification.countDocuments, Notification.updateMany, Notification.deleteMany, Notification.deleteOne] = originals
   }
 })
 

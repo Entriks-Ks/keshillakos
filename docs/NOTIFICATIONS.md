@@ -90,3 +90,31 @@ The reader's scroll position is preserved when away from the bottom, including w
 Web and Expo clients ask for confirmation, lock duplicate mutations, retain history/count on failure, and publish empty history/badge state only after a valid successful response. A subsequent reload reconciles concurrent notifications. `notification:cleared` and `notification:count` synchronize other connected sessions. All action, dialog, loading, empty, success and error copy uses the existing SQ/EN/DE catalogs.
 
 Deploy the backend change together with the clients. Expo's configured API is the Render origin; editing local source cannot update that hosted service. The backend starts `dist/index.js`, so the compiled notification route/service must include the DELETE handler (the tracked notification build outputs are updated). A backend build/redeploy is required for an older running instance that still lacks DELETE; a client retry or marking notifications read cannot substitute for deletion.
+
+## Cross-client synchronization
+
+Both providers bind `connect`, `notification:new`, `notification:read`, `notification:deleted`, `notification:cleared`, and `notification:count` on their existing authenticated Socket.IO connection. Events immediately invalidate HTTP snapshots and queue an authoritative history refresh. Event payload counts are never assigned to state. Refreshes reconcile all loaded pages and deduplicate IDs; local mutations reject duplicate submissions and cannot publish their stale count over a newer event. Focus/foreground and reconnect also reconcile missed updates. Mobile reads the current stored auth token for every connection attempt.
+
+`DELETE /api/notifications/:id` is separate from clear-all. Its MongoDB predicate includes the authenticated UID and excludes chat notifications; deleting an absent or already-deleted ID is idempotent and never reveals another user's ownership. Each client has a translated per-row confirmation. Read, delete, and clear events publish after persistence. A failed post-commit count query returns `unreadCount: null, requiresSync: true`, rather than inventing a count or claiming the mutation failed; clients reconcile from history.
+
+### Verification status
+
+The read-only database audit on 2026-10-19 found eight notifications across two accounts, all already read. Seven real history records were captured from the backend's history service for non-destructive replay checks of both production state stores. Replay tests verify immediate invalidation for every action/reconnect, stale-response rejection, deduplication and loaded-page reconciliation. They simulate event delivery; they do **not** demonstrate live authenticated web-to-mobile or mobile-to-web mutations.
+
+The user requested non-destructive checks first. No real notification was marked read, deleted, cleared, or created during this verification. Authenticated end-to-end tests are provided below, but remain unrun without a valid token and explicit disposable-history opt-in. Do not claim live synchronization has been verified until those pass against the deployed backend.
+
+```sh
+# backend directory, authenticated read-only reconnect check:
+# Set KESHILLAKOS_NOTIFICATION_API_URL and KESHILLAKOS_NOTIFICATION_TOKEN in your local environment.
+node --test test/notificationSync.real.integration.cjs
+
+# Only with explicit permission to permanently delete this account's real history:
+# KESHILLAKOS_NOTIFICATION_ALLOW_MUTATIONS=1 enables the second test.
+# It requires at least four existing real notifications and never creates fake content.
+
+# Non-destructive replay of captured real backend pages:
+# Set KESHILLAKOS_NOTIFICATION_SNAPSHOT to a local JSON file containing history pages.
+node --test test/notificationSync.snapshot.integration.cjs
+```
+
+The client state and Socket.IO libraries loaded by these integration tests are the actual web/mobile modules. `KESHILLAKOS_MOBILE_ROOT` can override the sibling mobile-app location. Keep tokens and captured private history out of source control. Deploy the backend and updated clients together; local source/build changes do not update the hosted Render API.

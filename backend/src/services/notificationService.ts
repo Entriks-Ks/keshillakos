@@ -73,19 +73,29 @@ export async function notificationHistory(uid: string, page = 1) {
 export async function markRead(uid: string, id?: string) {
   if (id && !Types.ObjectId.isValid(id)) throw new Error('Notification ID i pavlefshëm')
   await Notification.updateMany({ recipientUid: uid, type: { $ne: 'message:new' }, readAt: null, ...(id ? { _id: id } : {}) }, { $set: { readAt: new Date() } })
-  emitToUser(uid, 'notification:read', { id: id ?? null })
-  await publishCount(uid)
-  return { unreadCount: await unreadCount(uid) }
+  return publishMutation(uid, 'notification:read', { id: id ?? null })
 }
 
 export async function clearNotifications(uid: string) {
   await Notification.deleteMany({ recipientUid: uid, type: { $ne: 'message:new' } })
-  // Deletion is committed; a count/broadcast failure must not report deletion failure.
-  let count = 0
-  try { count = await unreadCount(uid) } catch (error) { console.error('Notification count refresh failed after clear', error) }
-  try {
-    emitToUser(uid, 'notification:cleared', {})
-    emitToUser(uid, 'notification:count', { unreadCount: count })
-  } catch (error) { console.error('Notification broadcast failed after clear', error) }
-  return { unreadCount: count }
+  return publishMutation(uid, 'notification:cleared', {})
+}
+
+export async function deleteNotification(uid: string, id: string) {
+  if (!Types.ObjectId.isValid(id)) throw Object.assign(new Error('Invalid notification ID'), { status: 400 })
+  // Idempotent for concurrent deletes; never reveal whether another user owns this ID.
+  await Notification.deleteOne({ _id: id, recipientUid: uid, type: { $ne: 'message:new' } })
+  return publishMutation(uid, 'notification:deleted', { id })
+}
+
+async function publishMutation(uid: string, event: string, payload: Record<string, unknown>) {
+  // Persistence has succeeded. Secondary failures must neither fail the mutation nor invent a count.
+  let count: number | null = null
+  try { count = await unreadCount(uid) } catch (error) { console.error('Notification count refresh failed', error) }
+  try { emitToUser(uid, event, payload) } catch (error) { console.error('Notification broadcast failed', error) }
+  if (count !== null) {
+    try { emitToUser(uid, 'notification:count', { unreadCount: count }) } catch (error) { console.error('Notification count broadcast failed', error) }
+    return { unreadCount: count }
+  }
+  return { unreadCount: null, requiresSync: true as const }
 }

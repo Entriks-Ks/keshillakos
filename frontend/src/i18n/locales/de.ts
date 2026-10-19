@@ -1,5 +1,14 @@
 const de = {
   notifications: {
+    delete: {
+      loading: "Benachrichtigung wird gelöscht…",
+      "action": "Benachrichtigung löschen",
+      "accessibility": "Benachrichtigung löschen: {{title}}",
+      "confirmTitle": "Diese Benachrichtigung löschen?",
+      "confirmMessage": "Diese Benachrichtigung wird dauerhaft aus deinem Verlauf gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "success": "Die Benachrichtigung wurde gelöscht.",
+      "error": "Die Benachrichtigung konnte nicht gelöscht werden. Bitte versuche es erneut."
+    },
     "title": "Benachrichtigungen",
     "badge": "Benachrichtigungen, {{count}} ungelesen",
     "markAll": "Alle als gelesen markieren",
