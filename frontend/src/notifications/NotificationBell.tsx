@@ -65,7 +65,7 @@ export default function NotificationBell() {
               <time dateTime={notification.createdAt}>{new Date(notification.createdAt).toLocaleString(i18n.language)}</time>
             </button>
             {!notification.readAt && <Button size="sm" variant="ghost" isDisabled={busy} onPress={() => { setFeedback(''); void markRead(notification.id) }}>{t('notifications.markRead')}</Button>}
-            <Button size="sm" variant="ghost" isDisabled={busy} aria-label={t('notifications.delete.accessibility', { title: notification.title })} onPress={() => { setFeedback(''); setOpen(false); setDeleteTarget(notification) }}>{t('notifications.delete.action')}</Button>
+            <Button size="sm" variant="ghost" className="kk-notification-delete" isDisabled={busy} aria-label={t('notifications.delete.accessibility', { title: notification.title })} onPress={() => { setFeedback(''); setOpen(false); setDeleteTarget(notification) }}>{t('notifications.delete.action')}</Button>
           </div>)}
           {loading && <p className="muted">{t('notifications.loading')}</p>}
           {hasMore && <Button size="sm" variant="ghost" isDisabled={busy} onPress={loadMore}>{t('notifications.more')}</Button>}
