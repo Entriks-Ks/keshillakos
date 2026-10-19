@@ -111,7 +111,7 @@ function providerDirectoryPipeline(query) {
         ...filterAndSort(query, true),
     ];
 }
-function publicServicesPipeline(query, owners) {
+function publicServicesPipeline(query) {
     const cityId = typeof query.cityId === 'string' && mongoose_1.Types.ObjectId.isValid(query.cityId) ? new mongoose_1.Types.ObjectId(query.cityId) : undefined;
     const canonical = [
         { $match: publishedOffer },
@@ -136,16 +136,14 @@ function publicServicesPipeline(query, owners) {
                 ], as: '_profile' } },
         { $set: { _profile: first('$_profile', {}), source: { $literal: 'legacy' }, languages: { $ifNull: ['$details.supportLanguages', first('$_owner.languages', [])] } } },
     ];
-    const planMatch = owners
-        ? [{ $match: { $or: [
-                        { '_profile.providerType': 'individual', '_profile.ownerUser': { $in: owners.providers } },
-                        { '_profile.providerType': 'business', '_profile.ownerUser': { $in: owners.companies } },
-                    ] } }]
-        : [];
     return [
         ...canonical,
         { $unionWith: { coll: Service_1.Service.collection.name, pipeline: legacy } },
-        ...planMatch,
+        // Public discovery follows publication/moderation, not the owner’s paid plan.
+        // Keep the profile/owner checks explicit for both canonical and legacy rows.
+        { $match: { '_profile.status': 'published', '_profile.moderation.status': 'approved' } },
+        { $lookup: { from: User_1.User.collection.name, localField: '_profile.ownerUser', foreignField: '_id', as: '_owner' } },
+        { $match: { '_owner.uid': { $exists: true, $ne: '' }, '_owner.accountStatus': { $nin: ['suspended', 'closed'] } } },
         ...(cityId ? [{ $match: { '_profile.serviceAreaCityIds': cityId } }] : []),
         ...ratingStages('$_profile.ownerUser'),
         { $lookup: { from: City_1.City.collection.name, let: { ids: { $concatArrays: [{ $ifNull: ['$_profile.serviceAreaCityIds', []] }, [{ $ifNull: ['$_profile.location.cityId', null] }]] } }, pipeline: [{ $match: { $expr: { $in: ['$_id', '$$ids'] } } }, { $project: { 'name.sq': 1 } }], as: '_cities' } },

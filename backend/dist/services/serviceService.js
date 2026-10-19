@@ -362,7 +362,7 @@ async function listPublicServicePage(query, input) {
         return { services: [], pagination: result.pagination, summary: { total: 0, active: 0 } };
     }
     await (0, ratingService_1.backfillUnmoderatedPendingReviews)();
-    const pipeline = (0, marketplaceQuery_1.publicServicesPipeline)(query, await (0, planService_1.proOwnerIds)());
+    const pipeline = (0, marketplaceQuery_1.publicServicesPipeline)(query);
     const count = async () => (await ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $count: 'total' }]))[0]?.total ?? 0;
     if (query.countsOnly === 'true') {
         const total = await count();
@@ -383,6 +383,10 @@ async function listPublicServicePage(query, input) {
 async function getActiveServiceById(id, input = { page: 1, limit: 12 }) {
     if (!mongoose_1.default.isValidObjectId(id))
         return null;
+    // Detail pages must use the same public eligibility as marketplace cards.
+    const visible = await ServiceOffer_1.ServiceOffer.aggregate([...(0, marketplaceQuery_1.publicServicesPipeline)({ serviceId: id }), { $limit: 1 }, { $project: { _id: 1 } }]);
+    if (!visible.length)
+        return null;
     const offer = await ServiceOffer_1.ServiceOffer.findOne({
         _id: id,
         status: 'published',
@@ -393,7 +397,7 @@ async function getActiveServiceById(id, input = { page: 1, limit: 12 }) {
         const profile = await ProviderProfile_1.ProviderProfile.findById(offer.providerProfile).select('ownerUser providerType');
         const ownerUser = profile ? await User_1.User.findById(profile.ownerUser).select('uid') : null;
         const audience = offer.business || profile?.providerType === 'business' ? 'company' : 'provider';
-        if (!ownerUser?.uid || !(await (0, planService_1.isPro)(ownerUser.uid, audience)))
+        if (!ownerUser?.uid)
             return null;
         await (0, planService_1.recordPlanEvent)(ownerUser.uid, audience, 'clicks');
         const [enriched] = await (0, serviceOfferService_1.offersToLegacyServices)([offer], true);
@@ -402,8 +406,6 @@ async function getActiveServiceById(id, input = { page: 1, limit: 12 }) {
     }
     const service = await Service_1.Service.findOne({ _id: id, active: true });
     if (!service)
-        return null;
-    if (!(await (0, planService_1.isPro)(service.providerUid, 'provider')) && !(await (0, planService_1.isPro)(service.providerUid, 'company')))
         return null;
     await (0, planService_1.recordPlanEvent)(service.providerUid, 'provider', 'clicks');
     const [enriched] = await withLegacyProviders([service]);
