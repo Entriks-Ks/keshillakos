@@ -1,4 +1,28 @@
 const sq = {
+  notifications: {
+    "title": "Njoftime",
+    "badge": "Njoftime, {{count}} të palexuara",
+    "markAll": "Shëno të gjitha si të lexuara",
+    "markRead": "Shëno si të lexuar",
+    "cancel": "Anulo",
+    "loading": "Duke u ngarkuar…",
+    "clearing": "Duke fshirë…",
+    "more": "Më shumë",
+    "retry": "Provo përsëri",
+    "loadError": "Njoftimet nuk mund të ngarkoheshin. Provo përsëri.",
+    "readError": "Njoftimi nuk mund të shënohej si i lexuar. Provo përsëri.",
+    "reconnecting": "Lidhja në kohë reale u ndërpre. Duke u rilidhur…",
+    "connectionError": "Lidhja në kohë reale u ndërpre. Provo përsëri ose hyr sërish në llogari.",
+    "emptyTitle": "Nuk ka njoftime",
+    "emptySubtitle": "Do të shfaqen këtu kur të kesh njoftime të reja.",
+    "clear": {
+      "action": "Fshi njoftimet",
+      "confirmTitle": "Të fshihen të gjitha njoftimet?",
+      "confirmMessage": "Të gjitha njoftimet do të fshihen përgjithmonë nga historiku yt. Ky veprim nuk mund të zhbëhet.",
+      "success": "Të gjitha njoftimet u fshinë.",
+      "error": "Njoftimet nuk mund të fshiheshin. Provo përsëri."
+    }
+  },
   lang: { label: 'Gjuha' },
   nav: {
     home: 'KLAW, faqja kryesore',

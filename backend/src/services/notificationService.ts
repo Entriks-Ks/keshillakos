@@ -77,3 +77,15 @@ export async function markRead(uid: string, id?: string) {
   await publishCount(uid)
   return { unreadCount: await unreadCount(uid) }
 }
+
+export async function clearNotifications(uid: string) {
+  await Notification.deleteMany({ recipientUid: uid, type: { $ne: 'message:new' } })
+  // Deletion is committed; a count/broadcast failure must not report deletion failure.
+  let count = 0
+  try { count = await unreadCount(uid) } catch (error) { console.error('Notification count refresh failed after clear', error) }
+  try {
+    emitToUser(uid, 'notification:cleared', {})
+    emitToUser(uid, 'notification:count', { unreadCount: count })
+  } catch (error) { console.error('Notification broadcast failed after clear', error) }
+  return { unreadCount: count }
+}

@@ -27,6 +27,8 @@ const mongoose_1 = require("mongoose");
 const socialLinks_1 = require("../models/socialLinks");
 const roles_1 = require("../types/roles");
 const mediaService_1 = require("./mediaService");
+const planService_1 = require("./planService");
+const catalog_1 = require("../plans/catalog");
 function effectiveRoles(user) {
     const granted = user.roles?.filter(roles_1.isUserRole);
     if (granted)
@@ -278,8 +280,24 @@ async function updateOwnProfile(uid, input) {
     }
     if (input.bio !== undefined) {
         const bio = input.bio.trim();
-        if (bio.length > 3000)
-            throw new Error('Përshkrimi duhet të jetë deri në 3000 karaktere');
+        const roles = existing.roles ?? [existing.role];
+        const audience = existing.activeContext === 'company' && roles.includes('company')
+            ? 'company'
+            : existing.activeContext === 'provider' && roles.includes('provider')
+                ? 'provider'
+                : roles.includes('provider')
+                    ? 'provider'
+                    : roles.includes('company')
+                        ? 'company'
+                        : null;
+        const max = audience ? ((await (0, planService_1.isPro)(uid, audience)) ? catalog_1.PLAN_LIMITS.proBio : catalog_1.PLAN_LIMITS.basicBio) : 3000;
+        if (bio.length > max) {
+            throw new Error(!audience
+                ? 'Përshkrimi duhet të jetë deri në 3000 karaktere'
+                : max === catalog_1.PLAN_LIMITS.basicBio
+                    ? 'Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.'
+                    : 'Përshkrimi në planin Pro mund të ketë deri në 2,000 karaktere.');
+        }
         existing.bio = bio || undefined;
     }
     if (input.skills !== undefined)
@@ -317,6 +335,10 @@ async function updateProfilePhoto(uid, profilePhoto) {
     const nextPhoto = (0, mediaService_1.normalizeUploadPath)(profilePhoto);
     if (!nextPhoto)
         throw new Error('Rruga e fotos nuk është e vlefshme');
+    const roles = existing.roles ?? [existing.role];
+    const audience = existing.activeContext === 'company' && roles.includes('company') ? 'company' : roles.includes('provider') ? 'provider' : roles.includes('company') ? 'company' : null;
+    if (audience && !(await (0, planService_1.isPro)(existing.uid, audience)))
+        throw new Error('Fotoja e profilit është pjesë e planit Pro.');
     const previous = existing.profilePhoto;
     const previousProviderPhotos = (await ProviderProfile_1.ProviderProfile.find({ ownerUser: existing._id }).select('publicProfile.photoUrl').lean())
         .map((profile) => profile.publicProfile?.photoUrl);

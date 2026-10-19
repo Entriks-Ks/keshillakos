@@ -8,6 +8,7 @@ const ProviderProfile_1 = require("../models/ProviderProfile");
 const User_1 = require("../models/User");
 const roles_1 = require("../types/roles");
 const ratingService_1 = require("./ratingService");
+const planService_1 = require("./planService");
 const userService_1 = require("./userService");
 const PUBLIC_PROFILE_ROLES = ['provider', 'company'];
 /**
@@ -51,6 +52,7 @@ async function getProvidersPublicDetails(providerUids, fallbackNames = new Map()
             coverPhoto: '',
             ratingAverage: rating?.average ?? 0,
             ratingCount: rating?.count ?? 0,
+            plan: 'basic',
         });
     }
     return map;
@@ -86,18 +88,24 @@ async function getPublicProviderProfile(uid) {
             profilePhoto = profilePhoto || profile?.publicProfile?.photoUrl || '';
         }
     }
+    const audience = role === 'company' ? 'company' : 'provider';
+    const pro = await (0, planService_1.isPro)(user.uid, audience);
+    if (pro)
+        await (0, planService_1.recordPlanEvent)(user.uid, audience, 'visits');
+    const publicBio = (0, planService_1.clampBio)(bio, pro);
     return {
         uid: provider.uid,
         name,
         role,
         roleLabel: roles_1.ROLE_LABELS[role],
         headline: provider.headline,
-        bio,
+        bio: publicBio,
         location: provider.location,
-        skills: provider.skills,
-        languages: provider.languages,
-        profilePhoto,
-        coverPhoto,
+        skills: pro ? provider.skills : [],
+        languages: pro ? provider.languages : [],
+        profilePhoto: pro ? profilePhoto : '',
+        coverPhoto: pro ? coverPhoto : '',
+        plan: pro ? 'pro' : 'basic',
         ratingAverage: provider.ratingAverage,
         ratingCount: provider.ratingCount,
     };

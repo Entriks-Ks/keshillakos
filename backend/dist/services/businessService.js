@@ -32,6 +32,8 @@ const socialLinks_1 = require("../models/socialLinks");
 const domainService_1 = require("./domainService");
 const mediaService_1 = require("./mediaService");
 const userService_1 = require("./userService");
+const planService_1 = require("./planService");
+const catalog_1 = require("../plans/catalog");
 async function userIdForUid(uid) {
     const user = await User_1.User.findOne({ uid }).select('_id').lean();
     if (!user)
@@ -376,6 +378,20 @@ async function ownedBusinessById(uid, businessId) {
 }
 async function updateBusiness(uid, businessId, changes) {
     const { business } = await ownedBusinessById(uid, businessId);
+    const pro = await (0, planService_1.isPro)(uid, 'company');
+    if (!pro) {
+        if (changes.logoUrl || changes.coverUrl)
+            throw new Error('Logoja dhe fotoja e kopertinës janë pjesë e planit Pro.');
+        if (changes.website)
+            throw new Error('Website është pjesë e planit Pro.');
+        if (changes.socialLinks && Object.values(changes.socialLinks).some(Boolean))
+            throw new Error('Rrjetet sociale janë pjesë e planit Pro.');
+        if ((changes.description?.trim().length ?? 0) > catalog_1.PLAN_LIMITS.basicBio)
+            throw new Error('Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.');
+    }
+    else if ((changes.description?.trim().length ?? 0) > catalog_1.PLAN_LIMITS.proBio) {
+        throw new Error('Përshkrimi në planin Pro mund të ketë deri në 2,000 karaktere.');
+    }
     const previousMedia = [business.logoUrl, business.coverUrl];
     if (changes.publicName !== undefined)
         business.publicName = changes.publicName.trim();

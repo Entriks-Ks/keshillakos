@@ -1,3 +1,6 @@
+import { languageSkillsInput, workExperienceInput } from '../models/profileDetails'
+import { isPro } from '../services/planService'
+import { PLAN_LIMITS } from '../plans/catalog'
 import { paginationInput, validatePagination } from '../services/pagination'
 import { Router } from 'express'
 import { Types } from 'mongoose'
@@ -34,15 +37,6 @@ const monthYearInput = z.object({
   year: z.number().int().min(1950).max(2100),
 })
 
-const workExperienceInput = z.array(z.object({
-  position: z.string().trim().min(1).max(160),
-  organization: z.string().trim().min(1).max(160),
-  from: monthYearInput,
-  to: monthYearInput.optional(),
-  current: z.boolean().optional(),
-  description: z.string().trim().max(2000).optional(),
-})).max(30)
-
 const educationInput = z.array(z.object({
   institution: z.string().trim().min(1).max(160),
   degree: z.string().trim().min(1).max(160),
@@ -68,7 +62,13 @@ router.get('/', async (req, res) => {
 })
 
 router.get('/mine', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
-  try { return res.json({ providers: (await listMyProviderProfiles(req.user!.uid)).map(toPublicProvider) }) }
+  try {
+    const profiles = await listMyProviderProfiles(req.user!.uid)
+    return res.json({ providers: await Promise.all(profiles.map(async profile => {
+      const pro = await isPro(req.user!.uid, profile.providerType === 'business' ? 'company' : 'provider')
+      return { ...toPublicProvider(profile), editLimits: { description: pro ? PLAN_LIMITS.proBio : PLAN_LIMITS.basicBio, career: pro } }
+    })) })
+  }
   catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Profilet nuk u ngarkuan' }) }
 })
 
@@ -106,6 +106,7 @@ router.patch('/:id', requireAuth, requireRole('provider', 'company', 'admin'), a
       categories: z.array(z.string()).optional(),
       subcategoryIds: z.array(z.string()).optional(),
       languages: z.array(z.string()).optional(),
+      languageSkills: languageSkillsInput.optional(),
       locations: z.array(z.any()).optional(),
       serviceAreas: z.array(z.any()).optional(),
       modes: z.array(z.enum(['online', 'on_site'])).optional(),
@@ -142,6 +143,7 @@ router.patch('/:id', requireAuth, requireRole('provider', 'company', 'admin'), a
       categories: body.categories,
       subcategoryIds: body.subcategoryIds,
       languages: body.languages,
+      languageSkills: body.languageSkills,
       locations: body.locations as Location[] | undefined,
       serviceAreas: body.serviceAreas as Location[] | undefined,
       modes: body.modes,

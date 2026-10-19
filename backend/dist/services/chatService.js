@@ -23,6 +23,7 @@ const ServiceRequest_1 = require("../models/ServiceRequest");
 const User_1 = require("../models/User");
 const UserRequest_1 = require("../models/UserRequest");
 const providerPublicService_1 = require("./providerPublicService");
+const planService_1 = require("./planService");
 const chatSafetyService_1 = require("./chatSafetyService");
 const ServiceOffer_1 = require("../models/ServiceOffer");
 const Service_1 = require("../models/Service");
@@ -89,6 +90,8 @@ async function openOrGetConversation(input) {
     if (input.seekerUid === input.providerUid) {
         throw Object.assign(new Error('Nuk mund të chatosh me veten'), { status: 400 });
     }
+    const audience = await (0, planService_1.isPro)(input.providerUid, 'company') ? 'company' : 'provider';
+    await (0, planService_1.recordPlanEvent)(input.providerUid, audience, 'contacts');
     if (input.initialMessage !== undefined && (typeof input.initialMessage !== 'string' || input.initialMessage.trim().length > MAX_BODY))
         throw Object.assign(new Error('Mesazhi është i pavlefshëm'), { status: 400 });
     const provider = await (0, userService_1.findUserByUid)(input.providerUid);
@@ -173,11 +176,8 @@ async function listConversationsForUser(uid, input = { page: 1, limit: 20 }, sea
         query.$and = [{ $or: [{ seekerUid: { $in: peers.map((peer) => peer.uid) } }, { providerUid: { $in: peers.map((peer) => peer.uid) } }, { serviceTitle: { $regex: escaped, $options: 'i' } }, { lastMessagePreview: { $regex: escaped, $options: 'i' } }] }];
     }
     const result = await (0, pagination_1.queryPage)(input, () => Conversation_1.Conversation.countDocuments(query), (skip, limit) => Conversation_1.Conversation.find(query).sort({ lastMessageAt: -1, updatedAt: -1, _id: -1 }).skip(skip).limit(limit));
-    const totals = await Conversation_1.Conversation.aggregate([
-        { $match: { $or: [{ seekerUid: uid }, { providerUid: uid }] } },
-        { $group: { _id: null, total: { $sum: 1 }, unread: { $sum: { $cond: [{ $eq: ['$seekerUid', uid] }, '$seekerUnread', '$providerUnread'] } } } },
-    ]);
-    return Object.assign(await Promise.all(result.items.map((doc) => toPublicConversation(doc, uid))), { pagination: result.pagination, summary: { total: totals[0]?.total ?? 0, unread: totals[0]?.unread ?? 0 } });
+    const summary = await (0, chatUnreadService_1.chatConversationSummary)(uid);
+    return Object.assign(await Promise.all(result.items.map((doc) => toPublicConversation(doc, uid))), { pagination: result.pagination, summary });
 }
 async function getConversationForUser(conversationId, uid) {
     const conversation = await assertParticipant(conversationId, uid);
@@ -229,6 +229,9 @@ async function markConversationRead(conversationId, uid) {
     const unreadField = uid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread';
     await Conversation_1.Conversation.updateOne({ _id: conversation._id }, { $set: { [unreadField]: 0 } });
     conversation.set(unreadField, 0);
+    const receipt = { conversationId, uid, readAt: new Date().toISOString() };
+    (0, realtime_1.emitToUser)(conversation.seekerUid, 'conversation:read', receipt);
+    (0, realtime_1.emitToUser)(conversation.providerUid, 'conversation:read', receipt);
     await (0, chatUnreadService_1.publishChatUnread)(uid);
     return toPublicConversation(conversation, uid);
 }

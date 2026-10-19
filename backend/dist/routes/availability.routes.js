@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
+const planService_1 = require("../services/planService");
 const availabilityService_1 = require("../services/availabilityService");
 const router = (0, express_1.Router)();
 router.use(pagination_1.validatePagination);
@@ -11,6 +12,9 @@ router.get('/provider/:uid', async (req, res) => {
         const uid = String(req.params.uid || '').trim();
         if (!uid)
             return res.status(400).json({ message: 'Mungon ofruesi' });
+        if (!(await (0, planService_1.isPro)(uid, 'provider')) && !(await (0, planService_1.isPro)(uid, 'company'))) {
+            return res.json({ slots: [], schedule: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } });
+        }
         const view = typeof req.query.view === 'string' ? req.query.view : 'open';
         if (view === 'schedule') {
             const schedule = await (0, availabilityService_1.listScheduleForProvider)(uid, (0, pagination_1.paginationInput)(req.query, 50));
@@ -38,6 +42,7 @@ router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'com
 });
 router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
+        await (0, planService_1.assertPro)(req.user.uid, req.user.activeContext === 'company' ? 'company' : 'provider');
         const { startAt, endAt, note, providerId, businessId, serviceOfferId, staffUserId, resourceKey, timezone, mode, location, capacity } = req.body;
         if (!startAt || !endAt) {
             return res.status(400).json({ message: 'Data dhe ora janë të detyrueshme' });
@@ -61,6 +66,7 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'compan
 });
 router.post('/bulk', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
+        await (0, planService_1.assertPro)(req.user.uid, req.user.activeContext === 'company' ? 'company' : 'provider');
         const { slots, note, timezone, mode, providerId } = req.body;
         if (!Array.isArray(slots) || !slots.length) {
             return res.status(400).json({ message: 'Zgjidh të paktën një orë' });

@@ -14,12 +14,15 @@ router.get('/:uid', async (req, res) => {
         if (!provider) {
             return res.status(404).json({ message: 'Profili i ofruesit nuk u gjet' });
         }
+        const entitled = provider.plan === 'pro';
         const [services, experts, profile] = await Promise.all([
             (0, serviceService_1.listProviderServicePage)(provider.uid, (0, pagination_1.paginationInput)(req.query), true),
             (0, businessService_1.publicExpertPageForOwner)(provider.uid, (0, pagination_1.paginationInput)({ ...req.query, page: req.query.expertsPage })),
             (0, providerProfileService_1.getMarketplaceProviderByUid)(provider.uid, provider.role === 'company' ? 'business' : 'individual'),
         ]);
-        const servicesPage = { items: services.services, pagination: services.pagination };
+        const servicesPage = entitled
+            ? { items: services.services, pagination: services.pagination }
+            : { items: [], pagination: { ...services.pagination, total: 0, totalPages: 0 } };
         const expertsPage = { items: experts.experts, pagination: experts.pagination };
         return res.json({ provider, services: servicesPage.items, experts: expertsPage.items, profile, pagination: servicesPage.pagination, expertsPagination: expertsPage.pagination });
     }

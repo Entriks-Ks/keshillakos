@@ -10,6 +10,7 @@ exports.notifyBusinesses = notifyBusinesses;
 exports.notifyAdmins = notifyAdmins;
 exports.notificationHistory = notificationHistory;
 exports.markRead = markRead;
+exports.clearNotifications = clearNotifications;
 const mongoose_1 = require("mongoose");
 const Notification_1 = require("../models/Notification");
 const User_1 = require("../models/User");
@@ -119,5 +120,24 @@ async function markRead(uid, id) {
     (0, realtime_1.emitToUser)(uid, 'notification:read', { id: id ?? null });
     await publishCount(uid);
     return { unreadCount: await unreadCount(uid) };
+}
+async function clearNotifications(uid) {
+    await Notification_1.Notification.deleteMany({ recipientUid: uid, type: { $ne: 'message:new' } });
+    // Deletion is committed; a count/broadcast failure must not report deletion failure.
+    let count = 0;
+    try {
+        count = await unreadCount(uid);
+    }
+    catch (error) {
+        console.error('Notification count refresh failed after clear', error);
+    }
+    try {
+        (0, realtime_1.emitToUser)(uid, 'notification:cleared', {});
+        (0, realtime_1.emitToUser)(uid, 'notification:count', { unreadCount: count });
+    }
+    catch (error) {
+        console.error('Notification broadcast failed after clear', error);
+    }
+    return { unreadCount: count };
 }
 //# sourceMappingURL=notificationService.js.map

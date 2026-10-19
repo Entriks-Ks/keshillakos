@@ -21,7 +21,7 @@ function statusOf(err) {
 router.get('/unread-count', auth_1.requireAuth, async (req, res) => {
     try {
         res.setHeader('Cache-Control', 'private, no-store');
-        return res.json({ unreadCount: await (0, chatUnreadService_1.chatUnreadCount)(req.user.uid) });
+        return res.json(await (0, chatUnreadService_1.chatUnreadTotals)(req.user.uid));
     }
     catch (error) {
         return res.status(500).json({ message: 'Nuk u ngarkuan mesazhet e palexuara' });

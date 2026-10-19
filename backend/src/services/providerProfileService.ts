@@ -1,3 +1,4 @@
+import { validatedLanguageSkills, validatedExperience, reconcileLanguageSkills, type LanguageSkill } from '../models/profileDetails'
 import { notifyUsers, notifyAdmins } from './notificationService'
 import { providerDirectoryPipeline } from './marketplaceQuery'
 import { paginationMeta, queryPage, type PaginationInput } from './pagination'
@@ -15,7 +16,6 @@ import { applySocialLinks, normalizeSocialLinks, SOCIAL_LINK_KEYS, type SocialLi
 import {
   normalizeCertifications,
   normalizeEducation,
-  normalizeWorkExperience,
   type CertificationEntry,
   type EducationEntry,
   type WorkExperienceEntry,
@@ -216,6 +216,7 @@ export function toPublicProvider(profile: ProviderProfileDoc & { _id: Types.Obje
     categories: profile.categories,
     subcategoryIds: (profile.subcategoryIds ?? []).map(String),
     languages: profile.languages,
+    languageSkills: reconcileLanguageSkills(profile.languages, profile.languageSkills),
     locations: profile.locations,
     serviceAreas: profile.serviceAreas,
     location: profile.location
@@ -285,13 +286,14 @@ export async function getMarketplaceProviderByUid(uid: string, providerType: 'in
     const url = profile.socialLinks?.[key]
     if (url) socialLinks[key] = url
   }
-  const about = profile.publicProfile.description || profile.publicProfile.shortDescription || profile.experience || ''
+  const about = profile.publicProfile.description ?? profile.publicProfile.shortDescription ?? profile.experience ?? ''
   const pro = await isPro(uid, providerType === 'business' ? 'company' : 'provider')
   return {
     ...card,
     plan: pro ? 'pro' : 'basic',
     about: clampBio(about, pro),
     socialLinks: pro ? socialLinks : {},
+    languageSkills: pro ? reconcileLanguageSkills(profile.languages, profile.languageSkills) : [],
     workExperience: pro ? (profile.workExperience ?? []).map((entry) => ({
       position: entry.position,
       organization: entry.organization,
@@ -516,6 +518,7 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
   qualificationClaims?: ProviderProfileDoc['qualificationClaims']
   socialLinks?: SocialLinks | null
   workExperience?: WorkExperienceEntry[]
+  languageSkills?: LanguageSkill[]
   education?: EducationEntry[]
   certifications?: CertificationEntry[]
   yearsOfExperience?: number | null
@@ -524,6 +527,7 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
   const profile = await loadManagedProvider(uid, id)
   const pro = await isPro(uid, profile.providerType === 'business' ? 'company' : 'provider')
   if (!pro) {
+    if (changes.languageSkills !== undefined || changes.workExperience !== undefined) throw new Error('profileDetails.proRequired')
     const description = changes.publicProfile?.description || changes.publicProfile?.shortDescription || ''
     if (description.length > PLAN_LIMITS.basicBio) throw new Error('Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.')
     if (changes.publicProfile?.photoUrl || changes.publicProfile?.coverUrl) throw new Error('Fotot e profilit janë pjesë e planit Pro.')
@@ -553,7 +557,13 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
   if (changes.subcategoryIds !== undefined) {
     profile.subcategoryIds = changes.subcategoryIds.map((id) => new Types.ObjectId(id))
   }
-  if (changes.languages !== undefined) profile.languages = uniqueText(changes.languages)
+  if (changes.languageSkills !== undefined) {
+    profile.languageSkills = await validatedLanguageSkills(changes.languageSkills, profile.languages)
+    profile.languages = profile.languageSkills.map(skill => skill.language)
+  } else if (changes.languages !== undefined) {
+    profile.languages = uniqueText(changes.languages)
+    profile.languageSkills = reconcileLanguageSkills(profile.languages, profile.languageSkills)
+  }
   if (changes.locations !== undefined) profile.locations = changes.locations
   if (changes.serviceAreas !== undefined) profile.serviceAreas = changes.serviceAreas
   if (changes.location !== undefined) profile.location = changes.location === null ? undefined : {
@@ -580,7 +590,7 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
     const normalized = normalizeSocialLinks(changes.socialLinks)
     profile.socialLinks = applySocialLinks(profile.socialLinks, normalized || {})
   }
-  if (changes.workExperience !== undefined) profile.workExperience = normalizeWorkExperience(changes.workExperience)
+  if (changes.workExperience !== undefined) profile.workExperience = validatedExperience(changes.workExperience)
   if (changes.education !== undefined) profile.education = normalizeEducation(changes.education)
   if (changes.certifications !== undefined) {
     profile.certifications = normalizeCertifications(changes.certifications)

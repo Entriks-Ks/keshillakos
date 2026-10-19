@@ -17,6 +17,7 @@ import {
 } from '../services/mediaService'
 import {
   findUserByUid,
+  ownDescriptionLimit,
   requestRoleChange,
   setActiveContext,
   updateOwnProfile,
@@ -54,6 +55,8 @@ function publicUser(user: {
   savedLocation?: import('../services/userService').SavedLocation
   skills?: string[]
   languages?: string[]
+  languageSkills?: import('../models/profileDetails').LanguageSkill[]
+  workExperience?: import('../models/providerCareer').WorkExperienceEntry[]
   profilePhoto?: string
   socialLinks?: import('../models/socialLinks').SocialLinks
 }) {
@@ -80,6 +83,8 @@ function publicUser(user: {
     savedLocation: user.savedLocation,
     skills: user.skills ?? [],
     languages: user.languages ?? [],
+    languageSkills: user.languageSkills ?? [],
+    workExperience: user.workExperience ?? [],
     profilePhoto: user.profilePhoto || '',
     socialLinks: user.socialLinks || {},
   }
@@ -244,7 +249,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, socialLinks } = req.body as {
+    const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, languageSkills, workExperience, socialLinks } = req.body as {
       firstName?: string
       lastName?: string
       phone?: string | null
@@ -259,6 +264,8 @@ router.patch('/me', requireAuth, async (req, res) => {
       bio?: string
       skills?: string[]
       languages?: string[]
+      languageSkills?: import('../models/profileDetails').LanguageSkill[]
+      workExperience?: import('../models/providerCareer').WorkExperienceEntry[]
       socialLinks?: Record<string, string | undefined> | null
     }
 
@@ -280,6 +287,8 @@ router.patch('/me', requireAuth, async (req, res) => {
       bio,
       skills,
       languages,
+      languageSkills,
+      workExperience,
       socialLinks,
       legacyLocation: typeof location === 'string' ? location : undefined,
     })
@@ -349,7 +358,10 @@ router.patch('/me/context', requireAuth, async (req, res) => {
 })
 
 router.get('/me', requireAuth, async (req, res) => {
-  return res.json({ user: req.user })
+  try {
+    const description = await ownDescriptionLimit(req.user!)
+    return res.json({ user: { ...req.user, profileEditLimits: { description } } })
+  } catch { return res.status(500).json({ message: 'profileDetails.loadError' }) }
 })
 
 router.get('/me/profile-completion', requireAuth, async (req, res) => {

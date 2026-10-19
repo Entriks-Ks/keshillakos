@@ -7,6 +7,7 @@ const zod_1 = require("zod");
 const auth_1 = require("../middleware/auth");
 const mediaService_1 = require("../services/mediaService");
 const serviceService_1 = require("../services/serviceService");
+const planService_1 = require("../services/planService");
 const router = (0, express_1.Router)();
 router.use(pagination_1.validatePagination);
 const discoveryQuery = zod_1.z.object({
@@ -59,11 +60,14 @@ router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'com
 });
 router.post('/photos', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.imageUpload), async (req, res) => {
     try {
+        const audience = req.user.activeContext === 'company' ? 'company' : 'provider';
+        await (0, planService_1.assertPro)(req.user.uid, audience);
         const url = await (0, mediaService_1.storeUploadedFile)(req, 'services', req.user.uid, 'Zgjidh një foto për shërbimin');
         return res.status(201).json({ url });
     }
     catch (err) {
-        return res.status(400).json({
+        const status = err instanceof planService_1.PlanError ? err.status : 400;
+        return res.status(status).json({
             message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi',
         });
     }

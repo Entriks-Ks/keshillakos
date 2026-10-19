@@ -8,6 +8,7 @@ exports.listAllRequests = listAllRequests;
 exports.updateRequestStatus = updateRequestStatus;
 exports.countPendingForProvider = countPendingForProvider;
 const notificationService_1 = require("./notificationService");
+const planService_1 = require("./planService");
 const ServiceRequest_1 = require("../models/ServiceRequest");
 const availabilityService_1 = require("./availabilityService");
 function toRequest(doc) {
@@ -39,6 +40,9 @@ async function createServiceRequest(input) {
     if (input.seekerUid === input.providerUid) {
         throw new Error('Nuk mund t’i dërgosh kërkesë vetes');
     }
+    if (!(await (0, planService_1.isPro)(input.providerUid, 'provider')) && !(await (0, planService_1.isPro)(input.providerUid, 'company'))) {
+        throw new Error('Ky ofrues pranon vetëm kontakt bazik. Formulari i kërkesës është pjesë e planit Pro.');
+    }
     let requestedStartAt;
     let requestedEndAt;
     const slotId = input.slotId?.trim();
@@ -64,6 +68,8 @@ async function createServiceRequest(input) {
         requestedEndAt,
         status: 'pending',
     });
+    const audience = await (0, planService_1.isPro)(input.providerUid, 'company') ? 'company' : 'provider';
+    await (0, planService_1.recordPlanEvent)(input.providerUid, audience, 'requests');
     if (slotId) {
         try {
             await (0, availabilityService_1.holdSlotForRequest)({

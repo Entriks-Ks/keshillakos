@@ -94,6 +94,10 @@ export async function getPublicProviderProfile(uid: string) {
   let profilePhoto = provider.profilePhoto
   let name = provider.name
   let bio = provider.bio
+  let headline = provider.headline
+  let languages = provider.languages
+  let languageSkills: import('../models/profileDetails').LanguageSkill[] = []
+  let workExperience: import('../models/providerCareer').WorkExperienceEntry[] = []
   if (owner) {
     if (role === 'company') {
       const business = await Business.findOne({ owners: owner._id }).select('publicName description coverUrl logoUrl').lean()
@@ -102,7 +106,14 @@ export async function getPublicProviderProfile(uid: string) {
       name = business?.publicName || name
       bio = business?.description || bio
     } else {
-      const profile = await ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile.coverUrl publicProfile.photoUrl').lean()
+      const profile = await ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile languages languageSkills workExperience').lean()
+      if (profile) {
+        bio = profile.publicProfile.description ?? profile.publicProfile.shortDescription ?? bio
+        headline = profile.publicProfile.title ?? headline
+        languages = profile.languages
+        languageSkills = profile.languageSkills || []
+        workExperience = profile.workExperience || []
+      }
       coverPhoto = profile?.publicProfile?.coverUrl || ''
       profilePhoto = profilePhoto || profile?.publicProfile?.photoUrl || ''
     }
@@ -117,11 +128,13 @@ export async function getPublicProviderProfile(uid: string) {
     name,
     role,
     roleLabel: ROLE_LABELS[role],
-    headline: provider.headline,
+    headline,
     bio: publicBio,
     location: provider.location,
     skills: pro ? provider.skills : [],
-    languages: pro ? provider.languages : [],
+    languages: pro ? languages : [],
+    languageSkills: pro ? languageSkills : [],
+    workExperience: pro ? workExperience : [],
     profilePhoto: pro ? profilePhoto : '',
     coverPhoto: pro ? coverPhoto : '',
     plan: pro ? 'pro' as const : 'basic' as const,
