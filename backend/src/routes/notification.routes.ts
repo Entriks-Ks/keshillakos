@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
-import { notificationHistory, markRead, unreadCount, clearNotifications } from '../services/notificationService'
+import { notificationHistory, markRead, unreadCount, clearNotifications, deleteNotification } from '../services/notificationService'
 const router = Router()
 router.use(requireAuth, (_req, res, next) => { res.setHeader('Cache-Control', 'private, no-store'); next() })
 router.get('/', async (req, res, next) => {
@@ -15,6 +15,13 @@ router.get('/unread-count', async (req, res, next) => {
 })
 router.delete('/', async (req, res, next) => {
   try { res.json(await clearNotifications(req.user!.uid)) } catch (error) { next(error) }
+})
+router.delete('/:id', async (req, res, next) => {
+  try { res.json(await deleteNotification(req.user!.uid, String(req.params.id))) } catch (error) {
+    const status = (error as { status?: number }).status
+    if (status === 400 || status === 404) return res.status(status).json({ message: (error as Error).message })
+    next(error)
+  }
 })
 router.patch('/read-all', async (req, res, next) => {
   try { res.json(await markRead(req.user!.uid)) } catch (error) { next(error) }

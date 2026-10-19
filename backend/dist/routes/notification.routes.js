@@ -32,6 +32,17 @@ router.delete('/', async (req, res, next) => {
         next(error);
     }
 });
+router.delete('/:id', async (req, res, next) => {
+    try {
+        res.json(await (0, notificationService_1.deleteNotification)(req.user.uid, String(req.params.id)));
+    }
+    catch (error) {
+        const status = error.status;
+        if (status === 400 || status === 404)
+            return res.status(status).json({ message: error.message });
+        next(error);
+    }
+});
 router.patch('/read-all', async (req, res, next) => {
     try {
         res.json(await (0, notificationService_1.markRead)(req.user.uid));

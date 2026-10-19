@@ -9,10 +9,11 @@ import { useNavigate } from 'react-router-dom'
 import { useNotifications } from './NotificationProvider'
 import './Notifications.css'
 export default function NotificationBell() {
-  const { notifications, unreadCount, loading, loaded, reading, error, hasMore, markRead, clearNotifications, loadMore, reload } = useNotifications()
+  const { notifications, unreadCount, loading, loaded, reading, error, hasMore, markRead, clearNotifications, deleteNotification, loadMore, reload } = useNotifications()
   const { t, i18n } = useTranslation()
   const [isOpen, setOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<AppNotification | null>(null)
   const [feedback, setFeedback] = useState('')
   const navigate = useNavigate()
   const { user, switchContext } = useAuth()
@@ -35,6 +36,14 @@ export default function NotificationBell() {
       setFeedback('notifications.clear.success')
     }
   }
+  async function remove() {
+    if (!deleteTarget) return
+    setFeedback('')
+    if (await deleteNotification(deleteTarget.id)) {
+      setDeleteTarget(null); setOpen(true); setFeedback('notifications.delete.success')
+    }
+  }
+  const confirmationKey = deleteTarget ? 'notifications.delete' : 'notifications.clear'
   return <>
     <Dropdown isOpen={isOpen} onOpenChange={value => { setOpen(value); setFeedback('') }}>
       <Dropdown.Trigger className={`${buttonVariants({ isIconOnly: true, variant: 'ghost' })} dtb-icon kk-notification-bell`} aria-label={t('notifications.badge', { count: unreadCount })}>
@@ -56,21 +65,22 @@ export default function NotificationBell() {
               <time dateTime={notification.createdAt}>{new Date(notification.createdAt).toLocaleString(i18n.language)}</time>
             </button>
             {!notification.readAt && <Button size="sm" variant="ghost" isDisabled={busy} onPress={() => { setFeedback(''); void markRead(notification.id) }}>{t('notifications.markRead')}</Button>}
+            <Button size="sm" variant="ghost" isDisabled={busy} aria-label={t('notifications.delete.accessibility', { title: notification.title })} onPress={() => { setFeedback(''); setOpen(false); setDeleteTarget(notification) }}>{t('notifications.delete.action')}</Button>
           </div>)}
           {loading && <p className="muted">{t('notifications.loading')}</p>}
           {hasMore && <Button size="sm" variant="ghost" isDisabled={busy} onPress={loadMore}>{t('notifications.more')}</Button>}
         </div>
       </Dropdown.Popover>
     </Dropdown>
-    <Modal isOpen={confirmClear} onOpenChange={value => { if (!reading) setConfirmClear(value) }}>
+    <Modal isOpen={confirmClear || !!deleteTarget} onOpenChange={value => { if (!reading && !value) { setConfirmClear(false); setDeleteTarget(null) } }}>
       <Modal.Backdrop isDismissable={!reading}>
         <Modal.Container size="sm" placement="center">
-          <Modal.Dialog aria-label={t('notifications.clear.confirmTitle')}>
-            <Modal.Header><Modal.Heading>{t('notifications.clear.confirmTitle')}</Modal.Heading></Modal.Header>
-            <Modal.Body><p>{t('notifications.clear.confirmMessage')}</p>{error && <p role="alert">{t(error)}</p>}</Modal.Body>
+          <Modal.Dialog aria-label={t(`${confirmationKey}.confirmTitle`)}>
+            <Modal.Header><Modal.Heading>{t(`${confirmationKey}.confirmTitle`)}</Modal.Heading></Modal.Header>
+            <Modal.Body><p>{t(`${confirmationKey}.confirmMessage`)}</p>{error && <p role="alert">{t(error)}</p>}</Modal.Body>
             <Modal.Footer>
-              <Button variant="ghost" isDisabled={!!reading} onPress={() => setConfirmClear(false)}>{t('notifications.cancel')}</Button>
-              <Button variant="primary" isDisabled={busy} onPress={() => void clear()}>{t(reading === 'clear' ? 'notifications.clearing' : 'notifications.clear.action')}</Button>
+              <Button variant="ghost" isDisabled={!!reading} onPress={() => { setConfirmClear(false); setDeleteTarget(null) }}>{t('notifications.cancel')}</Button>
+              <Button variant="primary" isDisabled={busy} onPress={() => { if (deleteTarget) void remove(); else void clear() }}>{t(reading ? (deleteTarget ? 'notifications.delete.loading' : 'notifications.clearing') : `${confirmationKey}.action`)}</Button>
             </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>

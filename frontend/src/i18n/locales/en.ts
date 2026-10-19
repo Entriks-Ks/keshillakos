@@ -1,5 +1,14 @@
 const en = {
   notifications: {
+    delete: {
+      loading: "Deleting notification…",
+      "action": "Delete notification",
+      "accessibility": "Delete notification: {{title}}",
+      "confirmTitle": "Delete this notification?",
+      "confirmMessage": "This notification will be permanently removed from your history. This action cannot be undone.",
+      "success": "Notification deleted.",
+      "error": "Could not delete notification. Please try again."
+    },
     "title": "Notifications",
     "badge": "Notifications, {{count}} unread",
     "markAll": "Mark all as read",

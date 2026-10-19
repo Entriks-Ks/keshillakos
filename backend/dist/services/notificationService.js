@@ -11,6 +11,7 @@ exports.notifyAdmins = notifyAdmins;
 exports.notificationHistory = notificationHistory;
 exports.markRead = markRead;
 exports.clearNotifications = clearNotifications;
+exports.deleteNotification = deleteNotification;
 const mongoose_1 = require("mongoose");
 const Notification_1 = require("../models/Notification");
 const User_1 = require("../models/User");
@@ -117,27 +118,43 @@ async function markRead(uid, id) {
     if (id && !mongoose_1.Types.ObjectId.isValid(id))
         throw new Error('Notification ID i pavlefshëm');
     await Notification_1.Notification.updateMany({ recipientUid: uid, type: { $ne: 'message:new' }, readAt: null, ...(id ? { _id: id } : {}) }, { $set: { readAt: new Date() } });
-    (0, realtime_1.emitToUser)(uid, 'notification:read', { id: id ?? null });
-    await publishCount(uid);
-    return { unreadCount: await unreadCount(uid) };
+    return publishMutation(uid, 'notification:read', { id: id ?? null });
 }
 async function clearNotifications(uid) {
     await Notification_1.Notification.deleteMany({ recipientUid: uid, type: { $ne: 'message:new' } });
-    // Deletion is committed; a count/broadcast failure must not report deletion failure.
-    let count = 0;
+    return publishMutation(uid, 'notification:cleared', {});
+}
+async function deleteNotification(uid, id) {
+    if (!mongoose_1.Types.ObjectId.isValid(id))
+        throw Object.assign(new Error('Invalid notification ID'), { status: 400 });
+    // Idempotent for concurrent deletes; never reveal whether another user owns this ID.
+    await Notification_1.Notification.deleteOne({ _id: id, recipientUid: uid, type: { $ne: 'message:new' } });
+    return publishMutation(uid, 'notification:deleted', { id });
+}
+async function publishMutation(uid, event, payload) {
+    // Persistence has succeeded. Secondary failures must neither fail the mutation nor invent a count.
+    let count = null;
     try {
         count = await unreadCount(uid);
     }
     catch (error) {
-        console.error('Notification count refresh failed after clear', error);
+        console.error('Notification count refresh failed', error);
     }
     try {
-        (0, realtime_1.emitToUser)(uid, 'notification:cleared', {});
-        (0, realtime_1.emitToUser)(uid, 'notification:count', { unreadCount: count });
+        (0, realtime_1.emitToUser)(uid, event, payload);
     }
     catch (error) {
-        console.error('Notification broadcast failed after clear', error);
+        console.error('Notification broadcast failed', error);
     }
-    return { unreadCount: count };
+    if (count !== null) {
+        try {
+            (0, realtime_1.emitToUser)(uid, 'notification:count', { unreadCount: count });
+        }
+        catch (error) {
+            console.error('Notification count broadcast failed', error);
+        }
+        return { unreadCount: count };
+    }
+    return { unreadCount: null, requiresSync: true };
 }
 //# sourceMappingURL=notificationService.js.map

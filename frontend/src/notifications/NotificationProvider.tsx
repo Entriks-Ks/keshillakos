@@ -3,9 +3,9 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyn
 import { useAuth } from '../auth/AuthContext'
 import { API_BASE_URL } from '../api/auth'
 import { notificationApi } from '../api/notifications'
-import { createNotificationStore, type NotificationPage } from './notificationStore'
+import { createNotificationStore, bindNotificationSocket, type NotificationPage } from './notificationStore'
 
-type NotificationState = NotificationPage & { messageUnreadCount: number; loading: boolean; loaded: boolean; error: string; reload: () => void; loadMore: () => void; reading: string | null; clearNotifications: () => Promise<boolean>; markRead: (id?: string) => Promise<boolean> }
+type NotificationState = NotificationPage & { messageUnreadCount: number; loading: boolean; loaded: boolean; error: string; reload: () => void; loadMore: () => void; reading: string | null; clearNotifications: () => Promise<boolean>; deleteNotification: (id: string) => Promise<boolean>; markRead: (id?: string) => Promise<boolean> }
 const Context = createContext<NotificationState | null>(null)
 const empty: NotificationPage = { notifications: [], unreadCount: 0, page: 1, hasMore: false }
 export function NotificationProvider({ children }: { children: ReactNode }) {
@@ -33,28 +33,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
     void syncChatUnread()
     let socket: import('socket.io-client').Socket | undefined
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const sync = () => { clearTimeout(timer); timer = setTimeout(reload, 100) }
+    let unbindNotifications: (() => void) | undefined
+    const sync = () => { void store.load() }
     // Load Socket.IO only for authenticated sessions.
     void import('socket.io-client').then(({ io }) => {
       if (disposed) return
       socket = io(API_BASE_URL, { path: '/socket.io', auth: callback => callback({ token: localStorage.getItem('token') }), reconnection: true })
       socketRef.current = socket
-      socket.on('connect', () => { setSocketError(''); sync(); void syncChatUnread() })
+      unbindNotifications = bindNotificationSocket(socket, store)
+      socket.on('connect', () => { setSocketError(''); void syncChatUnread() })
       socket.on('chat:unread', ({ unreadCount }: { unreadCount: number }) => { ++unreadRevision; setMessageUnreadCount(unreadCount) })
       socket.on('disconnect', () => { if (!disposed) setSocketError('notifications.reconnecting') })
       socket.on('connect_error', () => { if (!disposed) setSocketError('notifications.connectionError') })
-      socket.on('notification:new', notification => { if (notification.type !== 'message:new') sync() })
-      socket.on('notification:read', sync)
-      socket.on('notification:cleared', sync)
-      socket.on('notification:count', sync)
+
     }).catch(() => { if (!disposed) setSocketError('notifications.connectionError') })
     const onVisible = () => { if (document.visibilityState === 'visible') { if (socket && !socket.connected) socket.connect(); sync(); void syncChatUnread() } }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', onVisible)
-    return () => { disposed = true; unreadController.abort(); clearTimeout(timer); socket?.disconnect(); socketRef.current = null; document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', onVisible) }
+    return () => { disposed = true; unreadController.abort(); unbindNotifications?.(); socket?.disconnect(); socketRef.current = null; document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', onVisible) }
   }, [user?.uid, store])
-  return <Context.Provider value={{ messageUnreadCount: ownerUid === (user?.uid || '') ? messageUnreadCount : 0, ...(ownerUid === (user?.uid || '') ? state : empty), loading: state.loading, loaded: state.loaded, reading: state.reading, error: state.error || socketError, reload, loadMore: () => { void store.load(true) }, markRead: store.read, clearNotifications: store.clear }}>{children}</Context.Provider>
+  return <Context.Provider value={{ messageUnreadCount: ownerUid === (user?.uid || '') ? messageUnreadCount : 0, ...(ownerUid === (user?.uid || '') ? state : empty), loading: state.loading, loaded: state.loaded, reading: state.reading, error: state.error || socketError, reload, loadMore: () => { void store.load(true) }, markRead: store.read, clearNotifications: store.clear, deleteNotification: store.remove }}>{children}</Context.Provider>
 }
 export function useNotifications() {
   const context = useContext(Context)
