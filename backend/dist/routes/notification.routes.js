@@ -24,6 +24,14 @@ router.get('/unread-count', async (req, res, next) => {
         next(error);
     }
 });
+router.delete('/', async (req, res, next) => {
+    try {
+        res.json(await (0, notificationService_1.clearNotifications)(req.user.uid));
+    }
+    catch (error) {
+        next(error);
+    }
+});
 router.patch('/read-all', async (req, res, next) => {
     try {
         res.json(await (0, notificationService_1.markRead)(req.user.uid));

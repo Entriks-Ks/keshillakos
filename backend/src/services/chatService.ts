@@ -1,5 +1,5 @@
-import { emitChatMessage, isConversationActive } from './realtime'
-import { publishChatUnread } from './chatUnreadService'
+import { emitChatMessage, isConversationActive, emitToUser } from './realtime'
+import { publishChatUnread, chatConversationSummary } from './chatUnreadService'
 import { queryPage, type PaginationInput } from './pagination'
 import mongoose from 'mongoose'
 import { Conversation } from '../models/Conversation'
@@ -200,11 +200,8 @@ export async function listConversationsForUser(uid: string, input: PaginationInp
     query.$and = [{ $or: [{ seekerUid: { $in: peers.map((peer) => peer.uid) } }, { providerUid: { $in: peers.map((peer) => peer.uid) } }, { serviceTitle: { $regex: escaped, $options: 'i' } }, { lastMessagePreview: { $regex: escaped, $options: 'i' } }] }]
   }
   const result = await queryPage(input, () => Conversation.countDocuments(query), (skip, limit) => Conversation.find(query).sort({ lastMessageAt: -1, updatedAt: -1, _id: -1 }).skip(skip).limit(limit))
-  const totals = await Conversation.aggregate<{ total: number; unread: number }>([
-    { $match: { $or: [{ seekerUid: uid }, { providerUid: uid }] } },
-    { $group: { _id: null, total: { $sum: 1 }, unread: { $sum: { $cond: [{ $eq: ['$seekerUid', uid] }, '$seekerUnread', '$providerUnread'] } } } },
-  ])
-  return Object.assign(await Promise.all(result.items.map((doc) => toPublicConversation(doc, uid))), { pagination: result.pagination, summary: { total: totals[0]?.total ?? 0, unread: totals[0]?.unread ?? 0 } })
+  const summary = await chatConversationSummary(uid)
+  return Object.assign(await Promise.all(result.items.map((doc) => toPublicConversation(doc, uid))), { pagination: result.pagination, summary })
 }
 
 export async function getConversationForUser(conversationId: string, uid: string) {
@@ -275,6 +272,9 @@ export async function markConversationRead(conversationId: string, uid: string) 
   const unreadField = uid === conversation.seekerUid ? 'seekerUnread' : 'providerUnread'
   await Conversation.updateOne({ _id: conversation._id }, { $set: { [unreadField]: 0 } })
   conversation.set(unreadField, 0)
+  const receipt = { conversationId, uid, readAt: new Date().toISOString() }
+  emitToUser(conversation.seekerUid, 'conversation:read', receipt)
+  emitToUser(conversation.providerUid, 'conversation:read', receipt)
   await publishChatUnread(uid)
 
   return toPublicConversation(conversation, uid)

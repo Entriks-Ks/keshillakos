@@ -1,47 +1,80 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { notificationTarget } from './notificationTarget'
 import type { AppNotification } from '../api/notifications'
-import { Button, Dropdown } from '@heroui/react'
+import { Button, Dropdown, Modal, buttonVariants } from '@heroui/react'
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useNotifications } from './NotificationProvider'
 import './Notifications.css'
 export default function NotificationBell() {
-  const { notifications, unreadCount, loading, error, hasMore, markRead, loadMore, reload } = useNotifications()
+  const { notifications, unreadCount, loading, loaded, reading, error, hasMore, markRead, clearNotifications, loadMore, reload } = useNotifications()
+  const { t, i18n } = useTranslation()
   const [isOpen, setOpen] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [feedback, setFeedback] = useState('')
   const navigate = useNavigate()
   const { user, switchContext } = useAuth()
+  const busy = loading || !!reading
   async function open(notification: AppNotification) {
-    if (!user) return
+    if (!user || busy) return
     const target = notificationTarget(notification, user)
     try {
       if (target.context) await switchContext(target.context)
-      if (!notification.readAt) await markRead(notification.id)
+      if (!notification.readAt && !await markRead(notification.id)) return
       setOpen(false)
       navigate(target.href)
     } catch { navigate('/dashboard') }
   }
-  return <Dropdown isOpen={isOpen} onOpenChange={setOpen}>
-    <Dropdown.Trigger><Button isIconOnly variant="ghost" className="dtb-icon kk-notification-bell" aria-label={`Njoftime, ${unreadCount} të palexuara`}>
-      <Bell size={19} aria-hidden />
-      {unreadCount > 0 && <span className="kk-notification-count">{unreadCount > 99 ? '99+' : unreadCount}</span>}
-    </Button></Dropdown.Trigger>
-    <Dropdown.Popover placement="bottom end" className="dtb-popover kk-notifications">
-      <div className="kk-notifications-header"><strong>Njoftime</strong><Button size="sm" variant="ghost" isDisabled={!unreadCount} onPress={() => void markRead()}>Lexoji të gjitha</Button></div>
-      <div className="kk-notifications-list" aria-live="polite">
-        {error && <div role="alert"><p>{error}</p><Button size="sm" variant="ghost" onPress={reload}>Provo përsëri</Button></div>}
-        {!loading && !error && notifications.length === 0 && <p className="muted">Nuk ka njoftime.</p>}
-        {notifications.map(notification => <div key={notification.id} className={`kk-notification-item${notification.readAt ? '' : ' is-unread'}`}>
-          <button type="button" className="kk-notification-link" onClick={() => void open(notification)}>
-            <strong>{notification.title}</strong>{notification.body && <span>{notification.body}</span>}
-            <time dateTime={notification.createdAt}>{new Date(notification.createdAt).toLocaleString('sq-AL')}</time>
-          </button>
-          {!notification.readAt && <Button size="sm" variant="ghost" onPress={() => void markRead(notification.id)}>Shëno si të lexuar</Button>}
-        </div>)}
-        {loading && <p className="muted">Duke u ngarkuar...</p>}
-        {hasMore && <Button size="sm" variant="ghost" isDisabled={loading} onPress={loadMore}>Më shumë</Button>}
-      </div>
-    </Dropdown.Popover>
-  </Dropdown>
+  async function clear() {
+    setFeedback('')
+    if (await clearNotifications()) {
+      setConfirmClear(false)
+      setOpen(true)
+      setFeedback('notifications.clear.success')
+    }
+  }
+  return <>
+    <Dropdown isOpen={isOpen} onOpenChange={value => { setOpen(value); setFeedback('') }}>
+      <Dropdown.Trigger className={`${buttonVariants({ isIconOnly: true, variant: 'ghost' })} dtb-icon kk-notification-bell`} aria-label={t('notifications.badge', { count: unreadCount })}>
+        <Bell size={19} aria-hidden />
+        {unreadCount > 0 && <span className="kk-notification-count">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+      </Dropdown.Trigger>
+      <Dropdown.Popover placement="bottom end" className="dtb-popover kk-notifications">
+        <div className="kk-notifications-header"><strong>{t('notifications.title')}</strong><div className="kk-notifications-actions">
+          <Button size="sm" variant="ghost" isDisabled={!unreadCount || busy} onPress={() => { setFeedback(''); void markRead() }}>{t('notifications.markAll')}</Button>
+          <Button size="sm" variant="ghost" isDisabled={!notifications.length || busy} onPress={() => { setFeedback(''); setOpen(false); setConfirmClear(true) }}>{t('notifications.clear.action')}</Button>
+        </div></div>
+        <div className="kk-notifications-list" aria-live="polite" aria-busy={busy}>
+          {error && <div role="alert"><p>{t(error)}</p><Button size="sm" variant="ghost" isDisabled={busy} onPress={reload}>{t('notifications.retry')}</Button></div>}
+          {!!feedback && !error && <p role="status">{t(feedback)}</p>}
+          {(!loading || loaded) && !error && notifications.length === 0 && <div className="kk-notifications-empty"><Bell size={40} aria-hidden /><strong>{t('notifications.emptyTitle')}</strong><p className="muted">{t('notifications.emptySubtitle')}</p></div>}
+          {notifications.map(notification => <div key={notification.id} className={`kk-notification-item${notification.readAt ? '' : ' is-unread'}`}>
+            <button type="button" className="kk-notification-link" disabled={busy} onClick={() => void open(notification)}>
+              <strong>{notification.title}</strong>{notification.body && <span>{notification.body}</span>}
+              <time dateTime={notification.createdAt}>{new Date(notification.createdAt).toLocaleString(i18n.language)}</time>
+            </button>
+            {!notification.readAt && <Button size="sm" variant="ghost" isDisabled={busy} onPress={() => { setFeedback(''); void markRead(notification.id) }}>{t('notifications.markRead')}</Button>}
+          </div>)}
+          {loading && <p className="muted">{t('notifications.loading')}</p>}
+          {hasMore && <Button size="sm" variant="ghost" isDisabled={busy} onPress={loadMore}>{t('notifications.more')}</Button>}
+        </div>
+      </Dropdown.Popover>
+    </Dropdown>
+    <Modal isOpen={confirmClear} onOpenChange={value => { if (!reading) setConfirmClear(value) }}>
+      <Modal.Backdrop isDismissable={!reading}>
+        <Modal.Container size="sm" placement="center">
+          <Modal.Dialog aria-label={t('notifications.clear.confirmTitle')}>
+            <Modal.Header><Modal.Heading>{t('notifications.clear.confirmTitle')}</Modal.Heading></Modal.Header>
+            <Modal.Body><p>{t('notifications.clear.confirmMessage')}</p>{error && <p role="alert">{t(error)}</p>}</Modal.Body>
+            <Modal.Footer>
+              <Button variant="ghost" isDisabled={!!reading} onPress={() => setConfirmClear(false)}>{t('notifications.cancel')}</Button>
+              <Button variant="primary" isDisabled={busy} onPress={() => void clear()}>{t(reading === 'clear' ? 'notifications.clearing' : 'notifications.clear.action')}</Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
+  </>
 }

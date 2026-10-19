@@ -1,4 +1,28 @@
 const en = {
+  notifications: {
+    "title": "Notifications",
+    "badge": "Notifications, {{count}} unread",
+    "markAll": "Mark all as read",
+    "markRead": "Mark as read",
+    "cancel": "Cancel",
+    "loading": "Loading…",
+    "clearing": "Clearing…",
+    "more": "Load more",
+    "retry": "Try again",
+    "loadError": "Could not load notifications. Please try again.",
+    "readError": "Could not mark notification as read. Please try again.",
+    "reconnecting": "Live connection interrupted. Reconnecting…",
+    "connectionError": "Live connection unavailable. Try again or sign in again.",
+    "emptyTitle": "No notifications",
+    "emptySubtitle": "New notifications will appear here when you receive them.",
+    "clear": {
+      "action": "Clear notifications",
+      "confirmTitle": "Clear all notifications?",
+      "confirmMessage": "All notifications will be permanently removed from your history. This action cannot be undone.",
+      "success": "All notifications cleared.",
+      "error": "Could not clear notifications. Please try again."
+    }
+  },
   lang: { label: 'Language' },
   nav: {
     home: 'KLAW, home',

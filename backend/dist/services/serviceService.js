@@ -47,6 +47,7 @@ exports.getActiveServiceById = getActiveServiceById;
 exports.listActiveServicesByProvider = listActiveServicesByProvider;
 const ratingService_1 = require("./ratingService");
 const marketplaceQuery_1 = require("./marketplaceQuery");
+const planService_1 = require("./planService");
 const pagination_1 = require("./pagination");
 const mongoose_1 = __importStar(require("mongoose"));
 const Category_1 = require("../models/Category");
@@ -164,6 +165,12 @@ async function resolveLegacyProvider(uid, providerName, categoryId, location) {
     return String(created._id);
 }
 async function createService(input) {
+    await (0, planService_1.assertPro)(input.providerUid, input.businessId ? 'company' : 'provider');
+    if (input.description.trim().length > 2000)
+        throw new planService_1.PlanError('Përshkrimi i shërbimit mund të ketë deri në 2,000 karaktere.', 400);
+    const photos = cleanPhotos(input.details?.photos);
+    if (photos.length > 10)
+        throw new planService_1.PlanError('Galeria lejon deri në 10 fotografi.', 400);
     const category = await (0, domainService_1.findDomainById)(input.categoryId);
     if (!category)
         throw new Error('Kategoria nuk ekziston');
@@ -204,6 +211,13 @@ async function createService(input) {
     return result;
 }
 async function updateService(id, uid, input) {
+    const offerAudience = await ServiceOffer_1.ServiceOffer.findById(id).select('business');
+    await (0, planService_1.assertPro)(uid, offerAudience?.business ? 'company' : 'provider');
+    if (input.description.trim().length > 2000)
+        throw new planService_1.PlanError('Përshkrimi i shërbimit mund të ketë deri në 2,000 karaktere.', 400);
+    const photos = cleanPhotos(input.details?.photos);
+    if (photos.length > 10)
+        throw new planService_1.PlanError('Galeria lejon deri në 10 fotografi.', 400);
     const category = await (0, domainService_1.findDomainById)(input.categoryId);
     if (!category)
         throw new Error('Kategoria nuk ekziston');
@@ -348,7 +362,7 @@ async function listPublicServicePage(query, input) {
         return { services: [], pagination: result.pagination, summary: { total: 0, active: 0 } };
     }
     await (0, ratingService_1.backfillUnmoderatedPendingReviews)();
-    const pipeline = (0, marketplaceQuery_1.publicServicesPipeline)(query);
+    const pipeline = (0, marketplaceQuery_1.publicServicesPipeline)(query, await (0, planService_1.proOwnerIds)());
     const count = async () => (await ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $count: 'total' }]))[0]?.total ?? 0;
     if (query.countsOnly === 'true') {
         const total = await count();
@@ -376,6 +390,12 @@ async function getActiveServiceById(id, input = { page: 1, limit: 12 }) {
         'moderation.status': 'approved',
     });
     if (offer) {
+        const profile = await ProviderProfile_1.ProviderProfile.findById(offer.providerProfile).select('ownerUser providerType');
+        const ownerUser = profile ? await User_1.User.findById(profile.ownerUser).select('uid') : null;
+        const audience = offer.business || profile?.providerType === 'business' ? 'company' : 'provider';
+        if (!ownerUser?.uid || !(await (0, planService_1.isPro)(ownerUser.uid, audience)))
+            return null;
+        await (0, planService_1.recordPlanEvent)(ownerUser.uid, audience, 'clicks');
         const [enriched] = await (0, serviceOfferService_1.offersToLegacyServices)([offer], true);
         if (enriched?.active)
             return withCompanyExperts(enriched, input);
@@ -383,6 +403,9 @@ async function getActiveServiceById(id, input = { page: 1, limit: 12 }) {
     const service = await Service_1.Service.findOne({ _id: id, active: true });
     if (!service)
         return null;
+    if (!(await (0, planService_1.isPro)(service.providerUid, 'provider')) && !(await (0, planService_1.isPro)(service.providerUid, 'company')))
+        return null;
+    await (0, planService_1.recordPlanEvent)(service.providerUid, 'provider', 'clicks');
     const [enriched] = await withLegacyProviders([service]);
     if (!enriched)
         return null;

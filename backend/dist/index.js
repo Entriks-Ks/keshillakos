@@ -28,6 +28,7 @@ const service_routes_1 = __importDefault(require("./routes/service.routes"));
 const serviceOffer_routes_1 = __importDefault(require("./routes/serviceOffer.routes"));
 const chat_routes_1 = __importDefault(require("./routes/chat.routes"));
 const feedback_routes_1 = __importDefault(require("./routes/feedback.routes"));
+const plan_routes_1 = __importDefault(require("./routes/plan.routes"));
 const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const chatSocket_1 = require("./services/chatSocket");
 const socketServer_1 = require("./services/socketServer");
@@ -70,6 +71,7 @@ app.use('/api/requests', request_routes_1.default);
 app.use('/api/appointments', appointment_routes_1.default);
 app.use('/api/chat', chat_routes_1.default);
 app.use('/api/feedback', feedback_routes_1.default);
+app.use('/api/plans', plan_routes_1.default);
 app.use((err, _req, res, _next) => {
     console.error(err);
     res.status(500).json({ message: err.message || 'Server error' });

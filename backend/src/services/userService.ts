@@ -1,3 +1,5 @@
+import { validatedExperience, validatedLanguageSkills, reconcileLanguageSkills, type LanguageSkill } from '../models/profileDetails'
+import type { WorkExperienceEntry } from '../models/providerCareer'
 import { disconnectUser } from './realtime'
 import { notify, notifyAdmins } from './notificationService'
 import { queryPage, type PaginationInput } from './pagination'
@@ -57,6 +59,8 @@ export function toPublicUser(user: {
   savedLocation?: SavedLocation
   skills?: string[]
   languages?: string[]
+  languageSkills?: LanguageSkill[]
+  workExperience?: WorkExperienceEntry[]
   profilePhoto?: string
   socialLinks?: SocialLinks
   createdAt?: Date
@@ -93,6 +97,8 @@ export function toPublicUser(user: {
       : undefined),
     skills: user.skills ?? [],
     languages: user.languages ?? [],
+    languageSkills: reconcileLanguageSkills(user.languages ?? [], user.languageSkills),
+    workExperience: user.workExperience ?? [],
     profilePhoto: user.profilePhoto || '',
     socialLinks: user.socialLinks || {},
     createdAt: user.createdAt ?? new Date(),
@@ -254,6 +260,20 @@ function cleanStringList(values?: string[], maxItems = 20, itemMax = 48) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean).map((value) => value.slice(0, itemMax)))].slice(0, maxItems)
 }
 
+export async function ownDescriptionLimit(existing: Pick<UserDoc, 'uid' | 'roles' | 'role' | 'activeContext'>) {
+  const roles = existing.roles ?? [existing.role]
+  const audience = existing.activeContext === 'company' && roles.includes('company')
+    ? 'company'
+    : existing.activeContext === 'provider' && roles.includes('provider')
+      ? 'provider'
+      : roles.includes('provider')
+        ? 'provider'
+        : roles.includes('company')
+          ? 'company'
+          : null
+  return audience ? ((await isPro(existing.uid, audience)) ? PLAN_LIMITS.proBio : PLAN_LIMITS.basicBio) : 3000
+}
+
 export async function updateOwnProfile(
   uid: string,
   input: {
@@ -270,6 +290,8 @@ export async function updateOwnProfile(
     bio?: string
     skills?: string[]
     languages?: string[]
+    languageSkills?: LanguageSkill[]
+    workExperience?: WorkExperienceEntry[]
     legacyLocation?: string
     socialLinks?: SocialLinks | null
   },
@@ -328,20 +350,11 @@ export async function updateOwnProfile(
     existing.headline = headline || undefined
   }
   if (input.bio !== undefined) {
+    if (typeof input.bio !== 'string') throw new Error('profileDetails.invalidDescription')
     const bio = input.bio.trim()
-    const roles = existing.roles ?? [existing.role]
-    const audience = existing.activeContext === 'company' && roles.includes('company')
-      ? 'company'
-      : existing.activeContext === 'provider' && roles.includes('provider')
-        ? 'provider'
-        : roles.includes('provider')
-          ? 'provider'
-          : roles.includes('company')
-            ? 'company'
-            : null
-    const max = audience ? ((await isPro(uid, audience)) ? PLAN_LIMITS.proBio : PLAN_LIMITS.basicBio) : 3000
+    const max = await ownDescriptionLimit(existing)
     if (bio.length > max) {
-      throw new Error(!audience
+      throw new Error(max === 3000
         ? 'Përshkrimi duhet të jetë deri në 3000 karaktere'
         : max === PLAN_LIMITS.basicBio
           ? 'Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.'
@@ -349,8 +362,16 @@ export async function updateOwnProfile(
     }
     existing.bio = bio || undefined
   }
+  if (input.workExperience !== undefined) existing.workExperience = validatedExperience(input.workExperience)
+  if (input.languageSkills !== undefined) {
+    existing.languageSkills = await validatedLanguageSkills(input.languageSkills, existing.languages)
+    existing.languages = existing.languageSkills.map(skill => skill.language)
+  } else if (input.languages !== undefined) {
+    const names = cleanStringList(input.languages, 12, 40) || []
+    existing.languageSkills = reconcileLanguageSkills(names, existing.languageSkills)
+  }
   if (input.skills !== undefined) existing.skills = cleanStringList(input.skills)
-  if (input.languages !== undefined) existing.languages = cleanStringList(input.languages, 12, 40)
+  if (input.languages !== undefined && input.languageSkills === undefined) existing.languages = cleanStringList(input.languages, 12, 40)
   if (input.legacyLocation !== undefined) existing.legacyLocation = cleanOptional(input.legacyLocation)
   if (input.socialLinks !== undefined) {
     const normalized = normalizeSocialLinks(input.socialLinks)
@@ -368,7 +389,10 @@ export async function updateOwnProfile(
     publicFields['publicProfile.description'] = existing.bio || ''
     publicFields['publicProfile.shortDescription'] = (existing.bio || '').slice(0, 300)
   }
-  if (input.languages !== undefined) publicFields.languages = existing.languages || []
+  if (input.languages !== undefined || input.languageSkills !== undefined) {
+    publicFields.languages = existing.languages || []
+    publicFields.languageSkills = existing.languageSkills || []
+  }
   if (Object.keys(publicFields).length) {
     await ProviderProfile.updateMany({ ownerUser: existing._id, providerType: 'individual' }, { $set: publicFields })
   }

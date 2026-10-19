@@ -1,3 +1,4 @@
+import { languageSkillSchema, type LanguageSkill } from './profileDetails'
 import mongoose, { Schema, Types } from 'mongoose'
 import { locationSchema, type Location } from './location'
 import {
@@ -19,6 +20,7 @@ export type ProviderProfileDoc = {
   /** Canonical catalog Subcategory refs for the expert profile. */
   subcategoryIds: Types.ObjectId[]
   languages: string[]
+  languageSkills?: LanguageSkill[]
   locations: Location[]
   serviceAreas: Location[]
   location?: { countryId: Types.ObjectId; cityId: Types.ObjectId }
@@ -70,6 +72,7 @@ export const providerProfileSchema = new Schema<ProviderProfileDoc>(
     categories: { type: [{ type: String, trim: true }], required: true, validate: [(value: string[]) => value.length > 0 && value.every(Boolean), 'At least one category is required'] },
     subcategoryIds: { type: [{ type: Schema.Types.ObjectId, ref: 'Subcategory' }], default: [] },
     languages: { type: [{ type: String, trim: true }], default: [] },
+    languageSkills: { type: [new Schema(languageSkillSchema, { _id: false })], default: undefined },
     locations: { type: [locationSchema], default: [] },
     serviceAreas: { type: [locationSchema], default: [] },
     location: { type: baseLocationSchema, default: undefined },

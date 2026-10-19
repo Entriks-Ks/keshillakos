@@ -1,10 +1,11 @@
 import { fetchChatUnreadCount } from '../api/chat'
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { API_BASE_URL } from '../api/auth'
-import { notificationRequest, type NotificationPage } from '../api/notifications'
+import { notificationApi } from '../api/notifications'
+import { createNotificationStore, type NotificationPage } from './notificationStore'
 
-type NotificationState = NotificationPage & { messageUnreadCount: number; loading: boolean; error: string; reload: () => void; loadMore: () => void; markRead: (id?: string) => Promise<void> }
+type NotificationState = NotificationPage & { messageUnreadCount: number; loading: boolean; loaded: boolean; error: string; reload: () => void; loadMore: () => void; reading: string | null; clearNotifications: () => Promise<boolean>; markRead: (id?: string) => Promise<boolean> }
 const Context = createContext<NotificationState | null>(null)
 const empty: NotificationPage = { notifications: [], unreadCount: 0, page: 1, hasMore: false }
 export function NotificationProvider({ children }: { children: ReactNode }) {
@@ -13,15 +14,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [ownerUid, setOwnerUid] = useState('')
   const [messageUnreadCount, setMessageUnreadCount] = useState(0)
   const [socketError, setSocketError] = useState('')
-  const [state, setState] = useState<NotificationPage>(empty)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [revision, setRevision] = useState(0)
-  const [page, setPage] = useState(1)
-  const reload = () => { socketRef.current?.connect(); setPage(1); setRevision(r => r + 1) }
+  const store = useMemo(() => createNotificationStore(notificationApi), [user?.uid])
+  const state = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot)
+  const reload = () => { socketRef.current?.connect(); void store.load() }
   useEffect(() => {
-    setOwnerUid(user?.uid || ''); setMessageUnreadCount(0); setState(empty); setPage(1); setError(''); setSocketError('')
+    setOwnerUid(user?.uid || ''); setMessageUnreadCount(0); setSocketError('')
     if (!user) return
+    void store.load()
     let disposed = false
     let unreadRevision = 0
     const unreadController = new AbortController()
@@ -43,36 +42,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       socketRef.current = socket
       socket.on('connect', () => { setSocketError(''); sync(); void syncChatUnread() })
       socket.on('chat:unread', ({ unreadCount }: { unreadCount: number }) => { ++unreadRevision; setMessageUnreadCount(unreadCount) })
-      socket.on('disconnect', () => { if (!disposed) setSocketError('Lidhja në kohë reale u ndërpre. Duke u rilidhur...') })
-      socket.on('connect_error', () => { if (!disposed) setSocketError('Lidhja në kohë reale u ndërpre. Provo përsëri ose hyr sërish në llogari.') })
+      socket.on('disconnect', () => { if (!disposed) setSocketError('notifications.reconnecting') })
+      socket.on('connect_error', () => { if (!disposed) setSocketError('notifications.connectionError') })
       socket.on('notification:new', notification => { if (notification.type !== 'message:new') sync() })
       socket.on('notification:read', sync)
-      socket.on('notification:count', ({ unreadCount }: { unreadCount: number }) => { setState(s => ({ ...s, unreadCount })); sync() })
-    }).catch(() => { if (!disposed) setSocketError('Lidhja në kohë reale nuk u hap') })
+      socket.on('notification:cleared', sync)
+      socket.on('notification:count', sync)
+    }).catch(() => { if (!disposed) setSocketError('notifications.connectionError') })
     const onVisible = () => { if (document.visibilityState === 'visible') { if (socket && !socket.connected) socket.connect(); sync(); void syncChatUnread() } }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', onVisible)
     return () => { disposed = true; unreadController.abort(); clearTimeout(timer); socket?.disconnect(); socketRef.current = null; document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', onVisible) }
-  }, [user?.uid])
-  useEffect(() => {
-    if (!user) { setLoading(false); return }
-    const controller = new AbortController()
-    setLoading(true)
-    void notificationRequest<NotificationPage>(`?page=${page}`, 'GET', controller.signal).then(result => {
-      if (controller.signal.aborted) return
-      setState(previous => ({ ...result, notifications: page === 1 ? result.notifications : [...previous.notifications, ...result.notifications.filter(n => !previous.notifications.some(p => p.id === n.id))] }))
-      setError('')
-    }).catch(() => { if (!controller.signal.aborted) setError('Njoftimet nuk u ngarkuan') }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    return () => controller.abort()
-  }, [user?.uid, page, revision])
-  async function markRead(id?: string) {
-    try { await notificationRequest(id ? `/${id}/read` : '/read-all', 'PATCH'); reload() }
-    catch { setError('Njoftimi nuk u shënua si i lexuar') }
-  }
-  return <Context.Provider value={{ messageUnreadCount: ownerUid === (user?.uid || '') ? messageUnreadCount : 0, ...(ownerUid === (user?.uid || '') ? state : empty), loading, error: error || socketError, reload, loadMore: () => { if (!loading && state.hasMore) setPage(p => p + 1) }, markRead }}>{children}</Context.Provider>
+  }, [user?.uid, store])
+  return <Context.Provider value={{ messageUnreadCount: ownerUid === (user?.uid || '') ? messageUnreadCount : 0, ...(ownerUid === (user?.uid || '') ? state : empty), loading: state.loading, loaded: state.loaded, reading: state.reading, error: state.error || socketError, reload, loadMore: () => { void store.load(true) }, markRead: store.read, clearNotifications: store.clear }}>{children}</Context.Provider>
 }
 export function useNotifications() {
   const context = useContext(Context)
-  if (!context) throw new Error('NotificationProvider mungon')
+  if (!context) throw new Error('NotificationProvider missing')
   return context
 }

@@ -5,6 +5,12 @@ export async function notificationRequest<T>(path = '', method = 'GET', signal?:
   const response = await fetch(`${API_BASE_URL}/api/notifications${path}`, {
     method, signal, headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
   })
-  if (!response.ok) throw new Error('Njoftimet nuk u ngarkuan')
+  if (!response.ok) throw new Error(`Notification request failed (${response.status})`)
   return response.json()
+}
+
+export const notificationApi = {
+  list: (page: number) => notificationRequest<NotificationPage>(`?page=${page}`),
+  read: (id?: string) => notificationRequest<{ unreadCount: number }>(id ? `/${encodeURIComponent(id)}/read` : '/read-all', 'PATCH'),
+  clear: () => notificationRequest<{ unreadCount: number }>('', 'DELETE'),
 }

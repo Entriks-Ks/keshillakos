@@ -187,7 +187,7 @@ async function geminiMatch(intake, candidates) {
     const model = genAI.getGenerativeModel({
         model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
     });
-    const prompt = `Ti je sistemi i matching për marketplace-in KëshillaKos (Kosovë).
+    const prompt = `Ti je sistemi i matching për marketplace-in KLAW (Kosovë).
 Përdoruesi ka plotësuar këtë intake:
 
 ${JSON.stringify(intake, null, 2)}

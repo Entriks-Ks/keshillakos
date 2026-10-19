@@ -26,6 +26,8 @@ export type AuthUser = {
   savedLocation?: import('../services/userService').SavedLocation
   skills: string[]
   languages: string[]
+  languageSkills?: import('../models/profileDetails').LanguageSkill[]
+  workExperience?: import('../models/providerCareer').WorkExperienceEntry[]
   profilePhoto: string
   socialLinks?: import('../models/socialLinks').SocialLinks
 }
@@ -71,6 +73,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       savedLocation: dbUser?.savedLocation,
       skills: dbUser?.skills,
       languages: dbUser?.languages,
+      languageSkills: dbUser?.languageSkills,
+      workExperience: dbUser?.workExperience,
       profilePhoto: dbUser?.profilePhoto,
       socialLinks: dbUser?.socialLinks,
       createdAt: dbUser?.createdAt,
@@ -103,6 +107,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       savedLocation: publicUser.savedLocation,
       skills: publicUser.skills ?? [],
       languages: publicUser.languages ?? [],
+      languageSkills: publicUser.languageSkills,
+      workExperience: publicUser.workExperience,
       profilePhoto: publicUser.profilePhoto || '',
       socialLinks: publicUser.socialLinks || {},
     }

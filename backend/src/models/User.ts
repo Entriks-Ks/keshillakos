@@ -1,3 +1,5 @@
+import { languageSkillSchema, type LanguageSkill } from './profileDetails'
+import { workExperienceEntrySchema, type WorkExperienceEntry } from './providerCareer'
 import mongoose, { Schema, Types } from 'mongoose'
 import { ROLES, type UserRole } from '../types/roles'
 import { socialLinksSchemaDefinition, type SocialLinks } from './socialLinks'
@@ -20,13 +22,15 @@ export type UserDoc = {
   verification?: { email: boolean; phone: boolean; identity: boolean }
   privacy?: { profileVisibility: 'public' | 'private'; marketingConsent: boolean }
   accountStatus?: 'active' | 'suspended' | 'closed'
-  // Legacy stored fields are read-only until ProviderProfile migration.
+  // Shared personal fields; provider-specific profile data remains on ProviderProfile.
   headline?: string
   bio?: string
   location?: { countryId: Types.ObjectId; cityId: Types.ObjectId }
   legacyLocation?: string // Preserves pre-catalog free-text profile locations.
   skills?: string[]
   languages?: string[]
+  languageSkills?: LanguageSkill[]
+  workExperience?: WorkExperienceEntry[]
   profilePhoto?: string
   socialLinks?: SocialLinks
   createdAt: Date
@@ -73,13 +77,15 @@ export const userSchema = new Schema<UserDoc>(
       marketingConsent: { type: Boolean, default: false },
     },
     accountStatus: { type: String, enum: ['active', 'suspended', 'closed'], default: 'active' },
-    // Existing documents retain these fields; new account writes do not populate them.
+    // Retain the field names used by existing web/profile clients.
     headline: String,
     bio: String,
     location: { type: savedLocationSchema, default: undefined },
     legacyLocation: String,
     skills: { type: [String], default: undefined },
     languages: { type: [String], default: undefined },
+    languageSkills: { type: [new Schema(languageSkillSchema, { _id: false })], default: undefined },
+    workExperience: { type: [new Schema(workExperienceEntrySchema, { _id: false })], default: undefined },
     profilePhoto: String,
     socialLinks: { type: socialLinksSchemaDefinition(), default: undefined },
   },

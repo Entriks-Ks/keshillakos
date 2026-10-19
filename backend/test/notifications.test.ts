@@ -70,3 +70,47 @@ test('Mongo schema enforces recipient/event uniqueness, unread coalescing, and i
   assert.ok(indexes.some(([keys, options]) => keys.coalesceKey === 1 && options.unique && options.partialFilterExpression?.readAt === null))
   assert.ok(indexes.some(([keys]) => keys.recipientUid === 1 && keys.createdAt === -1 && keys._id === -1))
 })
+
+test('clear notifications deletes only the authenticated recipient bell history and emits after persistence', async () => {
+  const { clearNotifications } = await import('../src/services/notificationService')
+  const originals = [Notification.deleteMany, Notification.countDocuments] as const
+  const rows = [{ recipientUid: 'alice', type: 'request:new' }, { recipientUid: 'bob', type: 'request:new' }, { recipientUid: 'alice', type: 'message:new' }]
+  const events: any[] = []
+  Notification.deleteMany = (async (query: any) => {
+    assert.equal(query.recipientUid, 'alice')
+    assert.equal(query.type.$ne, 'message:new')
+    for (let i = rows.length - 1; i >= 0; i--) if (rows[i].recipientUid === query.recipientUid && rows[i].type !== query.type.$ne) rows.splice(i, 1)
+  }) as any
+  Notification.countDocuments = (async () => 0) as any
+  setRealtimeServer({ to: (room: string) => ({ emit: (event: string, value: any) => { assert.equal(rows.length, 2); events.push({ room, event, value }) } }) } as unknown as Server)
+  try {
+    assert.deepEqual(await clearNotifications('alice'), { unreadCount: 0 })
+    assert.ok(rows.some(r => r.recipientUid === 'bob'))
+    assert.ok(rows.some(r => r.type === 'message:new'))
+    assert.ok(events.some(e => e.event === 'notification:cleared' && e.room === 'user:alice'))
+    assert.ok(events.some(e => e.event === 'notification:count' && e.value.unreadCount === 0))
+    events.length = 0
+    Notification.deleteMany = (async () => { throw Error('database unavailable') }) as any
+    await assert.rejects(clearNotifications('alice'))
+    assert.equal(events.length, 0)
+  } finally { [Notification.deleteMany, Notification.countDocuments] = originals }
+})
+
+test('a committed clear remains successful if the follow-up count or socket broadcast fails', async () => {
+  const { clearNotifications } = await import('../src/services/notificationService')
+  const originals = [Notification.deleteMany, Notification.countDocuments] as const
+  const log = console.error
+  let deletes = 0
+  Notification.deleteMany = (async () => { deletes++ }) as any
+  Notification.countDocuments = (async () => { throw Error('count unavailable') }) as any
+  setRealtimeServer({ to: () => { throw Error('socket unavailable') } } as unknown as Server)
+  console.error = () => undefined
+  try {
+    assert.deepEqual(await clearNotifications('alice'), { unreadCount: 0 })
+    assert.equal(deletes, 1)
+  } finally {
+    [Notification.deleteMany, Notification.countDocuments] = originals
+    console.error = log
+    setRealtimeServer(undefined as unknown as Server)
+  }
+})

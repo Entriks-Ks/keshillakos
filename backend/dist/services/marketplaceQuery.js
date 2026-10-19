@@ -111,7 +111,7 @@ function providerDirectoryPipeline(query) {
         ...filterAndSort(query, true),
     ];
 }
-function publicServicesPipeline(query) {
+function publicServicesPipeline(query, owners) {
     const cityId = typeof query.cityId === 'string' && mongoose_1.Types.ObjectId.isValid(query.cityId) ? new mongoose_1.Types.ObjectId(query.cityId) : undefined;
     const canonical = [
         { $match: publishedOffer },
@@ -136,9 +136,16 @@ function publicServicesPipeline(query) {
                 ], as: '_profile' } },
         { $set: { _profile: first('$_profile', {}), source: { $literal: 'legacy' }, languages: { $ifNull: ['$details.supportLanguages', first('$_owner.languages', [])] } } },
     ];
+    const planMatch = owners
+        ? [{ $match: { $or: [
+                        { '_profile.providerType': 'individual', '_profile.ownerUser': { $in: owners.providers } },
+                        { '_profile.providerType': 'business', '_profile.ownerUser': { $in: owners.companies } },
+                    ] } }]
+        : [];
     return [
         ...canonical,
         { $unionWith: { coll: Service_1.Service.collection.name, pipeline: legacy } },
+        ...planMatch,
         ...(cityId ? [{ $match: { '_profile.serviceAreaCityIds': cityId } }] : []),
         ...ratingStages('$_profile.ownerUser'),
         { $lookup: { from: City_1.City.collection.name, let: { ids: { $concatArrays: [{ $ifNull: ['$_profile.serviceAreaCityIds', []] }, [{ $ifNull: ['$_profile.location.cityId', null] }]] } }, pipeline: [{ $match: { $expr: { $in: ['$_id', '$$ids'] } } }, { $project: { 'name.sq': 1 } }], as: '_cities' } },

@@ -1,4 +1,28 @@
 const de = {
+  notifications: {
+    "title": "Benachrichtigungen",
+    "badge": "Benachrichtigungen, {{count}} ungelesen",
+    "markAll": "Alle als gelesen markieren",
+    "markRead": "Als gelesen markieren",
+    "cancel": "Abbrechen",
+    "loading": "Wird geladen…",
+    "clearing": "Wird gelöscht…",
+    "more": "Mehr laden",
+    "retry": "Erneut versuchen",
+    "loadError": "Die Benachrichtigungen konnten nicht geladen werden. Bitte versuche es erneut.",
+    "readError": "Die Benachrichtigung konnte nicht als gelesen markiert werden. Bitte versuche es erneut.",
+    "reconnecting": "Live-Verbindung unterbrochen. Verbindung wird wiederhergestellt…",
+    "connectionError": "Die Live-Verbindung ist nicht verfügbar. Versuche es erneut oder melde dich erneut an.",
+    "emptyTitle": "Keine Benachrichtigungen",
+    "emptySubtitle": "Neue Benachrichtigungen werden hier angezeigt, sobald du sie erhältst.",
+    "clear": {
+      "action": "Benachrichtigungen löschen",
+      "confirmTitle": "Alle Benachrichtigungen löschen?",
+      "confirmMessage": "Alle Benachrichtigungen werden dauerhaft aus deinem Verlauf gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "success": "Alle Benachrichtigungen wurden gelöscht.",
+      "error": "Die Benachrichtigungen konnten nicht gelöscht werden. Bitte versuche es erneut."
+    }
+  },
   lang: { label: 'Sprache' },
   nav: {
     home: 'KLAW, Startseite',

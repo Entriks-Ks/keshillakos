@@ -33,6 +33,8 @@ const domainService_1 = require("./domainService");
 const businessService_1 = require("./businessService");
 const mediaService_1 = require("./mediaService");
 const ratingService_1 = require("./ratingService");
+const planService_1 = require("./planService");
+const catalog_1 = require("../plans/catalog");
 async function validateSubcategoryIds(categoryStableIds, subcategoryIds) {
     if (subcategoryIds === undefined)
         return;
@@ -281,32 +283,35 @@ async function getMarketplaceProviderByUid(uid, providerType) {
         if (url)
             socialLinks[key] = url;
     }
+    const about = profile.publicProfile.description || profile.publicProfile.shortDescription || profile.experience || '';
+    const pro = await (0, planService_1.isPro)(uid, providerType === 'business' ? 'company' : 'provider');
     return {
         ...card,
-        about: profile.publicProfile.description || profile.publicProfile.shortDescription || profile.experience || '',
-        socialLinks,
-        workExperience: (profile.workExperience ?? []).map((entry) => ({
+        plan: pro ? 'pro' : 'basic',
+        about: (0, planService_1.clampBio)(about, pro),
+        socialLinks: pro ? socialLinks : {},
+        workExperience: pro ? (profile.workExperience ?? []).map((entry) => ({
             position: entry.position,
             organization: entry.organization,
             from: monthYear(entry.from),
             to: entry.current ? undefined : monthYear(entry.to),
             current: Boolean(entry.current),
             description: entry.description || '',
-        })),
-        education: (profile.education ?? []).map((entry) => ({
+        })) : [],
+        education: pro ? (profile.education ?? []).slice(0, catalog_1.PLAN_LIMITS.references).map((entry) => ({
             institution: entry.institution,
             degree: entry.degree,
             fieldOfStudy: entry.fieldOfStudy,
             from: monthYear(entry.from),
             to: entry.current ? undefined : monthYear(entry.to),
             current: Boolean(entry.current),
-        })),
-        certifications: (profile.certifications ?? []).map((entry) => ({
+        })) : [],
+        certifications: pro ? (profile.certifications ?? []).slice(0, catalog_1.PLAN_LIMITS.qualifications).map((entry) => ({
             name: entry.name,
             issuer: entry.issuer,
             year: entry.year,
             credentialUrl: entry.credentialUrl || '',
-        })),
+        })) : [],
     };
 }
 async function serializeMarketplaceProviders(profiles, marketplaceRatings) {
@@ -414,7 +419,8 @@ async function serializeMarketplaceProviders(profiles, marketplaceRatings) {
     }
     const ratings = marketplaceRatings ? undefined : await (0, ratingService_1.getStatsForProviders)([...uidByOwner.values()].filter(Boolean));
     const adminOwnerIds = new Set(users.filter(owner => owner.role === 'admin' || owner.roles?.includes('admin')).map(owner => String(owner._id)));
-    return profiles.filter(profile => !adminOwnerIds.has(String(profile.ownerUser))).map((profile) => {
+    const proSets = await (0, planService_1.liveProUids)();
+    const cards = profiles.filter(profile => !adminOwnerIds.has(String(profile.ownerUser))).map((profile) => {
         const uid = uidByOwner.get(String(profile.ownerUser)) || '';
         const business = profile.business ? businessById.get(String(profile.business)) : undefined;
         const rating = marketplaceRatings?.get(String(profile._id)) ?? ratings?.get(uid);
@@ -475,9 +481,54 @@ async function serializeMarketplaceProviders(profiles, marketplaceRatings) {
             createdAt: profile.createdAt,
         };
     }).filter((item) => Boolean(item.uid));
+    return cards.map((card) => {
+        const pro = card.providerType === 'business' ? proSets.companies.has(card.uid) : proSets.providers.has(card.uid);
+        if (pro)
+            return { ...card, plan: 'pro' };
+        return {
+            ...card,
+            plan: 'basic',
+            photoUrl: '',
+            description: (0, planService_1.clampBio)(card.description || '', false),
+            languages: [],
+            specializations: [],
+            yearsOfExperience: undefined,
+            experience: '',
+            website: '',
+            serviceCount: 0,
+            featuredExpert: card.featuredExpert ? { ...card.featuredExpert, photoUrl: '' } : undefined,
+        };
+    });
 }
 async function updateProviderProfile(uid, id, changes) {
     const profile = await loadManagedProvider(uid, id);
+    const pro = await (0, planService_1.isPro)(uid, profile.providerType === 'business' ? 'company' : 'provider');
+    if (!pro) {
+        const description = changes.publicProfile?.description || changes.publicProfile?.shortDescription || '';
+        if (description.length > catalog_1.PLAN_LIMITS.basicBio)
+            throw new Error('Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.');
+        if (changes.publicProfile?.photoUrl || changes.publicProfile?.coverUrl)
+            throw new Error('Fotot e profilit janë pjesë e planit Pro.');
+        changes.languages = undefined;
+        changes.specializations = undefined;
+        changes.socialLinks = undefined;
+        changes.certifications = undefined;
+        changes.workExperience = undefined;
+        changes.education = undefined;
+        changes.experience = undefined;
+        changes.yearsOfExperience = undefined;
+    }
+    else {
+        const description = changes.publicProfile?.description || '';
+        if (description.length > catalog_1.PLAN_LIMITS.proBio)
+            throw new Error('Përshkrimi në planin Pro mund të ketë deri në 2,000 karaktere.');
+        if ((changes.specializations?.length ?? 0) > catalog_1.PLAN_LIMITS.specialties)
+            throw new Error('Pro lejon deri në 10 specialitete.');
+        if ((changes.certifications?.length ?? 0) > catalog_1.PLAN_LIMITS.qualifications)
+            throw new Error('Pro lejon deri në 10 kualifikime.');
+        if ((changes.education?.length ?? 0) > catalog_1.PLAN_LIMITS.references)
+            throw new Error('Pro lejon deri në 5 referenca.');
+    }
     const previousMedia = [profile.publicProfile?.photoUrl, profile.publicProfile?.coverUrl];
     await validateProviderLocations(changes.location, changes.serviceAreaCityIds);
     if (changes.categories !== undefined) {
