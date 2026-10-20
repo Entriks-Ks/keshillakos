@@ -388,6 +388,17 @@
   min-width: 0;
 }
 
+.of-approx {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--heading);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 .of-results-head {
   display: flex;
   flex-wrap: wrap;
