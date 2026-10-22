@@ -226,6 +226,10 @@ export default function HomePage() {
         contact: intake.contact,
       }
       const result = await runMatch(payload)
+      if (!result.exact) {
+        navigate('/ofertat?approx=1')
+        return
+      }
       setMatches(result.matches)
       setResultMessage(result.message)
       setEngine(result.engine)

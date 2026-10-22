@@ -268,12 +268,26 @@ Rregulla:
   return matches.sort((a, b) => b.score - a.score).slice(0, 8)
 }
 
+function needTokens(need: string) {
+  return normalize(need).split(/\s+/).filter((token) => token.length > 3)
+}
+
+function matchesNeed(intake: MatchIntake, match: MatchedExpert) {
+  const tokens = needTokens(intake.need)
+  if (tokens.length === 0) return false
+  const hay = normalize(
+    `${match.title} ${match.name} ${match.categoryLabel ?? ''} ${match.specialty ?? ''} ${match.bio ?? ''} ${match.companyName ?? ''}`,
+  )
+  return tokens.some((token) => hay.includes(token))
+}
+
 export async function matchExperts(intake: MatchIntake) {
   const candidates = await loadCandidates(intake)
   if (candidates.length === 0) {
     return {
       engine: 'none' as const,
       count: 0,
+      exact: false,
       matches: [] as MatchedExpert[],
       message: 'Ende nuk ka ekspertë ose shërbime të publikuara.',
     }
@@ -281,12 +295,14 @@ export async function matchExperts(intake: MatchIntake) {
 
   try {
     const matches = await geminiMatch(intake, candidates)
-    if (matches.length > 0) {
+    const exactMatches = matches.filter((match) => matchesNeed(intake, match))
+    if (exactMatches.length > 0) {
       return {
         engine: 'gemini' as const,
-        count: matches.length,
-        matches,
-        message: `Gjetëm ${matches.length} ekspertë për ty`,
+        count: exactMatches.length,
+        exact: true,
+        matches: exactMatches,
+        message: `Gjetëm ${exactMatches.length} ekspertë për ty`,
       }
     }
   } catch (err) {
@@ -294,13 +310,15 @@ export async function matchExperts(intake: MatchIntake) {
   }
 
   const matches = heuristicMatch(intake, candidates)
+  const exactMatches = matches.filter((match) => matchesNeed(intake, match))
   return {
     engine: 'heuristic' as const,
-    count: matches.length,
-    matches,
+    count: exactMatches.length,
+    exact: exactMatches.length > 0,
+    matches: exactMatches,
     message:
-      matches.length > 0
-        ? `Gjetëm ${matches.length} ekspertë për ty`
-        : 'Nuk gjetëm përputhje. Provo të ndryshosh lokacionin ose përshkrimin.',
+      exactMatches.length > 0
+        ? `Gjetëm ${exactMatches.length} ekspertë për ty`
+        : 'Nuk gjetëm përputhje të saktë.',
   }
 }

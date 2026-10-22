@@ -50,6 +50,7 @@ export type MatchResponse = {
   intake: MatchIntake
   engine: 'gemini' | 'heuristic' | 'none'
   count: number
+  exact: boolean
   matches: MatchedExpert[]
   message: string
 }

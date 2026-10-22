@@ -333,6 +333,7 @@ export default function OffersPage() {
     if (query.trim()) next.set('q', query.trim())
     if (categoryId !== 'all') next.set('categoryId', categoryId)
     if (subcategoryId !== 'all') next.set('subcategoryId', subcategoryId)
+    if (query.trim() || categoryId !== 'all' || subcategoryId !== 'all') next.delete('approx')
     const upcoming = next.toString()
     if (searchParams.toString() !== upcoming) setSearchParams(next, { replace: true })
   }, [tab, sort, query, categoryId, subcategoryId, page, extraFiltersKey, searchParams, setSearchParams])
@@ -690,6 +691,9 @@ export default function OffersPage() {
               </aside>
 
               <div className="of-results">
+                {searchParams.get('approx') === '1' ? (
+                  <p className="of-approx" role="status">{t('offers.approx')}</p>
+                ) : null}
                 <div className="of-results-head">
                   <p className="of-count" aria-live="polite">
                     {loading ? t('offers.searching') : (
