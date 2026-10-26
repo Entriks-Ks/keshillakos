@@ -15,6 +15,7 @@ exports.updateProviderPhoto = updateProviderPhoto;
 exports.updateProviderCover = updateProviderCover;
 exports.moderateProviderProfile = moderateProviderProfile;
 exports.providerProfilesToLegacyExperts = providerProfilesToLegacyExperts;
+const profileDetails_1 = require("../models/profileDetails");
 const notificationService_1 = require("./notificationService");
 const marketplaceQuery_1 = require("./marketplaceQuery");
 const pagination_1 = require("./pagination");
@@ -212,6 +213,7 @@ function toPublicProvider(profile) {
         categories: profile.categories,
         subcategoryIds: (profile.subcategoryIds ?? []).map(String),
         languages: profile.languages,
+        languageSkills: (0, profileDetails_1.reconcileLanguageSkills)(profile.languages, profile.languageSkills),
         locations: profile.locations,
         serviceAreas: profile.serviceAreas,
         location: profile.location
@@ -283,13 +285,14 @@ async function getMarketplaceProviderByUid(uid, providerType) {
         if (url)
             socialLinks[key] = url;
     }
-    const about = profile.publicProfile.description || profile.publicProfile.shortDescription || profile.experience || '';
+    const about = profile.publicProfile.description ?? profile.publicProfile.shortDescription ?? profile.experience ?? '';
     const pro = await (0, planService_1.isPro)(uid, providerType === 'business' ? 'company' : 'provider');
     return {
         ...card,
         plan: pro ? 'pro' : 'basic',
         about: (0, planService_1.clampBio)(about, pro),
         socialLinks: pro ? socialLinks : {},
+        languageSkills: pro ? (0, profileDetails_1.reconcileLanguageSkills)(profile.languages, profile.languageSkills) : [],
         workExperience: pro ? (profile.workExperience ?? []).map((entry) => ({
             position: entry.position,
             organization: entry.organization,
@@ -504,6 +507,8 @@ async function updateProviderProfile(uid, id, changes) {
     const profile = await loadManagedProvider(uid, id);
     const pro = await (0, planService_1.isPro)(uid, profile.providerType === 'business' ? 'company' : 'provider');
     if (!pro) {
+        if (changes.languageSkills !== undefined || changes.workExperience !== undefined)
+            throw new Error('profileDetails.proRequired');
         const description = changes.publicProfile?.description || changes.publicProfile?.shortDescription || '';
         if (description.length > catalog_1.PLAN_LIMITS.basicBio)
             throw new Error('Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.');
@@ -541,8 +546,14 @@ async function updateProviderProfile(uid, id, changes) {
     if (changes.subcategoryIds !== undefined) {
         profile.subcategoryIds = changes.subcategoryIds.map((id) => new mongoose_1.Types.ObjectId(id));
     }
-    if (changes.languages !== undefined)
+    if (changes.languageSkills !== undefined) {
+        profile.languageSkills = await (0, profileDetails_1.validatedLanguageSkills)(changes.languageSkills, profile.languages);
+        profile.languages = profile.languageSkills.map(skill => skill.language);
+    }
+    else if (changes.languages !== undefined) {
         profile.languages = uniqueText(changes.languages);
+        profile.languageSkills = (0, profileDetails_1.reconcileLanguageSkills)(profile.languages, profile.languageSkills);
+    }
     if (changes.locations !== undefined)
         profile.locations = changes.locations;
     if (changes.serviceAreas !== undefined)
@@ -577,7 +588,7 @@ async function updateProviderProfile(uid, id, changes) {
         profile.socialLinks = (0, socialLinks_1.applySocialLinks)(profile.socialLinks, normalized || {});
     }
     if (changes.workExperience !== undefined)
-        profile.workExperience = (0, providerCareer_1.normalizeWorkExperience)(changes.workExperience);
+        profile.workExperience = (0, profileDetails_1.validatedExperience)(changes.workExperience);
     if (changes.education !== undefined)
         profile.education = (0, providerCareer_1.normalizeEducation)(changes.education);
     if (changes.certifications !== undefined) {

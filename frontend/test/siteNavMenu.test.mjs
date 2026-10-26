@@ -10,38 +10,38 @@ const labels = (items) => items.map((item) => item.label)
 
 test('private user sees profile and dashboard only', () => {
   const menu = getAccountMenu({ role: 'user', roles: ['user'] })
-  assert.deepEqual(labels(menu), ['Profili im', 'Paneli im'])
+  assert.deepEqual(labels(menu), ['menu.myProfile', 'menu.myDashboard'])
   assert.deepEqual(menu.map((item) => item.to), ['/dashboard/user/profile', '/dashboard/user'])
 })
 
 test('expert context gets offers, messages and settings', () => {
   const menu = getAccountMenu({ role: 'provider', roles: ['user', 'provider'], activeContext: 'provider' })
-  assert.deepEqual(labels(menu), ['Profili im', 'Paneli im', 'Ofertat e mia', 'Mesazhet', 'Cilësimet'])
+  assert.deepEqual(labels(menu), ['menu.myProfile', 'menu.myDashboard', 'menu.myOffers', 'menu.messages', 'menu.settings'])
   assert.equal(menu.find((item) => item.id === 'offers').to, '/dashboard/provider/services')
 })
 
 test('company context gets company profile and team', () => {
   const menu = getAccountMenu({ role: 'company', roles: ['user', 'company'], activeContext: 'company' })
   assert.deepEqual(labels(menu), [
-    'Profili i kompanisë',
-    'Paneli im',
-    'Ofertat e mia',
-    'Ekspertët',
-    'Mesazhet',
-    'Cilësimet',
+    'menu.companyProfile',
+    'menu.myDashboard',
+    'menu.myOffers',
+    'menu.experts',
+    'menu.messages',
+    'menu.settings',
   ])
   assert.equal(menu.find((item) => item.id === 'team').to, '/dashboard/company/experts')
 })
 
 test('superadmin gets admin panel and settings', () => {
   const menu = getAccountMenu({ role: 'admin', roles: ['admin'] })
-  assert.deepEqual(labels(menu), ['Paneli administrativ', 'Cilësimet'])
+  assert.deepEqual(labels(menu), ['menu.adminDashboard', 'menu.settings'])
   assert.deepEqual(menu.map((item) => item.to), ['/dashboard/admin', '/dashboard/admin/settings'])
 })
 
 test('expert who switched to private context gets the private menu', () => {
   const menu = getAccountMenu({ role: 'provider', roles: ['user', 'provider'], activeContext: 'user' })
-  assert.deepEqual(labels(menu), ['Profili im', 'Paneli im'])
+  assert.deepEqual(labels(menu), ['menu.myProfile', 'menu.myDashboard'])
 })
 
 test('active marketplace link follows the ofertat tab', () => {

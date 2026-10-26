@@ -30,6 +30,7 @@ import {
   type OverviewStat,
 } from './OverviewParts'
 import type { ChipColor } from './requestDisplay'
+import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendationsCard'
 import './UserRequests.css'
 import './UserProfile.css'
 import './DashboardSections.css'
@@ -463,6 +464,7 @@ export function CompanyOverviewPage() {
         <>
           {data?.business ? <CompanyIdentity business={data.business} team={data.team} /> : null}
           <StatsSection data={data} loading={loading} />
+          <AiTrustRecommendationsCard isCompany providerUid={user?.uid} />
           <div className="uo-grid">
             <ActivityCard data={data} loading={loading} />
             <div className="uo-side">

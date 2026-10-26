@@ -1,5 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const profileDetails_1 = require("../models/profileDetails");
+const planService_1 = require("../services/planService");
+const catalog_1 = require("../plans/catalog");
 const pagination_1 = require("../services/pagination");
 const express_1 = require("express");
 const mongoose_1 = require("mongoose");
@@ -18,14 +21,6 @@ const monthYearInput = zod_1.z.object({
     month: zod_1.z.number().int().min(1).max(12),
     year: zod_1.z.number().int().min(1950).max(2100),
 });
-const workExperienceInput = zod_1.z.array(zod_1.z.object({
-    position: zod_1.z.string().trim().min(1).max(160),
-    organization: zod_1.z.string().trim().min(1).max(160),
-    from: monthYearInput,
-    to: monthYearInput.optional(),
-    current: zod_1.z.boolean().optional(),
-    description: zod_1.z.string().trim().max(2000).optional(),
-})).max(30);
 const educationInput = zod_1.z.array(zod_1.z.object({
     institution: zod_1.z.string().trim().min(1).max(160),
     degree: zod_1.z.string().trim().min(1).max(160),
@@ -52,7 +47,11 @@ router.get('/', async (req, res) => {
 });
 router.get('/mine', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
     try {
-        return res.json({ providers: (await (0, providerProfileService_1.listMyProviderProfiles)(req.user.uid)).map(providerProfileService_1.toPublicProvider) });
+        const profiles = await (0, providerProfileService_1.listMyProviderProfiles)(req.user.uid);
+        return res.json({ providers: await Promise.all(profiles.map(async (profile) => {
+                const pro = await (0, planService_1.isPro)(req.user.uid, profile.providerType === 'business' ? 'company' : 'provider');
+                return { ...(0, providerProfileService_1.toPublicProvider)(profile), editLimits: { description: pro ? catalog_1.PLAN_LIMITS.proBio : catalog_1.PLAN_LIMITS.basicBio, career: pro } };
+            })) });
     }
     catch (err) {
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Profilet nuk u ngarkuan' });
@@ -89,6 +88,7 @@ router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'co
             categories: zod_1.z.array(zod_1.z.string()).optional(),
             subcategoryIds: zod_1.z.array(zod_1.z.string()).optional(),
             languages: zod_1.z.array(zod_1.z.string()).optional(),
+            languageSkills: profileDetails_1.languageSkillsInput.optional(),
             locations: zod_1.z.array(zod_1.z.any()).optional(),
             serviceAreas: zod_1.z.array(zod_1.z.any()).optional(),
             modes: zod_1.z.array(zod_1.z.enum(['online', 'on_site'])).optional(),
@@ -110,7 +110,7 @@ router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'co
                 referenceNumber: zod_1.z.string().optional(),
                 status: zod_1.z.enum(['unverified', 'verified', 'rejected']).optional(),
             })).optional(),
-            workExperience: workExperienceInput.optional(),
+            workExperience: profileDetails_1.workExperienceInput.optional(),
             education: educationInput.optional(),
             certifications: certificationsInput.optional(),
             location: locationInput.nullable().optional(),
@@ -123,6 +123,7 @@ router.patch('/:id', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'co
             categories: body.categories,
             subcategoryIds: body.subcategoryIds,
             languages: body.languages,
+            languageSkills: body.languageSkills,
             locations: body.locations,
             serviceAreas: body.serviceAreas,
             modes: body.modes,

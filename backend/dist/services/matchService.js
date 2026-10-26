@@ -239,24 +239,37 @@ Rregulla:
         .filter(Boolean);
     return matches.sort((a, b) => b.score - a.score).slice(0, 8);
 }
+function needTokens(need) {
+    return normalize(need).split(/\s+/).filter((token) => token.length > 3);
+}
+function matchesNeed(intake, match) {
+    const tokens = needTokens(intake.need);
+    if (tokens.length === 0)
+        return false;
+    const hay = normalize(`${match.title} ${match.name} ${match.categoryLabel ?? ''} ${match.specialty ?? ''} ${match.bio ?? ''} ${match.companyName ?? ''}`);
+    return tokens.some((token) => hay.includes(token));
+}
 async function matchExperts(intake) {
     const candidates = await loadCandidates(intake);
     if (candidates.length === 0) {
         return {
             engine: 'none',
             count: 0,
+            exact: false,
             matches: [],
             message: 'Ende nuk ka ekspertë ose shërbime të publikuara.',
         };
     }
     try {
         const matches = await geminiMatch(intake, candidates);
-        if (matches.length > 0) {
+        const exactMatches = matches.filter((match) => matchesNeed(intake, match));
+        if (exactMatches.length > 0) {
             return {
                 engine: 'gemini',
-                count: matches.length,
-                matches,
-                message: `Gjetëm ${matches.length} ekspertë për ty`,
+                count: exactMatches.length,
+                exact: true,
+                matches: exactMatches,
+                message: `Gjetëm ${exactMatches.length} ekspertë për ty`,
             };
         }
     }
@@ -264,13 +277,15 @@ async function matchExperts(intake) {
         console.warn('Gemini match failed, using heuristic:', err);
     }
     const matches = heuristicMatch(intake, candidates);
+    const exactMatches = matches.filter((match) => matchesNeed(intake, match));
     return {
         engine: 'heuristic',
-        count: matches.length,
-        matches,
-        message: matches.length > 0
-            ? `Gjetëm ${matches.length} ekspertë për ty`
-            : 'Nuk gjetëm përputhje. Provo të ndryshosh lokacionin ose përshkrimin.',
+        count: exactMatches.length,
+        exact: exactMatches.length > 0,
+        matches: exactMatches,
+        message: exactMatches.length > 0
+            ? `Gjetëm ${exactMatches.length} ekspertë për ty`
+            : 'Nuk gjetëm përputhje të saktë.',
     };
 }
 //# sourceMappingURL=matchService.js.map

@@ -74,6 +74,10 @@ async function getPublicProviderProfile(uid) {
     let profilePhoto = provider.profilePhoto;
     let name = provider.name;
     let bio = provider.bio;
+    let headline = provider.headline;
+    let languages = provider.languages;
+    let languageSkills = [];
+    let workExperience = [];
     if (owner) {
         if (role === 'company') {
             const business = await Business_1.Business.findOne({ owners: owner._id }).select('publicName description coverUrl logoUrl').lean();
@@ -83,7 +87,14 @@ async function getPublicProviderProfile(uid) {
             bio = business?.description || bio;
         }
         else {
-            const profile = await ProviderProfile_1.ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile.coverUrl publicProfile.photoUrl').lean();
+            const profile = await ProviderProfile_1.ProviderProfile.findOne({ ownerUser: owner._id, providerType: 'individual' }).select('publicProfile languages languageSkills workExperience').lean();
+            if (profile) {
+                bio = profile.publicProfile.description ?? profile.publicProfile.shortDescription ?? bio;
+                headline = profile.publicProfile.title ?? headline;
+                languages = profile.languages;
+                languageSkills = profile.languageSkills || [];
+                workExperience = profile.workExperience || [];
+            }
             coverPhoto = profile?.publicProfile?.coverUrl || '';
             profilePhoto = profilePhoto || profile?.publicProfile?.photoUrl || '';
         }
@@ -98,11 +109,13 @@ async function getPublicProviderProfile(uid) {
         name,
         role,
         roleLabel: roles_1.ROLE_LABELS[role],
-        headline: provider.headline,
+        headline,
         bio: publicBio,
         location: provider.location,
         skills: pro ? provider.skills : [],
-        languages: pro ? provider.languages : [],
+        languages: pro ? languages : [],
+        languageSkills: pro ? languageSkills : [],
+        workExperience: pro ? workExperience : [],
         profilePhoto: pro ? profilePhoto : '',
         coverPhoto: pro ? coverPhoto : '',
         plan: pro ? 'pro' : 'basic',

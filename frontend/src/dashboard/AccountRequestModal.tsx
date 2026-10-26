@@ -35,6 +35,7 @@ export default function AccountRequestModal({
   user,
   onClose,
 }: {
+ 
   /** `null` keeps the modal closed. */
   kind: AccountRequestKind | null
   user: AuthUser

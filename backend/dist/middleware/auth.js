@@ -36,6 +36,8 @@ async function requireAuth(req, res, next) {
             savedLocation: dbUser?.savedLocation,
             skills: dbUser?.skills,
             languages: dbUser?.languages,
+            languageSkills: dbUser?.languageSkills,
+            workExperience: dbUser?.workExperience,
             profilePhoto: dbUser?.profilePhoto,
             socialLinks: dbUser?.socialLinks,
             createdAt: dbUser?.createdAt,
@@ -66,6 +68,8 @@ async function requireAuth(req, res, next) {
             savedLocation: publicUser.savedLocation,
             skills: publicUser.skills ?? [],
             languages: publicUser.languages ?? [],
+            languageSkills: publicUser.languageSkills,
+            workExperience: publicUser.workExperience,
             profilePhoto: publicUser.profilePhoto || '',
             socialLinks: publicUser.socialLinks || {},
         };

@@ -122,23 +122,25 @@ export default function DashboardTopBar({
       </div>
 
       <div className="dtb-end">
-        <LanguageSwitcher />
-        <ThemeToggle />
-        {showHome ? (
-          <Tooltip delay={400}>
-            <Button
-              isIconOnly
-              variant="ghost"
-              className="dtb-icon"
-              aria-label="Kthehu në faqen kryesore"
-              onPress={() => navigate('/')}
-            >
-              <Home size={19} aria-hidden />
-            </Button>
-            <Tooltip.Content placement="bottom">Kthehu në faqen kryesore</Tooltip.Content>
-          </Tooltip>
-        ) : null}
-        <MessageNavButton />
+        <div className="dtb-actions-desktop">
+          <LanguageSwitcher />
+          <ThemeToggle />
+          {showHome ? (
+            <Tooltip delay={400}>
+              <Button
+                isIconOnly
+                variant="ghost"
+                className="dtb-icon"
+                aria-label="Kthehu në faqen kryesore"
+                onPress={() => navigate('/')}
+              >
+                <Home size={19} aria-hidden />
+              </Button>
+              <Tooltip.Content placement="bottom">Kthehu në faqen kryesore</Tooltip.Content>
+            </Tooltip>
+          ) : null}
+          <MessageNavButton />
+        </div>
         <NotificationBell />
         <AccountMenu user={user} role={role} onLogout={onLogout} />
       </div>

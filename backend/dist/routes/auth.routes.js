@@ -37,6 +37,8 @@ function publicUser(user) {
         savedLocation: user.savedLocation,
         skills: user.skills ?? [],
         languages: user.languages ?? [],
+        languageSkills: user.languageSkills ?? [],
+        workExperience: user.workExperience ?? [],
         profilePhoto: user.profilePhoto || '',
         socialLinks: user.socialLinks || {},
     };
@@ -174,7 +176,7 @@ router.post('/change-password', auth_1.requireAuth, async (req, res) => {
 });
 router.patch('/me', auth_1.requireAuth, async (req, res) => {
     try {
-        const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, socialLinks } = req.body;
+        const { firstName, lastName, phone, locale, country, city, profileVisibility, marketingConsent, savedLocation, location, headline, bio, skills, languages, languageSkills, workExperience, socialLinks } = req.body;
         // Legacy profile clients still send a free-text `location`; only an object updates the saved selection.
         const locationInput = savedLocation !== undefined ? savedLocation : location && typeof location === 'object' ? location : undefined;
         const parsedLocation = locationInput === undefined ? undefined : savedLocationInput.parse(locationInput);
@@ -192,6 +194,8 @@ router.patch('/me', auth_1.requireAuth, async (req, res) => {
             bio,
             skills,
             languages,
+            languageSkills,
+            workExperience,
             socialLinks,
             legacyLocation: typeof location === 'string' ? location : undefined,
         });
@@ -260,7 +264,13 @@ router.patch('/me/context', auth_1.requireAuth, async (req, res) => {
     }
 });
 router.get('/me', auth_1.requireAuth, async (req, res) => {
-    return res.json({ user: req.user });
+    try {
+        const description = await (0, userService_1.ownDescriptionLimit)(req.user);
+        return res.json({ user: { ...req.user, profileEditLimits: { description } } });
+    }
+    catch {
+        return res.status(500).json({ message: 'profileDetails.loadError' });
+    }
 });
 router.get('/me/profile-completion', auth_1.requireAuth, async (req, res) => {
     try {

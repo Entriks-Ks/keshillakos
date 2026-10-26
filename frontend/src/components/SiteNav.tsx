@@ -12,6 +12,7 @@ import {
   Menu,
   MessageCircle,
   Settings,
+  Sparkles,
   UserRound,
   Users,
   type LucideIcon,
@@ -149,12 +150,24 @@ export default function SiteNav() {
                 {t('nav.about')}
               </Link>
             </li>
+            <li>
+              <Link
+                to="/ai-asistenti"
+                className="kk-nav-link kk-nav-link-ai"
+                aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
+              >
+                <Sparkles size={14} className="kk-ai-sparkle-icon" />
+                <span>Këshilla AI</span>
+              </Link>
+            </li>
           </ul>
         </nav>
 
         <div className="kk-nav-actions">
-          <LanguageSwitcher />
-          <ThemeToggle />
+          <div className="kk-nav-actions-desktop">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
           {loading ? (
             <span className="kk-nav-pending" aria-hidden />
           ) : user ? (
@@ -239,6 +252,17 @@ export default function SiteNav() {
                             {t('nav.about')}
                           </Link>
                         </li>
+                        <li>
+                          <Link
+                            to="/ai-asistenti"
+                            className="kk-nav-drawer-link has-icon"
+                            aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
+                            onClick={closeMenu}
+                          >
+                            <Sparkles size={18} className="kk-ai-sparkle-icon" aria-hidden />
+                            <span>Këshilla AI</span>
+                          </Link>
+                        </li>
                       </ul>
 
                       {user ? (
@@ -265,6 +289,19 @@ export default function SiteNav() {
                         </>
                       ) : null}
                     </nav>
+
+                    <Separator className="kk-nav-drawer-sep" />
+
+                    <div className="kk-nav-drawer-prefs">
+                      <div className="kk-nav-drawer-pref">
+                        <span className="kk-nav-drawer-pref-label">{t('lang.label')}</span>
+                        <LanguageSwitcher />
+                      </div>
+                      <div className="kk-nav-drawer-pref">
+                        <span className="kk-nav-drawer-pref-label">{t('theme.label')}</span>
+                        <ThemeToggle />
+                      </div>
+                    </div>
                   </Drawer.Body>
 
                   <Drawer.Footer className="kk-nav-drawer-foot">

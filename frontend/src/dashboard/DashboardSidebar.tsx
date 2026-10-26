@@ -5,6 +5,8 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Dropdown, Label, Separator } from '@heroui/react'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import type { DashboardContext, UserRole } from '../api/auth'
+import LanguageSwitcher from '../components/LanguageSwitcher'
+import ThemeToggle from '../components/ThemeToggle'
 import { CONTEXT_LABELS, groupDashboardNav, NAV_GROUP_LABELS, type DashNavItem } from './nav'
 
 export type ContextOption = { context: DashboardContext; available: boolean }
@@ -152,6 +154,22 @@ export default function DashboardSidebar({
             ))}
           </ul>
         </nav>
+      ) : null}
+
+      {inDrawer ? (
+        <div className="dsb-drawer-prefs">
+          <Separator />
+          <div className="dsb-drawer-prefs-body">
+            <div className="dsb-drawer-pref">
+              <span className="dsb-drawer-pref-label">{t('lang.label')}</span>
+              <LanguageSwitcher />
+            </div>
+            <div className="dsb-drawer-pref">
+              <span className="dsb-drawer-pref-label">{t('theme.label')}</span>
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   )

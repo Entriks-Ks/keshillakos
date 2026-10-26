@@ -52,6 +52,7 @@ import { getErrorMessage } from '../utils/errors'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
 import { EmptyBlock, RowsSkeleton, SectionHead } from './OverviewParts'
 import { EmptyNote, filledSocialLinks, SocialLinksList } from './UserProfilePage'
+import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendationsCard'
 import './UserProfile.css'
 import './DashboardSections.css'
 import './Settings.css'
@@ -892,6 +893,8 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
           Ndrysho profilin
         </Button>
       </Card>
+
+      <AiTrustRecommendationsCard providerUid={user?.uid} />
 
       <div className="uo-grid up-grid">
         <div className="up-col">

@@ -22,6 +22,7 @@ import { getErrorMessage } from '../utils/errors'
 import ExpertProfilePage from './ExpertProfilePage'
 import { SectionHead } from './OverviewParts'
 import { EmptyNote, filledSocialLinks, SocialLinksList, UserProfile } from './UserProfilePage'
+import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendationsCard'
 import './UserProfile.css'
 import './DashboardSections.css'
 import './ExpertProfile.css'
@@ -391,6 +392,8 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
         </div>
         <Button variant="primary" className="up-hero-action" onPress={startEdit}><Pencil size={16} aria-hidden />Ndrysho profilin</Button>
       </Card>
+
+      <AiTrustRecommendationsCard isCompany providerUid={user?.uid} />
 
       <div className="uo-grid up-grid">
         <div className="up-col">
