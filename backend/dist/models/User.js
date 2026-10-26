@@ -34,6 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = exports.userSchema = void 0;
+const profileDetails_1 = require("./profileDetails");
+const providerCareer_1 = require("./providerCareer");
 const mongoose_1 = __importStar(require("mongoose"));
 const roles_1 = require("../types/roles");
 const socialLinks_1 = require("./socialLinks");
@@ -74,13 +76,15 @@ exports.userSchema = new mongoose_1.Schema({
         marketingConsent: { type: Boolean, default: false },
     },
     accountStatus: { type: String, enum: ['active', 'suspended', 'closed'], default: 'active' },
-    // Existing documents retain these fields; new account writes do not populate them.
+    // Retain the field names used by existing web/profile clients.
     headline: String,
     bio: String,
     location: { type: savedLocationSchema, default: undefined },
     legacyLocation: String,
     skills: { type: [String], default: undefined },
     languages: { type: [String], default: undefined },
+    languageSkills: { type: [new mongoose_1.Schema(profileDetails_1.languageSkillSchema, { _id: false })], default: undefined },
+    workExperience: { type: [new mongoose_1.Schema(providerCareer_1.workExperienceEntrySchema, { _id: false })], default: undefined },
     profilePhoto: String,
     socialLinks: { type: (0, socialLinks_1.socialLinksSchemaDefinition)(), default: undefined },
 }, { timestamps: true });

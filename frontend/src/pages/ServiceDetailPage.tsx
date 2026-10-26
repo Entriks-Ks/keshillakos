@@ -35,6 +35,7 @@ import { getErrorMessage } from '../utils/errors'
 import { idFromPublicParam, providerPath as publicProviderPath, servicePath } from '../utils/publicPaths'
 import { formatServicePrice, isVerified } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
+import { AiTrustBadge } from '../components/ai/AiTrustBadge'
 import './ServiceDetailPage.css'
 
 function deliveryLabel(mode: string) {
@@ -439,6 +440,9 @@ export default function ServiceDetailPage() {
                       <p className="sd-byline-meta">
                         <span>{kindLabel}</span>
                         <ProviderRatingLine average={provider?.ratingAverage ?? 0} count={provider?.ratingCount ?? 0} />
+                        {providerUid ? (
+                          <AiTrustBadge providerUid={providerUid} providerName={providerName} compact />
+                        ) : null}
                       </p>
                     </div>
                   </div>
@@ -517,6 +521,14 @@ export default function ServiceDetailPage() {
                     </div>
 
                     {availabilityNote ? <p className="sd-book-note">{availabilityNote}</p> : null}
+
+                    {providerUid ? (
+                      <AiTrustBadge
+                        providerUid={providerUid}
+                        providerName={providerName}
+                        className="sd-ai-trust-badge"
+                      />
+                    ) : null}
 
                     <Separator />
 

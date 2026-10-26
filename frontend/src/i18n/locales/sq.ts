@@ -33,6 +33,7 @@ const sq = {
     }
   },
   lang: { label: 'Gjuha' },
+  theme: { label: 'Tema' },
   nav: {
     home: 'KLAW, faqja kryesore',
     main: 'Kryesore',

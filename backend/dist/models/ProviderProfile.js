@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProviderProfile = exports.providerProfileSchema = void 0;
+const profileDetails_1 = require("./profileDetails");
 const mongoose_1 = __importStar(require("mongoose"));
 const location_1 = require("./location");
 const providerCareer_1 = require("./providerCareer");
@@ -50,6 +51,7 @@ exports.providerProfileSchema = new mongoose_1.Schema({
     categories: { type: [{ type: String, trim: true }], required: true, validate: [(value) => value.length > 0 && value.every(Boolean), 'At least one category is required'] },
     subcategoryIds: { type: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Subcategory' }], default: [] },
     languages: { type: [{ type: String, trim: true }], default: [] },
+    languageSkills: { type: [new mongoose_1.Schema(profileDetails_1.languageSkillSchema, { _id: false })], default: undefined },
     locations: { type: [location_1.locationSchema], default: [] },
     serviceAreas: { type: [location_1.locationSchema], default: [] },
     location: { type: baseLocationSchema, default: undefined },

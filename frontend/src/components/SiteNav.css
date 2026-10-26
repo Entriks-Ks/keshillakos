@@ -9,7 +9,7 @@
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
 }
-
+ 
 .kk-nav .kk-nav-inner {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -32,6 +32,8 @@
   color: var(--foreground);
   text-decoration: none;
   border-radius: 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .kk-nav-mark {
@@ -85,6 +87,19 @@
   background: color-mix(in srgb, var(--surface) 55%, transparent);
 }
 
+.kk-nav-link-ai {
+  gap: 6px;
+}
+
+.kk-nav-link-ai .kk-ai-sparkle-icon {
+  color: #eab308;
+  transition: transform 0.2s ease;
+}
+
+.kk-nav-link-ai:hover .kk-ai-sparkle-icon {
+  transform: rotate(15deg) scale(1.15);
+}
+
 [data-theme="dark"] .kk-nav {
   background: color-mix(in srgb, #0c1228 88%, transparent);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
@@ -112,6 +127,12 @@
   justify-content: flex-end;
   gap: 8px;
   justify-self: end;
+}
+
+.kk-nav-actions-desktop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .kk-nav-guest {
@@ -339,6 +360,29 @@
   margin: 12px 0;
 }
 
+.kk-nav-drawer-prefs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--foreground) 3.5%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.kk-nav-drawer-pref {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kk-nav-drawer-pref-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
 .kk-nav-drawer-foot {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -351,11 +395,31 @@
 }
 
 @media (max-width: 860px) {
-  .kk-nav .kk-nav-inner {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
+  .kk-nav {
+    --kk-nav-height: 64px;
   }
 
+  .kk-nav .kk-nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-inline: 16px;
+  }
+
+  .kk-nav-brand {
+    flex-shrink: 0;
+  }
+
+  .kk-nav-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .kk-nav-actions-desktop,
   .kk-nav-center,
   .kk-nav-guest,
   .kk-nav-account,
@@ -365,6 +429,19 @@
 
   .kk-nav-toggle {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 10px;
+  }
+
+  .kk-nav-actions .kk-message-nav-button,
+  .kk-nav-actions .kk-notification-bell {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
   }
 }
 

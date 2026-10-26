@@ -33,6 +33,7 @@ const de = {
     }
   },
   lang: { label: 'Sprache' },
+  theme: { label: 'Design' },
   nav: {
     home: 'KLAW, Startseite',
     main: 'Hauptmenü',

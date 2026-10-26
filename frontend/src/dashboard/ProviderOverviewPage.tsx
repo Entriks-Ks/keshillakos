@@ -28,6 +28,7 @@ import {
   type OverviewStat,
 } from './OverviewParts'
 import { formatWhen } from './requestDisplay'
+import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendationsCard'
 
 const INBOX_PATH = '/dashboard/provider/inbox'
 const MESSAGES_PATH = '/dashboard/provider/messages'
@@ -270,6 +271,7 @@ export function ProviderOverviewPage() {
       ) : (
         <>
           <StatsSection data={data} loading={loading} />
+          <AiTrustRecommendationsCard providerUid={user?.uid} />
           <div className="uo-grid">
             <ActivityCard data={data} loading={loading} publicPath={publicPath} />
             <div className="uo-side">

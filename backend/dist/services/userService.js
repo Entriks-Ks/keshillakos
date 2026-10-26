@@ -11,11 +11,13 @@ exports.reviewRoleRequest = reviewRoleRequest;
 exports.findUserByUid = findUserByUid;
 exports.findUsersByUids = findUsersByUids;
 exports.listUsers = listUsers;
+exports.ownDescriptionLimit = ownDescriptionLimit;
 exports.updateOwnProfile = updateOwnProfile;
 exports.updateProfilePhoto = updateProfilePhoto;
 exports.updateUserByUid = updateUserByUid;
 exports.deleteUserByUid = deleteUserByUid;
 exports.countUsersByRole = countUsersByRole;
+const profileDetails_1 = require("../models/profileDetails");
 const realtime_1 = require("./realtime");
 const notificationService_1 = require("./notificationService");
 const pagination_1 = require("./pagination");
@@ -74,6 +76,8 @@ function toPublicUser(user) {
             : undefined),
         skills: user.skills ?? [],
         languages: user.languages ?? [],
+        languageSkills: (0, profileDetails_1.reconcileLanguageSkills)(user.languages ?? [], user.languageSkills),
+        workExperience: user.workExperience ?? [],
         profilePhoto: user.profilePhoto || '',
         socialLinks: user.socialLinks || {},
         createdAt: user.createdAt ?? new Date(),
@@ -214,6 +218,19 @@ function cleanStringList(values, maxItems = 20, itemMax = 48) {
         return undefined;
     return [...new Set(values.map((value) => value.trim()).filter(Boolean).map((value) => value.slice(0, itemMax)))].slice(0, maxItems);
 }
+async function ownDescriptionLimit(existing) {
+    const roles = existing.roles ?? [existing.role];
+    const audience = existing.activeContext === 'company' && roles.includes('company')
+        ? 'company'
+        : existing.activeContext === 'provider' && roles.includes('provider')
+            ? 'provider'
+            : roles.includes('provider')
+                ? 'provider'
+                : roles.includes('company')
+                    ? 'company'
+                    : null;
+    return audience ? ((await (0, planService_1.isPro)(existing.uid, audience)) ? catalog_1.PLAN_LIMITS.proBio : catalog_1.PLAN_LIMITS.basicBio) : 3000;
+}
 async function updateOwnProfile(uid, input) {
     const existing = await User_1.User.findOne({ uid });
     if (!existing)
@@ -279,20 +296,12 @@ async function updateOwnProfile(uid, input) {
         existing.headline = headline || undefined;
     }
     if (input.bio !== undefined) {
+        if (typeof input.bio !== 'string')
+            throw new Error('profileDetails.invalidDescription');
         const bio = input.bio.trim();
-        const roles = existing.roles ?? [existing.role];
-        const audience = existing.activeContext === 'company' && roles.includes('company')
-            ? 'company'
-            : existing.activeContext === 'provider' && roles.includes('provider')
-                ? 'provider'
-                : roles.includes('provider')
-                    ? 'provider'
-                    : roles.includes('company')
-                        ? 'company'
-                        : null;
-        const max = audience ? ((await (0, planService_1.isPro)(uid, audience)) ? catalog_1.PLAN_LIMITS.proBio : catalog_1.PLAN_LIMITS.basicBio) : 3000;
+        const max = await ownDescriptionLimit(existing);
         if (bio.length > max) {
-            throw new Error(!audience
+            throw new Error(max === 3000
                 ? 'Përshkrimi duhet të jetë deri në 3000 karaktere'
                 : max === catalog_1.PLAN_LIMITS.basicBio
                     ? 'Përshkrimi në planin Basic mund të ketë deri në 250 karaktere.'
@@ -300,9 +309,19 @@ async function updateOwnProfile(uid, input) {
         }
         existing.bio = bio || undefined;
     }
+    if (input.workExperience !== undefined)
+        existing.workExperience = (0, profileDetails_1.validatedExperience)(input.workExperience);
+    if (input.languageSkills !== undefined) {
+        existing.languageSkills = await (0, profileDetails_1.validatedLanguageSkills)(input.languageSkills, existing.languages);
+        existing.languages = existing.languageSkills.map(skill => skill.language);
+    }
+    else if (input.languages !== undefined) {
+        const names = cleanStringList(input.languages, 12, 40) || [];
+        existing.languageSkills = (0, profileDetails_1.reconcileLanguageSkills)(names, existing.languageSkills);
+    }
     if (input.skills !== undefined)
         existing.skills = cleanStringList(input.skills);
-    if (input.languages !== undefined)
+    if (input.languages !== undefined && input.languageSkills === undefined)
         existing.languages = cleanStringList(input.languages, 12, 40);
     if (input.legacyLocation !== undefined)
         existing.legacyLocation = cleanOptional(input.legacyLocation);
@@ -321,8 +340,10 @@ async function updateOwnProfile(uid, input) {
         publicFields['publicProfile.description'] = existing.bio || '';
         publicFields['publicProfile.shortDescription'] = (existing.bio || '').slice(0, 300);
     }
-    if (input.languages !== undefined)
+    if (input.languages !== undefined || input.languageSkills !== undefined) {
         publicFields.languages = existing.languages || [];
+        publicFields.languageSkills = existing.languageSkills || [];
+    }
     if (Object.keys(publicFields).length) {
         await ProviderProfile_1.ProviderProfile.updateMany({ ownerUser: existing._id, providerType: 'individual' }, { $set: publicFields });
     }

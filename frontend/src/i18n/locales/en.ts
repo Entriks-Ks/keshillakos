@@ -33,6 +33,7 @@ const en = {
     }
   },
   lang: { label: 'Language' },
+  theme: { label: 'Theme' },
   nav: {
     home: 'KLAW, home',
     main: 'Main',

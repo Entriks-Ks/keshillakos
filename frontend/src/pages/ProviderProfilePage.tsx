@@ -54,6 +54,9 @@ import { getErrorMessage } from '../utils/errors'
 import { idFromPublicParam, providerPath, servicePath } from '../utils/publicPaths'
 import { formatServicePrice } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
+import { AiTrustBadge } from '../components/ai/AiTrustBadge'
+import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendationsCard'
+import { useAuth } from '../auth/AuthContext'
 import './PublicProfile.css'
 
 function dateLocale() {
@@ -202,6 +205,7 @@ function ServiceRow({ service }: { service: ServiceItem }) {
 }
 
 export default function ProviderProfilePage() {
+  const { user } = useAuth()
   const { i18n: ui } = useTranslation()
   void ui.language
   const { uid: param } = useParams<{ uid: string }>()
@@ -461,6 +465,9 @@ export default function ProviderProfilePage() {
                             : uiText('Ende pa vlerësime', 'No ratings yet', 'Noch keine Bewertungen')}
                         </a>
                       </li>
+                      <li>
+                        <AiTrustBadge providerUid={provider.uid} providerName={name} compact />
+                      </li>
                     </ul>
                   </div>
                   <div className="pp-hero-actions">
@@ -488,6 +495,20 @@ export default function ProviderProfilePage() {
                   </div>
                 </div>
               </Card>
+
+              <AiTrustBadge
+                providerUid={provider.uid}
+                providerName={name}
+                className="pp-ai-trust-banner"
+              />
+
+              {user?.uid && provider?.uid && user.uid === provider.uid ? (
+                <AiTrustRecommendationsCard
+                  providerUid={provider.uid}
+                  isCompany={isCompany}
+                  className="pp-ai-recs-owner"
+                />
+              ) : null}
 
               <div className="pp-grid">
                 <div className="pp-main">

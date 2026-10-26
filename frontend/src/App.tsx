@@ -37,6 +37,8 @@ const ExpertOnboardingPage = lazy(() => import('./dashboard/OnboardingPages').th
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const ServiceDetailPage = lazy(() => import('./pages/ServiceDetailPage'))
 const ProviderProfilePage = lazy(() => import('./pages/ProviderProfilePage'))
+const AiChatPage = lazy(() => import('./pages/AiChatPage'))
+const AiChatWidget = lazy(() => import('./components/ai/AiChatWidget'))
 
 function CompanyOnboardingRedirect() {
   const { user } = useAuth()
@@ -89,6 +91,7 @@ export default function App() {
             <Route path="/privatesia" element={<LegalPage kind="privacy" />} />
             <Route path="/cookies" element={<LegalPage kind="cookies" />} />
             <Route path="/ofertat" element={<OffersPage />} />
+            <Route path="/ai-asistenti" element={<AiChatPage />} />
             <Route path="/services/:id" element={<ServiceDetailPage />} />
             <Route path="/providers/:uid" element={<ProviderProfilePage />} />
 
@@ -170,6 +173,7 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <AiChatWidget />
         </HeroRouterProvider>
       </BrowserRouter>
       </NotificationProvider>

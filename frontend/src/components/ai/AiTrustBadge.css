@@ -1,0 +1,605 @@
+/* ==========================================================================
+   AI Trust and Safety Score Styles - Premium Redesign
+   ========================================================================== */
+
+/* Compact Trigger Badge */
+.kk-ai-trust-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, #10b981 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+  color: #059669;
+  font-size: 0.825rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+[data-theme="dark"] .kk-ai-trust-compact {
+  background: color-mix(in srgb, #10b981 18%, #090d18);
+  border-color: color-mix(in srgb, #10b981 40%, transparent);
+  color: #34d399;
+}
+
+.kk-ai-trust-compact:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.22);
+  background: color-mix(in srgb, #10b981 20%, var(--surface));
+}
+
+.kk-ai-trust-compact.level-high {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+}
+
+.kk-ai-trust-compact.level-moderate {
+  background: color-mix(in srgb, #f59e0b 12%, var(--surface));
+  border-color: color-mix(in srgb, #f59e0b 30%, transparent);
+  color: #d97706;
+}
+
+.kk-ai-trust-compact-icon {
+  flex-shrink: 0;
+}
+
+.kk-ai-trust-compact-score {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.kk-ai-trust-compact-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+/* Card Badge (for provider profile) */
+.kk-ai-trust-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1.25rem;
+  border-radius: 1.1rem;
+  background: linear-gradient(135deg, color-mix(in srgb, #10b981 10%, var(--surface)) 0%, color-mix(in srgb, var(--accent) 8%, var(--surface)) 100%);
+  border: 1px solid color-mix(in srgb, #10b981 30%, var(--border));
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .kk-ai-trust-card {
+  background: linear-gradient(135deg, color-mix(in srgb, #10b981 16%, #171f38) 0%, color-mix(in srgb, var(--accent) 14%, #171f38) 100%);
+  border-color: color-mix(in srgb, #10b981 40%, transparent);
+}
+
+.kk-ai-trust-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -4px rgba(16, 185, 129, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+  border-color: #10b981;
+}
+
+.kk-ai-trust-card-left {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+}
+
+.kk-ai-trust-badge-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 14px rgba(16, 185, 129, 0.35);
+  flex-shrink: 0;
+}
+
+.kk-ai-trust-circle-num {
+  font-size: 1rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.kk-ai-trust-circle-pct {
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.kk-ai-trust-card-texts {
+  display: flex;
+  flex-direction: column;
+}
+
+.kk-ai-trust-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.kk-ai-trust-card-title {
+  font-size: 0.96rem;
+  font-weight: 750;
+  color: var(--heading);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.kk-ai-trust-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--ink-secondary);
+  margin: 0.15rem 0 0 0;
+  line-height: 1.35;
+}
+
+.kk-ai-trust-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, #10b981 12%, var(--surface));
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #059669;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+[data-theme="dark"] .kk-ai-trust-card-btn {
+  background: color-mix(in srgb, #10b981 20%, transparent);
+  color: #34d399;
+}
+
+.kk-ai-trust-card:hover .kk-ai-trust-card-btn {
+  background: #10b981;
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+/* ==========================================================================
+   MODAL DIALOG (HeroUI Portaled Modal Layout)
+   ========================================================================== */
+
+.kk-ai-trust-dialog {
+  width: 100% !important;
+  max-width: 620px !important;
+  border-radius: 1.5rem !important;
+  background: var(--surface) !important;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, rgba(255, 255, 255, 0.2)) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Modal Header */
+.kk-ai-modal-header {
+  padding: 1.25rem 3.5rem 1.25rem 1.5rem !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 7%, var(--surface)) 0%, color-mix(in srgb, #10b981 7%, var(--surface)) 100%) !important;
+  border-bottom: 1px solid var(--border) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: relative !important;
+  margin: 0 !important;
+}
+
+.kk-ai-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.kk-ai-modal-badge-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  flex-shrink: 0;
+}
+
+.kk-ai-modal-title-area {
+  display: flex;
+  flex-direction: column;
+}
+
+.kk-ai-modal-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #059669;
+}
+
+[data-theme="dark"] .kk-ai-modal-eyebrow {
+  color: #34d399;
+}
+
+.kk-ai-modal-main-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--heading);
+  margin: 0.1rem 0 0 0;
+  line-height: 1.25;
+}
+
+/* Modal Body */
+.kk-ai-modal-body {
+  padding: 1.5rem !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.4rem !important;
+  max-height: min(65vh, 520px) !important;
+}
+
+/* Custom scrollbar for clean luxury feel */
+.kk-ai-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.kk-ai-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kk-ai-modal-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+/* Hero Score Card */
+.kk-ai-hero-score-box {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.35rem 1.5rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(135deg, color-mix(in srgb, #10b981 12%, var(--surface)) 0%, color-mix(in srgb, var(--accent) 8%, var(--surface)) 100%);
+  border: 1px solid color-mix(in srgb, #10b981 35%, var(--border));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .kk-ai-hero-score-box {
+  background: linear-gradient(135deg, color-mix(in srgb, #10b981 18%, #171f38) 0%, color-mix(in srgb, var(--accent) 14%, #171f38) 100%);
+  border-color: color-mix(in srgb, #10b981 40%, transparent);
+}
+
+/* SVG Radial Gauge */
+.kk-ai-radial-gauge-container {
+  position: relative;
+  width: 94px;
+  height: 94px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kk-ai-radial-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.kk-ai-radial-bg {
+  stroke: color-mix(in srgb, #10b981 25%, var(--border));
+}
+
+.kk-ai-radial-meter {
+  stroke: #10b981;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kk-ai-radial-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.kk-ai-radial-number {
+  font-size: 1.55rem;
+  font-weight: 850;
+  color: var(--heading);
+  line-height: 1;
+}
+
+.kk-ai-radial-pct {
+  font-size: 0.65rem;
+  font-weight: 750;
+  color: #059669;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+[data-theme="dark"] .kk-ai-radial-pct {
+  color: #34d399;
+}
+
+/* Hero Score Text */
+.kk-ai-hero-score-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.kk-ai-hero-level-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 750;
+  width: fit-content;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.kk-ai-hero-summary-quote {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--foreground);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* 5 Diagnostic Factors Section */
+.kk-ai-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.kk-ai-section-title {
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: var(--heading);
+  margin: 0;
+}
+
+.kk-ai-section-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.kk-ai-factors-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.kk-ai-factor-card {
+  padding: 0.95rem 1.15rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.kk-ai-factor-card:hover {
+  border-color: color-mix(in srgb, #10b981 50%, var(--border));
+  background: color-mix(in srgb, #10b981 3%, var(--surface));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.kk-ai-factor-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.kk-ai-factor-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.kk-ai-factor-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-muted));
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kk-ai-factor-icon-wrap.status-excellent {
+  background: color-mix(in srgb, #10b981 14%, var(--surface));
+  color: #10b981;
+}
+
+.kk-ai-factor-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.kk-ai-factor-metrics {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.kk-ai-factor-score-pill {
+  font-size: 0.76rem;
+  font-weight: 750;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--surface-muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.kk-ai-factor-pct {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #059669;
+}
+
+[data-theme="dark"] .kk-ai-factor-pct {
+  color: #34d399;
+}
+
+/* Progress bar in factor card */
+.kk-ai-factor-progress-track {
+  width: 100%;
+  height: 7px;
+  background: var(--default);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.kk-ai-factor-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kk-ai-factor-progress-fill.status-good {
+  background: linear-gradient(90deg, var(--accent) 0%, #60a5fa 100%);
+}
+
+.kk-ai-factor-progress-fill.status-moderate {
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.kk-ai-factor-detail-text {
+  font-size: 0.78rem;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Guarantees & Highlights Grid */
+.kk-ai-guarantees-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+}
+
+.kk-ai-guarantee-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, #10b981 8%, var(--surface-muted));
+  border: 1px solid color-mix(in srgb, #10b981 22%, var(--border));
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+.kk-ai-guarantee-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+/* Modal Bottom Actions / Footer */
+.kk-ai-modal-footer {
+  padding: 1rem 1.5rem !important;
+  background: var(--surface) !important;
+  border-top: 1px solid var(--border) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  margin: 0 !important;
+}
+
+.kk-ai-modal-footer-disclaimer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+  flex: 1;
+}
+
+.kk-ai-modal-confirm-btn {
+  padding: 0.55rem 1.25rem;
+  border-radius: 0.75rem;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.kk-ai-modal-confirm-btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+/* Mobile Responsiveness for Modal */
+@media (max-width: 600px) {
+  .kk-ai-trust-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 92vh !important;
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    border-bottom: none !important;
+  }
+
+  .kk-ai-hero-score-box {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .kk-ai-hero-level-pill {
+    margin: 0 auto;
+  }
+
+  .kk-ai-modal-footer {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .kk-ai-modal-confirm-btn {
+    width: 100%;
+  }
+}

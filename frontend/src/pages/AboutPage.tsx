@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BadgeCheck, MessageCircle, ShieldCheck, Users } from 'lucide-react'
+import { ArrowRight, BadgeCheck, MessageCircle, ShieldCheck, Users } from 'lucide-react'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import './AboutPage.css'
@@ -110,12 +110,22 @@ export default function AboutPage() {
             </div>
             <div className="ab-end-choices">
               <Link to="/" className="ab-choice">
-                <span>{t('about.start')}</span>
-                <small>{t('about.startHint')}</small>
+                <div className="ab-choice-body">
+                  <span className="ab-choice-title">{t('about.start')}</span>
+                  <small className="ab-choice-hint">{t('about.startHint')}</small>
+                </div>
+                <span className="ab-choice-arrow" aria-hidden>
+                  <ArrowRight size={18} />
+                </span>
               </Link>
               <Link to="/register" className="ab-choice is-quiet">
-                <span>{t('about.become')}</span>
-                <small>{t('about.publish')}</small>
+                <div className="ab-choice-body">
+                  <span className="ab-choice-title">{t('about.become')}</span>
+                  <small className="ab-choice-hint">{t('about.publish')}</small>
+                </div>
+                <span className="ab-choice-arrow" aria-hidden>
+                  <ArrowRight size={18} />
+                </span>
               </Link>
             </div>
           </div>
