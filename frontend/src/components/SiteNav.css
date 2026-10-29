@@ -51,13 +51,14 @@
 .kk-nav-links {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   height: auto;
   margin: 0;
-  padding: 4px;
+  padding: 4px 6px;
   list-style: none;
   border-radius: 999px;
   background: color-mix(in srgb, var(--foreground) 4.5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 .kk-nav-links li {
@@ -72,32 +73,36 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 36px;
-  padding: 0 14px;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
   border-radius: 999px;
   color: var(--ink-secondary);
   font-size: 0.9rem;
   font-weight: 650;
   text-decoration: none;
+  white-space: nowrap;
   transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .kk-nav-link:hover {
   color: var(--foreground);
-  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
 }
 
-.kk-nav-link-ai {
-  gap: 6px;
-}
-
-.kk-nav-link-ai .kk-ai-sparkle-icon {
-  color: #eab308;
-  transition: transform 0.2s ease;
-}
-
-.kk-nav-link-ai:hover .kk-ai-sparkle-icon {
-  transform: rotate(15deg) scale(1.15);
+.kk-compare-nav-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: #ffffff;
 }
 
 [data-theme="dark"] .kk-nav {

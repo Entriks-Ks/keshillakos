@@ -1,6 +1,7 @@
 import type { PageParams, PaginationMeta } from './pagination'
 import api from './auth'
 import type { ServiceItem } from './services'
+import { fetchProviderOpenSlots, type AvailabilitySlot } from './availability'
 import type {
   CertificationEntry,
   EducationEntry,
@@ -71,4 +72,109 @@ export async function fetchProviderProfile(uid: string, params: PageParams & { e
     profile?: unknown
   }>(`/api/providers/${uid}`, { params })
   return { ...data, profile: publicProfileFrom(data.profile) }
+}
+
+export type ProviderComparisonItem = {
+  uid: string
+  provider: PublicProvider
+  profile: PublicProviderProfile | null
+  services: ServiceItem[]
+  openSlots: AvailabilitySlot[]
+}
+
+const compareCache = new Map<string, { data: ProviderComparisonItem; timestamp: number }>()
+const CACHE_TTL = 300_000 // 5 minutes
+
+export async function fetchProvidersComparison(uids: string[]): Promise<ProviderComparisonItem[]> {
+  const cleanUids = uids.filter(Boolean).slice(0, 3)
+  if (cleanUids.length === 0) return []
+
+  const now = Date.now()
+  const cachedItems = new Map<string, ProviderComparisonItem>()
+  const missingUids: string[] = []
+
+  for (const uid of cleanUids) {
+    const cached = compareCache.get(uid)
+    if (cached && now - cached.timestamp < CACHE_TTL) {
+      cachedItems.set(uid, cached.data)
+    } else {
+      missingUids.push(uid)
+    }
+  }
+
+  // If all requested UIDs are fresh in memory, return immediately (0ms!)
+  if (missingUids.length === 0) {
+    return cleanUids.map((id) => cachedItems.get(id)!).filter(Boolean)
+  }
+
+  // Fetch only the missing UIDs
+  let fetchedItems: ProviderComparisonItem[] = []
+  try {
+    const { data } = await api.get<{
+      providers: Array<{
+        uid: string
+        provider: PublicProvider
+        profile: unknown
+        services: ServiceItem[]
+        openSlots: AvailabilitySlot[]
+      }>
+    }>('/api/providers/compare', {
+      params: { uids: missingUids.join(',') },
+    })
+
+    if (Array.isArray(data?.providers)) {
+      fetchedItems = data.providers.map((item) => ({
+        uid: item.uid,
+        provider: item.provider,
+        profile: publicProfileFrom(item.profile),
+        services: item.services || [],
+        openSlots: item.openSlots || [],
+      }))
+    }
+  } catch (err) {
+    console.warn('Backend compare endpoint fallback:', err)
+  }
+
+  // Fallback to individual fetches in parallel for any still-missing items
+  const fetchedMap = new Map<string, ProviderComparisonItem>()
+  for (const item of fetchedItems) {
+    fetchedMap.set(item.uid, item)
+    compareCache.set(item.uid, { data: item, timestamp: now })
+  }
+
+  const stillMissing = missingUids.filter((id) => !fetchedMap.has(id))
+  if (stillMissing.length > 0) {
+    const fallbackResults = await Promise.all(
+      stillMissing.map(async (uid) => {
+        try {
+          const [profileData, slots] = await Promise.all([
+            fetchProviderProfile(uid).catch(() => null),
+            fetchProviderOpenSlots(uid).catch(() => []),
+          ])
+          if (!profileData) return null
+          return {
+            uid,
+            provider: profileData.provider,
+            profile: profileData.profile,
+            services: profileData.services || [],
+            openSlots: slots || [],
+          }
+        } catch {
+          return null
+        }
+      }),
+    )
+
+    for (const item of fallbackResults) {
+      if (item) {
+        fetchedMap.set(item.uid, item)
+        compareCache.set(item.uid, { data: item, timestamp: now })
+      }
+    }
+  }
+
+  // Return all requested UIDs in original order
+  return cleanUids
+    .map((id) => cachedItems.get(id) || fetchedMap.get(id))
+    .filter((item): item is ProviderComparisonItem => Boolean(item))
 }

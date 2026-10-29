@@ -37,7 +37,17 @@ export function CardShell({ href, label, media, mediaKind = 'person', children, 
   )
 }
 
-export function CardTitle({ to, children, verified }: { to: string; children: ReactNode; verified?: string }) {
+export function CardTitle({
+  to,
+  children,
+  verified,
+  action,
+}: {
+  to: string
+  children: ReactNode
+  verified?: string
+  action?: ReactNode
+}) {
   return (
     <div className="pc-title-row">
       <h3 className="pc-name">
@@ -49,6 +59,7 @@ export function CardTitle({ to, children, verified }: { to: string; children: Re
           <Chip.Label>{verified}</Chip.Label>
         </Chip>
       ) : null}
+      {action ? <div className="pc-title-action">{action}</div> : null}
     </div>
   )
 }

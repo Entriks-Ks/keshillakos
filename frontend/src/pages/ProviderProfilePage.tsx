@@ -13,12 +13,14 @@ import {
   Briefcase,
   Building2,
   CalendarDays,
+  Check,
   ExternalLink,
   Globe,
   GraduationCap,
   Mail,
   MapPin,
   Phone,
+  Scale,
   Share2,
   Star,
   Users,
@@ -57,6 +59,7 @@ import { marketplaceLink } from '../utils/siteNavMenu'
 import { AiTrustBadge } from '../components/ai/AiTrustBadge'
 import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendationsCard'
 import { useAuth } from '../auth/AuthContext'
+import { useCompareLawyers } from '../hooks/useCompareLawyers'
 import './PublicProfile.css'
 
 function dateLocale() {
@@ -229,6 +232,8 @@ export default function ProviderProfilePage() {
   const [schedule, setSchedule] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const { isLawyerSelected, toggleLawyer } = useCompareLawyers()
+  const compared = uid ? isLawyerSelected(uid) : false
 
   useEffect(() => {
     if (!uid) {
@@ -486,6 +491,28 @@ export default function ProviderProfilePage() {
                       label={uiText('Dërgo mesazh', 'Send a message', 'Nachricht senden')}
                       className="pp-chat-btn"
                     />
+                    <Tooltip delay={300}>
+                      <Button
+                        variant={compared ? 'primary' : 'outline'}
+                        className="pp-compare-btn"
+                        aria-label={compared ? uiText('Hiq nga krahasimi', 'Remove from compare', 'Aus Vergleich entfernen') : uiText('Krahaso këtë avokat', 'Compare this lawyer', 'Diesen Anwalt vergleichen')}
+                        onPress={() => {
+                          if (provider) {
+                            toggleLawyer(provider.uid, {
+                              name,
+                              photoUrl: photo,
+                              title,
+                            })
+                          }
+                        }}
+                      >
+                        {compared ? <Check size={16} aria-hidden /> : <Scale size={16} aria-hidden />}
+                        <span>{compared ? uiText('Në krahasim', 'In comparison', 'Im Vergleich') : uiText('Krahaso', 'Compare', 'Vergleichen')}</span>
+                      </Button>
+                      <Tooltip.Content placement="bottom">
+                        {compared ? uiText('Hiq nga krahasimi', 'Remove from compare', 'Aus Vergleich entfernen') : uiText('Krahaso këtë avokat me të tjerë', 'Compare with other lawyers', 'Mit anderen Anwälten vergleichen')}
+                      </Tooltip.Content>
+                    </Tooltip>
                     <Tooltip delay={300}>
                       <Button isIconOnly variant="outline" aria-label={uiText('Ndaj profilin', 'Share profile', 'Profil teilen')} onPress={() => void shareProfile()}>
                         <Share2 size={17} />
