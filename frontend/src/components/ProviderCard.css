@@ -122,6 +122,41 @@
   min-width: 0;
 }
 
+.pc-title-action {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pc-compare-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.pc-compare-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.pc-compare-toggle.is-selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 .pc-name {
   margin: 0;
   color: var(--heading);

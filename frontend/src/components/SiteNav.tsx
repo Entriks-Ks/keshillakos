@@ -12,7 +12,6 @@ import {
   Menu,
   MessageCircle,
   Settings,
-  Sparkles,
   UserRound,
   Users,
   type LucideIcon,
@@ -21,6 +20,7 @@ import type { AuthUser } from '../api/auth'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useAuth } from '../auth/AuthContext'
+import { useCompareLawyers } from '../hooks/useCompareLawyers'
 import { ROLE_LABELS } from '../dashboard/nav'
 import i18n from '../i18n'
 import { resolveActiveContext } from '../utils/dashboardPath'
@@ -102,6 +102,7 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void 
 export default function SiteNav() {
   const { t } = useTranslation()
   const { user, loading, logout } = useAuth()
+  const { count: compareCount } = useCompareLawyers()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const active = activeMarketplaceLink(location.pathname, location.search)
@@ -134,6 +135,16 @@ export default function SiteNav() {
             </li>
             <li>
               <Link
+                to="/krahaso"
+                className="kk-nav-link"
+                aria-current={location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet' ? 'page' : undefined}
+              >
+                <span>{t('nav.compare', 'Krahaso Avokatët')}</span>
+                {compareCount > 0 ? <span className="kk-compare-nav-count">{compareCount}</span> : null}
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/planet"
                 className="kk-nav-link"
                 aria-current={location.pathname === '/planet' ? 'page' : undefined}
@@ -153,10 +164,9 @@ export default function SiteNav() {
             <li>
               <Link
                 to="/ai-asistenti"
-                className="kk-nav-link kk-nav-link-ai"
+                className="kk-nav-link"
                 aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
               >
-                <Sparkles size={14} className="kk-ai-sparkle-icon" />
                 <span>Këshilla AI</span>
               </Link>
             </li>
@@ -234,6 +244,17 @@ export default function SiteNav() {
                         </li>
                         <li>
                           <Link
+                            to="/krahaso"
+                            className="kk-nav-drawer-link"
+                            aria-current={location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet' ? 'page' : undefined}
+                            onClick={closeMenu}
+                          >
+                            <span>{t('nav.compare', 'Krahaso Avokatët')}</span>
+                            {compareCount > 0 ? <span className="kk-compare-nav-count">{compareCount}</span> : null}
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
                             to="/planet"
                             className="kk-nav-drawer-link"
                             aria-current={location.pathname === '/planet' ? 'page' : undefined}
@@ -255,11 +276,10 @@ export default function SiteNav() {
                         <li>
                           <Link
                             to="/ai-asistenti"
-                            className="kk-nav-drawer-link has-icon"
+                            className="kk-nav-drawer-link"
                             aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
-                            <Sparkles size={18} className="kk-ai-sparkle-icon" aria-hidden />
                             <span>Këshilla AI</span>
                           </Link>
                         </li>

@@ -2,7 +2,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { emptyPagination, type PaginationMeta } from '../api/pagination'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button, SearchField, Tabs, ToggleButton } from '@heroui/react'
 import {
   AlertCircle,
@@ -11,6 +11,7 @@ import {
   BriefcaseBusiness,
   Building2,
   ChevronDown,
+  Scale,
   SearchX,
   SlidersHorizontal,
   Star,
@@ -627,6 +628,13 @@ export default function OffersPage() {
             <div className="of-inner">
               <h1 id="offers-heading">{t('offers.title')}</h1>
               <p className="of-lead">{t('offers.lead')}</p>
+              <div className="of-compare-banner">
+                <Scale size={15} aria-hidden />
+                <span>Po krahasoni specialistët ligjorë?</span>
+                <Link to="/krahaso" className="of-compare-banner-link">
+                  Krahaso deri në 3 avokatë në një ekran të vetëm →
+                </Link>
+              </div>
               <Tabs.ListContainer className="of-tabs-bar">
                 <Tabs.List aria-label={t('offers.kinds')}>
                   {TABS.map(({ id, icon: Icon }) => (

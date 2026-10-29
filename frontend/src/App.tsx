@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
 import ScrollToTop from './components/ScrollToTop'
 import HomePage from './pages/HomePage'
+import CompareDock from './components/CompareDock'
 
 const DashboardShell = lazy(() => import('./dashboard/DashboardShell'))
 const AdminUsersPanel = lazy(() => import('./dashboard/AdminUsersPanel'))
@@ -38,6 +39,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const ServiceDetailPage = lazy(() => import('./pages/ServiceDetailPage'))
 const ProviderProfilePage = lazy(() => import('./pages/ProviderProfilePage'))
 const AiChatPage = lazy(() => import('./pages/AiChatPage'))
+const CompareLawyersPage = lazy(() => import('./pages/CompareLawyersPage'))
 const AiChatWidget = lazy(() => import('./components/ai/AiChatWidget'))
 
 function CompanyOnboardingRedirect() {
@@ -91,6 +93,8 @@ export default function App() {
             <Route path="/privatesia" element={<LegalPage kind="privacy" />} />
             <Route path="/cookies" element={<LegalPage kind="cookies" />} />
             <Route path="/ofertat" element={<OffersPage />} />
+            <Route path="/krahaso" element={<CompareLawyersPage />} />
+            <Route path="/krahaso-avokatet" element={<CompareLawyersPage />} />
             <Route path="/ai-asistenti" element={<AiChatPage />} />
             <Route path="/services/:id" element={<ServiceDetailPage />} />
             <Route path="/providers/:uid" element={<ProviderProfilePage />} />
@@ -173,6 +177,7 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <CompareDock />
           <AiChatWidget />
         </HeroRouterProvider>
       </BrowserRouter>

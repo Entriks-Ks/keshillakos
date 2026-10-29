@@ -1,0 +1,1341 @@
+/* Compare Lawyers Page Styling */
+
+.kk-compare-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+[data-theme="dark"] .kk-compare-page {
+  background: var(--background);
+}
+
+/* Match the exact width and margin alignment of OffersPage (--tt-wide-content-width) */
+.kk-compare-shell .tt-nav-inner,
+.kk-compare-container {
+  width: var(--tt-wide-content-width);
+  max-width: none;
+  margin: 0 auto;
+  padding-inline: 0;
+}
+
+.kk-compare-main {
+  flex: 1;
+  padding: 2rem 0 5rem;
+}
+
+/* Top Navigation & Breadcrumbs */
+.kk-compare-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.kk-compare-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+}
+
+.kk-compare-back-btn:hover {
+  color: var(--foreground);
+  background: var(--surface-muted);
+  border-color: var(--accent);
+}
+
+.kk-compare-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.825rem;
+  color: var(--muted);
+}
+
+.kk-compare-breadcrumbs a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.kk-compare-breadcrumbs a:hover {
+  color: var(--accent);
+}
+
+.kk-compare-breadcrumbs .sep {
+  opacity: 0.5;
+}
+
+.kk-compare-breadcrumbs .current {
+  color: var(--heading);
+  font-weight: 600;
+}
+
+/* Header */
+.kk-compare-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.kk-compare-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  margin-bottom: 0.75rem;
+}
+
+.kk-compare-title {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--heading, #0f172a);
+  margin-bottom: 0.6rem;
+}
+
+.kk-compare-lead {
+  font-size: 1.05rem;
+  color: var(--muted, #64748b);
+  max-width: 720px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+
+/* Top toolbar */
+.kk-compare-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand-navy) 4%, transparent);
+}
+
+/* ==========================================================================
+   Verdict & "Best For" Section (Cili është më i mirë për çfarë)
+   ========================================================================== */
+.kk-verdict-section {
+  background: color-mix(in srgb, var(--surface) 90%, var(--surface-muted));
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+  border-radius: 24px;
+  padding: 2rem 1.75rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 12px 35px color-mix(in srgb, var(--brand-navy) 6%, transparent);
+}
+
+.kk-verdict-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 1.75rem;
+  gap: 0.6rem;
+}
+
+.kk-verdict-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #d97706;
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+}
+
+:root[data-theme='dark'] .kk-verdict-tag {
+  color: #fbbf24;
+}
+
+.kk-verdict-title {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+  font-weight: 800;
+  color: var(--heading);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.kk-verdict-subtitle {
+  font-size: 0.95rem;
+  color: var(--muted);
+  max-width: 620px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Intent Pills / Selector */
+.kk-intent-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+.kk-intent-filter-label {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.kk-intent-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.kk-intent-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.95rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kk-intent-btn:hover {
+  background: var(--surface-muted);
+  border-color: var(--accent);
+}
+
+.kk-intent-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Verdict Cards Grid */
+.kk-verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.kk-verdict-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.kk-verdict-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--brand-navy) 10%, transparent);
+}
+
+/* Spotlight winner effect when intent is selected */
+.kk-verdict-card.is-spotlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent), 0 12px 32px color-mix(in srgb, var(--accent) 18%, transparent);
+  transform: translateY(-4px);
+}
+
+/* Card tones */
+.kk-verdict-card.is-tone-gold {
+  border-top: 4px solid #f59e0b;
+}
+
+.kk-verdict-card.is-tone-emerald {
+  border-top: 4px solid #10b981;
+}
+
+.kk-verdict-card.is-tone-cyan {
+  border-top: 4px solid #06b6d4;
+}
+
+.kk-verdict-card.is-tone-purple {
+  border-top: 4px solid #8b5cf6;
+}
+
+.kk-verdict-card.is-tone-blue {
+  border-top: 4px solid var(--accent);
+}
+
+/* Card Badge */
+.kk-verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  margin-bottom: 1rem;
+  align-self: flex-start;
+}
+
+.kk-verdict-badge.is-gold {
+  background: color-mix(in srgb, #f59e0b 16%, transparent);
+  color: #b45309;
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+}
+:root[data-theme='dark'] .kk-verdict-badge.is-gold {
+  color: #fbbf24;
+}
+
+.kk-verdict-badge.is-emerald {
+  background: color-mix(in srgb, #10b981 16%, transparent);
+  color: #047857;
+  border: 1px solid color-mix(in srgb, #10b981 35%, transparent);
+}
+:root[data-theme='dark'] .kk-verdict-badge.is-emerald {
+  color: #34d399;
+}
+
+.kk-verdict-badge.is-cyan {
+  background: color-mix(in srgb, #06b6d4 16%, transparent);
+  color: #0e7490;
+  border: 1px solid color-mix(in srgb, #06b6d4 35%, transparent);
+}
+:root[data-theme='dark'] .kk-verdict-badge.is-cyan {
+  color: #38bdf8;
+}
+
+.kk-verdict-badge.is-purple {
+  background: color-mix(in srgb, #8b5cf6 16%, transparent);
+  color: #6d28d9;
+  border: 1px solid color-mix(in srgb, #8b5cf6 35%, transparent);
+}
+:root[data-theme='dark'] .kk-verdict-badge.is-purple {
+  color: #a78bfa;
+}
+
+.kk-verdict-badge.is-blue {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Card Avatar Row */
+.kk-verdict-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.kk-verdict-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 9999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.kk-verdict-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.kk-verdict-profile-name {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--heading);
+  text-decoration: none;
+  display: block;
+}
+
+.kk-verdict-profile-name:hover {
+  color: var(--accent);
+}
+
+.kk-verdict-profile-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Best for highlight box */
+.kk-verdict-bestfor-box {
+  background: var(--surface-muted);
+  border-left: 3.5px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.kk-verdict-bestfor-title {
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+
+.kk-verdict-bestfor-text {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--heading);
+  line-height: 1.35;
+}
+
+/* Scenario description */
+.kk-verdict-scenario {
+  font-size: 0.825rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+/* Strengths list */
+.kk-verdict-strengths {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1;
+}
+
+.kk-verdict-strength-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--foreground);
+  line-height: 1.35;
+}
+
+.kk-verdict-strength-icon {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* Card CTA */
+.kk-verdict-cta-wrap {
+  margin-top: auto;
+  width: 100%;
+}
+
+/* Cell verdict row badge in table */
+.kk-table-verdict-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  margin-bottom: 0.35rem;
+}
+
+.kk-compare-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.kk-compare-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.kk-compare-toggle-diff {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground);
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.85rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kk-compare-toggle-diff:hover {
+  background: var(--surface-muted);
+}
+
+.kk-compare-toggle-diff.is-active {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+:root[data-theme='dark'] .kk-compare-toggle-diff.is-active {
+  color: #fbbf24;
+}
+
+/* Grid & Table Layout */
+.kk-compare-board {
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--brand-navy) 5%, transparent);
+}
+
+.kk-compare-grid {
+  display: grid;
+  grid-template-columns: 220px repeat(auto-fit, minmax(280px, 1fr));
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .kk-compare-board {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .kk-compare-grid {
+    min-width: 760px;
+  }
+}
+
+/* Cell styles */
+.kk-compare-cell {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.kk-compare-cell:last-child {
+  border-right: none;
+}
+
+.kk-compare-cell.is-label {
+  background: color-mix(in srgb, var(--surface-muted) 75%, var(--surface));
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--heading);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  justify-content: center;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+.kk-compare-cell.is-label.is-head {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 25;
+  background: color-mix(in srgb, var(--surface-muted) 90%, var(--surface));
+  border-bottom: 2px solid var(--border);
+}
+
+.kk-compare-cell-sub {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* Column Header Cards (Sticky at Top) */
+.kk-compare-card-head {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.85rem;
+  padding: 1.75rem 1.25rem;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.kk-compare-remove-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kk-compare-remove-btn:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.kk-compare-avatar-wrap {
+  width: 80px;
+  height: 80px;
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand-navy) 12%, transparent);
+  border: 3px solid var(--surface);
+}
+
+.kk-compare-card-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--heading);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  display: block;
+}
+
+.kk-compare-card-name:hover {
+  color: var(--accent);
+}
+
+.kk-compare-card-title {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: -0.5rem;
+}
+
+.kk-compare-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.kk-compare-card-meta li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kk-compare-head-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.kk-compare-full-profile-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.4rem;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.kk-compare-full-profile-btn:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Empty / Add lawyer slot */
+.kk-compare-add-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1.25rem;
+  border-bottom: 2px dashed var(--border);
+  background: color-mix(in srgb, var(--surface-muted) 40%, transparent);
+  min-height: 280px;
+}
+
+.kk-compare-add-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  border: 2px dashed var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.kk-compare-add-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 0.25rem;
+}
+
+.kk-compare-add-text {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+/* Autocomplete Picker in Add Slot */
+.kk-compare-picker-wrap {
+  width: 100%;
+  position: relative;
+}
+
+.kk-compare-picker-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.kk-compare-picker-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.kk-compare-picker-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 0.825rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.kk-compare-picker-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.kk-compare-picker-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+  padding: 0.35rem;
+}
+
+.kk-compare-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  border: none;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.kk-compare-picker-item:hover {
+  background: var(--surface-muted);
+}
+
+.kk-compare-picker-item-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.kk-compare-picker-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.kk-compare-picker-item-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kk-compare-picker-item-sub {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Feature contents inside cells */
+.kk-compare-badges-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.kk-compare-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  font-weight: 550;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  background: var(--surface-muted);
+  color: var(--foreground);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.kk-compare-tag.is-law {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+}
+
+.kk-compare-license {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #15803d;
+  background: color-mix(in srgb, #22c55e 10%, transparent);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+
+:root[data-theme='dark'] .kk-compare-license {
+  color: #4ade80;
+}
+
+.kk-compare-exp-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--heading);
+  background: var(--surface-muted);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.kk-compare-bio-text {
+  font-size: 0.825rem;
+  color: var(--muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kk-compare-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.kk-compare-history-item {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Tariffs / Services */
+.kk-compare-starting-fee {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #059669;
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.6rem;
+}
+
+:root[data-theme='dark'] .kk-compare-starting-fee {
+  color: #34d399;
+}
+
+.kk-compare-services-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kk-compare-service-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.kk-compare-service-name {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.kk-compare-service-price {
+  font-weight: 700;
+  color: var(--heading);
+  white-space: nowrap;
+}
+
+/* Slots */
+.kk-compare-slot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  margin-bottom: 0.5rem;
+}
+
+.kk-compare-slot-status.is-open {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+:root[data-theme='dark'] .kk-compare-slot-status.is-open {
+  color: #34d399;
+}
+
+.kk-compare-slot-status.is-request {
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.kk-compare-earliest {
+  font-size: 0.825rem;
+  color: var(--foreground);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.kk-compare-slots-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.kk-compare-slot-pill {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--surface-muted);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Consultation & Modes */
+.kk-compare-mode-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.825rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.kk-compare-mode-item.is-online {
+  color: #0284c7;
+}
+
+.kk-compare-mode-item.is-physical {
+  color: #d97706;
+}
+
+:root[data-theme='dark'] .kk-compare-mode-item.is-online {
+  color: #38bdf8;
+}
+
+:root[data-theme='dark'] .kk-compare-mode-item.is-physical {
+  color: #fbbf24;
+}
+
+/* Advantage highlight */
+.kk-advantage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 20%, transparent);
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+:root[data-theme='dark'] .kk-advantage-badge {
+  color: #fbbf24;
+}
+
+/* Empty State */
+.kk-compare-empty {
+  text-align: center;
+  padding: 4rem 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--brand-navy) 4%, transparent);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kk-compare-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.kk-compare-empty-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--heading);
+  margin-bottom: 0.5rem;
+}
+
+.kk-compare-empty-text {
+  font-size: 0.95rem;
+  color: var(--muted);
+  max-width: 540px;
+  margin: 0 auto 2rem;
+  line-height: 1.5;
+}
+
+.kk-compare-empty-search-box {
+  max-width: 440px;
+  margin: 0 auto 1.75rem;
+  width: 100%;
+}
+
+.kk-compare-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.kk-compare-empty-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Fallback button styles for empty state */
+.kk-compare-empty .btn-primary,
+.kk-compare-empty-cta {
+  padding: 0.65rem 1.4rem;
+  border-radius: 9999px;
+  font-size: 0.925rem;
+  background: var(--accent, #0284c7);
+  color: #ffffff !important;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent, #0284c7) 30%, transparent);
+}
+
+.kk-compare-empty .btn-primary:hover,
+.kk-compare-empty-cta:hover {
+  background: color-mix(in srgb, var(--accent, #0284c7) 90%, black);
+  transform: translateY(-1px);
+}
+
+/* Quick Presets for Instant Comparison */
+.kk-compare-presets-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--border);
+}
+
+.kk-compare-presets-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.825rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.kk-compare-presets-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.kk-compare-preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.825rem;
+  font-weight: 600;
+  padding: 0.45rem 0.95rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.kk-compare-preset-chip:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* Mobile swipe helper */
+.kk-compare-mobile-hint {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 12px;
+  padding: 0.5rem 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .kk-compare-mobile-hint {
+    display: flex;
+  }
+}
+
+/* Bottom Actions Row */
+.kk-compare-cell-bottom-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  background: color-mix(in srgb, var(--surface-muted) 35%, var(--surface));
+}
+
+/* Suggested lawyers section */
+.kk-compare-suggested-section {
+  margin-top: 3.5rem;
+}
+
+.kk-compare-suggested-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.kk-compare-suggested-head h3 {
+  font-size: 1.2rem;
+  font-weight: 750;
+  color: var(--heading);
+  margin: 0;
+}
+
+.kk-compare-suggested-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.kk-suggested-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kk-suggested-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-navy) 8%, transparent);
+}
+
+.kk-suggested-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.kk-suggested-card-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 9999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.kk-suggested-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.kk-suggested-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kk-suggested-card-title {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kk-suggested-card-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 9999px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kk-suggested-card-add-btn:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.kk-suggested-card-add-btn.is-added {
+  border-color: #22c55e;
+  background: #22c55e;
+  color: #ffffff;
+}
+
+/* Print styles */
+@media print {
+  .kk-nav,
+  .kk-compare-toolbar,
+  .kk-compare-picker-wrap,
+  .kk-compare-remove-btn,
+  .kk-compare-suggested-section,
+  .site-footer {
+    display: none !important;
+  }
+
+  .kk-compare-board {
+    border: none;
+    box-shadow: none;
+  }
+}

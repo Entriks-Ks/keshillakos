@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Award, Building2, MapPin, Video } from 'lucide-react'
+import { Award, Building2, Check, MapPin, Scale, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
+import { useCompareLawyers } from '../hooks/useCompareLawyers'
 import { humanLabels } from '../utils/displayLabels'
 import { providerPath } from '../utils/publicPaths'
 import ProfileAvatar from './ProfileAvatar'
@@ -14,6 +15,8 @@ type Props = {
 
 export default function ExpertCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const { isLawyerSelected, toggleLawyer } = useCompareLawyers()
+  const compared = isLawyerSelected(provider.uid)
   const profilePath = providerPath(provider)
   const specialties = humanLabels(
     [...provider.specializations, ...provider.categoryLabels],
@@ -36,7 +39,32 @@ export default function ExpertCard({ provider }: Props) {
       media={<ProfileAvatar src={provider.photoUrl} seed={provider.uid} size="fill" />}
       footer={<ProviderCardActions provider={provider} profilePath={profilePath} need={provider.title || provider.name} />}
     >
-      <CardTitle to={profilePath} verified={verified ? 'I verifikuar' : undefined}>{provider.name}</CardTitle>
+      <CardTitle
+        to={profilePath}
+        verified={verified ? 'I verifikuar' : undefined}
+        action={(
+          <button
+            type="button"
+            className={`pc-compare-toggle${compared ? ' is-selected' : ''}`}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              toggleLawyer(provider.uid, {
+                name: provider.name,
+                photoUrl: provider.photoUrl,
+                title: subtitle,
+              })
+            }}
+            aria-pressed={compared}
+            title={compared ? 'Hiq nga krahasimi' : 'Shto në krahasim'}
+          >
+            {compared ? <Check size={12} aria-hidden /> : <Scale size={12} aria-hidden />}
+            <span>{compared ? 'Në krahasim' : 'Krahaso'}</span>
+          </button>
+        )}
+      >
+        {provider.name}
+      </CardTitle>
       <p className="pc-subtitle">{subtitle}</p>
 
       <CardMeta>

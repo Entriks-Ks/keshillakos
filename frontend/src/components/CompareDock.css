@@ -1,0 +1,207 @@
+.kk-compare-dock {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+  width: calc(100% - 2rem);
+  max-width: 680px;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 9999px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.05);
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  backdrop-filter: blur(12px);
+  animation: slideUp 0.25s ease-out;
+}
+
+:root[data-theme='dark'] .kk-compare-dock {
+  background: rgba(24, 24, 27, 0.92);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 35px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.kk-dock-left {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.kk-dock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--primary, #0284c7);
+  white-space: nowrap;
+}
+
+.kk-dock-badge-icon {
+  flex-shrink: 0;
+}
+
+.kk-dock-items {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.kk-dock-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.kk-dock-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: 2px solid var(--bg-surface, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  background: var(--bg-subtle, #f1f5f9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kk-dock-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  padding: 0;
+}
+
+.kk-dock-chip:hover .kk-dock-remove {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+@media (hover: none), (max-width: 768px) {
+  .kk-dock-remove {
+    opacity: 1;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.kk-dock-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  margin-left: 0.35rem;
+  font-weight: 500;
+}
+
+:root[data-theme='dark'] .kk-dock-hint {
+  color: #94a3b8;
+}
+
+.kk-dock-empty-slot {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: 1.5px dashed var(--border-color, #cbd5e1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.8rem;
+  transition: border-color 0.15s;
+}
+
+.kk-dock-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.kk-dock-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #64748b);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.kk-dock-clear-btn:hover {
+  color: #ef4444;
+}
+
+.kk-dock-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--primary, #0284c7);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.kk-dock-cta-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.kk-dock-cta-btn.is-complete {
+  background: #059669;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+@media (max-width: 768px) {
+  .kk-dock-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .kk-compare-dock {
+    bottom: 1rem;
+    padding: 0.4rem 0.6rem 0.4rem 0.75rem;
+    max-width: calc(100% - 1.5rem);
+  }
+  .kk-dock-badge span {
+    display: none;
+  }
+  .kk-dock-hint {
+    display: none;
+  }
+}
