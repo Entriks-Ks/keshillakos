@@ -29,7 +29,7 @@ export default function AboutPage() {
   }, [t, i18n.language])
 
   return (
-    <div className="tt-shell tt-home">
+    <div className="tt-shell tt-home ab-shell">
       <SiteNav />
 
       <main className="ab">

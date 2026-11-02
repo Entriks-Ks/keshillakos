@@ -69,9 +69,9 @@ function contextSentence(data: OverviewData) {
   }
   if (active > 0) {
     return uiText(
-      `${active} ${plural(active, 'shërbim aktiv shfaqet', 'shërbime aktive shfaqen')} në ofertat e KLAW.`,
-      `${active} active ${plural(active, 'service appears', 'services appear')} in KLAW offers.`,
-      `${active} aktive ${plural(active, 'Dienst erscheint', 'Dienste erscheinen')} in den Angeboten von KLAW.`,
+      `${active} ${plural(active, 'shërbim aktiv shfaqet', 'shërbime aktive shfaqen')} në ofertat e Këshillohu.`,
+      `${active} active ${plural(active, 'service appears', 'services appear')} in Keshillohu offers.`,
+      `${active} aktive ${plural(active, 'Dienst erscheint', 'Dienste erscheinen')} in den Angeboten von Keshillohu.`,
     )
   }
   if (data.services.length > 0) return uiText('Asnjë nga shërbimet e tua nuk është aktiv për momentin.', 'None of your services is active right now.', 'Keiner deiner Dienste ist gerade aktiv.')
@@ -132,7 +132,7 @@ function ActivityCard({ data, loading, publicPath }: { data: OverviewData | null
             text={
               hasServices
                 ? 'Kërkesat nga klientët dhe bisedat me ta do të shfaqen këtu sapo të vijnë.'
-                : 'Kërkesat nga klientët vijnë pasi të publikosh një shërbim në ofertat e KLAW.'
+                : 'Kërkesat nga klientët vijnë pasi të publikosh një shërbim në ofertat e Këshillohu.'
             }
             action={
               hasServices ? (
@@ -170,7 +170,7 @@ function ServicesCard({ services, loading }: { services: ServiceItem[]; loading:
         ) : services.length === 0 ? (
           <EmptyBlock
             title="Nuk ke publikuar shërbime ende"
-            text="Krijo shërbimin e parë. Shërbimet aktive shfaqen në ofertat e KLAW dhe klientët të dërgojnë kërkesa."
+            text="Krijo shërbimin e parë. Shërbimet aktive shfaqen në ofertat e Këshillohu dhe klientët të dërgojnë kërkesa."
             action={
               <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Shto shërbim

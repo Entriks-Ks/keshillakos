@@ -11,8 +11,11 @@
   color-scheme: light;
 
   /* Brand identity (custom) */
-  --brand-navy: #050a44;
+  --brand-navy: #11204f;
   --ink-secondary: #2c2e3a;
+  --logo-symbol-color: #1e3f9f;
+  --logo-dot-color: #e7b24a;
+  --logo-text-color: #11204f;
 
   /* Base */
   --background: #ffffff;
@@ -84,6 +87,9 @@
   --brand-navy: #050a44;
   --heading: #f7f8ff;
   --ink-secondary: #c5cbe2;
+  --logo-symbol-color: #ffffff;
+  --logo-dot-color: #e7b24a;
+  --logo-text-color: #ffffff;
 
   --background: #090d18;
   --foreground: #f5f7ff;
@@ -208,11 +214,28 @@ h1 {
 
 .brand {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1;
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--heading);
+}
+
+.kk-logo-symbol {
+  fill: var(--logo-symbol-color, #1e3f9f);
+  transition: fill 0.2s ease;
+}
+
+[data-theme="dark"] .kk-logo-symbol {
+  fill: #ffffff;
+}
+
+.kk-logo-dot {
+  fill: var(--logo-dot-color, #e7b24a);
 }
 
 .brand-link {

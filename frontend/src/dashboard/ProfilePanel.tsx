@@ -315,7 +315,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
   if (editing) {
     return (
       <section className="uo up">
-        <header className="uo-head"><div className="uo-head-copy"><h1>Ndrysho profilin</h1><p>Përditëso të dhënat e kompanisë që shfaqen në KLAW.</p></div></header>
+        <header className="uo-head"><div className="uo-head-copy"><h1>Ndrysho profilin</h1><p>Përditëso të dhënat e kompanisë që shfaqen në Këshillohu.</p></div></header>
         <form className="up-form" onSubmit={onSave}>
           <Card className="uo-card">
             <SectionHead title="Logoja e kompanisë" />
@@ -362,7 +362,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
       <header className="uo-head">
         <div className="uo-head-copy">
           <h1>Profili</h1>
-          <p>Menaxho të dhënat e kompanisë që shfaqen në KLAW.</p>
+          <p>Menaxho të dhënat e kompanisë që shfaqen në Këshillohu.</p>
         </div>
         {user ? <Link to={`/providers/${user.uid}`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
           <ExternalLink size={16} aria-hidden /> Shiko profilin publik

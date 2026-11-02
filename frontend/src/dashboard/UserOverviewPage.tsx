@@ -201,7 +201,7 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
         ) : list.length === 0 ? (
           <EmptyBlock
             title="Nuk ke publikuar shërbime ende"
-            text="Shërbimet e publikuara shfaqen në ofertat e KLAW."
+            text="Shërbimet e publikuara shfaqen në ofertat e Këshillohu."
             action={
               <Button variant="outline" size="sm" isDisabled={switching} onPress={() => void openServices()}>
                 Shto shërbim

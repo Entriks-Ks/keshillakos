@@ -1,10 +1,11 @@
 import MessageNavButton from '../chat/MessageNavButton'
 import MessageUnreadBadge from '../chat/MessageUnreadBadge'
-import { useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type PointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { Button, Drawer, Dropdown, Label, Separator, buttonVariants } from '@heroui/react'
 import {
+  ArrowRight,
   Briefcase,
   ChevronDown,
   LayoutDashboard,
@@ -12,6 +13,7 @@ import {
   Menu,
   MessageCircle,
   Settings,
+  Sparkles,
   UserRound,
   Users,
   type LucideIcon,
@@ -21,6 +23,7 @@ import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useAuth } from '../auth/AuthContext'
 import { useCompareLawyers } from '../hooks/useCompareLawyers'
+import { LogoMark } from './Logo'
 import { ROLE_LABELS } from '../dashboard/nav'
 import i18n from '../i18n'
 import { resolveActiveContext } from '../utils/dashboardPath'
@@ -41,6 +44,67 @@ const ACCOUNT_ICONS: Record<AccountMenuId, LucideIcon> = {
   team: Users,
   messages: MessageCircle,
   settings: Settings,
+}
+
+const SCROLL_THRESHOLD = 12
+
+type IndicatorState = { x: number; width: number; visible: boolean; instant: boolean }
+
+function useScrolled() {
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > SCROLL_THRESHOLD)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
+
+  return scrolled
+}
+
+/** Pill that glides under the hovered/focused link and rests on the active one. */
+function useLinkIndicator(resetKey: string) {
+  const listRef = useRef<HTMLUListElement>(null)
+  const [indicator, setIndicator] = useState<IndicatorState>({ x: 0, width: 0, visible: false, instant: true })
+
+  const moveTo = useCallback((link: HTMLElement | null) => {
+    // Links collapse to zero width while the mobile layout hides them; treat that as "no target".
+    const target = link && link.dataset.indicator !== 'off' && link.offsetWidth > 0 ? link : null
+    const x = target?.offsetLeft ?? 0
+    const width = target?.offsetWidth ?? 0
+    setIndicator((prev) => {
+      if (!target) return prev.visible ? { ...prev, visible: false } : prev
+      return { x, width, visible: true, instant: !prev.visible }
+    })
+  }, [])
+
+  const reset = useCallback(() => {
+    moveTo(listRef.current?.querySelector<HTMLElement>('.kk-nav-link[aria-current="page"]') ?? null)
+  }, [moveTo])
+
+  useLayoutEffect(() => {
+    reset()
+    const list = listRef.current
+    const observer = list && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(reset) : null
+    if (list) observer?.observe(list)
+    window.addEventListener('resize', reset)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', reset)
+    }
+  }, [reset, resetKey])
+
+  const track = (event: PointerEvent<HTMLElement> | FocusEvent<HTMLElement>) => {
+    const link = (event.target as HTMLElement).closest<HTMLElement>('.kk-nav-link')
+    if (link) moveTo(link)
+  }
+
+  return {
+    listRef,
+    indicator,
+    listProps: { onPointerOver: track, onFocus: track, onPointerLeave: reset, onBlur: reset },
+  }
 }
 
 function roleLabel(user: AuthUser) {
@@ -105,6 +169,10 @@ export default function SiteNav() {
   const { count: compareCount } = useCompareLawyers()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const scrolled = useScrolled()
+  const { listRef, indicator, listProps } = useLinkIndicator(
+    `${location.pathname}${location.search}|${compareCount}|${i18n.language}`,
+  )
   const active = activeMarketplaceLink(location.pathname, location.search)
   const accountItems = user ? getAccountMenu(user) : []
   const closeMenu = () => setMenuOpen(false)
@@ -115,15 +183,24 @@ export default function SiteNav() {
   }
 
   return (
-    <header className="kk-nav">
+    <header className={scrolled ? 'kk-nav is-scrolled' : 'kk-nav'}>
       <div className="tt-nav-inner kk-nav-inner">
         <Link to="/" className="kk-nav-brand" aria-label={t('nav.home')}>
-          <span className="kk-nav-mark" aria-hidden>K</span>
-          <span>KLAW</span>
+          <span className="kk-nav-brand-mark">
+            <LogoMark size={34} />
+          </span>
+          <span>keshillohu</span>
         </Link>
 
         <nav className="kk-nav-center" aria-label={t('nav.main')}>
-          <ul className="kk-nav-links">
+          <ul ref={listRef} className="kk-nav-links" {...listProps}>
+            <li
+              className="kk-nav-indicator"
+              aria-hidden="true"
+              data-visible={indicator.visible || undefined}
+              data-instant={indicator.instant || undefined}
+              style={{ width: indicator.width, transform: `translateX(${indicator.x}px)` }}
+            />
             <li>
               <Link
                 to="/ofertat"
@@ -161,13 +238,15 @@ export default function SiteNav() {
                 {t('nav.about')}
               </Link>
             </li>
-            <li>
+            <li className="kk-nav-ai-item">
               <Link
                 to="/ai-asistenti"
-                className="kk-nav-link"
+                className="kk-nav-link kk-nav-link-ai"
+                data-indicator="off"
                 aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
               >
-                <span>Këshilla AI</span>
+                <Sparkles size={14} className="kk-nav-ai-icon" aria-hidden />
+                <span className="kk-nav-ai-label">Këshilla AI</span>
               </Link>
             </li>
           </ul>
@@ -178,6 +257,9 @@ export default function SiteNav() {
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
+
+          <span className="kk-nav-divider" aria-hidden />
+
           {loading ? (
             <span className="kk-nav-pending" aria-hidden />
           ) : user ? (
@@ -188,11 +270,12 @@ export default function SiteNav() {
             </>
           ) : (
             <div className="kk-nav-guest">
-              <Link to="/login" className={`${buttonVariants({ variant: 'ghost', size: 'sm' })} kk-nav-login`}>
+              <Link to="/login" className="kk-nav-login">
                 {t('nav.login')}
               </Link>
-              <Link to="/register" className={`${buttonVariants({ variant: 'primary', size: 'sm' })} kk-nav-cta`}>
-                {t('nav.register')}
+              <Link to="/register" className="kk-nav-cta">
+                <span>{t('nav.register')}</span>
+                <ArrowRight size={15} aria-hidden className="kk-nav-cta-arrow" />
               </Link>
             </div>
           )}
@@ -213,8 +296,8 @@ export default function SiteNav() {
                 <Drawer.Dialog aria-label={t('nav.main')} className="kk-nav-drawer-dialog">
                   <Drawer.Header className="kk-nav-drawer-head">
                     <Link to="/" className="kk-nav-brand" onClick={closeMenu}>
-                      <span className="kk-nav-mark" aria-hidden>K</span>
-                      <span>KLAW</span>
+                      <LogoMark size={34} />
+                      <span>keshillohu</span>
                     </Link>
                     <Drawer.CloseTrigger aria-label={t('nav.close')} />
                   </Drawer.Header>
@@ -276,10 +359,11 @@ export default function SiteNav() {
                         <li>
                           <Link
                             to="/ai-asistenti"
-                            className="kk-nav-drawer-link"
+                            className="kk-nav-drawer-link kk-nav-drawer-link-ai"
                             aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
+                            <Sparkles size={18} aria-hidden />
                             <span>Këshilla AI</span>
                           </Link>
                         </li>

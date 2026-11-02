@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { useAuth } from '../auth/AuthContext'
 import AuthShowcase from '../components/AuthShowcase'
 import GoogleAuthButton from '../components/GoogleAuthButton'
+import { LogoMark } from '../components/Logo'
 import { getErrorMessage } from '../utils/errors'
 import './LoginPage.css'
 
@@ -57,8 +58,9 @@ export default function LoginPage() {
       <div className="login-split">
         <AuthShowcase />
         <div className="auth-panel">
-        <Link to="/" className="brand brand-link">
-          KLAW
+        <Link to="/" className="brand brand-link" aria-label="keshillohu">
+          <LogoMark size={32} />
+          <span>keshillohu</span>
         </Link>
         <h1>{t('auth.welcome')}</h1>
         <p className="auth-lead">{t('auth.loginLead')}</p>

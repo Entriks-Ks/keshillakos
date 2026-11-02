@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -23,6 +23,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  UserPlus,
   Video,
   X,
 } from 'lucide-react'
@@ -70,6 +71,7 @@ export default function CompareLawyersPage() {
   const { t } = useTranslation()
   const {
     selectedUids,
+    metaMap,
     addLawyer,
     removeLawyer,
     clearComparison,
@@ -83,7 +85,7 @@ export default function CompareLawyersPage() {
     const raw = params.get('uids')
     if (raw && raw.trim().length > 0) return true
     try {
-      const stored = localStorage.getItem('klaw_compare_lawyers')
+      const stored = localStorage.getItem('keshillohu_compare_lawyers') || localStorage.getItem('klaw_compare_lawyers')
       if (stored) {
         const parsed = JSON.parse(stored)
         return Array.isArray(parsed) && parsed.length > 0
@@ -132,6 +134,7 @@ export default function CompareLawyersPage() {
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
+  const pickerInputRef = useRef<HTMLInputElement>(null)
 
   // Complete and clean clear function
   const handleClear = useCallback(() => {
@@ -410,96 +413,226 @@ export default function CompareLawyersPage() {
     [allExperts, setComparison, t],
   )
 
-  const showAddSlot = items.length < MAX_COMPARE_LAWYERS
+  const hasCandidates = allExperts.some((exp) => !selectedUids.includes(exp.uid))
+  const canAddMore = items.length > 0 && items.length < MAX_COMPARE_LAWYERS && hasCandidates
+  const remainingSlots = MAX_COMPARE_LAWYERS - selectedUids.length
+
+  function focusPicker() {
+    const input = pickerInputRef.current
+    if (!input) return
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    input.focus({ preventScroll: true })
+    setPickerOpen(true)
+  }
+
+  function pickLawyer(lawyer: MarketplaceProvider) {
+    addLawyer(lawyer.uid, {
+      name: lawyer.name,
+      photoUrl: lawyer.photoUrl,
+      title: lawyer.title,
+    })
+    setPickerQuery('')
+    setPickerOpen(false)
+  }
+
+  // Rendered either in the empty state or in the "add one more" strip, never both.
+  const picker = (
+    <div className="kk-compare-picker-wrap" ref={pickerRef}>
+      <div className="kk-compare-picker-input-wrap">
+        <Search size={16} className="kk-compare-picker-search-icon" aria-hidden />
+        <input
+          ref={pickerInputRef}
+          type="text"
+          className="kk-compare-picker-input"
+          placeholder={t('compare.searchPlaceholder', 'Kërko avokat me emër, qytet apo lëmi...')}
+          value={pickerQuery}
+          onChange={(e) => {
+            setPickerQuery(e.target.value)
+            setPickerOpen(true)
+          }}
+          onFocus={() => setPickerOpen(true)}
+        />
+      </div>
+
+      {pickerOpen && pickerCandidates.length > 0 ? (
+        <div className="kk-compare-picker-results">
+          {pickerCandidates.map((lawyer) => (
+            <button
+              key={lawyer.uid}
+              type="button"
+              className="kk-compare-picker-item"
+              onClick={() => pickLawyer(lawyer)}
+            >
+              <div className="kk-compare-picker-item-avatar">
+                <ProfileAvatar src={lawyer.photoUrl} seed={lawyer.uid} size="sm" />
+              </div>
+              <div className="kk-compare-picker-item-info">
+                <div className="kk-compare-picker-item-name">{lawyer.name}</div>
+                <div className="kk-compare-picker-item-sub">
+                  {lawyer.title || lawyer.specializations[0] || 'Avokat'}
+                  {lawyer.location ? ` · ${lawyer.location}` : ''}
+                </div>
+              </div>
+              <Plus size={16} className="kk-compare-picker-item-plus" aria-hidden />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
 
   return (
     <div className="tt-shell kk-compare-shell of-marketplace kk-compare-page">
       <SiteNav />
 
       <main className="kk-compare-main">
-        <div className="kk-compare-container">
-          {/* Top navigation & Breadcrumbs */}
-          <div className="kk-compare-top-nav">
-            <Link to="/ofertat" className="kk-compare-back-btn">
-              <ArrowLeft size={16} aria-hidden />
-              <span>{t('compare.backToOffers', 'Kthehu tek Ofertat')}</span>
-            </Link>
-            <nav className="kk-compare-breadcrumbs" aria-label="Breadcrumbs">
-              <Link to="/">Ballina</Link>
-              <span className="sep">/</span>
-              <Link to="/ofertat">Ofertat</Link>
-              <span className="sep">/</span>
-              <span className="current">Krahaso Avokatët</span>
-            </nav>
-          </div>
-
-          {/* Header */}
-          <header className="kk-compare-header">
-            <div className="kk-compare-badge">
-              <Scale size={16} aria-hidden />
-              <span>{t('compare.dockTitle', 'Krahasimi i Avokatëve')}</span>
+        <section className="kk-cmp-hero">
+          <div className="kk-cmp-hero-glow" aria-hidden />
+          <div className="kk-compare-container">
+            {/* Top navigation & Breadcrumbs */}
+            <div className="kk-compare-top-nav">
+              <Link to="/ofertat" className="kk-compare-back-btn">
+                <ArrowLeft size={16} aria-hidden />
+                <span>{t('compare.backToOffers', 'Kthehu tek Ofertat')}</span>
+              </Link>
+              <nav className="kk-compare-breadcrumbs" aria-label="Breadcrumbs">
+                <Link to="/">Ballina</Link>
+                <span className="sep">/</span>
+                <Link to="/ofertat">Ofertat</Link>
+                <span className="sep">/</span>
+                <span className="current">Krahaso Avokatët</span>
+              </nav>
             </div>
-            <h1 className="kk-compare-title">{t('compare.title', 'Krahaso Avokatët')}</h1>
-            <p className="kk-compare-lead">
-              {t(
-                'compare.lead',
-                'Klienti zgjedh deri në tre avokatë dhe i krahason në një ekran të vetëm: specializimi, përvoja e deklaruar, tarifat e publikuara, terminët e lirë dhe konsultimi online.',
-              )}
-            </p>
-          </header>
 
-          {/* Toolbar */}
-          {items.length > 0 ? (
-            <>
+            <div className="kk-cmp-hero-grid">
+              <header className="kk-compare-header">
+                <span className="kk-compare-badge">
+                  <Scale size={14} aria-hidden />
+                  <span>{t('compare.kicker', 'Krahasim krah për krah')}</span>
+                </span>
+                <h1 className="kk-compare-title">{t('compare.title', 'Krahaso Avokatët')}</h1>
+                <p className="kk-compare-lead">
+                  {t(
+                    'compare.lead',
+                    'Klienti zgjedh deri në tre avokatë dhe i krahason në një ekran të vetëm: specializimi, përvoja e deklaruar, tarifat e publikuara, terminët e lirë dhe konsultimi online.',
+                  )}
+                </p>
+              </header>
+
+              {/* Selection status: three slots, filled or open */}
+              <div className="kk-cmp-slots">
+                <div className="kk-cmp-slots-head">
+                  <span className="kk-cmp-slots-count">
+                    <strong>{selectedUids.length}</strong>/{MAX_COMPARE_LAWYERS}
+                  </span>
+                  <span className="kk-cmp-slots-label">
+                    {remainingSlots > 0
+                      ? t('compare.slotsLeft', {
+                        count: remainingSlots,
+                        defaultValue: 'Edhe {{count}} vend i lirë',
+                      })
+                      : t('compare.slotsFull', 'Krahasimi është i plotë')}
+                  </span>
+                </div>
+                <div className="kk-cmp-slots-bar" aria-hidden>
+                  <span style={{ width: `${(selectedUids.length / MAX_COMPARE_LAWYERS) * 100}%` }} />
+                </div>
+                <ul className="kk-cmp-slots-row">
+                  {Array.from({ length: MAX_COMPARE_LAWYERS }, (_, index) => {
+                    const uid = selectedUids[index]
+                    if (!uid) {
+                      const addLabel = t('compare.addSlotPrompt', 'Shto avokat për krahasim')
+                      return (
+                        <li key={`empty-${index}`} className="kk-cmp-slot is-empty">
+                          {hasCandidates ? (
+                            <button
+                              type="button"
+                              className="kk-cmp-slot-add"
+                              onClick={focusPicker}
+                              aria-label={addLabel}
+                              title={addLabel}
+                            >
+                              <Plus size={20} aria-hidden />
+                            </button>
+                          ) : (
+                            <Link to="/ofertat?tab=experts" className="kk-cmp-slot-add" aria-label={addLabel} title={addLabel}>
+                              <Plus size={20} aria-hidden />
+                            </Link>
+                          )}
+                          <span className="kk-cmp-slot-name">{t('compare.addShort', 'Shto')}</span>
+                        </li>
+                      )
+                    }
+                    const item = items.find((entry) => entry.uid === uid)
+                    const meta = metaMap[uid]
+                    const name = item?.provider.name || meta?.name || 'Avokat'
+                    return (
+                      <li key={uid} className="kk-cmp-slot is-filled" title={name}>
+                        <span className="kk-cmp-slot-avatar">
+                          <ProfileAvatar
+                            src={item?.profile?.photoUrl || item?.provider.profilePhoto || meta?.photoUrl}
+                            seed={uid}
+                            size="fill"
+                            alt=""
+                          />
+                        </span>
+                        <span className="kk-cmp-slot-name">{name.split(' ')[0]}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            </div>
+
+            {/* Toolbar */}
+            {items.length > 0 ? (
               <div className="kk-compare-toolbar">
                 <div className="kk-compare-toolbar-left">
-                  <span className="muted text-sm">
-                    <strong>{items.length}</strong> / {MAX_COMPARE_LAWYERS} {t('compare.dockTitle', 'avokatë të zgjedhur')}
-                  </span>
                   {items.length >= 2 ? (
                     <button
                       type="button"
+                      role="switch"
+                      aria-checked={highlightDiff}
                       className={`kk-compare-toggle-diff${highlightDiff ? ' is-active' : ''}`}
                       onClick={() => setHighlightDiff(!highlightDiff)}
                     >
-                      <Sparkles size={14} aria-hidden />
+                      <Sparkles size={15} aria-hidden />
                       <span>{t('compare.highlightDiff', 'Evidento përparësitë')}</span>
+                      <span className="kk-compare-switch" aria-hidden />
                     </button>
-                  ) : null}
+                  ) : (
+                    <span className="kk-compare-toolbar-hint">
+                      {t('compare.dockHint1', 'Zgjidhni edhe 1-2 avokatë për krahasim')}
+                    </span>
+                  )}
                 </div>
 
                 <div className="kk-compare-toolbar-right">
-                  <Button variant="outline" size="sm" onPress={handlePrint} className="hidden sm:inline-flex">
+                  <Button variant="outline" size="sm" onPress={handlePrint} className="kk-cmp-tool-btn kk-cmp-print-btn">
                     <Printer size={15} aria-hidden />
                     <span>{t('compare.print', 'Printo / Ruaj PDF')}</span>
                   </Button>
-                  <Button variant="outline" size="sm" onPress={handleShare}>
+                  <Button variant="outline" size="sm" onPress={handleShare} className="kk-cmp-tool-btn">
                     <Share2 size={15} aria-hidden />
                     <span>{t('compare.copyLink', 'Kopjo Lidhjen')}</span>
                   </Button>
-                  <Button variant="ghost" size="sm" onPress={handleClear}>
+                  <Button variant="ghost" size="sm" onPress={handleClear} className="kk-cmp-tool-btn is-danger">
                     <Trash2 size={15} aria-hidden />
                     <span>{t('compare.clear', 'Pastro')}</span>
                   </Button>
                 </div>
               </div>
+            ) : null}
+          </div>
+        </section>
 
-              {/* Mobile swipe helper */}
-              <div className="kk-compare-mobile-hint">
-                <ArrowLeftRight size={14} aria-hidden />
-                <span>{t('compare.mobileSwipeHint', 'Rrëshqitni anash për të parë të gjithë avokatët')}</span>
-              </div>
-            </>
-          ) : null}
-
+        <div className="kk-compare-container kk-cmp-content">
           {/* Loading Skeleton */}
           {loading && selectedUids.length > 0 ? (
             <div className="kk-compare-board">
               <div
                 className="kk-compare-grid"
-                style={{
-                  gridTemplateColumns: `220px repeat(${Math.max(1, selectedUids.length)}, minmax(280px, 1fr))`,
-                }}
+                style={{ '--cols': Math.max(1, selectedUids.length) } as CSSProperties}
               >
                 <div className="kk-compare-cell is-label">
                   <span>Duke u ngarkuar...</span>
@@ -536,7 +669,7 @@ export default function CompareLawyersPage() {
             /* Empty State */
             <div className="kk-compare-empty">
               <div className="kk-compare-empty-icon" aria-hidden>
-                <Scale size={36} />
+                <Scale size={32} />
               </div>
               <h2 className="kk-compare-empty-title">
                 {t('compare.emptyTitle', 'Zgjidhni avokatë për t\'i krahasuar')}
@@ -548,61 +681,11 @@ export default function CompareLawyersPage() {
                 )}
               </p>
 
-              <div className="kk-compare-empty-search-box">
-                <div className="kk-compare-picker-wrap" ref={pickerRef}>
-                  <div className="kk-compare-picker-input-wrap">
-                    <Search size={15} className="kk-compare-picker-search-icon" aria-hidden />
-                    <input
-                      type="text"
-                      className="kk-compare-picker-input"
-                      placeholder={t('compare.searchPlaceholder', 'Kërko avokat me emër, qytet apo lëmi...')}
-                      value={pickerQuery}
-                      onChange={(e) => {
-                        setPickerQuery(e.target.value)
-                        setPickerOpen(true)
-                      }}
-                      onFocus={() => setPickerOpen(true)}
-                    />
-                  </div>
-
-                  {pickerOpen && pickerCandidates.length > 0 ? (
-                    <div className="kk-compare-picker-results">
-                      {pickerCandidates.map((lawyer) => (
-                        <button
-                          key={lawyer.uid}
-                          type="button"
-                          className="kk-compare-picker-item"
-                          onClick={() => {
-                            addLawyer(lawyer.uid, {
-                              name: lawyer.name,
-                              photoUrl: lawyer.photoUrl,
-                              title: lawyer.title,
-                            })
-                            setPickerQuery('')
-                            setPickerOpen(false)
-                          }}
-                        >
-                          <div className="kk-compare-picker-item-avatar">
-                            <ProfileAvatar src={lawyer.photoUrl} seed={lawyer.uid} size="sm" />
-                          </div>
-                          <div className="kk-compare-picker-item-info">
-                            <div className="kk-compare-picker-item-name">{lawyer.name}</div>
-                            <div className="kk-compare-picker-item-sub">
-                              {lawyer.title || lawyer.specializations[0] || 'Avokat'}
-                              {lawyer.location ? ` · ${lawyer.location}` : ''}
-                            </div>
-                          </div>
-                          <Plus size={16} className="text-primary shrink-0" aria-hidden />
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <div className="kk-compare-empty-search-box">{picker}</div>
 
               <div className="kk-compare-empty-actions">
                 <Link
-                  to="/ofertat"
+                  to="/ofertat?tab=experts"
                   className={`${buttonVariants({ variant: 'primary', size: 'md' })} kk-compare-empty-cta`}
                 >
                   <Search size={16} aria-hidden />
@@ -614,7 +697,7 @@ export default function CompareLawyersPage() {
               {allExperts.length > 0 ? (
                 <div className="kk-compare-presets-wrap">
                   <span className="kk-compare-presets-title">
-                    <Sparkles size={14} className="text-amber-500" aria-hidden />
+                    <Sparkles size={14} aria-hidden />
                     {t('compare.quickPresetsTitle', 'Kombinime të shpejta të rekomanduara:')}
                   </span>
                   <div className="kk-compare-presets-chips">
@@ -624,7 +707,8 @@ export default function CompareLawyersPage() {
                       onClick={() => loadPreset('experienced')}
                       title="Krahaso 3 avokatë me përvojën më të madhe"
                     >
-                      🏆 Më me Përvojë
+                      <Award size={15} aria-hidden />
+                      Më me Përvojë
                     </button>
                     <button
                       type="button"
@@ -632,7 +716,8 @@ export default function CompareLawyersPage() {
                       onClick={() => loadPreset('online')}
                       title="Krahaso avokatë me konsultim online dhe orare fleksibile"
                     >
-                      🌐 Konsultim Online & Diasporë
+                      <Globe size={15} aria-hidden />
+                      Konsultim Online & Diasporë
                     </button>
                     <button
                       type="button"
@@ -640,7 +725,8 @@ export default function CompareLawyersPage() {
                       onClick={() => loadPreset('topRated')}
                       title="Krahaso avokatët me vlerësimet më të larta"
                     >
-                      ★ Më të Vlerësuarit
+                      <Star size={15} aria-hidden />
+                      Më të Vlerësuarit
                     </button>
                   </div>
                 </div>
@@ -648,6 +734,46 @@ export default function CompareLawyersPage() {
             </div>
           ) : (
             <>
+              {/* Room for one more: compact strip instead of an empty table column */}
+              {canAddMore ? (
+                <section className="kk-cmp-add" aria-label={t('compare.addSlotPrompt', 'Shto avokat për krahasim')}>
+                  <div className="kk-cmp-add-copy">
+                    <span className="kk-cmp-add-icon" aria-hidden>
+                      <UserPlus size={18} />
+                    </span>
+                    <div>
+                      <strong>
+                        {t('compare.addMore', {
+                          count: MAX_COMPARE_LAWYERS - items.length,
+                          defaultValue: 'Shto edhe {{count}} avokat',
+                        })}
+                      </strong>
+                      <span>{t('compare.addHint', 'Krahasimi është më i plotë me 3 avokatë.')}</span>
+                    </div>
+                  </div>
+                  <div className="kk-cmp-add-picker">{picker}</div>
+                  {suggestedLawyers.length > 0 ? (
+                    <div className="kk-cmp-add-suggest" aria-label={t('compare.suggestedLawyers', 'Avokatë të sugjeruar për krahasim')}>
+                      {suggestedLawyers.map((lawyer) => (
+                        <button
+                          key={lawyer.uid}
+                          type="button"
+                          className="kk-cmp-suggest-chip"
+                          onClick={() => pickLawyer(lawyer)}
+                          title={`${t('compare.addLawyer', 'Shto avokat')}: ${lawyer.name}`}
+                        >
+                          <span className="kk-cmp-suggest-avatar">
+                            <ProfileAvatar src={lawyer.photoUrl} seed={lawyer.uid} size="fill" alt="" />
+                          </span>
+                          <span className="kk-cmp-suggest-name">{lawyer.name}</span>
+                          <Plus size={14} aria-hidden />
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               {/* Verdict Section: Cili është më i mirë për çfarë */}
               <section className="kk-verdict-section" aria-labelledby="verdict-heading">
                 <div className="kk-verdict-head">
@@ -795,19 +921,23 @@ export default function CompareLawyersPage() {
                 </div>
               </section>
 
+              {/* Mobile swipe helper */}
+              <div className="kk-compare-mobile-hint">
+                <ArrowLeftRight size={14} aria-hidden />
+                <span>{t('compare.mobileSwipeHint', 'Rrëshqitni anash për të parë të gjithë avokatët')}</span>
+              </div>
+
               {/* Comparison Table / Matrix */}
               <div className="kk-compare-board" role="region" aria-label="Tabela krahasuese">
                 <div
                   className="kk-compare-grid"
-                  style={{
-                    gridTemplateColumns: `220px repeat(${Math.max(1, items.length + (showAddSlot ? 1 : 0))}, minmax(280px, 1fr))`,
-                  }}
+                  style={{ '--cols': Math.max(1, items.length) } as CSSProperties}
                 >
                   {/* 1. Header Row (Avatars, Names, Actions) */}
                   <div className="kk-compare-cell is-label is-head">
-                    <span>{t('compare.dockTitle', 'Avokatët')}</span>
+                    <span>{t('compare.columnTitle', 'Avokatët')}</span>
                     <span className="kk-compare-cell-sub">
-                      {items.length} {t('compare.dockCount', 'të zgjedhur')}
+                      {t('compare.dockCount', { count: items.length, defaultValue: '{{count}}/3 të zgjedhur' })}
                     </span>
                   </div>
 
@@ -820,7 +950,7 @@ export default function CompareLawyersPage() {
                     const v = verdicts[item.uid]
 
                     return (
-                      <div key={item.uid} className={`kk-compare-card-head${isSpotlighted(item.uid) ? ' bg-accent/5' : ''}`}>
+                      <div key={item.uid} className={`kk-compare-card-head${isSpotlighted(item.uid) ? ' is-spotlight' : ''}`}>
                         <button
                           type="button"
                           className="kk-compare-remove-btn"
@@ -916,70 +1046,6 @@ export default function CompareLawyersPage() {
                     )
                   })}
 
-                  {/* Optional Add Lawyer Slot in Header */}
-                  {showAddSlot ? (
-                    <div className="kk-compare-add-slot">
-                      <div className="kk-compare-add-icon">
-                        <Plus size={24} aria-hidden />
-                      </div>
-                      <div className="kk-compare-add-title">
-                        {t('compare.addSlotPrompt', 'Shto avokat për krahasim')}
-                      </div>
-                      <div className="kk-compare-add-text">
-                        Maksimumi 3 avokatë
-                      </div>
-
-                      <div className="kk-compare-picker-wrap" ref={pickerRef}>
-                        <div className="kk-compare-picker-input-wrap">
-                          <Search size={14} className="kk-compare-picker-search-icon" aria-hidden />
-                          <input
-                            type="text"
-                            className="kk-compare-picker-input"
-                            placeholder={t('compare.searchPlaceholder', 'Kërko avokat...')}
-                            value={pickerQuery}
-                            onChange={(e) => {
-                              setPickerQuery(e.target.value)
-                              setPickerOpen(true)
-                            }}
-                            onFocus={() => setPickerOpen(true)}
-                          />
-                        </div>
-
-                        {pickerOpen && pickerCandidates.length > 0 ? (
-                          <div className="kk-compare-picker-results">
-                            {pickerCandidates.map((lawyer) => (
-                              <button
-                                key={lawyer.uid}
-                                type="button"
-                                className="kk-compare-picker-item"
-                                onClick={() => {
-                                  addLawyer(lawyer.uid, {
-                                    name: lawyer.name,
-                                    photoUrl: lawyer.photoUrl,
-                                    title: lawyer.title,
-                                  })
-                                  setPickerQuery('')
-                                  setPickerOpen(false)
-                                }}
-                              >
-                                <div className="kk-compare-picker-item-avatar">
-                                  <ProfileAvatar src={lawyer.photoUrl} seed={lawyer.uid} size="sm" />
-                                </div>
-                                <div className="kk-compare-picker-item-info">
-                                  <div className="kk-compare-picker-item-name">{lawyer.name}</div>
-                                  <div className="kk-compare-picker-item-sub">
-                                    {lawyer.title || lawyer.specializations[0] || 'Avokat'}
-                                  </div>
-                                </div>
-                                <Plus size={15} className="text-primary shrink-0" aria-hidden />
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-
                   {/* 1.1 Row: Verdikti kryesor / Më i miri për */}
                   <div className="kk-compare-cell is-label">
                     <div className="flex items-center gap-1.5">
@@ -999,7 +1065,7 @@ export default function CompareLawyersPage() {
                     return (
                       <div
                         key={`v-${item.uid}`}
-                        className={`kk-compare-cell${isWinner ? ' bg-accent/5' : ''}`}
+                        className={`kk-compare-cell${isWinner ? ' is-spotlight' : ''}`}
                       >
                         <div className={`kk-table-verdict-pill is-${v.badge.tone}`}>
                           {renderBadgeIcon(v.badge.iconName)}
@@ -1011,7 +1077,6 @@ export default function CompareLawyersPage() {
                     )
                   })}
 
-                  {showAddSlot ? <div className="kk-compare-cell muted text-xs text-center">—</div> : null}
 
                 {/* 2. Row: Specializimi (Specialization) */}
                 <div className="kk-compare-cell is-label">
@@ -1053,7 +1118,6 @@ export default function CompareLawyersPage() {
                   )
                 })}
 
-                {showAddSlot ? <div className="kk-compare-cell muted text-xs text-center">—</div> : null}
 
                 {/* 3. Row: Përvoja e deklaruar (Declared Experience) */}
                 <div className="kk-compare-cell is-label">
@@ -1122,7 +1186,6 @@ export default function CompareLawyersPage() {
                   )
                 })}
 
-                {showAddSlot ? <div className="kk-compare-cell muted text-xs text-center">—</div> : null}
 
                 {/* 4. Row: Tarifat e publikuara (Published Fees) */}
                 <div className="kk-compare-cell is-label">
@@ -1185,7 +1248,6 @@ export default function CompareLawyersPage() {
                   )
                 })}
 
-                {showAddSlot ? <div className="kk-compare-cell muted text-xs text-center">—</div> : null}
 
                 {/* 5. Row: Terminët e lirë (Free Slots & Availability) */}
                 <div className="kk-compare-cell is-label">
@@ -1250,7 +1312,6 @@ export default function CompareLawyersPage() {
                   )
                 })}
 
-                {showAddSlot ? <div className="kk-compare-cell muted text-xs text-center">—</div> : null}
 
                 {/* 6. Row: Gjuha dhe konsultimi online (Language & Online Consultation) */}
                 <div className="kk-compare-cell is-label">
@@ -1307,7 +1368,6 @@ export default function CompareLawyersPage() {
                   )
                 })}
 
-                {showAddSlot ? <div className="kk-compare-cell muted text-xs text-center">—</div> : null}
 
                 {/* 7. Row: Veprimi Përfundimtar (Bottom Actions) */}
                 <div className="kk-compare-cell is-label">
@@ -1337,28 +1397,19 @@ export default function CompareLawyersPage() {
                   </div>
                 ))}
 
-                {showAddSlot ? <div className="kk-compare-cell muted text-xs text-center">—</div> : null}
               </div>
             </div>
             </>
           )}
 
-          {/* Suggested lawyers section (shown both in empty state and when comparison has room) */}
-          {suggestedLawyers.length > 0 && (items.length === 0 || items.length < MAX_COMPARE_LAWYERS) ? (
+          {/* Suggested lawyers: only on an empty comparison. With lawyers selected the add strip covers this. */}
+          {suggestedLawyers.length > 0 && items.length === 0 && !loading ? (
             <section className="kk-compare-suggested-section" aria-labelledby="suggested-heading">
               <div className="kk-compare-suggested-head">
-                <div>
-                  <h3 id="suggested-heading">
-                    {items.length === 0
-                      ? t('compare.suggestedLawyers', 'Avokatë të sugjeruar për krahasim')
-                      : t('compare.suggestedLawyers', 'Avokatë të sugjeruar për krahasim')}
-                  </h3>
-                  <span className="text-sm text-muted">
-                    {items.length === 0
-                      ? 'Zgjidhni nga avokatët e rekomanduar për të filluar krahasimin krah për krah'
-                      : `Shtoni edhe ${MAX_COMPARE_LAWYERS - items.length} avokat për krahasim të plotë`}
-                  </span>
-                </div>
+                <h3 id="suggested-heading">
+                  {t('compare.suggestedLawyers', 'Avokatë të sugjeruar për krahasim')}
+                </h3>
+                <span>Zgjidhni nga avokatët e rekomanduar për të filluar krahasimin krah për krah</span>
               </div>
 
               <div className="kk-compare-suggested-grid">
@@ -1379,7 +1430,7 @@ export default function CompareLawyersPage() {
                             {lawyer.title || specialties[0] || 'Avokat'}
                           </div>
                           {lawyer.location ? (
-                            <div className="text-xs text-muted flex items-center gap-1 mt-0.5">
+                            <div className="kk-suggested-card-location">
                               <MapPin size={11} aria-hidden />
                               <span>{lawyer.location}</span>
                             </div>
@@ -1390,13 +1441,7 @@ export default function CompareLawyersPage() {
                       <button
                         type="button"
                         className="kk-suggested-card-add-btn"
-                        onClick={() =>
-                          addLawyer(lawyer.uid, {
-                            name: lawyer.name,
-                            photoUrl: lawyer.photoUrl,
-                            title: lawyer.title,
-                          })
-                        }
+                        onClick={() => pickLawyer(lawyer)}
                       >
                         <Plus size={14} aria-hidden />
                         <span>{t('compare.addLawyer', 'Shto në krahasim')}</span>

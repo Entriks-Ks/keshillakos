@@ -186,7 +186,7 @@ export default function AiChatPage() {
   }
 
   return (
-    <div className="kk-aipage-root">
+    <div className="tt-shell of-marketplace kk-aipage-root">
       <SiteNav />
 
       <main className="kk-aipage-main">

@@ -21,7 +21,7 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="tt-shell tt-home">
+    <div className="tt-shell tt-home pl-shell">
       <SiteNav />
       <main className="pl">
         <section className="pl-hero">

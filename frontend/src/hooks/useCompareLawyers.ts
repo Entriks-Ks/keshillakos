@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { toast } from '@heroui/react'
 
-const STORAGE_KEY = 'klaw_compare_lawyers'
-const META_KEY = 'klaw_compare_lawyers_meta'
-const EVENT_NAME = 'klaw_compare_change'
+const STORAGE_KEY = 'keshillohu_compare_lawyers'
+const META_KEY = 'keshillohu_compare_lawyers_meta'
+const EVENT_NAME = 'keshillohu_compare_change'
+const LEGACY_STORAGE_KEY = 'klaw_compare_lawyers'
+const LEGACY_META_KEY = 'klaw_compare_lawyers_meta'
 export const MAX_COMPARE_LAWYERS = 3
 
 export type CompareLawyerMeta = {
@@ -16,7 +18,7 @@ export type CompareLawyerMeta = {
 function getStoredUids(): string[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) {
@@ -31,7 +33,7 @@ function getStoredUids(): string[] {
 function getStoredMeta(): Record<string, CompareLawyerMeta> {
   if (typeof window === 'undefined') return {}
   try {
-    const raw = localStorage.getItem(META_KEY)
+    const raw = localStorage.getItem(META_KEY) || localStorage.getItem(LEGACY_META_KEY)
     if (!raw) return {}
     return JSON.parse(raw) || {}
   } catch {

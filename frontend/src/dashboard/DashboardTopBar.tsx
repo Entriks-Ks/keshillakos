@@ -7,6 +7,7 @@ import { Button, Drawer, Dropdown, Label, Tooltip } from '@heroui/react'
 import { ChevronDown, ExternalLink, Home, LogOut, Menu } from 'lucide-react'
 import type { AuthUser, UserRole } from '../api/auth'
 import ProfileAvatar from '../components/ProfileAvatar'
+import { LogoMark } from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { providerPath } from '../utils/publicPaths'
@@ -101,11 +102,11 @@ export default function DashboardTopBar({
                   <Link
                     to="/"
                     className="brand brand-link dsb-brand"
-                    aria-label="KLAW, faqja kryesore"
+                    aria-label="Këshillohu, faqja kryesore"
                     onClick={() => onMenuOpenChange(false)}
                   >
-                    <span className="dsb-mark" aria-hidden>K</span>
-                    <span>KLAW</span>
+                    <LogoMark size={28} />
+                    <span>keshillohu</span>
                   </Link>
                   <Drawer.CloseTrigger aria-label="Mbyll menunë" />
                 </Drawer.Header>

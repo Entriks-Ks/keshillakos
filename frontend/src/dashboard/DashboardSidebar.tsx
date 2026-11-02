@@ -7,6 +7,7 @@ import { Check, ChevronsUpDown } from 'lucide-react'
 import type { DashboardContext, UserRole } from '../api/auth'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import ThemeToggle from '../components/ThemeToggle'
+import { LogoMark } from '../components/Logo'
 import { CONTEXT_LABELS, groupDashboardNav, NAV_GROUP_LABELS, type DashNavItem } from './nav'
 
 export type ContextOption = { context: DashboardContext; available: boolean }
@@ -111,8 +112,8 @@ export default function DashboardSidebar({
       <div className="dsb-head">
         {inDrawer ? null : (
           <Link to="/" className="brand brand-link dsb-brand" aria-label={t('dash.homeAria')}>
-            <span className="dsb-mark" aria-hidden>K</span>
-            <span>KLAW</span>
+            <LogoMark size={28} />
+            <span>keshillohu</span>
           </Link>
         )}
         {contextOptions ? (
