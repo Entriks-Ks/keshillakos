@@ -129,10 +129,10 @@ export default function ProviderReviews({
               {item.verified ? (
                 <p className="tt-review-hired">
                   <BadgeCheck size={14} aria-hidden />
-                  {uiText('Punë e përfunduar në KLAW', 'Completed work on KLAW', 'Abgeschlossene Arbeit auf KLAW')}
+                  {uiText('Punë e përfunduar në Këshillohu', 'Completed work on Keshillohu', 'Abgeschlossene Arbeit auf Keshillohu')}
                 </p>
               ) : (
-                <p className="tt-review-hired is-plain">{uiText('Klient në KLAW', 'Client on KLAW', 'Kunde auf KLAW')}</p>
+                <p className="tt-review-hired is-plain">{uiText('Klient në Këshillohu', 'Client on Keshillohu', 'Kunde auf Keshillohu')}</p>
               )}
               {item.comment?.trim() ? <p className="tt-review-comment">{item.comment}</p> : null}
               {item.response ? (

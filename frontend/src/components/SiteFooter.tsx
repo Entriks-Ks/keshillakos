@@ -1,6 +1,7 @@
 import { Link as HeroLink, Separator } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
+import { LogoMark } from './Logo'
 import type { SocialLinkKey } from '../api/socialLinks'
 import FooterFeedback from './FooterFeedback'
 import SocialIcon from './SocialIcon'
@@ -51,8 +52,9 @@ export default function SiteFooter() {
       <div className="tt-section-inner">
         <div className="tt-footer-main">
           <div className="tt-footer-about">
-            <RouterLink to="/" className="brand brand-link tt-footer-brand">
-              KLAW
+            <RouterLink to="/" className="brand brand-link tt-footer-brand" aria-label={t('nav.home')}>
+              <LogoMark size={32} />
+              <span>keshillohu</span>
             </RouterLink>
             <p>{t('footer.tagline')}</p>
             <div className="tt-footer-social" aria-label={t('footer.social')}>
@@ -84,7 +86,7 @@ export default function SiteFooter() {
 
         <Separator className="tt-footer-divider" />
         <div className="tt-footer-bottom">
-          <small>© {new Date().getFullYear()} KLAW. {t('footer.rights')}</small>
+          <small>© {new Date().getFullYear()} Këshillohu. {t('footer.rights')}</small>
           <div className="tt-footer-legal" aria-label={t('footer.legal')}>
             <RouterLink to="/kushtet" className="tt-footer-link">{t('footer.terms')}</RouterLink>
             <RouterLink to="/privatesia" className="tt-footer-link">{t('footer.privacy')}</RouterLink>

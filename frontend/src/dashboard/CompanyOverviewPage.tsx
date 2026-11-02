@@ -76,7 +76,7 @@ function contextSentence(data: OverviewData) {
   const members = data.team?.pagination?.total ?? data.team?.members.length ?? 0
   const invitations = data.team?.invitationsPagination?.total ?? data.team?.invitations.length ?? 0
   const active = collectionSummary(data.services).active ?? 0
-  if (!data.hasCompany) return uiText('Krijo kompaninë që klientët dhe ekspertët ta gjejnë në KLAW.', 'Create the company so clients and experts can find it on KLAW.', 'Lege das Unternehmen an, damit Kunden und Experten es auf KLAW finden.')
+  if (!data.hasCompany) return uiText('Krijo kompaninë që klientët dhe ekspertët ta gjejnë në Këshillohu.', 'Create the company so clients and experts can find it on Keshillohu.', 'Lege das Unternehmen an, damit Kunden und Experten es auf Keshillohu finden.')
   if (data.pendingCount > 0) {
     const count = data.pendingCount
     return uiText(
@@ -95,9 +95,9 @@ function contextSentence(data: OverviewData) {
   if (members === 0) return uiText('Fto ekspertët e parë që klientët të shohin kush punon në kompani.', 'Invite the first experts so clients can see who works at the company.', 'Lade die ersten Experten ein, damit Kunden sehen, wer im Unternehmen arbeitet.')
   if (active > 0) {
     return uiText(
-      `${active} ${plural(active, 'shërbim aktiv i kompanisë shfaqet', 'shërbime aktive të kompanisë shfaqen')} në ofertat e KLAW.`,
-      `${active} active company ${plural(active, 'service appears', 'services appear')} in KLAW offers.`,
-      `${active} ${plural(active, 'aktiver Unternehmensdienst erscheint', 'aktive Unternehmensdienste erscheinen')} in den Angeboten von KLAW.`,
+      `${active} ${plural(active, 'shërbim aktiv i kompanisë shfaqet', 'shërbime aktive të kompanisë shfaqen')} në ofertat e Këshillohu.`,
+      `${active} active company ${plural(active, 'service appears', 'services appear')} in Keshillohu offers.`,
+      `${active} ${plural(active, 'aktiver Unternehmensdienst erscheint', 'aktive Unternehmensdienste erscheinen')} in den Angeboten von Keshillohu.`,
     )
   }
   return i18n.t(ROLE_HINTS.company)
@@ -236,7 +236,7 @@ function ActivityCard({ data, loading }: { data: OverviewData | null; loading: b
             text={
               hasServices
                 ? 'Kërkesat për kompaninë dhe bisedat me klientët do të shfaqen këtu sapo të vijnë.'
-                : 'Kërkesat nga klientët vijnë pasi kompania të publikojë një shërbim në ofertat e KLAW.'
+                : 'Kërkesat nga klientët vijnë pasi kompania të publikojë një shërbim në ofertat e Këshillohu.'
             }
             action={
               hasServices ? null : (
@@ -271,7 +271,7 @@ function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boole
         ) : members.length === 0 && invitations.length === 0 ? (
           <EmptyBlock
             title="Ende nuk ka ekspertë në ekip"
-            text="Fto ekspertë që janë në KLAW me email-in e tyre. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë."
+            text="Fto ekspertë që janë në Këshillohu me email-in e tyre. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë."
             action={
               <Link to={EXPERTS_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Fto ekspert
@@ -332,7 +332,7 @@ function ServicesCard({ services, loading }: { services: ServiceItem[]; loading:
         ) : services.length === 0 ? (
           <EmptyBlock
             title="Kompania nuk ka publikuar shërbime"
-            text="Shërbimet aktive shfaqen në ofertat e KLAW dhe klientët i dërgojnë kërkesa kompanisë."
+            text="Shërbimet aktive shfaqen në ofertat e Këshillohu dhe klientët i dërgojnë kërkesa kompanisë."
             action={
               <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 Shto shërbim

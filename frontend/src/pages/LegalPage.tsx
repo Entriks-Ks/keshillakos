@@ -15,12 +15,12 @@ const DOCUMENTS: Record<LegalKind, { kicker: string; title: string; lead: string
   terms: {
     kicker: 'Kushtet',
     title: 'Kushtet e përdorimit',
-    lead: 'Këto kushte vlejnë kur përdor KLAW për të gjetur një ofrues ose për të publikuar një shërbim.',
+    lead: 'Këto kushte vlejnë kur përdor Këshillohu për të gjetur një ofrues ose për të publikuar një shërbim.',
     sections: [
       {
         title: 'Çfarë është platforma',
         paragraphs: [
-          'KLAW të ndihmon të gjesh ofrues profesionalë në Kosovë dhe online, dhe u jep ofruesve një vend ku të publikojnë shërbimet e tyre.',
+          'Këshillohu të ndihmon të gjesh ofrues profesionalë në Kosovë dhe online, dhe u jep ofruesve një vend ku të publikojnë shërbimet e tyre.',
           'Ne nuk jemi palë e marrëveshjes mes teje dhe ofruesit. Çmimi, afati dhe cilësia e punës rakordohen drejtpërdrejt mes jush.',
         ],
       },
@@ -57,13 +57,13 @@ const DOCUMENTS: Record<LegalKind, { kicker: string; title: string; lead: string
   privacy: {
     kicker: 'Privatësia',
     title: 'Politika e privatësisë',
-    lead: 'Këtu shpjegohet çfarë të dhënash mbledh KLAW, pse i përdor dhe kujt ia tregon.',
+    lead: 'Këtu shpjegohet çfarë të dhënash mbledh Këshillohu, pse i përdor dhe kujt ia tregon.',
     sections: [
       {
         title: 'Çfarë mbledhim',
         paragraphs: [
           'Kur krijon llogari: emrin, email-in dhe fjalëkalimin. Mund të shtosh telefon, foto, përshkrim dhe qytet.',
-          'Kur përdor platformën: kërkesat, mesazhet, oraret, vlerësimet dhe feedback-un që dërgon për KLAW.',
+          'Kur përdor platformën: kërkesat, mesazhet, oraret, vlerësimet dhe feedback-un që dërgon për Këshillohu.',
           'Për vizitorët pa llogari ruajmë qytetin e zgjedhur në shfletues, që ofertat të filtrohen sipas vendit.',
         ],
       },
@@ -93,7 +93,7 @@ const DOCUMENTS: Record<LegalKind, { kicker: string; title: string; lead: string
   cookies: {
     kicker: 'Cookies',
     title: 'Cookies dhe ruajtja lokale',
-    lead: 'KLAW nuk përdor cookies marketingu. Ruajmë vetëm çfarë duhet që hyrja dhe qyteti të mbahen mend.',
+    lead: 'Këshillohu nuk përdor cookies marketingu. Ruajmë vetëm çfarë duhet që hyrja dhe qyteti të mbahen mend.',
     sections: [
       {
         title: 'Çfarë ruhet në shfletues',
@@ -128,7 +128,7 @@ const LINKS: { kind: LegalKind; to: string; label: string }[] = [
 
 const COPY: Record<string, [string, string]> = {
   'Çfarë është platforma': ['What the platform is', 'Was die Plattform ist'],
-  'KLAW të ndihmon të gjesh ofrues profesionalë në Kosovë dhe online, dhe u jep ofruesve një vend ku të publikojnë shërbimet e tyre.': ['KLAW helps you find professional providers in Kosovo and online, and gives providers a place to publish their services.', 'KLAW hilft dir, professionelle Anbieter im Kosovo und online zu finden, und gibt Anbietern einen Ort, ihre Dienste zu veröffentlichen.'],
+  'Këshillohu të ndihmon të gjesh ofrues profesionalë në Kosovë dhe online, dhe u jep ofruesve një vend ku të publikojnë shërbimet e tyre.': ['Keshillohu helps you find professional providers in Kosovo and online, and gives providers a place to publish their services.', 'Keshillohu hilft dir, professionelle Anbieter im Kosovo und online zu finden, und gibt Anbietern einen Ort, ihre Dienste zu veröffentlichen.'],
   'Ne nuk jemi palë e marrëveshjes mes teje dhe ofruesit. Çmimi, afati dhe cilësia e punës rakordohen drejtpërdrejt mes jush.': ['We are not a party to the agreement between you and the provider. Price, timing, and quality are agreed directly between you.', 'Wir sind nicht Teil der Vereinbarung zwischen dir und dem Anbieter. Preis, Frist und Qualität vereinbart ihr direkt.'],
   'Llogaria': ['Account', 'Konto'],
   'Për të dërguar kërkesa, mesazhe ose për të publikuar shërbime, të duhet një llogari me të dhëna të sakta.': ['To send requests, messages, or publish services, you need an account with accurate details.', 'Um Anfragen und Nachrichten zu senden oder Dienste zu veröffentlichen, brauchst du ein Konto mit richtigen Angaben.'],
@@ -144,7 +144,7 @@ const COPY: Record<string, [string, string]> = {
   'Para se të nisësh një punë, kontrollo vetë detajet me ofruesin.': ['Before you start work, check the details yourself with the provider.', 'Prüfe die Details selbst mit dem Anbieter, bevor du eine Arbeit beginnst.'],
   'Çfarë mbledhim': ['What we collect', 'Was wir erheben'],
   'Kur krijon llogari: emrin, email-in dhe fjalëkalimin. Mund të shtosh telefon, foto, përshkrim dhe qytet.': ['When you create an account: name, email, and password. You can add a phone, photo, description, and city.', 'Beim Konto: Name, E-Mail und Passwort. Du kannst Telefon, Foto, Beschreibung und Stadt ergänzen.'],
-  'Kur përdor platformën: kërkesat, mesazhet, oraret, vlerësimet dhe feedback-un që dërgon për KLAW.': ['When you use the platform: requests, messages, schedules, ratings, and the feedback you send about KLAW.', 'Bei der Nutzung: Anfragen, Nachrichten, Termine, Bewertungen und das Feedback, das du an KLAW sendest.'],
+  'Kur përdor platformën: kërkesat, mesazhet, oraret, vlerësimet dhe feedback-un që dërgon për Këshillohu.': ['When you use the platform: requests, messages, schedules, ratings, and the feedback you send about Keshillohu.', 'Bei der Nutzung: Anfragen, Nachrichten, Termine, Bewertungen und das Feedback, das du an Keshillohu sendest.'],
   'Për vizitorët pa llogari ruajmë qytetin e zgjedhur në shfletues, që ofertat të filtrohen sipas vendit.': ['For visitors without an account we store the chosen city in the browser so offers can be filtered by place.', 'Für Besucher ohne Konto speichern wir die gewählte Stadt im Browser, damit Angebote nach Ort gefiltert werden.'],
   'Pse i përdorim': ['Why we use it', 'Warum wir sie nutzen'],
   'Për të hapur llogarinë, për të të lidhur me ofruesin që zgjedh dhe për të mbajtur bisedën, kërkesën dhe vlerësimin.': ['To open the account, connect you with the provider you choose, and keep the conversation, request, and rating.', 'Um das Konto zu öffnen, dich mit dem gewählten Anbieter zu verbinden und Gespräch, Anfrage und Bewertung zu behalten.'],
@@ -190,10 +190,10 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
   const title = linkLabel(kind)
   const kicker = kind === 'privacy' ? uiText('Privatësia', 'Privacy', 'Datenschutz') : kind === 'cookies' ? 'Cookies' : uiText('Kushtet', 'Terms', 'Bedingungen')
   const lead = kind === 'privacy'
-    ? uiText('Këtu shpjegohet çfarë të dhënash mbledh KLAW, pse i përdor dhe kujt ia tregon.', 'This explains what data KLAW collects, why it is used, and who sees it.', 'Hier steht, welche Daten KLAW erhebt, warum sie genutzt werden und wer sie sieht.')
+    ? uiText('Këtu shpjegohet çfarë të dhënash mbledh Këshillohu, pse i përdor dhe kujt ia tregon.', 'This explains what data Keshillohu collects, why it is used, and who sees it.', 'Hier steht, welche Daten Keshillohu erhebt, warum sie genutzt werden und wer sie sieht.')
     : kind === 'cookies'
-      ? uiText('KLAW nuk përdor cookies marketingu. Ruajmë vetëm çfarë duhet që hyrja dhe qyteti të mbahen mend.', 'KLAW does not use marketing cookies. We only store what is needed to remember sign-in and city.', 'KLAW nutzt keine Marketing-Cookies. Wir speichern nur, was Anmeldung und Stadt merkt.')
-      : uiText('Këto kushte vlejnë kur përdor KLAW për të gjetur një ofrues ose për të publikuar një shërbim.', 'These terms apply when you use KLAW to find a provider or publish a service.', 'Diese Bedingungen gelten, wenn du KLAW nutzt, um einen Anbieter zu finden oder einen Dienst zu veröffentlichen.')
+      ? uiText('Këshillohu nuk përdor cookies marketingu. Ruajmë vetëm çfarë duhet që hyrja dhe qyteti të mbahen mend.', 'Keshillohu does not use marketing cookies. We only store what is needed to remember sign-in and city.', 'Keshillohu nutzt keine Marketing-Cookies. Wir speichern nur, was Anmeldung und Stadt merkt.')
+      : uiText('Këto kushte vlejnë kur përdor Këshillohu për të gjetur një ofrues ose për të publikuar një shërbim.', 'These terms apply when you use Keshillohu to find a provider or publish a service.', 'Diese Bedingungen gelten, wenn du Keshillohu nutzt, um einen Anbieter zu finden oder einen Dienst zu veröffentlichen.')
 
   return (
     <div className="tt-shell">

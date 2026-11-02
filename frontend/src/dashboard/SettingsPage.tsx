@@ -91,7 +91,7 @@ export function SettingsPage() {
     setPendingConsent(next)
     try {
       await updateProfile({ marketingConsent: next })
-      toast.success(next ? 'Do të marrësh lajme dhe oferta nga KLAW.' : 'Nuk do të marrësh më komunikime promovuese.')
+      toast.success(next ? 'Do të marrësh lajme dhe oferta nga Këshillohu.' : 'Nuk do të marrësh më komunikime promovuese.')
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -172,7 +172,7 @@ export function SettingsPage() {
           ) : null}
 
           {active === 'security' ? (
-            <SettingsSection id="siguria" title="Siguria" description="Si hyn në KLAW dhe si mbrohet llogaria jote.">
+            <SettingsSection id="siguria" title="Siguria" description="Si hyn në Këshillohu dhe si mbrohet llogaria jote.">
               <SettingsRow
                 label="Fjalëkalimi"
                 value={signedInWithGoogle ? undefined : '••••••••'}
@@ -217,7 +217,7 @@ export function SettingsPage() {
             >
               <SettingsRow
                 label="Komunikime promovuese"
-                description="Lejo KLAW të të dërgojë lajme dhe oferta me email. Mund ta ndryshosh kurdo."
+                description="Lejo Këshillohu të të dërgojë lajme dhe oferta me email. Mund ta ndryshosh kurdo."
                 action={
                   <Switch
                     isSelected={consent}

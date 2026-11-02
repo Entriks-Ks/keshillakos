@@ -6,6 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Button, SearchField, Tabs, ToggleButton } from '@heroui/react'
 import {
   AlertCircle,
+  ArrowRight,
   ArrowUpDown,
   BadgeCheck,
   BriefcaseBusiness,
@@ -14,6 +15,7 @@ import {
   Scale,
   SearchX,
   SlidersHorizontal,
+  Sparkles,
   Star,
   UserRound,
   X,
@@ -625,67 +627,84 @@ export default function OffersPage() {
       <main className="of-page">
         <Tabs selectedKey={tab} onSelectionChange={onTabChange} className="of-tabs">
           <header className="of-head">
-            <div className="of-inner">
-              <h1 id="offers-heading">{t('offers.title')}</h1>
-              <p className="of-lead">{t('offers.lead')}</p>
-              <div className="of-compare-banner">
-                <Scale size={15} aria-hidden />
-                <span>Po krahasoni specialistët ligjorë?</span>
-                <Link to="/krahaso" className="of-compare-banner-link">
-                  Krahaso deri në 3 avokatë në një ekran të vetëm →
+            <div className="of-head-glow" aria-hidden />
+            <div className="of-inner of-head-inner">
+              <div className="of-head-top">
+                <div className="of-head-copy">
+                  <span className="of-kicker">
+                    <Sparkles size={14} aria-hidden />
+                    {t('offers.kicker')}
+                  </span>
+                  <h1 id="offers-heading">{t('offers.title')}</h1>
+                  <p className="of-lead">{t('offers.lead')}</p>
+                </div>
+                <Link to="/krahaso" className="of-compare-card">
+                  <span className="of-compare-icon" aria-hidden>
+                    <Scale size={18} />
+                  </span>
+                  <span className="of-compare-copy">
+                    <span>{t('offers.compareKicker')}</span>
+                    <strong>{t('offers.compareCta')}</strong>
+                  </span>
+                  <ArrowRight size={18} aria-hidden className="of-compare-arrow" />
                 </Link>
               </div>
-              <Tabs.ListContainer className="of-tabs-bar">
-                <Tabs.List aria-label={t('offers.kinds')}>
-                  {TABS.map(({ id, icon: Icon }) => (
-                    <Tabs.Tab key={id} id={id} className="of-tab">
-                      <Icon size={16} aria-hidden className="of-tab-icon" />
-                      {t(`offers.${id}`)}
-                      {tabCounts[id] != null ? <span className="of-tab-count">{tabCounts[id]}</span> : null}
-                      <Tabs.Indicator className="of-tab-indicator" />
-                    </Tabs.Tab>
-                  ))}
-                </Tabs.List>
-              </Tabs.ListContainer>
+
+              <div className="of-controls">
+                <Tabs.ListContainer className="of-tabs-bar">
+                  <Tabs.List aria-label={t('offers.kinds')}>
+                    {TABS.map(({ id, icon: Icon }) => (
+                      <Tabs.Tab key={id} id={id} className="of-tab">
+                        <Icon size={16} aria-hidden className="of-tab-icon" />
+                        {t(`offers.${id}`)}
+                        {tabCounts[id] != null ? <span className="of-tab-count">{tabCounts[id]}</span> : null}
+                        <Tabs.Indicator className="of-tab-indicator" />
+                      </Tabs.Tab>
+                    ))}
+                  </Tabs.List>
+                </Tabs.ListContainer>
+
+                <div className="of-search" role="search">
+                  <SearchField
+                    aria-label={t('offers.search')}
+                    value={query}
+                    onChange={setQuery}
+                    fullWidth
+                    className="of-search-field"
+                  >
+                    <SearchField.Group>
+                      <SearchField.SearchIcon />
+                      <SearchField.Input placeholder={copy.placeholder} />
+                      <SearchField.ClearButton aria-label={t('offers.clearSearch')} />
+                    </SearchField.Group>
+                  </SearchField>
+                  <div className="of-search-location">
+                    <LocationSelector
+                      value={selectedLocation}
+                      onChange={(value) => { void changeLocation(value) }}
+                      disabled={locationLoading || locationSaving}
+                      className="of-location"
+                    />
+                  </div>
+                  <Button variant="outline" className="of-filter-btn" onPress={() => setFiltersOpen(true)}>
+                    <SlidersHorizontal size={16} aria-hidden />
+                    <span className="of-filter-btn-label">{t('offers.filters')}</span>
+                    {sheetFilterCount > 0 ? <span className="of-badge">{sheetFilterCount}</span> : null}
+                  </Button>
+                </div>
+              </div>
             </div>
           </header>
 
           <div className="of-inner of-body">
-            <div className="of-search" role="search">
-              <SearchField
-                aria-label={t('offers.search')}
-                value={query}
-                onChange={setQuery}
-                fullWidth
-                className="of-search-field"
-              >
-                <SearchField.Group>
-                  <SearchField.SearchIcon />
-                  <SearchField.Input placeholder={copy.placeholder} />
-                  <SearchField.ClearButton aria-label={t('offers.clearSearch')} />
-                </SearchField.Group>
-              </SearchField>
-              <div className="of-search-location">
-                <LocationSelector
-                  value={selectedLocation}
-                  onChange={(value) => { void changeLocation(value) }}
-                  disabled={locationLoading || locationSaving}
-                  className="of-location"
-                />
-              </div>
-              <Button variant="outline" className="of-filter-btn" onPress={() => setFiltersOpen(true)}>
-                <SlidersHorizontal size={16} aria-hidden />
-                {t('offers.filters')}
-                {sheetFilterCount > 0 ? <span className="of-badge">{sheetFilterCount}</span> : null}
-              </Button>
-            </div>
-
             <div className="of-layout">
               <aside className="of-sidebar" aria-label={t('offers.filters')}>
                 <div className="of-sidebar-card">
                   <div className="of-sidebar-head">
                     <h2>
-                      <SlidersHorizontal size={16} aria-hidden />
+                      <span className="of-sidebar-icon" aria-hidden>
+                        <SlidersHorizontal size={15} />
+                      </span>
                       {t('offers.filters')}
                     </h2>
                     {hasActiveFilters ? (
