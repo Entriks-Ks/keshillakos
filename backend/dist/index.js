@@ -32,11 +32,14 @@ const plan_routes_1 = __importDefault(require("./routes/plan.routes"));
 const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const aiChat_routes_1 = __importDefault(require("./routes/aiChat.routes"));
 const community_routes_1 = __importDefault(require("./routes/community.routes"));
+const call_routes_1 = __importDefault(require("./routes/call.routes"));
 const chatSocket_1 = require("./services/chatSocket");
+const callSocket_1 = require("./services/callSocket");
 const socketServer_1 = require("./services/socketServer");
 const Notification_1 = require("./models/Notification");
 const ChatBlock_1 = require("./models/ChatBlock");
 const PlatformFeedback_1 = require("./models/PlatformFeedback");
+const Call_1 = require("./models/Call");
 const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
 const publicCache_1 = require("./middleware/publicCache");
 const app = (0, express_1.default)();
@@ -76,6 +79,7 @@ app.use('/api/feedback', feedback_routes_1.default);
 app.use('/api/plans', plan_routes_1.default);
 app.use('/api/ai', aiChat_routes_1.default);
 app.use('/api/community', community_routes_1.default);
+app.use('/api/calls', call_routes_1.default);
 app.use((err, _req, res, _next) => {
     console.error(err);
     res.status(500).json({ message: err.message || 'Server error' });
@@ -84,7 +88,9 @@ async function start() {
     try {
         await (0, db_1.connectDB)();
         await Notification_1.Notification.init();
-        await Promise.all([ChatBlock_1.ChatBlock.init(), PlatformFeedback_1.PlatformFeedback.init()]);
+        await Promise.all([ChatBlock_1.ChatBlock.init(), PlatformFeedback_1.PlatformFeedback.init(), Call_1.Call.init()]);
+        // Clean up any dangling calls orphaned from prior server restarts
+        await Call_1.Call.updateMany({ status: { $in: ['ringing', 'accepted'] } }, { $set: { status: 'completed', endedAt: new Date() } });
     }
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -97,6 +103,7 @@ async function start() {
     const server = http_1.default.createServer(app);
     const io = (0, socketServer_1.attachRealtimeSocket)(server);
     (0, chatSocket_1.registerChatHandlers)(io);
+    (0, callSocket_1.registerCallHandlers)(io);
     server.listen(PORT, () => {
         console.log(`API running on http://localhost:${PORT}`);
     });

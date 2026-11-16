@@ -1,4 +1,6 @@
 import { NotificationProvider } from './notifications/NotificationProvider'
+import { CallProvider } from './calls/CallContext'
+import CallManagerUI from './calls/CallManagerUI'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { RouterProvider, Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes, useHref, useNavigate } from 'react-router-dom'
@@ -83,6 +85,7 @@ export default function App() {
         width={360}
       />
       <NotificationProvider>
+        <CallProvider>
       <BrowserRouter>
         <ScrollToTop />
         <HeroRouterProvider>
@@ -181,8 +184,10 @@ export default function App() {
           </Routes>
           <CompareDock />
           <AiChatWidget />
+          <CallManagerUI />
         </HeroRouterProvider>
       </BrowserRouter>
+        </CallProvider>
       </NotificationProvider>
     </AuthProvider>
   )

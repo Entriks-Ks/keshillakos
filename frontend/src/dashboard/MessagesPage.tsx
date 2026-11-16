@@ -5,7 +5,8 @@ import { usePagination } from '../hooks/usePagination'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, MessageCircle, Pencil, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, MessageCircle, Pencil, Phone, Send, Trash2, Video } from 'lucide-react'
+import { useCall } from '../calls/CallContext'
 import {
   Alert,
   Button,
@@ -145,6 +146,7 @@ export default function MessagesPage() {
 
   const socket = useChatSocket(Boolean(user), user?.uid)
   const presence = useChatPresence(socket, [...conversations.map(c => c.id), ...(activeId ? [activeId] : [])])
+  const { initiateCall, stage: callStage } = useCall()
 
   useEffect(() => {
     mountedRef.current = true
@@ -690,6 +692,48 @@ export default function MessagesPage() {
                           ? `Për: ${active.serviceTitle}`
                           : active?.peer.roleLabel || 'Chat')}
                     </span>
+                  </div>
+                  <div className="msg-call-actions" role="toolbar" aria-label="Thirrje">
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      className="msg-call-btn"
+                      aria-label="Nis video thirrje"
+                      isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
+                      onPress={() => {
+                        if (active?.peer.uid && activeId) {
+                          void initiateCall({
+                            conversationId: activeId,
+                            receiverUid: active.peer.uid,
+                            peerName: active.peer.name,
+                            peerPhoto: active.peer.profilePhoto,
+                            callType: 'video',
+                          })
+                        }
+                      }}
+                    >
+                      <Video size={19} />
+                    </Button>
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      className="msg-call-btn"
+                      aria-label="Nis thirrje zanore"
+                      isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
+                      onPress={() => {
+                        if (active?.peer.uid && activeId) {
+                          void initiateCall({
+                            conversationId: activeId,
+                            receiverUid: active.peer.uid,
+                            peerName: active.peer.name,
+                            peerPhoto: active.peer.profilePhoto,
+                            callType: 'audio',
+                          })
+                        }
+                      }}
+                    >
+                      <Phone size={18} />
+                    </Button>
                   </div>
                   <ConversationActions
                     conversationId={activeId}
