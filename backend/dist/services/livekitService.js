@@ -8,9 +8,10 @@ exports.generateLivekitToken = generateLivekitToken;
 const livekit_server_sdk_1 = require("livekit-server-sdk");
 const dotenv_1 = __importDefault(require("dotenv"));
 function getLivekitConfig() {
-    // If process.env still holds the old placeholder cloud URL or dummy secret, reload from .env with override
-    if (process.env.LIVEKIT_URL === 'wss://keshillakos.livekit.cloud' ||
-        process.env.LIVEKIT_API_SECRET === 'secret_must_be_at_least_32_characters_long') {
+    if (!process.env.LIVEKIT_URL ||
+        !process.env.LIVEKIT_API_KEY ||
+        process.env.LIVEKIT_API_KEY === 'devkey' ||
+        process.env.LIVEKIT_URL === 'ws://127.0.0.1:7880') {
         dotenv_1.default.config({ override: true });
     }
     const url = process.env.LIVEKIT_URL || process.env.LIVEKIT_HOST || 'ws://127.0.0.1:7880';

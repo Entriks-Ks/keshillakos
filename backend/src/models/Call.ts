@@ -21,6 +21,8 @@ export type CallDoc = {
   answeredAt?: Date | null
   endedAt?: Date | null
   duration?: number
+  hasLoggedChat?: boolean
+  chatMessageId?: Types.ObjectId | null
   createdAt: Date
   updatedAt: Date
 }
@@ -78,6 +80,15 @@ const callSchema = new Schema<CallDoc>(
     duration: {
       type: Number,
       default: 0,
+    },
+    hasLoggedChat: {
+      type: Boolean,
+      default: false,
+    },
+    chatMessageId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Message',
+      default: null,
     },
   },
   {

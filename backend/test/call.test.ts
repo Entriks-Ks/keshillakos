@@ -129,3 +129,36 @@ test('Call rejects unauthorized acceptance', async () => {
     Call.findById = origFindById
   }
 })
+
+test('logCallToChat handles completed and missed call messages properly without throwing', async () => {
+  const { logCallToChat } = await import('../src/services/callService')
+  const fakeConversationId = new mongoose.Types.ObjectId()
+
+  const completedCall: any = {
+    _id: new mongoose.Types.ObjectId(),
+    callerId: 'alice',
+    receiverId: 'bob',
+    conversationId: fakeConversationId,
+    callType: 'video',
+    status: 'completed',
+    duration: 125,
+    save: async () => completedCall,
+  }
+
+  await logCallToChat(completedCall)
+  assert.equal(completedCall.hasLoggedChat, true)
+
+  const missedCall: any = {
+    _id: new mongoose.Types.ObjectId(),
+    callerId: 'alice',
+    receiverId: 'bob',
+    conversationId: fakeConversationId,
+    callType: 'audio',
+    status: 'missed',
+    duration: 0,
+    save: async () => missedCall,
+  }
+
+  await logCallToChat(missedCall)
+  assert.equal(missedCall.hasLoggedChat, true)
+})
