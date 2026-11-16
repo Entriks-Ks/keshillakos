@@ -398,7 +398,8 @@
   transform: scaleX(-1); /* Mirror local camera */
 }
 
-.call-local-video.is-hidden {
+.call-local-video.is-hidden,
+.call-remote-video.is-hidden {
   display: none;
 }
 

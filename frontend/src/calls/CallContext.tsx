@@ -172,6 +172,11 @@ export function CallProvider({ children }: { children: ReactNode }) {
     socket.on('call:accepted', (data: { callId: string; roomName: string; acceptedBy: string }) => {
       ringtone.stop()
 
+      // Avoid re-triggering if this call is already active
+      if (activeRef.current?.callId === data.callId) {
+        return
+      }
+
       if (
         outgoingRef.current &&
         (outgoingRef.current.callId === data.callId || !outgoingRef.current.callId || stageRef.current === 'calling')
@@ -368,6 +373,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
     const socket = socketRef.current
     if (!socket) return
 
+    activeRef.current = {
+      callId: current.callId,
+      conversationId: current.conversationId,
+      peer: current.caller,
+      callType: current.callType,
+      roomName: current.roomName || '',
+      isCaller: false,
+    }
+
     socket.emit('call:accept', { callId: current.callId }, (res: { ok: boolean; roomName?: string; error?: string }) => {
       if (res?.ok) {
         setActiveCall({
@@ -381,6 +395,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         setIncomingCall(null)
         setStage('connected')
       } else {
+        activeRef.current = null
         toast.danger(res?.error || 'Pranimi i thirrjes dështoi')
         resetCalls()
       }
