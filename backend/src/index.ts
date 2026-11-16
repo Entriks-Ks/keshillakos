@@ -26,6 +26,7 @@ import feedbackRoutes from './routes/feedback.routes'
 import planRoutes from './routes/plan.routes'
 import mediaRoutes from './routes/media.routes'
 import aiChatRoutes from './routes/aiChat.routes'
+import communityRoutes from './routes/community.routes'
 import { registerChatHandlers } from './services/chatSocket'
 import { attachRealtimeSocket } from './services/socketServer'
 import { Notification } from './models/Notification'
@@ -73,6 +74,7 @@ app.use('/api/chat', chatRoutes)
 app.use('/api/feedback', feedbackRoutes)
 app.use('/api/plans', planRoutes)
 app.use('/api/ai', aiChatRoutes)
+app.use('/api/community', communityRoutes)
 
 app.use(
   (

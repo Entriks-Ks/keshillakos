@@ -230,6 +230,21 @@
   color: color-mix(in srgb, var(--ink-secondary) 45%, transparent);
 }
 
+.sd-byline-trust {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sd-byline-trust .kk-ai-trust-compact {
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.sd-byline-trust .kk-ai-trust-compact::before {
+  display: none !important;
+}
+
 .sd-byline-name {
   color: var(--heading);
   font-weight: 700;
@@ -748,6 +763,11 @@
   color: var(--ink-secondary);
   font-size: 0.82rem;
   line-height: 1.5;
+}
+
+.sd-ai-trust-badge {
+  margin: 0;
+  width: 100%;
 }
 
 .sd-book-provider {

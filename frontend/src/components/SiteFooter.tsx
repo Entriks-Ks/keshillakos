@@ -1,7 +1,7 @@
 import { Link as HeroLink, Separator } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
-import { LogoMark } from './Logo'
+import { LogoMark, LogoWordmark } from './Logo'
 import type { SocialLinkKey } from '../api/socialLinks'
 import FooterFeedback from './FooterFeedback'
 import SocialIcon from './SocialIcon'
@@ -49,12 +49,12 @@ export default function SiteFooter() {
 
   return (
     <footer className="tt-footer">
-      <div className="tt-section-inner">
+      <div className="tt-section-inner tt-footer-inner">
         <div className="tt-footer-main">
           <div className="tt-footer-about">
             <RouterLink to="/" className="brand brand-link tt-footer-brand" aria-label={t('nav.home')}>
               <LogoMark size={32} />
-              <span>keshillohu</span>
+              <LogoWordmark height={21} variant="white" />
             </RouterLink>
             <p>{t('footer.tagline')}</p>
             <div className="tt-footer-social" aria-label={t('footer.social')}>

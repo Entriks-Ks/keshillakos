@@ -7,7 +7,7 @@ import { Button, Drawer, Dropdown, Label, Tooltip } from '@heroui/react'
 import { ChevronDown, ExternalLink, Home, LogOut, Menu } from 'lucide-react'
 import type { AuthUser, UserRole } from '../api/auth'
 import ProfileAvatar from '../components/ProfileAvatar'
-import { LogoMark } from '../components/Logo'
+import { LogoMark, LogoWordmark } from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { providerPath } from '../utils/publicPaths'
@@ -106,7 +106,7 @@ export default function DashboardTopBar({
                     onClick={() => onMenuOpenChange(false)}
                   >
                     <LogoMark size={28} />
-                    <span>keshillohu</span>
+                    <LogoWordmark height={18} />
                   </Link>
                   <Drawer.CloseTrigger aria-label="Mbyll menunë" />
                 </Drawer.Header>

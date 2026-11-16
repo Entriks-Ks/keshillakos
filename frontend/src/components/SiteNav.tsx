@@ -23,7 +23,7 @@ import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useAuth } from '../auth/AuthContext'
 import { useCompareLawyers } from '../hooks/useCompareLawyers'
-import { LogoMark } from './Logo'
+import { LogoMark, LogoWordmark } from './Logo'
 import { ROLE_LABELS } from '../dashboard/nav'
 import i18n from '../i18n'
 import { resolveActiveContext } from '../utils/dashboardPath'
@@ -183,13 +183,15 @@ export default function SiteNav() {
   }
 
   return (
-    <header className={scrolled ? 'kk-nav is-scrolled' : 'kk-nav'}>
-      <div className="tt-nav-inner kk-nav-inner">
+    <div className="kk-nav-wrapper">
+      <header className={scrolled ? 'kk-nav is-scrolled' : 'kk-nav'}>
+        <span className="kk-nav-progress" aria-hidden="true" />
+        <div className="tt-nav-inner kk-nav-inner">
         <Link to="/" className="kk-nav-brand" aria-label={t('nav.home')}>
           <span className="kk-nav-brand-mark">
             <LogoMark size={34} />
           </span>
-          <span>keshillohu</span>
+          <LogoWordmark height={22} className="kk-nav-brand-text" />
         </Link>
 
         <nav className="kk-nav-center" aria-label={t('nav.main')}>
@@ -218,6 +220,15 @@ export default function SiteNav() {
               >
                 <span>{t('nav.compare', 'Krahaso Avokatët')}</span>
                 {compareCount > 0 ? <span className="kk-compare-nav-count">{compareCount}</span> : null}
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/komuniteti"
+                className="kk-nav-link"
+                aria-current={location.pathname === '/komuniteti' ? 'page' : undefined}
+              >
+                {t('nav.community', 'Komuniteti')}
               </Link>
             </li>
             <li>
@@ -296,8 +307,10 @@ export default function SiteNav() {
                 <Drawer.Dialog aria-label={t('nav.main')} className="kk-nav-drawer-dialog">
                   <Drawer.Header className="kk-nav-drawer-head">
                     <Link to="/" className="kk-nav-brand" onClick={closeMenu}>
-                      <LogoMark size={34} />
-                      <span>keshillohu</span>
+                      <span className="kk-nav-brand-mark">
+                        <LogoMark size={34} />
+                      </span>
+                      <LogoWordmark height={22} className="kk-nav-brand-text" />
                     </Link>
                     <Drawer.CloseTrigger aria-label={t('nav.close')} />
                   </Drawer.Header>
@@ -334,6 +347,16 @@ export default function SiteNav() {
                           >
                             <span>{t('nav.compare', 'Krahaso Avokatët')}</span>
                             {compareCount > 0 ? <span className="kk-compare-nav-count">{compareCount}</span> : null}
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/komuniteti"
+                            className="kk-nav-drawer-link"
+                            aria-current={location.pathname === '/komuniteti' ? 'page' : undefined}
+                            onClick={closeMenu}
+                          >
+                            {t('nav.community', 'Komuniteti')}
                           </Link>
                         </li>
                         <li>
@@ -440,5 +463,6 @@ export default function SiteNav() {
         </div>
       </div>
     </header>
+  </div>
   )
 }

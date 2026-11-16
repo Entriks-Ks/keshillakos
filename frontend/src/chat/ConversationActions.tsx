@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertDialog, Button, Dropdown, Label, TextArea, toast } from '@heroui/react'
-import { MoreHorizontal } from 'lucide-react'
+import { Flag, MoreHorizontal, ShieldAlert, Trash2 } from 'lucide-react'
 import { blockChatUser, fetchChatDetails, reportChatUser, type ChatAvailability, type ChatDetails } from '../api/chat'
 import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { getErrorMessage } from '../utils/errors'
@@ -9,9 +9,10 @@ type Props = {
   conversationId: string
   onAvailability: (handler: (event: ChatAvailability & { conversationId: string }) => void) => () => void
   onDetails: (details: (ChatDetails & { conversationId: string }) | null) => void
+  onDeleteConversation?: () => void
 }
 
-export default function ConversationActions({ conversationId, onAvailability, onDetails }: Props) {
+export default function ConversationActions({ conversationId, onAvailability, onDetails, onDeleteConversation }: Props) {
   const [details, setDetails] = useState<ChatDetails | null>(null)
   const [action, setAction] = useState<'block' | 'report' | null>(null)
   const [reason, setReason] = useState('')
@@ -67,9 +68,29 @@ export default function ConversationActions({ conversationId, onAvailability, on
         <MoreHorizontal size={20} aria-hidden />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom end">
-        <Dropdown.Menu aria-label="Opsionet e bisedës" onAction={key => { if (key === 'retry') setRetry(value => value + 1); else setAction(key as 'block' | 'report') }}>
-          <Dropdown.Item id="report" textValue="Raporto përdoruesin"><Label>Raporto përdoruesin</Label></Dropdown.Item>
-          <Dropdown.Item id="block" isDisabled={!details} textValue={details?.blockedByMe ? 'Zhblloko përdoruesin' : 'Blloko përdoruesin'}><Label>{details?.blockedByMe ? 'Zhblloko përdoruesin' : 'Blloko përdoruesin'}</Label></Dropdown.Item>
+        <Dropdown.Menu aria-label="Opsionet e bisedës" onAction={key => {
+          if (key === 'retry') setRetry(value => value + 1);
+          else if (key === 'delete') onDeleteConversation?.();
+          else setAction(key as 'block' | 'report')
+        }}>
+          <Dropdown.Item id="report" textValue="Raporto përdoruesin">
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Flag size={16} />
+              <Label>Raporto përdoruesin</Label>
+            </span>
+          </Dropdown.Item>
+          <Dropdown.Item id="block" isDisabled={!details} textValue={details?.blockedByMe ? 'Zhblloko përdoruesin' : 'Blloko përdoruesin'}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldAlert size={16} />
+              <Label>{details?.blockedByMe ? 'Zhblloko përdoruesin' : 'Blloko përdoruesin'}</Label>
+            </span>
+          </Dropdown.Item>
+          <Dropdown.Item id="delete" className="text-danger" textValue="Fshi bisedën">
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger, #dc2626)' }}>
+              <Trash2 size={16} />
+              <Label style={{ color: 'inherit' }}>Fshi bisedën</Label>
+            </span>
+          </Dropdown.Item>
           {detailsError && <Dropdown.Item id="retry" textValue="Ringarko opsionet"><Label>Ringarko opsionet</Label></Dropdown.Item>}
         </Dropdown.Menu>
       </Dropdown.Popover>

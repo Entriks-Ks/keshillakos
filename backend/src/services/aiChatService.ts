@@ -7,6 +7,7 @@ import { Service } from '../models/Service'
 import { ProviderProfile } from '../models/ProviderProfile'
 import { Expert } from '../models/Expert'
 import { City } from '../models/City'
+import { User } from '../models/User'
 import { getProvidersPublicDetails } from './providerPublicService'
 
 export type AiChatMessage = {
@@ -158,38 +159,87 @@ async function findRelevantPlatformData(userQuery: string): Promise<RecommendedE
       }
 
       // 3. Search Providers / Experts
-      const profiles = await ProviderProfile.find({
+      const profileFilter: Record<string, any> = {
         status: 'published',
         'moderation.status': 'approved',
-        $or: [
-          { 'publicProfile.displayName': { $in: regexQueries } },
-          { 'publicProfile.title': { $in: regexQueries } },
-          { 'publicProfile.shortDescription': { $in: regexQueries } },
-          { 'publicProfile.description': { $in: regexQueries } },
-        ],
-      })
-        .limit(3)
+      }
+
+      const orClauses: any[] = [
+        { 'publicProfile.displayName': { $in: regexQueries } },
+        { 'publicProfile.title': { $in: regexQueries } },
+        { 'publicProfile.shortDescription': { $in: regexQueries } },
+        { 'publicProfile.description': { $in: regexQueries } },
+        { specializations: { $in: regexQueries } },
+      ]
+
+      if (matchedCategories.length > 0) {
+        const catKeys = matchedCategories.flatMap((c) => [String(c._id), c.stableId, c.slug].filter(Boolean))
+        orClauses.push({ categories: { $in: catKeys } })
+      }
+
+      profileFilter.$or = orClauses
+
+      let profiles = await ProviderProfile.find(profileFilter)
+        .limit(4)
         .lean()
 
+      const isLawyerQuery = tokens.some((t) => /avokat|ligj|jurid|noter|kontrat/i.test(t))
+      if (profiles.length === 0 && isLawyerQuery) {
+        profiles = await ProviderProfile.find({
+          status: 'published',
+          'moderation.status': 'approved',
+          $or: [
+            { 'publicProfile.displayName': /avokat|ligj/i },
+            { 'publicProfile.title': /avokat|ligj/i },
+            { specializations: /avokat|ligj/i },
+            { categories: { $in: ['avokat', 'lawyers', 'drejtesi', 'drejtesia'] } },
+          ],
+        })
+          .limit(3)
+          .lean()
+      }
+
+      if (profiles.length === 0 && results.length < 2) {
+        profiles = await ProviderProfile.find({
+          status: 'published',
+          'moderation.status': 'approved',
+        })
+          .sort({ updatedAt: -1 })
+          .limit(2)
+          .lean()
+      }
+
+      const ownerIds = profiles.map((p) => p.ownerUser).filter(Boolean)
+      const users = await User.find({ _id: { $in: ownerIds } }).select('_id uid name roles').lean()
+      const userMap = new Map(users.map((u) => [String(u._id), u]))
+
+      const providerUids = profiles
+        .map((p) => userMap.get(String(p.ownerUser))?.uid)
+        .filter((uid): uid is string => Boolean(uid))
+
       const providerDetails = await getProvidersPublicDetails(
-        profiles.map((p) => String(p._id)),
-        new Map(profiles.map((p) => [String(p._id), p.publicProfile?.displayName || 'Ekspert'])),
+        providerUids,
+        new Map(users.map((u) => [u.uid, u.name || 'Ekspert'])),
       )
 
       for (const p of profiles) {
-        const id = String(p._id)
-        if (seenIds.has(id)) continue
-        seenIds.add(id)
+        const user = userMap.get(String(p.ownerUser))
+        const uid = user?.uid
+        if (!uid) continue
+        if (seenIds.has(uid)) continue
+        seenIds.add(uid)
 
-        const details = providerDetails.get(id)
+        const details = providerDetails.get(uid)
+        const name = p.publicProfile?.displayName || user.name || 'Ekspert i verifikuar'
+
         results.push({
-          id,
+          id: uid,
           type: 'expert',
-          title: p.publicProfile?.displayName || 'Ekspert i verifikuar',
-          subtitle: p.publicProfile?.title || p.publicProfile?.shortDescription,
+          title: name,
+          subtitle: p.publicProfile?.title || p.publicProfile?.shortDescription || 'Avokat / Ekspert në KeshillaKos',
           rating: details?.ratingAverage,
           ratingCount: details?.ratingCount,
-          url: `/providers/${p.ownerUser || id}`,
+          url: `/providers/${uid}`,
         })
       }
     }

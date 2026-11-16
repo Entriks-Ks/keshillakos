@@ -11,6 +11,7 @@ import {
   Check,
   Clock,
   Coins,
+  Crown,
   ExternalLink,
   Globe,
   GraduationCap,
@@ -22,15 +23,20 @@ import {
   Share2,
   Sparkles,
   Star,
+  Target,
   Trash2,
+  Trophy,
   UserPlus,
   Video,
   X,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react'
 import { Button, buttonVariants, Chip, Skeleton, toast } from '@heroui/react'
 import {
   fetchProvidersComparison,
   type ProviderComparisonItem,
+  type PublicProvider,
 } from '../api/providers'
 import {
   fetchMarketplaceProviders,
@@ -67,6 +73,122 @@ function formatDateLocale(dateStr: string) {
   }
 }
 
+/** One identity colour per compared lawyer, shared by the scoreboard and the table columns. */
+const LAWYER_COLORS = ['#2563eb', '#8b5cf6', '#0891b2']
+
+function minServicePrice(item: ProviderComparisonItem): number | null {
+  const prices = item.services
+    .map((s) => s.priceFrom)
+    .filter((p): p is number => typeof p === 'number' && p > 0)
+  return prices.length ? Math.min(...prices) : null
+}
+
+function lawyerLanguages(item: ProviderComparisonItem): string[] {
+  if (item.profile?.languages?.length) return item.profile.languages
+  if (item.provider.languages?.length) return item.provider.languages
+  return ['Shqip']
+}
+
+function lawyerHasOnline(item: ProviderComparisonItem): boolean {
+  const modes = item.profile?.modes || item.provider.skills || []
+  return modes.includes('online') || item.services.some((s) => s.details?.deliveryModes?.includes('online'))
+}
+
+type ScoreValue = { uid: string; display: string; ratio: number; isWinner: boolean }
+type ScoreMetric = { key: string; label: string; hint: string; icon: LucideIcon; values: ScoreValue[] }
+
+/**
+ * Head-to-head metrics built only from published profile data. A metric crowns a winner only
+ * when someone is strictly ahead (all-tied rows crown nobody).
+ */
+function buildScoreboard(items: ProviderComparisonItem[]) {
+  const metric = (
+    key: string,
+    label: string,
+    hint: string,
+    icon: LucideIcon,
+    raw: (item: ProviderComparisonItem) => number | null,
+    format: (value: number | null, item: ProviderComparisonItem) => string,
+    opts: { lowerIsBetter?: boolean; fixedMax?: number } = {},
+  ): ScoreMetric => {
+    const entries = items.map((item) => ({ item, value: raw(item) }))
+    const valid = entries.map((e) => e.value).filter((v): v is number => v != null && v > 0)
+    const best = valid.length ? (opts.lowerIsBetter ? Math.min(...valid) : Math.max(...valid)) : null
+    const max = opts.fixedMax ?? (valid.length ? Math.max(...valid) : 0)
+    const allTied = valid.length === items.length && valid.every((v) => v === best)
+    return {
+      key,
+      label,
+      hint,
+      icon,
+      values: entries.map(({ item, value }) => ({
+        uid: item.uid,
+        display: format(value, item),
+        ratio:
+          value == null || value <= 0 || best == null || max <= 0
+            ? 0
+            : opts.lowerIsBetter
+              ? best / value
+              : value / max,
+        isWinner: best != null && value === best && !allTied,
+      })),
+    }
+  }
+
+  const metrics: ScoreMetric[] = [
+    metric(
+      'rating',
+      'Vlerësimi',
+      'Mesatarja nga klientët',
+      Star,
+      (i) => ((i.provider.ratingCount || 0) > 0 ? i.provider.ratingAverage || 0 : null),
+      (v, i) => (v ? `${v.toFixed(1)} ★ (${i.provider.ratingCount})` : 'Pa vlerësime'),
+      { fixedMax: 5 },
+    ),
+    metric(
+      'experience',
+      'Përvoja',
+      'Vite të deklaruara',
+      Award,
+      (i) => i.profile?.yearsOfExperience ?? null,
+      (v) => (v ? `${v} ${v === 1 ? 'vit' : 'vite'}` : 'E padeklaruar'),
+    ),
+    metric(
+      'price',
+      'Çmimi fillestar',
+      'Më i ulëti fiton',
+      Coins,
+      minServicePrice,
+      (v) => (v ? `nga €${v}` : 'Me marrëveshje'),
+      { lowerIsBetter: true },
+    ),
+    metric(
+      'slots',
+      'Termine të lira',
+      'Gati për rezervim',
+      Calendar,
+      (i) => i.openSlots.length,
+      (v) => (v ? `${v} ${v === 1 ? 'termin' : 'termine'}` : 'Me kërkesë'),
+    ),
+    metric(
+      'languages',
+      'Gjuhët',
+      'Gjuhë komunikimi',
+      Globe,
+      (i) => lawyerLanguages(i).length,
+      (_v, i) => lawyerLanguages(i).join(', '),
+    ),
+  ]
+
+  const wins: Record<string, number> = Object.fromEntries(items.map((i) => [i.uid, 0]))
+  for (const m of metrics) for (const v of m.values) if (v.isWinner) wins[v.uid] += 1
+  const topWins = Math.max(0, ...Object.values(wins))
+  const leaders = Object.keys(wins).filter((uid) => wins[uid] === topWins)
+  const leaderUid = topWins > 0 && leaders.length === 1 ? leaders[0] : ''
+
+  return { metrics, wins, leaderUid }
+}
+
 export default function CompareLawyersPage() {
   const { t } = useTranslation()
   const {
@@ -101,6 +223,7 @@ export default function CompareLawyersPage() {
   const [activeIntent, setActiveIntent] = useState<IntentType>('all')
 
   const { verdicts, winnerUids } = useMemo(() => analyzeLawyers(items), [items])
+  const scoreboard = useMemo(() => (items.length >= 2 ? buildScoreboard(items) : null), [items])
 
   function isSpotlighted(uid: string): boolean {
     if (activeIntent === 'all') return false
@@ -154,15 +277,22 @@ export default function CompareLawyersPage() {
   // Single lawyer remove handler that transitions to empty if none remain
   const handleRemoveLawyer = useCallback(
     (uid: string) => {
+      removeLawyer(uid)
+      setItems((prev) => prev.filter((item) => item.uid !== uid))
       const remaining = selectedUids.filter((id) => id !== uid)
       if (remaining.length === 0) {
-        handleClear()
-      } else {
-        removeLawyer(uid)
-        setItems((prev) => prev.filter((item) => item.uid !== uid))
+        setItems([])
+        setLoading(false)
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href)
+          if (url.searchParams.has('uids')) {
+            url.searchParams.delete('uids')
+            window.history.replaceState(null, '', url.pathname + (url.search || ''))
+          }
+        }
       }
     },
-    [selectedUids, removeLawyer, handleClear],
+    [selectedUids, removeLawyer],
   )
 
   // 1. Initial mount sync: if URL contains ?uids=, parse and load them into comparison
@@ -237,13 +367,69 @@ export default function CompareLawyersPage() {
     fetchProvidersComparison(selectedUids)
       .then((data) => {
         if (!cancelled) {
-          setItems(data)
+          const map = new Map(data.map((d) => [d.uid, d]))
+          const allItems: ProviderComparisonItem[] = selectedUids.map((uid) => {
+            const found = map.get(uid)
+            if (found) return found
+            const meta = metaMap[uid]
+            return {
+              uid,
+              provider: {
+                uid,
+                name: meta?.name || 'Avokat',
+                role: 'provider',
+                roleLabel: 'Ofrues',
+                headline: meta?.title || '',
+                bio: '',
+                ratingAverage: 0,
+                ratingCount: 0,
+                categories: [],
+                specializations: [],
+                profilePhoto: meta?.photoUrl || '',
+                coverPhoto: '',
+                location: '',
+                languages: [],
+                verified: false,
+              } as unknown as PublicProvider,
+              profile: null,
+              services: [],
+              openSlots: [],
+            }
+          })
+          setItems(allItems)
           setLoading(false)
         }
       })
       .catch((err) => {
         if (!cancelled) {
           console.error('Failed to load comparison', err)
+          const fallbackItems: ProviderComparisonItem[] = selectedUids.map((uid) => {
+            const meta = metaMap[uid]
+            return {
+              uid,
+              provider: {
+                uid,
+                name: meta?.name || 'Avokat',
+                role: 'provider',
+                roleLabel: 'Ofrues',
+                headline: meta?.title || '',
+                bio: '',
+                ratingAverage: 0,
+                ratingCount: 0,
+                categories: [],
+                specializations: [],
+                profilePhoto: meta?.photoUrl || '',
+                coverPhoto: '',
+                location: '',
+                languages: [],
+                verified: false,
+              } as unknown as PublicProvider,
+              profile: null,
+              services: [],
+              openSlots: [],
+            }
+          })
+          setItems(fallbackItems)
           setLoading(false)
         }
       })
@@ -251,7 +437,7 @@ export default function CompareLawyersPage() {
     return () => {
       cancelled = true
     }
-  }, [selectedUids])
+  }, [selectedUids, metaMap])
 
   // Fetch directory experts for add picker and suggestions
   useEffect(() => {
@@ -487,7 +673,10 @@ export default function CompareLawyersPage() {
 
       <main className="kk-compare-main">
         <section className="kk-cmp-hero">
-          <div className="kk-cmp-hero-glow" aria-hidden />
+          <div className="kk-cmp-hero-glow" aria-hidden>
+            <span className="kk-cmp-hero-orb kk-cmp-hero-orb--a" />
+            <span className="kk-cmp-hero-orb kk-cmp-hero-orb--b" />
+          </div>
           <div className="kk-compare-container">
             {/* Top navigation & Breadcrumbs */}
             <div className="kk-compare-top-nav">
@@ -517,6 +706,23 @@ export default function CompareLawyersPage() {
                     'Klienti zgjedh deri në tre avokatë dhe i krahason në një ekran të vetëm: specializimi, përvoja e deklaruar, tarifat e publikuara, terminët e lirë dhe konsultimi online.',
                   )}
                 </p>
+                <ul className="kk-cmp-hero-features" aria-label={t('compare.whatWeCompare', 'Çfarë krahasojmë')}>
+                  <li>
+                    <Briefcase size={14} aria-hidden /> {t('compare.specialization', 'Specializimi')}
+                  </li>
+                  <li>
+                    <Award size={14} aria-hidden /> {t('compare.featExperience', 'Përvoja')}
+                  </li>
+                  <li>
+                    <Coins size={14} aria-hidden /> {t('compare.featFees', 'Tarifat')}
+                  </li>
+                  <li>
+                    <Calendar size={14} aria-hidden /> {t('compare.featSlots', 'Terminet')}
+                  </li>
+                  <li>
+                    <Video size={14} aria-hidden /> {t('compare.featOnline', 'Online')}
+                  </li>
+                </ul>
               </header>
 
               {/* Selection status: three slots, filled or open */}
@@ -567,15 +773,35 @@ export default function CompareLawyersPage() {
                     const meta = metaMap[uid]
                     const name = item?.provider.name || meta?.name || 'Avokat'
                     return (
-                      <li key={uid} className="kk-cmp-slot is-filled" title={name}>
-                        <span className="kk-cmp-slot-avatar">
-                          <ProfileAvatar
-                            src={item?.profile?.photoUrl || item?.provider.profilePhoto || meta?.photoUrl}
-                            seed={uid}
-                            size="fill"
-                            alt=""
-                          />
-                        </span>
+                      <li
+                        key={uid}
+                        className="kk-cmp-slot is-filled"
+                        title={name}
+                        style={{ '--lawyer': LAWYER_COLORS[index] } as CSSProperties}
+                      >
+                        <div className="kk-cmp-slot-avatar-wrap">
+                          <span className="kk-cmp-slot-avatar">
+                            <ProfileAvatar
+                              src={item?.profile?.photoUrl || item?.provider.profilePhoto || meta?.photoUrl}
+                              seed={uid}
+                              size="fill"
+                              alt=""
+                            />
+                          </span>
+                          <button
+                            type="button"
+                            className="kk-cmp-slot-remove"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleRemoveLawyer(uid)
+                            }}
+                            aria-label={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
+                            title={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
+                          >
+                            <X size={12} strokeWidth={2.5} aria-hidden />
+                          </button>
+                        </div>
                         <span className="kk-cmp-slot-name">{name.split(' ')[0]}</span>
                       </li>
                     )
@@ -583,9 +809,12 @@ export default function CompareLawyersPage() {
                 </ul>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Toolbar */}
-            {items.length > 0 ? (
+        <div className="kk-compare-container kk-cmp-content">
+            {/* Toolbar (floats over the hero's bottom edge) */}
+            {selectedUids.length > 0 ? (
               <div className="kk-compare-toolbar">
                 <div className="kk-compare-toolbar-left">
                   {items.length >= 2 ? (
@@ -623,10 +852,7 @@ export default function CompareLawyersPage() {
                 </div>
               </div>
             ) : null}
-          </div>
-        </section>
 
-        <div className="kk-compare-container kk-cmp-content">
           {/* Loading Skeleton */}
           {loading && selectedUids.length > 0 ? (
             <div className="kk-compare-board">
@@ -774,6 +1000,112 @@ export default function CompareLawyersPage() {
                 </section>
               ) : null}
 
+              {/* Head-to-head scoreboard: who wins each published metric */}
+              {scoreboard ? (
+                <section className="kk-score" aria-labelledby="score-heading">
+                  <div className="kk-score-head">
+                    <div className="kk-score-intro">
+                      <span className="kk-score-kicker">
+                        <Trophy size={13} aria-hidden />
+                        {t('compare.scoreKicker', 'Përballja në shifra')}
+                      </span>
+                      <h2 id="score-heading">{t('compare.scoreTitle', 'Kush fiton në çdo kategori?')}</h2>
+                      <p>
+                        {t(
+                          'compare.scoreLead',
+                          'Llogaritur vetëm nga të dhënat e publikuara në profilet e avokatëve.',
+                        )}
+                      </p>
+                    </div>
+
+                    <ul className="kk-score-legend">
+                      {items.map((item, idx) => {
+                        const wins = scoreboard.wins[item.uid] || 0
+                        const isLeader = scoreboard.leaderUid === item.uid
+                        return (
+                          <li
+                            key={`legend-${item.uid}`}
+                            className={isLeader ? 'is-leader' : ''}
+                            style={{ '--lawyer': LAWYER_COLORS[idx], '--i': idx } as CSSProperties}
+                          >
+                            <span className="kk-score-legend-avatar">
+                              <ProfileAvatar
+                                src={item.profile?.photoUrl || item.provider.profilePhoto}
+                                seed={item.uid}
+                                size="fill"
+                                alt=""
+                              />
+                              {isLeader ? (
+                                <span className="kk-score-legend-crown" aria-hidden>
+                                  <Crown size={12} />
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="kk-score-legend-text">
+                              <strong>{item.provider.name}</strong>
+                              <span>
+                                {isLeader
+                                  ? t('compare.scoreLeader', 'Kryeson')
+                                  : t('compare.scoreWinsLabel', 'Fitore')}{' '}
+                                · {wins}/{scoreboard.metrics.length}
+                              </span>
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+
+                  <div className="kk-score-rows">
+                    {scoreboard.metrics.map((m, mIdx) => {
+                      const Icon = m.icon
+                      return (
+                        <div
+                          key={m.key}
+                          className="kk-score-row"
+                          style={{ '--row': mIdx } as CSSProperties}
+                        >
+                          <div className="kk-score-label">
+                            <span className="kk-score-label-icon">
+                              <Icon size={16} aria-hidden />
+                            </span>
+                            <div>
+                              <strong>{m.label}</strong>
+                              <span>{m.hint}</span>
+                            </div>
+                          </div>
+
+                          <div className="kk-score-bars">
+                            {m.values.map((v, idx) => {
+                              const item = items[idx]
+                              const width = v.ratio > 0 ? Math.max(v.ratio * 100, 8) : 0
+                              return (
+                                <div
+                                  key={`${m.key}-${v.uid}`}
+                                  className={`kk-score-bar${v.isWinner ? ' is-winner' : ''}${v.ratio === 0 ? ' is-empty' : ''}`}
+                                  style={{ '--lawyer': LAWYER_COLORS[idx], '--w': `${width}%` } as CSSProperties}
+                                >
+                                  <span className="kk-score-bar-name">
+                                    {item?.provider.name.split(' ')[0]}
+                                  </span>
+                                  <span className="kk-score-bar-track" aria-hidden>
+                                    <span className="kk-score-bar-fill" />
+                                  </span>
+                                  <span className="kk-score-bar-value" title={v.display}>
+                                    {v.isWinner ? <Crown size={13} aria-label="Fitues" /> : null}
+                                    {v.display}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              ) : null}
+
               {/* Verdict Section: Cili është më i mirë për çfarë */}
               <section className="kk-verdict-section" aria-labelledby="verdict-heading">
                 <div className="kk-verdict-head">
@@ -796,7 +1128,7 @@ export default function CompareLawyersPage() {
                         className={`kk-intent-btn${activeIntent === 'all' ? ' is-active' : ''}`}
                         onClick={() => setActiveIntent('all')}
                       >
-                        🎯 Të gjitha
+                        <Target size={14} aria-hidden /> Të gjitha
                       </button>
                       {winnerUids.experience ? (
                         <button
@@ -804,7 +1136,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'experience' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('experience')}
                         >
-                          🏆 Përvoja më e Gjatë
+                          <Award size={14} aria-hidden /> Përvoja më e gjatë
                         </button>
                       ) : null}
                       {winnerUids.budget ? (
@@ -813,7 +1145,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'budget' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('budget')}
                         >
-                          💰 Çmimi më Ekonomik
+                          <Coins size={14} aria-hidden /> Çmimi më ekonomik
                         </button>
                       ) : null}
                       {winnerUids.urgency ? (
@@ -822,7 +1154,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'urgency' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('urgency')}
                         >
-                          ⚡ Takimi më i Shpejtë
+                          <Zap size={14} aria-hidden /> Takimi më i shpejtë
                         </button>
                       ) : null}
                       {winnerUids.diaspora ? (
@@ -831,7 +1163,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'diaspora' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('diaspora')}
                         >
-                          🌐 Konsultim Online & Diasporë
+                          <Globe size={14} aria-hidden /> Online & diasporë
                         </button>
                       ) : null}
                       {winnerUids.reputation ? (
@@ -840,7 +1172,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'reputation' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('reputation')}
                         >
-                          ★ Reputacioni më i Lartë
+                          <Star size={14} aria-hidden /> Reputacioni më i lartë
                         </button>
                       ) : null}
                     </div>
@@ -861,6 +1193,20 @@ export default function CompareLawyersPage() {
                         key={`verdict-card-${item.uid}`}
                         className={`kk-verdict-card is-tone-${v.badge.tone}${isWinner ? ' is-spotlight' : ''}`}
                       >
+                        <button
+                          type="button"
+                          className="kk-verdict-remove-btn"
+                          onClick={() => handleRemoveLawyer(item.uid)}
+                          aria-label={`${t('compare.removeLawyer', 'Hiq')} ${item.provider.name}`}
+                          title={`${t('compare.removeLawyer', 'Hiq')} ${item.provider.name}`}
+                        >
+                          <X size={14} aria-hidden />
+                        </button>
+                        {isWinner ? (
+                          <span className="kk-verdict-crown">
+                            <Crown size={13} aria-hidden /> Më i përshtatshmi për këtë
+                          </span>
+                        ) : null}
                         <div className={`kk-verdict-badge is-${v.badge.tone}`}>
                           {renderBadgeIcon(v.badge.iconName)}
                           <span>{v.badge.label}</span>
@@ -941,7 +1287,7 @@ export default function CompareLawyersPage() {
                     </span>
                   </div>
 
-                  {items.map((item) => {
+                  {items.map((item, idx) => {
                     const verified = Boolean(
                       item.profile?.verification?.qualification === 'verified' ||
                       item.profile?.verification?.identity === 'verified',
@@ -950,7 +1296,11 @@ export default function CompareLawyersPage() {
                     const v = verdicts[item.uid]
 
                     return (
-                      <div key={item.uid} className={`kk-compare-card-head${isSpotlighted(item.uid) ? ' is-spotlight' : ''}`}>
+                      <div
+                        key={item.uid}
+                        className={`kk-compare-card-head${isSpotlighted(item.uid) ? ' is-spotlight' : ''}`}
+                        style={{ '--lawyer': LAWYER_COLORS[idx] } as CSSProperties}
+                      >
                         <button
                           type="button"
                           className="kk-compare-remove-btn"
@@ -1001,18 +1351,19 @@ export default function CompareLawyersPage() {
                               <span>{item.provider.location}</span>
                             </li>
                           ) : null}
-                          <li>
-                            <RatingMeta
-                              average={item.provider.ratingAverage || 0}
-                              count={item.provider.ratingCount || 0}
-                              href={profileUrl}
-                            />
-                            {highlightDiff && advantages.bestRatingUid === item.uid ? (
+                          {/* RatingMeta renders its own <li> */}
+                          <RatingMeta
+                            average={item.provider.ratingAverage || 0}
+                            count={item.provider.ratingCount || 0}
+                            href={profileUrl}
+                          />
+                          {highlightDiff && advantages.bestRatingUid === item.uid ? (
+                            <li>
                               <span className="kk-advantage-badge" title="Vlerësimi më i lartë">
                                 ★ Top
                               </span>
-                            ) : null}
-                          </li>
+                            </li>
+                          ) : null}
                         </ul>
 
                         {/* Immediate CTAs */}
@@ -1199,10 +1550,7 @@ export default function CompareLawyersPage() {
                 </div>
 
                 {items.map((item) => {
-                  const prices = item.services
-                    .map((s) => s.priceFrom)
-                    .filter((p): p is number => typeof p === 'number' && p > 0)
-                  const minPrice = prices.length ? Math.min(...prices) : null
+                  const minPrice = minServicePrice(item)
                   const isLowestPrice = highlightDiff && advantages.lowestPriceUid === item.uid
 
                   return (
@@ -1325,9 +1673,8 @@ export default function CompareLawyersPage() {
                 </div>
 
                 {items.map((item) => {
-                  const modes = item.profile?.modes || item.provider.skills || []
-                  const hasOnline = modes.includes('online') || item.services.some((s) => s.details?.deliveryModes?.includes('online'))
-                  const languages = item.profile?.languages?.length ? item.profile.languages : (item.provider.languages?.length ? item.provider.languages : ['Shqip'])
+                  const hasOnline = lawyerHasOnline(item)
+                  const languages = lawyerLanguages(item)
 
                   return (
                     <div key={`modes-${item.uid}`} className="kk-compare-cell">

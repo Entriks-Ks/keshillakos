@@ -26,6 +26,7 @@ import { deleteUploads, normalizeUploadPath } from './mediaService'
 import { backfillUnmoderatedPendingReviews, type ProviderRatingSummary, getStatsForProviders } from './ratingService'
 import { clampBio, isPro, liveProUids } from './planService'
 import { PLAN_LIMITS } from '../plans/catalog'
+import { resolveProviderUser } from './providerPublicService'
 
 export type CreateProviderProfileInput = {
   ownerUid: string
@@ -264,7 +265,14 @@ export async function listMarketplaceProviderPage(query: Record<string, unknown>
  * directory cards, plus the career and social fields only the profile page shows.
  */
 export async function getMarketplaceProviderByUid(uid: string, providerType: 'individual' | 'business') {
-  const owner = await User.findOne({ uid }).select('_id').lean()
+  let owner = await User.findOne({ uid }).select('_id').lean()
+  if (!owner && Types.ObjectId.isValid(uid)) {
+    owner = await User.findById(uid).select('_id').lean()
+  }
+  if (!owner) {
+    const userDoc = await resolveProviderUser(uid)
+    if (userDoc) owner = { _id: userDoc._id } as any
+  }
   if (!owner) return null
   const found = await ProviderProfile.findOne({
     ownerUser: owner._id,

@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.DELETED_MESSAGE_PREVIEW = void 0;
 exports.assertParticipant = assertParticipant;
 exports.assertProviderCanMessageSeeker = assertProviderCanMessageSeeker;
 exports.openOrGetConversation = openOrGetConversation;
@@ -10,6 +11,9 @@ exports.listConversationsForUser = listConversationsForUser;
 exports.getConversationForUser = getConversationForUser;
 exports.listMessages = listMessages;
 exports.sendMessage = sendMessage;
+exports.editMessage = editMessage;
+exports.deleteMessage = deleteMessage;
+exports.deleteConversation = deleteConversation;
 exports.markConversationRead = markConversationRead;
 const realtime_1 = require("./realtime");
 const chatUnreadService_1 = require("./chatUnreadService");
@@ -29,13 +33,17 @@ const ServiceOffer_1 = require("../models/ServiceOffer");
 const Service_1 = require("../models/Service");
 const userService_1 = require("./userService");
 const MAX_BODY = 4000;
+exports.DELETED_MESSAGE_PREVIEW = 'Mesazhi u fshi';
 function toMessage(doc) {
+    const deleted = Boolean(doc.deletedAt);
     return {
         id: doc._id.toString(),
         conversationId: doc.conversation.toString(),
         senderUid: doc.senderUid,
-        body: doc.body,
+        body: deleted ? '' : doc.body,
         createdAt: doc.createdAt.toISOString(),
+        ...(doc.editedAt && !deleted ? { editedAt: doc.editedAt.toISOString() } : {}),
+        ...(deleted ? { deleted: true } : {}),
     };
 }
 async function assertParticipant(conversationId, uid) {
@@ -223,6 +231,70 @@ async function sendMessage(input) {
     (0, realtime_1.emitChatMessage)(toMessage(message), peerUid);
     await (0, chatUnreadService_1.publishChatUnread)(peerUid);
     return toMessage(message);
+}
+async function loadOwnMessage(conversationId, messageId, uid) {
+    const conversation = await assertParticipant(conversationId, uid);
+    if (typeof messageId !== 'string' || !mongoose_1.default.isValidObjectId(messageId)) {
+        throw Object.assign(new Error('Mesazhi nuk u gjet'), { status: 404 });
+    }
+    const message = await Message_1.Message.findOne({ _id: messageId, conversation: conversation._id });
+    if (!message)
+        throw Object.assign(new Error('Mesazhi nuk u gjet'), { status: 404 });
+    if (message.senderUid !== uid) {
+        throw Object.assign(new Error('Mund të ndryshosh vetëm mesazhet e tua'), { status: 403 });
+    }
+    if (message.deletedAt)
+        throw Object.assign(new Error('Mesazhi është fshirë'), { status: 410 });
+    const peerUid = uid === conversation.seekerUid ? conversation.providerUid : conversation.seekerUid;
+    return { conversation, message, peerUid };
+}
+/** Updates the conversation preview only when the changed message is the latest one. */
+async function syncPreviewIfLatest(conversation, message, preview) {
+    if (!conversation.lastMessageAt || conversation.lastMessageAt.getTime() !== message.createdAt.getTime())
+        return undefined;
+    await Conversation_1.Conversation.updateOne({ _id: conversation._id }, { $set: { lastMessagePreview: preview.slice(0, 140) } });
+    return preview.slice(0, 140);
+}
+async function editMessage(input) {
+    const body = typeof input.body === 'string' ? input.body.trim() : '';
+    if (!body)
+        throw Object.assign(new Error('Mesazhi nuk mund të jetë bosh'), { status: 400 });
+    if (body.length > MAX_BODY)
+        throw Object.assign(new Error('Mesazhi është shumë i gjatë'), { status: 400 });
+    const { conversation, message, peerUid } = await loadOwnMessage(input.conversationId, input.messageId, input.uid);
+    await (0, chatSafetyService_1.assertChatUnblocked)(input.uid, peerUid);
+    if (message.body === body)
+        return toMessage(message);
+    message.body = body;
+    message.editedAt = new Date();
+    await message.save();
+    const result = toMessage(message);
+    const lastMessagePreview = await syncPreviewIfLatest(conversation, message, body);
+    (0, realtime_1.emitChatMessageUpdated)(result, peerUid, { message: result, ...(lastMessagePreview !== undefined ? { lastMessagePreview } : {}) });
+    return result;
+}
+async function deleteMessage(input) {
+    const { conversation, message, peerUid } = await loadOwnMessage(input.conversationId, input.messageId, input.uid);
+    message.body = '';
+    message.deletedAt = new Date();
+    await message.save();
+    const result = toMessage(message);
+    const lastMessagePreview = await syncPreviewIfLatest(conversation, message, exports.DELETED_MESSAGE_PREVIEW);
+    (0, realtime_1.emitChatMessageUpdated)(result, peerUid, { message: result, ...(lastMessagePreview !== undefined ? { lastMessagePreview } : {}) });
+    return result;
+}
+async function deleteConversation(conversationId, uid) {
+    const conversation = await assertParticipant(conversationId, uid);
+    const conversationObjectId = conversation._id;
+    const conversationIdStr = conversationObjectId.toString();
+    const seekerUid = conversation.seekerUid;
+    const providerUid = conversation.providerUid;
+    await Message_1.Message.deleteMany({ conversation: conversationObjectId });
+    await Conversation_1.Conversation.findByIdAndDelete(conversationObjectId);
+    (0, realtime_1.emitConversationDeleted)(conversationIdStr, seekerUid, providerUid);
+    await (0, chatUnreadService_1.publishChatUnread)(seekerUid);
+    await (0, chatUnreadService_1.publishChatUnread)(providerUid);
+    return { ok: true, conversationId: conversationIdStr };
 }
 async function markConversationRead(conversationId, uid) {
     const conversation = await assertParticipant(conversationId, uid);

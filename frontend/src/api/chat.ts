@@ -27,7 +27,11 @@ export type ChatMessage = {
   senderUid: string
   body: string
   createdAt: string
+  editedAt?: string
+  deleted?: boolean
 }
+
+export type ChatMessageUpdate = { message: ChatMessage; lastMessagePreview?: string }
 
 export async function fetchConversations(params: PageParams = {}) {
   const { data } = await api.get<{ conversations: ConversationItem[]; pagination: PaginationMeta; summary: CollectionSummary }>('/api/chat/conversations', { params })
@@ -67,6 +71,28 @@ export async function sendChatMessage(conversationId: string, body: string) {
     { body },
   )
   return data.message
+}
+
+export async function editChatMessage(conversationId: string, messageId: string, body: string) {
+  const { data } = await api.patch<{ message: ChatMessage }>(
+    `/api/chat/conversations/${conversationId}/messages/${messageId}`,
+    { body },
+  )
+  return data.message
+}
+
+export async function deleteChatMessage(conversationId: string, messageId: string) {
+  const { data } = await api.delete<{ message: ChatMessage }>(
+    `/api/chat/conversations/${conversationId}/messages/${messageId}`,
+  )
+  return data.message
+}
+
+export async function deleteConversation(conversationId: string) {
+  const { data } = await api.delete<{ ok: boolean; conversationId: string }>(
+    `/api/chat/conversations/${conversationId}`,
+  )
+  return data
 }
 
 export async function markConversationRead(conversationId: string) {

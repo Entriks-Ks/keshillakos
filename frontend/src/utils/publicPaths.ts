@@ -22,7 +22,19 @@ export function providerPath(provider: { uid: string; name?: string }) {
   return `/providers/${withSlug(provider.name, provider.uid)}`
 }
 
-/** Resolves `slug-id` and legacy bare-id params. MongoDB ids and Firebase uids never contain hyphens. */
+/** Resolves `slug-id` and legacy bare-id params. Handles MongoDB ObjectIds, Firebase UIDs, and slugs. */
 export function idFromPublicParam(param = '') {
-  return param.slice(param.lastIndexOf('-') + 1)
+  if (!param) return ''
+  const trimmed = param.trim()
+  if (/^[a-f\d]{24}$/i.test(trimmed)) return trimmed
+
+  const lastHyphen = trimmed.lastIndexOf('-')
+  if (lastHyphen === -1) return trimmed
+
+  const suffix = trimmed.slice(lastHyphen + 1)
+  if (/^[a-f\d]{24}$/i.test(suffix) || suffix.length >= 16 || (suffix.length >= 4 && /\d/.test(suffix))) {
+    return suffix
+  }
+
+  return trimmed
 }

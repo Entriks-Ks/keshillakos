@@ -46,10 +46,9 @@
 .dsb-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   height: 36px;
   padding: 0 8px;
-  font-size: 1.08rem;
   border-radius: 12px;
 }
 

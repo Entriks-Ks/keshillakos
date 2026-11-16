@@ -1,6 +1,6 @@
 import KeshillaPagination from '../components/KeshillaPagination'
 import { emptyPagination, type PaginationMeta } from '../api/pagination'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button, SearchField, Tabs, ToggleButton } from '@heroui/react'
@@ -39,17 +39,35 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import { useCatalogOptions } from '../hooks/useCatalogOptions'
 import { useSavedLocation } from '../hooks/useSavedLocation'
+import { isProviderVerified } from '../components/providerCardUtils'
 import { catalogLanguage } from '../i18n'
+import { humanLabels } from '../utils/displayLabels'
 import { getErrorMessage } from '../utils/errors'
 import { withCategoryLabels } from '../utils/marketplaceProvider'
+import { providerPath, servicePath } from '../utils/publicPaths'
 import {
+  formatServicePrice,
+  isVerified,
   type DeliveryFilter,
   type MarketplaceFilters,
   type MarketplaceSort,
   type MarketplaceTab,
   type VerificationFilter,
 } from '../utils/serviceDiscovery'
+import { CountUp, OfferDeck, SearchHints, type DeckItem } from './OffersShowcase'
 import './OffersPage.css'
+
+const DECK_SIZE = 5
+
+/** Moves the cursor spotlight on whichever result card is under the mouse. */
+function trackSpotlight(event: PointerEvent<HTMLElement>) {
+  if (event.pointerType !== 'mouse') return
+  const card = (event.target as HTMLElement).closest<HTMLElement>('.pc-card')
+  if (!card) return
+  const rect = card.getBoundingClientRect()
+  card.style.setProperty('--mx', `${Math.round(event.clientX - rect.left)}px`)
+  card.style.setProperty('--my', `${Math.round(event.clientY - rect.top)}px`)
+}
 
 const SORT_OPTIONS: Array<{ id: MarketplaceSort; label: string }> = [
   { id: 'relevance', label: 'Relevanca' },
@@ -353,6 +371,61 @@ export default function OffersPage() {
   const filteredCompanies = labeledProviders.filter((provider) => provider.providerType === 'business')
   const filteredServices = services
 
+  const deckItems = useMemo<DeckItem[]>(() => {
+    if (tab === 'services') {
+      return services.slice(0, DECK_SIZE).map((service) => {
+        const owner = service.provider
+        const listed = providersByUid.get(owner?.uid || service.providerUid)
+        const company = owner?.providerType === 'business' || owner?.role === 'company'
+        const seed = owner?.uid || service.providerUid
+        return {
+          id: service.id,
+          href: servicePath(service),
+          kind: 'services' as const,
+          title: service.title,
+          subtitle: humanLabels(
+            [service.categoryLabel || service.category, service.subcategory],
+            [service.categoryId, service.category, service.subcategoryId].filter(Boolean) as string[],
+          ).join(' › ') || undefined,
+          price: formatServicePrice(service),
+          location: service.location || listed?.location || owner?.location,
+          online: (service.details?.deliveryModes ?? []).includes('online'),
+          verified: isVerified(owner),
+          rating: {
+            average: listed?.ratingAverage ?? owner?.ratingAverage ?? 0,
+            count: listed?.ratingCount ?? owner?.ratingCount ?? 0,
+          },
+          owner: {
+            name: listed?.name || owner?.name || service.providerName,
+            photo: listed?.photoUrl || owner?.profilePhoto,
+            seed,
+            company,
+          },
+        }
+      })
+    }
+    const kind = tab
+    return labeledProviders
+      .filter((provider) => provider.providerType === (kind === 'experts' ? 'individual' : 'business'))
+      .slice(0, DECK_SIZE)
+      .map((provider) => {
+        const company = provider.providerType === 'business'
+        const specialties = humanLabels([...provider.specializations, ...provider.categoryLabels], provider.categories)
+        return {
+          id: provider.id,
+          href: providerPath(provider),
+          kind,
+          title: provider.name,
+          subtitle: (company ? '' : provider.title?.trim()) || specialties[0] || undefined,
+          location: provider.location,
+          online: provider.modes.includes('online'),
+          verified: isProviderVerified(provider),
+          rating: { average: provider.ratingAverage ?? 0, count: provider.ratingCount ?? 0 },
+          avatar: { photo: provider.photoUrl, seed: provider.uid, company },
+        }
+      })
+  }, [tab, services, providersByUid, labeledProviders])
+
   const loading = tab === 'services' ? servicesLoading : providersLoading
   const error = tab === 'services' ? servicesError : providersError
   const tabCounts: Record<MarketplaceTab, number | null> = {
@@ -367,6 +440,8 @@ export default function OffersPage() {
     empty: t(`offers.empty${offerKey}`),
     error: t(`offers.error${offerKey}`),
   }
+  const hintList: unknown = t(`offers.hints${offerKey}`, { returnObjects: true })
+  const searchHints = Array.isArray(hintList) ? hintList.filter((item): item is string => typeof item === 'string') : []
   const resultLabel = tab === 'companies'
     ? t('offers.nounCompany')
     : resultCount === 1
@@ -627,7 +702,11 @@ export default function OffersPage() {
       <main className="of-page">
         <Tabs selectedKey={tab} onSelectionChange={onTabChange} className="of-tabs">
           <header className="of-head">
-            <div className="of-head-glow" aria-hidden />
+            {/* Background layers are clipped here so the command bar itself can overhang the edge */}
+            <div className="of-head-bg" aria-hidden>
+              <span className="of-head-orb of-head-orb--a" />
+              <span className="of-head-orb of-head-orb--b" />
+            </div>
             <div className="of-inner of-head-inner">
               <div className="of-head-top">
                 <div className="of-head-copy">
@@ -637,6 +716,25 @@ export default function OffersPage() {
                   </span>
                   <h1 id="offers-heading">{t('offers.title')}</h1>
                   <p className="of-lead">{t('offers.lead')}</p>
+                  {categories.length > 0 ? (
+                    <div className="of-head-cats" role="group" aria-label={t('offers.category')}>
+                      {categories.slice(0, 6).map((category) => {
+                        const active = selectedCategory?._id === category._id
+                        return (
+                          <button
+                            key={category._id}
+                            type="button"
+                            className={`of-head-cat${active ? ' is-active' : ''}`}
+                            aria-pressed={active}
+                            onClick={() => selectCategory(active ? 'all' : category._id)}
+                          >
+                            <span className="of-head-cat-dot" aria-hidden />
+                            {catalogLabel(category, namesLang)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : null}
                 </div>
                 <Link to="/krahaso" className="of-compare-card">
                   <span className="of-compare-icon" aria-hidden>
@@ -648,6 +746,7 @@ export default function OffersPage() {
                   </span>
                   <ArrowRight size={18} aria-hidden className="of-compare-arrow" />
                 </Link>
+                <OfferDeck items={deckItems} />
               </div>
 
               <div className="of-controls">
@@ -657,14 +756,16 @@ export default function OffersPage() {
                       <Tabs.Tab key={id} id={id} className="of-tab">
                         <Icon size={16} aria-hidden className="of-tab-icon" />
                         {t(`offers.${id}`)}
-                        {tabCounts[id] != null ? <span className="of-tab-count">{tabCounts[id]}</span> : null}
+                        {tabCounts[id] != null ? (
+                          <span className="of-tab-count"><CountUp value={tabCounts[id] ?? 0} /></span>
+                        ) : null}
                         <Tabs.Indicator className="of-tab-indicator" />
                       </Tabs.Tab>
                     ))}
                   </Tabs.List>
                 </Tabs.ListContainer>
 
-                <div className="of-search" role="search">
+                <div className={`of-search${query ? '' : ' has-hints'}`} role="search">
                   <SearchField
                     aria-label={t('offers.search')}
                     value={query}
@@ -677,6 +778,9 @@ export default function OffersPage() {
                       <SearchField.Input placeholder={copy.placeholder} />
                       <SearchField.ClearButton aria-label={t('offers.clearSearch')} />
                     </SearchField.Group>
+                    {!query && searchHints.length > 0 ? (
+                      <SearchHints prefix={t('offers.hintPrefix')} phrases={searchHints} />
+                    ) : null}
                   </SearchField>
                   <div className="of-search-location">
                     <LocationSelector
@@ -717,7 +821,7 @@ export default function OffersPage() {
                 </div>
               </aside>
 
-              <div className="of-results">
+              <div className="of-results" onPointerMove={trackSpotlight}>
                 {searchParams.get('approx') === '1' ? (
                   <p className="of-approx" role="status">{t('offers.approx')}</p>
                 ) : null}
@@ -725,7 +829,7 @@ export default function OffersPage() {
                   <p className="of-count" aria-live="polite">
                     {loading ? t('offers.searching') : (
                       <>
-                        <strong>{resultCount}</strong> {resultLabel}
+                        <strong><CountUp value={resultCount} /></strong> {resultLabel}
                         {cityName ? ` ${t('offers.inCity', { city: cityName })}` : ''}
                       </>
                     )}
