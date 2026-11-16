@@ -100,6 +100,15 @@ export function useChatSocket(enabled: boolean, ownerUid?: string) {
     }
   }, [connected])
 
+  const onMessageUpdated = useCallback((handler: (event: import('../api/chat').ChatMessageUpdate) => void) => {
+    const socket = socketRef.current
+    if (!socket) return () => undefined
+    socket.on('message:updated', handler)
+    return () => {
+      socket.off('message:updated', handler)
+    }
+  }, [connected])
+
   const onTyping = useCallback((handler: (event: TypingEvent) => void) => {
     const socket = socketRef.current
     if (!socket) return () => undefined
@@ -115,6 +124,15 @@ export function useChatSocket(enabled: boolean, ownerUid?: string) {
     socket.on('conversation:updated', handler)
     return () => {
       socket.off('conversation:updated', handler)
+    }
+  }, [connected])
+
+  const onConversationDeleted = useCallback((handler: (event: { conversationId: string }) => void) => {
+    const socket = socketRef.current
+    if (!socket) return () => undefined
+    socket.on('conversation:deleted', handler)
+    return () => {
+      socket.off('conversation:deleted', handler)
     }
   }, [connected])
 
@@ -144,8 +162,10 @@ export function useChatSocket(enabled: boolean, ownerUid?: string) {
     sendMessage,
     emitTyping,
     onMessageNew,
+    onMessageUpdated,
     onTyping,
     onConversationUpdated,
+    onConversationDeleted,
     onAvailability,
     onPresence,
     subscribePresence,

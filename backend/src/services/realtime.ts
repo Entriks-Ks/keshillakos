@@ -19,3 +19,16 @@ export function emitChatMessage(message: { conversationId: string; body: string;
     lastMessageAt: message.createdAt, senderUid: message.senderUid,
   })
 }
+
+export function emitChatMessageUpdated(
+  message: { conversationId: string; senderUid: string },
+  peerUid: string,
+  payload: { message: unknown; lastMessagePreview?: string },
+) {
+  server?.to([`conversation:${message.conversationId}`, `user:${peerUid}`, `user:${message.senderUid}`]).emit('message:updated', payload)
+}
+
+export function emitConversationDeleted(conversationId: string, seekerUid: string, providerUid: string) {
+  const payload = { conversationId }
+  server?.to([`conversation:${conversationId}`, `user:${seekerUid}`, `user:${providerUid}`]).emit('conversation:deleted', payload)
+}

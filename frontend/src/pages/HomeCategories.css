@@ -9,9 +9,9 @@
   overflow-x: hidden;
 }
 
-.tt-home .tt-nav-inner,
-.tt-home .tt-hero-inner,
-.tt-home .tt-section-inner {
+.tt-home:not(.ab-shell):not(.pl-shell) .tt-nav-inner,
+.tt-home:not(.ab-shell):not(.pl-shell) .tt-hero-inner,
+.tt-home:not(.ab-shell):not(.pl-shell) .tt-section-inner {
   width: min(1440px, calc(100% - clamp(32px, 5vw, 88px)));
   max-width: none;
   margin-inline: auto;

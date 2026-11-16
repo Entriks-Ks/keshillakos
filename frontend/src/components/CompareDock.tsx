@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, Scale, X } from 'lucide-react'
+import { ArrowRight, Scale, X, Trash2, Plus } from 'lucide-react'
 import { toast } from '@heroui/react'
 import { MAX_COMPARE_LAWYERS, useCompareLawyers } from '../hooks/useCompareLawyers'
 import ProfileAvatar from './ProfileAvatar'
@@ -22,24 +22,23 @@ export default function CompareDock() {
     count === 3
       ? t('compare.dockActionAll', 'Krahaso të 3 Avokatët')
       : count === 2
-        ? t('compare.dockActionTwo', 'Krahaso (2 Avokatë)')
+        ? t('compare.dockActionTwo', { count: 2, defaultValue: 'Krahaso (2 Avokatë)' })
         : t('compare.dockActionOne', 'Krahaso Tani')
-
-  const statusHint =
-    count === 1
-      ? t('compare.dockHint1', 'Zgjidhni edhe 1-2 avokatë për krahasim')
-      : count === 2
-        ? t('compare.dockHint2', 'Zgjidhni edhe 1 avokat për krahasim të plotë')
-        : t('compare.dockHint3', 'Gati për krahasim!')
 
   return (
     <aside className="kk-compare-dock" role="region" aria-label={t('compare.dockTitle', 'Krahasimi i Avokatëve')}>
       <div className="kk-dock-left">
         <div className="kk-dock-badge">
-          <Scale size={18} className="kk-dock-badge-icon" aria-hidden />
-          <span>{t('compare.dockTitle', 'Krahaso Avokatët')}</span>
-          <strong className="kk-dock-counter">({count}/{MAX_COMPARE_LAWYERS})</strong>
+          <span className="kk-dock-icon-wrap" aria-hidden="true">
+            <Scale size={16} />
+          </span>
+          <span className="kk-dock-title">{t('compare.dockTitle', 'Krahaso Avokatët')}</span>
+          <span className="kk-dock-counter" aria-label={`${count} nga ${MAX_COMPARE_LAWYERS}`}>
+            {count}/{MAX_COMPARE_LAWYERS}
+          </span>
         </div>
+
+        <span className="kk-dock-divider" aria-hidden="true" />
 
         <div className="kk-dock-items" aria-label="Avokatët e zgjedhur">
           {selectedUids.map((uid) => {
@@ -54,13 +53,14 @@ export default function CompareDock() {
                   type="button"
                   className="kk-dock-remove"
                   onClick={(e) => {
+                    e.preventDefault()
                     e.stopPropagation()
                     removeLawyer(uid)
                   }}
                   aria-label={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
                   title={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
                 >
-                  <X size={11} aria-hidden />
+                  <X size={11} strokeWidth={2.5} aria-hidden="true" />
                 </button>
               </div>
             )
@@ -71,13 +71,12 @@ export default function CompareDock() {
               key={`empty-${index}`}
               className="kk-dock-empty-slot"
               title={t('compare.emptySlot', 'Vend i lirë për avokat')}
+              aria-label={t('compare.emptySlot', 'Vend i lirë për avokat')}
             >
-              +
+              <Plus size={13} strokeWidth={2} aria-hidden="true" />
             </div>
           ))}
         </div>
-
-        <span className="kk-dock-hint" aria-hidden>{statusHint}</span>
       </div>
 
       <div className="kk-dock-right">
@@ -89,8 +88,10 @@ export default function CompareDock() {
             toast.info(t('compare.cleared', 'Krahasimi u pastrua'))
           }}
           title={t('compare.clear', 'Pastro')}
+          aria-label={t('compare.clear', 'Pastro')}
         >
-          {t('compare.clear', 'Pastro')}
+          <Trash2 size={13} aria-hidden="true" />
+          <span>{t('compare.clear', 'Pastro')}</span>
         </button>
 
         <Link
@@ -98,7 +99,7 @@ export default function CompareDock() {
           className={`kk-dock-cta-btn${count === 3 ? ' is-complete' : ''}`}
         >
           <span>{ctaLabel}</span>
-          <ArrowRight size={15} aria-hidden />
+          <ArrowRight size={15} aria-hidden="true" className="kk-dock-cta-arrow" />
         </Link>
       </div>
     </aside>

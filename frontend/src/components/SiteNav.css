@@ -10,41 +10,37 @@
   inherits: false;
 }
 
+.kk-nav-wrapper {
+  position: relative;
+  width: 100%;
+  height: var(--kk-nav-height, 64px);
+  z-index: 100;
+}
+
 .kk-nav {
   --kk-nav-height: 64px;
   --kk-nav-gradient: linear-gradient(90deg, #2563eb 0%, #38bdf8 50%, #8b5cf6 100%);
-  --kk-island-gap: 7px;
-  /* Island bleeds 14px past the content, but never closer than 10px to the viewport edge. */
-  --kk-island-inset: max(-14px, calc((100% - 100vw) / 2 + 10px));
-  --kk-island-bg: color-mix(in srgb, var(--surface) 76%, transparent);
-  --kk-island-border: color-mix(in srgb, var(--border) 90%, transparent);
-  --kk-island-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 70%),
-    0 14px 36px -14px rgb(5 10 68 / 24%),
-    0 2px 8px -2px rgb(5 10 68 / 8%);
   --kk-chip-bg: var(--surface);
   --kk-ai-text: linear-gradient(90deg, #0a21c0, #2563eb, #0891b2, #7c3aed, #0a21c0);
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 50;
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--kk-nav-height);
+  z-index: 100;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   backdrop-filter: blur(20px) saturate(1.6);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  transition: background-color 0.35s ease, border-color 0.35s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 [data-theme="dark"] .kk-nav {
-  --kk-island-bg: color-mix(in srgb, #0b1124 74%, transparent);
-  --kk-island-border: rgb(255 255 255 / 10%);
-  --kk-island-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 6%),
-    0 18px 44px -14px rgb(0 0 0 / 60%),
-    0 0 32px -12px rgb(123 147 255 / 25%);
   --kk-chip-bg: #10172e;
   --kk-ai-text: linear-gradient(90deg, #a5b4fc, #7dd3fc, #c4b5fd, #a5b4fc);
-  background: rgb(9 13 24 / 78%);
-  border-bottom-color: rgb(255 255 255 / 7%);
+  background: rgba(9, 13, 24, 0.85);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Aurora hairline under the bar */
@@ -63,28 +59,32 @@
     rgb(139 92 246 / 50%) 72%,
     transparent 100%
   );
-  opacity: 0.5;
+  opacity: 0.6;
   pointer-events: none;
   transition: opacity 0.35s ease;
 }
 
-/* Scrolled: the bar dissolves and the island takes over */
-.kk-nav.is-scrolled,
+/* Scrolled: Solid frosted glass across the full viewport with prominent border and shadow */
+.kk-nav.is-scrolled {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow:
+    0 10px 30px -10px rgba(5, 10, 68, 0.12),
+    0 2px 6px -1px rgba(5, 10, 68, 0.05);
+}
+
 [data-theme="dark"] .kk-nav.is-scrolled {
-  /* Soft veil so content fades out as it slides under the island */
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--background) 72%, transparent) 0%,
-    color-mix(in srgb, var(--background) 30%, transparent) 70%,
-    transparent 100%
-  );
-  border-bottom-color: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: rgba(9, 13, 24, 0.94);
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 14px 38px -10px rgba(0, 0, 0, 0.7),
+    0 2px 6px -1px rgba(0, 0, 0, 0.35);
 }
 
 .kk-nav.is-scrolled::after {
-  opacity: 0;
+  opacity: 0.9;
 }
 
 .kk-nav .kk-nav-inner {
@@ -98,57 +98,36 @@
   padding-block: 0;
 }
 
-/* Floating island */
 .kk-nav-inner::before {
-  content: '';
+  display: none;
+}
+
+/* Reading progress along the bar's lower edge */
+.kk-nav-progress {
   position: absolute;
-  z-index: -1;
-  top: var(--kk-island-gap);
-  right: var(--kk-island-inset);
-  bottom: var(--kk-island-gap);
-  left: var(--kk-island-inset);
-  border: 1px solid var(--kk-island-border);
-  border-radius: 20px;
-  background: var(--kk-island-bg);
-  box-shadow: var(--kk-island-shadow);
-  backdrop-filter: blur(22px) saturate(1.8);
-  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--kk-nav-gradient);
+  box-shadow: 0 0 10px rgb(56 189 248 / 65%);
   opacity: 0;
-  transform: scale(0.97, 0.82);
+  transform: scaleX(0);
+  transform-origin: left center;
   pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1.15);
+  transition: opacity 0.25s ease;
+  z-index: 2;
 }
 
-.kk-nav.is-scrolled .kk-nav-inner::before {
-  opacity: 1;
-  transform: none;
-}
-
-/* Reading progress along the island's lower edge */
 @supports (animation-timeline: scroll()) {
-  .kk-nav-inner::after {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    right: calc(var(--kk-island-inset) + 20px);
-    bottom: var(--kk-island-gap);
-    left: calc(var(--kk-island-inset) + 20px);
-    height: 2px;
-    border-radius: 2px;
-    background: var(--kk-nav-gradient);
-    box-shadow: 0 0 10px rgb(56 189 248 / 55%);
-    opacity: 0;
-    transform: scaleX(0);
-    transform-origin: left center;
-    pointer-events: none;
-    transition: opacity 0.35s ease;
+  .kk-nav-progress {
     animation: kk-nav-progress linear both;
     animation-timeline: scroll(root block);
   }
+}
 
-  .kk-nav.is-scrolled .kk-nav-inner::after {
-    opacity: 0.9;
-  }
+.kk-nav.is-scrolled .kk-nav-progress {
+  opacity: 0.95;
 }
 
 @keyframes kk-nav-progress {
@@ -161,13 +140,7 @@
 .kk-nav-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1;
-  color: var(--foreground);
+  gap: 8px;
   text-decoration: none;
   flex-shrink: 0;
   white-space: nowrap;
@@ -175,8 +148,9 @@
 
 .kk-nav-brand-mark {
   position: relative;
-  display: grid;
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
   transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.25, 1.4);
 }
 
@@ -184,8 +158,8 @@
   content: '';
   position: absolute;
   z-index: -1;
-  inset: -5px;
-  border-radius: 14px;
+  inset: -4px;
+  border-radius: 12px;
   background: radial-gradient(circle, rgb(56 189 248 / 50%), rgb(37 99 235 / 20%) 55%, transparent 72%);
   filter: blur(6px);
   opacity: 0;
@@ -193,11 +167,21 @@
 }
 
 .kk-nav-brand:hover .kk-nav-brand-mark {
-  transform: rotate(-8deg) scale(1.07);
+  transform: rotate(-6deg) scale(1.06);
 }
 
 .kk-nav-brand:hover .kk-nav-brand-mark::after {
   opacity: 1;
+}
+
+.kk-nav-brand-text {
+  display: block;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.2, 0.9, 0.25, 1.2);
+}
+
+.kk-nav-brand:hover .kk-nav-brand-text {
+  opacity: 0.92;
+  transform: translateX(1px);
 }
 
 /* Center Links */
@@ -224,9 +208,9 @@
 }
 
 .kk-nav.is-scrolled .kk-nav-links {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
+  background: color-mix(in srgb, var(--foreground) 4.5%, transparent);
+  border-color: color-mix(in srgb, var(--border) 60%, transparent);
+  box-shadow: inset 0 1px 2px rgb(5 10 68 / 4%);
 }
 
 .kk-nav-links li {
@@ -1029,10 +1013,12 @@
 }
 
 @media (max-width: 1040px) {
+  .kk-nav-wrapper {
+    height: 60px;
+  }
+
   .kk-nav {
     --kk-nav-height: 60px;
-    --kk-island-gap: 6px;
-    --kk-island-inset: max(-10px, calc((100% - 100vw) / 2 + 8px));
   }
 
   .kk-nav .kk-nav-inner {
@@ -1116,13 +1102,9 @@
 
 @media (prefers-reduced-transparency: reduce) {
   .kk-nav,
-  .kk-nav-inner::before {
+  .kk-nav.is-scrolled {
     background: var(--surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-  }
-
-  .kk-nav.is-scrolled {
-    background: transparent;
   }
 }

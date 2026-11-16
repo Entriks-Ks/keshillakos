@@ -43,7 +43,15 @@ const messageSchema = new mongoose_1.Schema({
         index: true,
     },
     senderUid: { type: String, required: true, index: true },
-    body: { type: String, required: true, trim: true, maxlength: 4000 },
+    body: {
+        type: String,
+        required: function () { return !this.deletedAt; },
+        trim: true,
+        maxlength: 4000,
+        default: '',
+    },
+    editedAt: { type: Date, default: null },
+    deletedAt: { type: Date, default: null },
 }, { timestamps: true });
 messageSchema.index({ conversation: 1, createdAt: -1 });
 exports.Message = mongoose_1.default.model('Message', messageSchema);

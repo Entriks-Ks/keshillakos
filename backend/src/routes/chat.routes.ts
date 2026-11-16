@@ -4,6 +4,9 @@ import { Router } from 'express'
 import { requireAuth, requireRole } from '../middleware/auth'
 import {
   assertParticipant,
+  deleteConversation,
+  deleteMessage,
+  editMessage,
   getConversationForUser,
   listConversationsForUser,
   listMessages,
@@ -121,6 +124,17 @@ router.get('/conversations/:id', requireAuth, async (req, res) => {
   }
 })
 
+router.delete('/conversations/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await deleteConversation(paramId(req.params.id), req.user!.uid)
+    return res.json(result)
+  } catch (err) {
+    return res.status(statusOf(err)).json({
+      message: err instanceof Error ? err.message : 'Biseda nuk u fshi',
+    })
+  }
+})
+
 router.get('/conversations/:id/messages', requireAuth, async (req, res) => {
   try {
     const before = typeof req.query.before === 'string' ? req.query.before : undefined
@@ -152,6 +166,39 @@ router.post('/conversations/:id/messages', requireAuth, async (req, res) => {
   } catch (err) {
     return res.status(statusOf(err)).json({
       message: err instanceof Error ? err.message : 'Mesazhi nuk u dërgua',
+    })
+  }
+})
+
+router.patch('/conversations/:id/messages/:messageId', requireAuth, async (req, res) => {
+  try {
+    const { body } = req.body as { body?: unknown }
+    if (typeof body !== 'string') return res.status(400).json({ message: 'Mesazhi është i pavlefshëm' })
+    const message = await editMessage({
+      conversationId: paramId(req.params.id),
+      messageId: paramId(req.params.messageId),
+      uid: req.user!.uid,
+      body,
+    })
+    return res.json({ message })
+  } catch (err) {
+    return res.status(statusOf(err)).json({
+      message: err instanceof Error ? err.message : 'Mesazhi nuk u ndryshua',
+    })
+  }
+})
+
+router.delete('/conversations/:id/messages/:messageId', requireAuth, async (req, res) => {
+  try {
+    const message = await deleteMessage({
+      conversationId: paramId(req.params.id),
+      messageId: paramId(req.params.messageId),
+      uid: req.user!.uid,
+    })
+    return res.json({ message })
+  } catch (err) {
+    return res.status(statusOf(err)).json({
+      message: err instanceof Error ? err.message : 'Mesazhi nuk u fshi',
     })
   }
 })

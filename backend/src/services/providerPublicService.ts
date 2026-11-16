@@ -1,10 +1,11 @@
+import { Types } from 'mongoose'
 import { Business } from '../models/Business'
 import { ProviderProfile } from '../models/ProviderProfile'
 import { User } from '../models/User'
 import { ROLE_LABELS, type UserRole } from '../types/roles'
 import { getStatsForProviders } from './ratingService'
 import { clampBio, isPro, recordPlanEvent } from './planService'
-import { findUserByUid, findUsersByUids } from './userService'
+import { findUserByUid, findUsersByUids, toPublicUser } from './userService'
 
 export type ProviderPublicDetails = {
   uid: string
@@ -77,11 +78,103 @@ export async function getProvidersPublicDetails(
   return map
 }
 
+/** Resolves a provider's User document from any identifier (UID, MongoDB _id, slug, or display name) */
+export async function resolveProviderUser(rawIdentifier: string) {
+  const id = rawIdentifier?.trim()
+  if (!id) return null
+
+  // 1. Direct match on user.uid (Firebase UID)
+  let user = await User.findOne({ uid: id }).lean()
+  if (user) return user
+
+  // 2. If it's a valid 24-char ObjectId:
+  if (Types.ObjectId.isValid(id) && /^[a-f\d]{24}$/i.test(id)) {
+    // 2a. Could be User._id
+    user = await User.findById(id).lean()
+    if (user) return user
+
+    // 2b. Could be ProviderProfile._id
+    const profile = await ProviderProfile.findById(id).select('ownerUser').lean()
+    if (profile?.ownerUser) {
+      user = await User.findById(profile.ownerUser).lean()
+      if (user) return user
+    }
+
+    // 2c. Could be Business._id
+    const biz = await Business.findById(id).select('owners').lean()
+    if (biz?.owners?.[0]) {
+      user = await User.findById(biz.owners[0]).lean()
+      if (user) return user
+    }
+  }
+
+  // 3. Slug suffix extraction: e.g. "av-arben-krasniqi-fire_uid_123" or multi-hyphen strings
+  if (id.includes('-')) {
+    const parts = id.split('-')
+    for (let i = 1; i < parts.length; i++) {
+      const candidate = parts.slice(i).join('-')
+      user = await User.findOne({ uid: candidate }).lean()
+      if (user) return user
+      if (Types.ObjectId.isValid(candidate) && /^[a-f\d]{24}$/i.test(candidate)) {
+        user = await User.findById(candidate).lean()
+        if (user) return user
+        const profile = await ProviderProfile.findById(candidate).select('ownerUser').lean()
+        if (profile?.ownerUser) {
+          user = await User.findById(profile.ownerUser).lean()
+          if (user) return user
+        }
+      }
+    }
+  }
+
+  // 4. Match by displayName or name (e.g. from slug "avokat-fatmir-berisha" or "fatmir-berisha")
+  const cleaned = id
+    .replace(/[-_]+/g, ' ')
+    .replace(/^avokat\s+/i, '')
+    .replace(/^av\s+/i, '')
+    .trim()
+
+  if (cleaned.length >= 3) {
+    const rx = new RegExp(cleaned, 'i')
+    const profile = await ProviderProfile.findOne({
+      $or: [
+        { 'publicProfile.displayName': rx },
+        { 'publicProfile.title': rx },
+      ],
+      status: 'published',
+    }).select('ownerUser').lean()
+    if (profile?.ownerUser) {
+      user = await User.findById(profile.ownerUser).lean()
+      if (user) return user
+    }
+
+    user = await User.findOne({
+      name: rx,
+      roles: { $in: ['provider', 'company'] },
+    }).lean()
+    if (user) return user
+
+    const biz = await Business.findOne({
+      publicName: rx,
+      status: 'active',
+    }).select('owners').lean()
+    if (biz?.owners?.[0]) {
+      user = await User.findById(biz.owners[0]).lean()
+      if (user) return user
+    }
+  }
+
+  return null
+}
+
 /** Public profile page payload (no email). */
 export async function getPublicProviderProfile(uid: string) {
   if (!uid?.trim()) return null
 
-  const user = await findUserByUid(uid.trim())
+  const userDoc = await resolveProviderUser(uid.trim())
+  if (!userDoc) return null
+
+  const user = toPublicUser(userDoc)
   const role = user ? publicProfileRole(user) : null
   if (!user || !role) return null
 
@@ -89,7 +182,7 @@ export async function getPublicProviderProfile(uid: string) {
   const provider = details.get(user.uid)
   if (!provider) return null
 
-  const owner = await User.findOne({ uid: user.uid }).select('_id').lean()
+  const owner = userDoc
   let coverPhoto = ''
   let profilePhoto = provider.profilePhoto
   let name = provider.name

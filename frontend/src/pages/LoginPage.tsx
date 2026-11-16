@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { useAuth } from '../auth/AuthContext'
 import AuthShowcase from '../components/AuthShowcase'
 import GoogleAuthButton from '../components/GoogleAuthButton'
-import { LogoMark } from '../components/Logo'
+import { LogoMark, LogoWordmark } from '../components/Logo'
 import { getErrorMessage } from '../utils/errors'
 import './LoginPage.css'
 
@@ -59,8 +59,8 @@ export default function LoginPage() {
         <AuthShowcase />
         <div className="auth-panel">
         <Link to="/" className="brand brand-link" aria-label="keshillohu">
-          <LogoMark size={32} />
-          <span>keshillohu</span>
+          <LogoMark size={36} />
+          <LogoWordmark height={23} />
         </Link>
         <h1>{t('auth.welcome')}</h1>
         <p className="auth-lead">{t('auth.loginLead')}</p>

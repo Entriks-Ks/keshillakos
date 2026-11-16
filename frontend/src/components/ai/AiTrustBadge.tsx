@@ -117,26 +117,36 @@ export const AiTrustBadge = memo(function AiTrustBadge({
           title="Kliko për të parë faktorët e vlerësimit nga AI"
           aria-label={`Vlerësimi i Sigurisë: ${data.overallScore}%`}
         >
-          <div className="kk-ai-trust-card-left">
-            <div className="kk-ai-trust-badge-circle">
-              <span className="kk-ai-trust-circle-num">{data.overallScore}</span>
-              <span className="kk-ai-trust-circle-pct">%</span>
+          <div className="kk-ai-trust-card-top">
+            <div className="kk-ai-trust-card-left">
+              <div className="kk-ai-trust-badge-circle">
+                <span className="kk-ai-trust-circle-num">{data.overallScore}</span>
+                <span className="kk-ai-trust-circle-pct">%</span>
+              </div>
+
+              <div className="kk-ai-trust-card-texts">
+                <div className="kk-ai-trust-card-title-row">
+                  <Sparkles size={13} className="kk-ai-trust-sparkle text-emerald-500" />
+                  <h4 className="kk-ai-trust-card-title">Siguria e Punës</h4>
+                  <span className={`kk-ai-trust-level-pill ${levelClass}`}>
+                    {data.safetyLabel}
+                  </span>
+                </div>
+                <p className="kk-ai-trust-card-subtitle">
+                  Vlerësuar nga AI në bazë të kërkesave, licencës dhe shërbimeve të postuara
+                </p>
+              </div>
             </div>
 
-            <div className="kk-ai-trust-card-texts">
-              <div className="kk-ai-trust-card-title-row">
-                <Sparkles size={14} className="text-emerald-500" />
-                <h4 className="kk-ai-trust-card-title">Siguria e Punës: {data.safetyLabel}</h4>
-              </div>
-              <p className="kk-ai-trust-card-subtitle">
-                Vlerësuar nga AI në bazë të kërkesave, licencës dhe shërbimeve të postuara
-              </p>
+            <div className="kk-ai-trust-card-btn">
+              <span>Analiza e AI</span>
+              <ChevronRight size={14} />
             </div>
           </div>
 
-          <div className="kk-ai-trust-card-btn">
-            <span>Analiza e AI</span>
-            <ChevronRight size={15} />
+          <div className="kk-ai-trust-card-cta">
+            <span>Shiko analizën e plotë nga AI</span>
+            <ChevronRight size={14} />
           </div>
         </div>
       )}

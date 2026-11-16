@@ -14,6 +14,28 @@ export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]) {
   return [...current, ...added].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
 }
 
+/** Swap an edited/deleted message in place, keeping every other reference stable. */
+export function replaceMessage(current: ChatMessage[], updated: ChatMessage) {
+  const index = current.findIndex(message => message.id === updated.id)
+  if (index === -1) return current
+  const existing = current[index]
+  if (existing.body === updated.body && existing.editedAt === updated.editedAt && Boolean(existing.deleted) === Boolean(updated.deleted)) return current
+  const next = current.slice()
+  next[index] = updated
+  return next
+}
+
+/** Update only the preview text; edits and deletes never change ordering or unread counts. */
+export function updateConversationPreview(conversations: ConversationItem[], conversationId: string, preview: string) {
+  let changed = false
+  const next = conversations.map(conversation => {
+    if (conversation.id !== conversationId || conversation.lastMessagePreview === preview) return conversation
+    changed = true
+    return { ...conversation, lastMessagePreview: preview }
+  })
+  return changed ? next : conversations
+}
+
 export function updateConversation(conversation: ConversationItem, event: ConversationUpdate, viewerUid: string, activeId: string, visible: boolean) {
   if (conversation.id !== event.conversationId) return conversation
   const viewed = conversation.id === activeId && visible
@@ -59,4 +81,10 @@ export function mergeConversationSnapshots(current: ConversationItem[], incoming
   })
   if (byId.size) { changed = true; next.push(...byId.values()) }
   return changed ? next : current
+}
+
+/** Remove a deleted conversation from list without mutating unrelated references. */
+export function removeConversationFromList(conversations: ConversationItem[], conversationId: string) {
+  if (!conversations.some(c => c.id === conversationId)) return conversations
+  return conversations.filter(c => c.id !== conversationId)
 }

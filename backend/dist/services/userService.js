@@ -177,7 +177,10 @@ async function reviewRoleRequest(uid, action) {
     return granted;
 }
 async function findUserByUid(uid) {
-    const user = await User_1.User.findOne({ uid }).lean();
+    let user = await User_1.User.findOne({ uid }).lean();
+    if (!user && mongoose_1.Types.ObjectId.isValid(uid)) {
+        user = await User_1.User.findById(uid).lean();
+    }
     if (!user)
         return null;
     return toPublicUser(user);

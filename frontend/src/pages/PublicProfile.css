@@ -6,7 +6,8 @@
 }
 
 .pp-page .tt-nav-inner,
-.pp-inner {
+.pp-inner,
+.pp-page .tt-footer .tt-section-inner {
   width: var(--tt-wide-content-width);
   max-width: none;
   margin-inline: auto;
@@ -273,6 +274,19 @@
   padding: 0 12px;
   border-radius: 10px;
   font-size: 0.84rem;
+}
+
+.pp .pp-compare-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .pp-hero-actions > .button {
@@ -817,7 +831,8 @@
 
 @media (max-width: 900px) {
   .pp-page .tt-nav-inner,
-  .pp-inner {
+  .pp-inner,
+  .pp-page .tt-footer .tt-section-inner {
     width: auto;
     margin-inline: 16px;
   }
@@ -849,25 +864,28 @@
 
   .pp-hero-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
   }
 
   .pp .send-request.is-compact,
   .pp .pp-hero-actions .chat-start,
   .pp .pp-hero-actions .send-request-cta,
-  .pp .pp-hero-actions .pp-chat-btn {
+  .pp .pp-hero-actions .pp-chat-btn,
+  .pp .pp-hero-actions .pp-compare-btn {
     width: 100%;
   }
 
   .pp .pp-hero-actions .send-request-cta,
-  .pp .pp-hero-actions .pp-chat-btn {
+  .pp .pp-hero-actions .pp-chat-btn,
+  .pp .pp-hero-actions .pp-compare-btn {
     height: 44px;
     padding: 0 10px;
   }
 
   .pp-hero-actions > .button {
-    width: 44px;
-    min-width: 44px;
+    width: 100%;
+    min-width: 0;
     height: 44px;
   }
 

@@ -5,6 +5,8 @@ exports.emitToUser = emitToUser;
 exports.disconnectUser = disconnectUser;
 exports.isConversationActive = isConversationActive;
 exports.emitChatMessage = emitChatMessage;
+exports.emitChatMessageUpdated = emitChatMessageUpdated;
+exports.emitConversationDeleted = emitConversationDeleted;
 let server;
 function setRealtimeServer(io) { server = io; }
 function emitToUser(uid, event, payload) {
@@ -22,5 +24,12 @@ function emitChatMessage(message, peerUid) {
         conversationId: message.conversationId, lastMessagePreview: message.body.slice(0, 140),
         lastMessageAt: message.createdAt, senderUid: message.senderUid,
     });
+}
+function emitChatMessageUpdated(message, peerUid, payload) {
+    server?.to([`conversation:${message.conversationId}`, `user:${peerUid}`, `user:${message.senderUid}`]).emit('message:updated', payload);
+}
+function emitConversationDeleted(conversationId, seekerUid, providerUid) {
+    const payload = { conversationId };
+    server?.to([`conversation:${conversationId}`, `user:${seekerUid}`, `user:${providerUid}`]).emit('conversation:deleted', payload);
 }
 //# sourceMappingURL=realtime.js.map

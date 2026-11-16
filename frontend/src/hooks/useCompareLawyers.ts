@@ -15,10 +15,30 @@ export type CompareLawyerMeta = {
   title?: string
 }
 
+function migrateLegacyStorage() {
+  if (typeof window === 'undefined') return
+  try {
+    const legacyUids = localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacyUids && !localStorage.getItem(STORAGE_KEY)) {
+      localStorage.setItem(STORAGE_KEY, legacyUids)
+    }
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+
+    const legacyMeta = localStorage.getItem(LEGACY_META_KEY)
+    if (legacyMeta && !localStorage.getItem(META_KEY)) {
+      localStorage.setItem(META_KEY, legacyMeta)
+    }
+    localStorage.removeItem(LEGACY_META_KEY)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 function getStoredUids(): string[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY)
+    migrateLegacyStorage()
+    const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) {
@@ -33,7 +53,8 @@ function getStoredUids(): string[] {
 function getStoredMeta(): Record<string, CompareLawyerMeta> {
   if (typeof window === 'undefined') return {}
   try {
-    const raw = localStorage.getItem(META_KEY) || localStorage.getItem(LEGACY_META_KEY)
+    migrateLegacyStorage()
+    const raw = localStorage.getItem(META_KEY)
     if (!raw) return {}
     return JSON.parse(raw) || {}
   } catch {
@@ -41,29 +62,36 @@ function getStoredMeta(): Record<string, CompareLawyerMeta> {
   }
 }
 
-function saveUids(uids: string[]) {
+function saveState(uids: string[], metaMap: Record<string, CompareLawyerMeta>) {
   if (typeof window === 'undefined') return
   try {
-    const clean = uids.filter(Boolean).slice(0, MAX_COMPARE_LAWYERS)
-    if (clean.length === 0) {
-      localStorage.removeItem(STORAGE_KEY)
-    } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(clean))
-    }
-    window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: clean }))
-  } catch {
-    // Ignore storage error
-  }
-}
+    const cleanUids = uids.filter(Boolean).slice(0, MAX_COMPARE_LAWYERS)
 
-function saveMeta(metaMap: Record<string, CompareLawyerMeta>) {
-  if (typeof window === 'undefined') return
-  try {
-    if (Object.keys(metaMap).length === 0) {
-      localStorage.removeItem(META_KEY)
-    } else {
-      localStorage.setItem(META_KEY, JSON.stringify(metaMap))
+    // Keep only metadata for currently selected UIDs
+    const cleanMeta: Record<string, CompareLawyerMeta> = {}
+    for (const uid of cleanUids) {
+      if (metaMap[uid]) {
+        cleanMeta[uid] = metaMap[uid]
+      }
     }
+
+    if (cleanUids.length === 0) {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
+      localStorage.removeItem(META_KEY)
+      localStorage.removeItem(LEGACY_META_KEY)
+    } else {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanUids))
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
+      localStorage.setItem(META_KEY, JSON.stringify(cleanMeta))
+      localStorage.removeItem(LEGACY_META_KEY)
+    }
+
+    window.dispatchEvent(
+      new CustomEvent(EVENT_NAME, {
+        detail: { uids: cleanUids, meta: cleanMeta },
+      })
+    )
   } catch {
     // Ignore storage error
   }
@@ -75,16 +103,22 @@ export function useCompareLawyers() {
 
   useEffect(() => {
     function handleSync(e: Event) {
-      if (e instanceof CustomEvent && Array.isArray(e.detail)) {
-        setSelectedUids(e.detail)
+      if (e instanceof CustomEvent && e.detail && Array.isArray(e.detail.uids)) {
+        setSelectedUids(e.detail.uids)
+        setMetaMap(e.detail.meta || {})
       } else {
         setSelectedUids(getStoredUids())
+        setMetaMap(getStoredMeta())
       }
-      setMetaMap(getStoredMeta())
     }
 
     function handleStorage(e: StorageEvent) {
-      if (e.key === STORAGE_KEY || e.key === META_KEY) {
+      if (
+        e.key === STORAGE_KEY ||
+        e.key === META_KEY ||
+        e.key === LEGACY_STORAGE_KEY ||
+        e.key === LEGACY_META_KEY
+      ) {
         setSelectedUids(getStoredUids())
         setMetaMap(getStoredMeta())
       }
@@ -100,37 +134,36 @@ export function useCompareLawyers() {
 
   const addLawyer = useCallback(
     (uid: string, meta?: { name?: string; photoUrl?: string; title?: string }): boolean => {
-      const current = getStoredUids()
-      if (current.includes(uid)) {
+      const currentUids = getStoredUids()
+      if (currentUids.includes(uid)) {
         return true
       }
-      if (current.length >= MAX_COMPARE_LAWYERS) {
+      if (currentUids.length >= MAX_COMPARE_LAWYERS) {
         toast.warning(
           'Mund të krahasoni deri në 3 avokatë njëherësh. Hiqni një avokat ekzistues për të shtuar këtë.',
         )
         return false
       }
 
-      const updated = [...current, uid]
-      saveUids(updated)
-      setSelectedUids(updated)
-
+      const updatedUids = [...currentUids, uid]
+      const currentMeta = getStoredMeta()
       if (meta?.name) {
-        const currentMeta = getStoredMeta()
         currentMeta[uid] = {
           uid,
           name: meta.name,
           photoUrl: meta.photoUrl,
           title: meta.title,
         }
-        saveMeta(currentMeta)
-        setMetaMap(currentMeta)
       }
+
+      saveState(updatedUids, currentMeta)
+      setSelectedUids(updatedUids)
+      setMetaMap({ ...currentMeta })
 
       toast.success(
         meta?.name
-          ? `"${meta.name}" u shtua në krahasim (${updated.length}/3)`
-          : `Avokati u shtua në krahasim (${updated.length}/3)`,
+          ? `"${meta.name}" u shtua në krahasim (${updatedUids.length}/3)`
+          : `Avokati u shtua në krahasim (${updatedUids.length}/3)`,
       )
       return true
     },
@@ -138,24 +171,29 @@ export function useCompareLawyers() {
   )
 
   const recordMeta = useCallback((uid: string, meta: { name: string; photoUrl?: string; title?: string }) => {
+    const currentUids = getStoredUids()
     const currentMeta = getStoredMeta()
     currentMeta[uid] = { uid, ...meta }
-    saveMeta(currentMeta)
+    saveState(currentUids, currentMeta)
     setMetaMap({ ...currentMeta })
   }, [])
 
   const removeLawyer = useCallback((uid: string): void => {
-    const current = getStoredUids()
-    const updated = current.filter((id) => id !== uid)
-    saveUids(updated)
-    setSelectedUids(updated)
-
+    const currentUids = getStoredUids()
     const currentMeta = getStoredMeta()
-    if (currentMeta[uid]) {
-      delete currentMeta[uid]
-      saveMeta(currentMeta)
-      setMetaMap({ ...currentMeta })
-    }
+    const updatedUids = currentUids.filter((id) => id !== uid)
+    const removedName = currentMeta[uid]?.name
+    delete currentMeta[uid]
+
+    saveState(updatedUids, currentMeta)
+    setSelectedUids(updatedUids)
+    setMetaMap({ ...currentMeta })
+
+    toast.info(
+      removedName
+        ? `"${removedName}" u hoq nga krahasimi`
+        : 'Avokati u hoq nga krahasimi',
+    )
   }, [])
 
   const toggleLawyer = useCallback(
@@ -163,7 +201,6 @@ export function useCompareLawyers() {
       const current = getStoredUids()
       if (current.includes(uid)) {
         removeLawyer(uid)
-        toast.info('Avokati u hoq nga krahasimi')
         return false
       } else {
         return addLawyer(uid, meta)
@@ -173,15 +210,15 @@ export function useCompareLawyers() {
   )
 
   const clearComparison = useCallback((): void => {
-    saveUids([])
-    saveMeta({})
+    saveState([], {})
     setSelectedUids([])
     setMetaMap({})
   }, [])
 
   const setComparison = useCallback((uids: string[]): void => {
     const clean = uids.filter(Boolean).slice(0, MAX_COMPARE_LAWYERS)
-    saveUids(clean)
+    const currentMeta = getStoredMeta()
+    saveState(clean, currentMeta)
     setSelectedUids(clean)
   }, [])
 

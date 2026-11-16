@@ -125,6 +125,13 @@
   list-style: none;
 }
 
+.msg-item-row-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
 .msg-item {
   display: flex;
   align-items: center;
@@ -139,6 +146,46 @@
   text-align: left;
   cursor: pointer;
   transition: background-color 0.15s ease;
+}
+
+.msg-item-del-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-secondary);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.msg-item-row-wrapper:hover .msg-item-del-btn,
+.msg-item-row-wrapper:focus-within .msg-item-del-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.msg-item-del-btn:hover {
+  color: var(--danger, #dc2626);
+  background: color-mix(in srgb, var(--danger, #dc2626) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger, #dc2626) 30%, var(--surface));
+}
+
+@media (hover: none) {
+  .msg-item-del-btn {
+    opacity: 0.6;
+    pointer-events: auto;
+  }
 }
 
 .msg-item:hover {
@@ -366,6 +413,23 @@
   background: var(--surface);
 }
 
+.msg-call-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.msg-call-btn {
+  color: var(--ink-secondary);
+  border-radius: 9999px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.msg-call-btn:hover:not(:disabled) {
+  color: var(--primary, #2563eb);
+  background: var(--surface-muted);
+}
+
 .msg-actions-trigger { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: 8px; color: var(--ink-secondary); cursor: pointer; }
 .msg-actions-trigger:hover { background: var(--surface-muted); }
 .msg-request-context { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--border); background: var(--surface-muted); font-size: .8rem; }
@@ -451,20 +515,39 @@
   font-weight: 600;
 }
 
+.msg-bubble-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  max-width: min(85%, 640px);
+  position: relative;
+}
+
+.msg-bubble-row.is-mine {
+  align-self: flex-end;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.msg-bubble-row.is-mine .msg-bubble-actions {
+  order: -1;
+}
+
 .msg-bubble {
   display: grid;
   gap: 2px;
-  align-self: flex-start;
-  max-width: min(72%, 560px);
-  padding: 8px 12px 6px;
+  max-width: 100%;
+  padding: 8px 14px 6px;
   border: 1px solid var(--border);
   border-radius: 14px 14px 14px 4px;
   background: var(--surface);
   color: var(--foreground);
+  position: relative;
+  word-break: break-word;
 }
 
 .msg-bubble.is-mine {
-  align-self: flex-end;
   border-color: var(--accent);
   border-radius: 14px 14px 4px 14px;
   background: var(--accent);
@@ -479,10 +562,221 @@
   overflow-wrap: anywhere;
 }
 
-.msg-bubble time {
+.msg-bubble .msg-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   justify-self: end;
   font-size: 0.7rem;
   opacity: 0.7;
+}
+
+.msg-edited {
+  font-style: italic;
+}
+
+/* Deleted placeholder */
+.msg-bubble.is-deleted,
+.msg-bubble.is-mine.is-deleted {
+  border-style: dashed;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted, currentColor);
+}
+
+.msg-deleted-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-secondary);
+}
+
+.msg-deleted-icon {
+  flex: none;
+  opacity: 0.6;
+}
+
+.msg-bubble .msg-deleted-text {
+  margin: 0;
+  font-size: 0.88rem;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+/* Hover actions (own messages) */
+.msg-bubble-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  flex: none;
+}
+
+.msg-bubble-row:hover .msg-bubble-actions,
+.msg-bubble-row:focus-within .msg-bubble-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.msg-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.msg-action:hover,
+.msg-action:focus-visible {
+  background: var(--surface-muted, rgb(0 0 0 / 0.06));
+  outline: none;
+}
+
+.msg-action.is-danger:hover,
+.msg-action.is-danger:focus-visible {
+  color: var(--danger, #dc2626);
+  background: color-mix(in srgb, var(--danger, #dc2626) 12%, var(--surface));
+}
+
+/* Inline edit */
+.msg-bubble.is-editing,
+.msg-bubble.is-mine.is-editing {
+  width: 100%;
+  min-width: 320px;
+  max-width: 600px;
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 12px 14px 10px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
+}
+
+.msg-edit {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.msg-edit-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.msg-edit-icon {
+  flex: none;
+}
+
+.msg-edit-input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background, var(--surface));
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.msg-edit-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+  outline: none;
+}
+
+.msg-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.msg-edit-hint {
+  font-size: 0.72rem;
+  color: var(--ink-secondary);
+}
+
+.msg-edit-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* Delete confirmation modal quote */
+.msg-delete-dialog-content {
+  display: grid;
+  gap: 12px;
+}
+
+.msg-delete-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-secondary);
+  line-height: 1.45;
+}
+
+.msg-delete-quote {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--danger, #dc2626);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger, #dc2626) 8%, var(--surface));
+}
+
+.msg-delete-quote-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--danger, #dc2626);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.msg-delete-quote-body {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--heading, var(--foreground));
+  font-style: italic;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (hover: none) {
+  .msg-bubble-row.is-mine .msg-bubble-actions {
+    opacity: 0.8;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .msg-edit-hint {
+    display: none;
+  }
+  .msg-bubble.is-editing,
+  .msg-bubble.is-mine.is-editing {
+    min-width: 0;
+  }
 }
 
 .msg-history-loading {

@@ -216,7 +216,10 @@ export async function reviewRoleRequest(uid: string, action: 'accept' | 'reject'
 }
 
 export async function findUserByUid(uid: string): Promise<PublicUser | null> {
-  const user = await User.findOne({ uid }).lean()
+  let user = await User.findOne({ uid }).lean()
+  if (!user && Types.ObjectId.isValid(uid)) {
+    user = await User.findById(uid).lean()
+  }
   if (!user) return null
   return toPublicUser(user)
 }

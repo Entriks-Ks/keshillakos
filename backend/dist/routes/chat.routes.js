@@ -111,6 +111,17 @@ router.get('/conversations/:id', auth_1.requireAuth, async (req, res) => {
         });
     }
 });
+router.delete('/conversations/:id', auth_1.requireAuth, async (req, res) => {
+    try {
+        const result = await (0, chatService_1.deleteConversation)(paramId(req.params.id), req.user.uid);
+        return res.json(result);
+    }
+    catch (err) {
+        return res.status(statusOf(err)).json({
+            message: err instanceof Error ? err.message : 'Biseda nuk u fshi',
+        });
+    }
+});
 router.get('/conversations/:id/messages', auth_1.requireAuth, async (req, res) => {
     try {
         const before = typeof req.query.before === 'string' ? req.query.before : undefined;
@@ -143,6 +154,40 @@ router.post('/conversations/:id/messages', auth_1.requireAuth, async (req, res) 
     catch (err) {
         return res.status(statusOf(err)).json({
             message: err instanceof Error ? err.message : 'Mesazhi nuk u dërgua',
+        });
+    }
+});
+router.patch('/conversations/:id/messages/:messageId', auth_1.requireAuth, async (req, res) => {
+    try {
+        const { body } = req.body;
+        if (typeof body !== 'string')
+            return res.status(400).json({ message: 'Mesazhi është i pavlefshëm' });
+        const message = await (0, chatService_1.editMessage)({
+            conversationId: paramId(req.params.id),
+            messageId: paramId(req.params.messageId),
+            uid: req.user.uid,
+            body,
+        });
+        return res.json({ message });
+    }
+    catch (err) {
+        return res.status(statusOf(err)).json({
+            message: err instanceof Error ? err.message : 'Mesazhi nuk u ndryshua',
+        });
+    }
+});
+router.delete('/conversations/:id/messages/:messageId', auth_1.requireAuth, async (req, res) => {
+    try {
+        const message = await (0, chatService_1.deleteMessage)({
+            conversationId: paramId(req.params.id),
+            messageId: paramId(req.params.messageId),
+            uid: req.user.uid,
+        });
+        return res.json({ message });
+    }
+    catch (err) {
+        return res.status(statusOf(err)).json({
+            message: err instanceof Error ? err.message : 'Mesazhi nuk u fshi',
         });
     }
 });

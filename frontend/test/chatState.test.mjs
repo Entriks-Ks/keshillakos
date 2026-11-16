@@ -63,3 +63,33 @@ test('late older conversation events cannot roll back the current preview or unr
   const rows = updateConversationList([conversation('open')], { ...event(), lastMessageAt: '2026-10-06T12:00:02Z' }, 'bob', 'another', true)
   assert.equal(updateConversationList(rows, event(), 'bob', 'another', true), rows)
 })
+
+test('an edited or deleted message is replaced in place without touching other messages', async () => {
+  const { replaceMessage, updateConversationPreview } = await import('../src/chat/chatState.ts')
+  const first = message('first', 0), second = message('second', 1)
+  const edited = replaceMessage([first, second], { ...second, body: 'changed', editedAt: '2026-10-06T12:01:00.000Z' })
+  assert.equal(edited[0], first)
+  assert.equal(edited[1].body, 'changed')
+  const deleted = replaceMessage(edited, { ...second, body: '', deleted: true })
+  assert.equal(deleted[1].deleted, true)
+  assert.equal(replaceMessage(deleted, { ...second, body: '', deleted: true }), deleted)
+  assert.equal(replaceMessage(deleted, message('missing')), deleted)
+  const rows = [conversation('open'), conversation('other')]
+  const previewed = updateConversationPreview(rows, 'open', 'Mesazhi u fshi')
+  assert.equal(previewed[0].lastMessagePreview, 'Mesazhi u fshi')
+  assert.equal(previewed[0].unread, 0)
+  assert.equal(previewed[1], rows[1])
+  assert.equal(updateConversationPreview(previewed, 'open', 'Mesazhi u fshi'), previewed)
+})
+
+test('removeConversationFromList removes the specified conversation while keeping others intact', async () => {
+  const { removeConversationFromList } = await import('../src/chat/chatState.ts')
+  const rows = [conversation('c1'), conversation('c2'), conversation('c3')]
+  const remaining = removeConversationFromList(rows, 'c2')
+  assert.deepEqual(remaining.map(c => c.id), ['c1', 'c3'])
+  assert.equal(remaining[0], rows[0])
+  assert.equal(remaining[1], rows[2])
+
+  // Non-existent id returns original array identity
+  assert.equal(removeConversationFromList(rows, 'non-existent'), rows)
+})

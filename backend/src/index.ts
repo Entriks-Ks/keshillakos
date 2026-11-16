@@ -26,11 +26,15 @@ import feedbackRoutes from './routes/feedback.routes'
 import planRoutes from './routes/plan.routes'
 import mediaRoutes from './routes/media.routes'
 import aiChatRoutes from './routes/aiChat.routes'
+import communityRoutes from './routes/community.routes'
+import callRoutes from './routes/call.routes'
 import { registerChatHandlers } from './services/chatSocket'
+import { registerCallHandlers } from './services/callSocket'
 import { attachRealtimeSocket } from './services/socketServer'
 import { Notification } from './models/Notification'
 import { ChatBlock } from './models/ChatBlock'
 import { PlatformFeedback } from './models/PlatformFeedback'
+import { Call } from './models/Call'
 import notificationRoutes from './routes/notification.routes'
 import { publicCache } from './middleware/publicCache'
 
@@ -73,6 +77,8 @@ app.use('/api/chat', chatRoutes)
 app.use('/api/feedback', feedbackRoutes)
 app.use('/api/plans', planRoutes)
 app.use('/api/ai', aiChatRoutes)
+app.use('/api/community', communityRoutes)
+app.use('/api/calls', callRoutes)
 
 app.use(
   (
@@ -90,7 +96,12 @@ async function start() {
   try {
     await connectDB()
     await Notification.init()
-    await Promise.all([ChatBlock.init(), PlatformFeedback.init()])
+    await Promise.all([ChatBlock.init(), PlatformFeedback.init(), Call.init()])
+    // Clean up any dangling calls orphaned from prior server restarts
+    await Call.updateMany(
+      { status: { $in: ['ringing', 'accepted'] } },
+      { $set: { status: 'completed', endedAt: new Date() } },
+    )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('MongoDB connection failed:', message)
@@ -105,6 +116,7 @@ async function start() {
   const server = http.createServer(app)
   const io = attachRealtimeSocket(server)
   registerChatHandlers(io)
+  registerCallHandlers(io)
 
   server.listen(PORT, () => {
     console.log(`API running on http://localhost:${PORT}`)

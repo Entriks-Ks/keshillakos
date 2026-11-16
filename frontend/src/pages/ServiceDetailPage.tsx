@@ -441,7 +441,9 @@ export default function ServiceDetailPage() {
                         <span>{kindLabel}</span>
                         <ProviderRatingLine average={provider?.ratingAverage ?? 0} count={provider?.ratingCount ?? 0} />
                         {providerUid ? (
-                          <AiTrustBadge providerUid={providerUid} providerName={providerName} compact />
+                          <span className="sd-byline-trust">
+                            <AiTrustBadge providerUid={providerUid} providerName={providerName} compact />
+                          </span>
                         ) : null}
                       </p>
                     </div>

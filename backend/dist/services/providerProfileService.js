@@ -36,6 +36,7 @@ const mediaService_1 = require("./mediaService");
 const ratingService_1 = require("./ratingService");
 const planService_1 = require("./planService");
 const catalog_1 = require("../plans/catalog");
+const providerPublicService_1 = require("./providerPublicService");
 async function validateSubcategoryIds(categoryStableIds, subcategoryIds) {
     if (subcategoryIds === undefined)
         return;
@@ -259,7 +260,15 @@ async function listMarketplaceProviderPage(query, input) {
  * directory cards, plus the career and social fields only the profile page shows.
  */
 async function getMarketplaceProviderByUid(uid, providerType) {
-    const owner = await User_1.User.findOne({ uid }).select('_id').lean();
+    let owner = await User_1.User.findOne({ uid }).select('_id').lean();
+    if (!owner && mongoose_1.Types.ObjectId.isValid(uid)) {
+        owner = await User_1.User.findById(uid).select('_id').lean();
+    }
+    if (!owner) {
+        const userDoc = await (0, providerPublicService_1.resolveProviderUser)(uid);
+        if (userDoc)
+            owner = { _id: userDoc._id };
+    }
     if (!owner)
         return null;
     const found = await ProviderProfile_1.ProviderProfile.findOne({

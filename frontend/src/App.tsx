@@ -1,4 +1,6 @@
 import { NotificationProvider } from './notifications/NotificationProvider'
+import { CallProvider } from './calls/CallContext'
+import CallManagerUI from './calls/CallManagerUI'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { RouterProvider, Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes, useHref, useNavigate } from 'react-router-dom'
@@ -40,6 +42,7 @@ const ServiceDetailPage = lazy(() => import('./pages/ServiceDetailPage'))
 const ProviderProfilePage = lazy(() => import('./pages/ProviderProfilePage'))
 const AiChatPage = lazy(() => import('./pages/AiChatPage'))
 const CompareLawyersPage = lazy(() => import('./pages/CompareLawyersPage'))
+const CommunityPage = lazy(() => import('./pages/CommunityPage'))
 const AiChatWidget = lazy(() => import('./components/ai/AiChatWidget'))
 
 function CompanyOnboardingRedirect() {
@@ -82,6 +85,7 @@ export default function App() {
         width={360}
       />
       <NotificationProvider>
+        <CallProvider>
       <BrowserRouter>
         <ScrollToTop />
         <HeroRouterProvider>
@@ -95,6 +99,7 @@ export default function App() {
             <Route path="/ofertat" element={<OffersPage />} />
             <Route path="/krahaso" element={<CompareLawyersPage />} />
             <Route path="/krahaso-avokatet" element={<CompareLawyersPage />} />
+            <Route path="/komuniteti" element={<CommunityPage />} />
             <Route path="/ai-asistenti" element={<AiChatPage />} />
             <Route path="/services/:id" element={<ServiceDetailPage />} />
             <Route path="/providers/:uid" element={<ProviderProfilePage />} />
@@ -179,8 +184,10 @@ export default function App() {
           </Routes>
           <CompareDock />
           <AiChatWidget />
+          <CallManagerUI />
         </HeroRouterProvider>
       </BrowserRouter>
+        </CallProvider>
       </NotificationProvider>
     </AuthProvider>
   )

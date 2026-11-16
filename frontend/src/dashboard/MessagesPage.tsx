@@ -1,11 +1,12 @@
-import { mergeMessages, mergeConversationSnapshots, updateConversation, updateConversationList, nearHistoryBottom, prependedScrollTop, type ConversationUpdate } from '../chat/chatState'
+import { mergeMessages, replaceMessage, updateConversationPreview, mergeConversationSnapshots, updateConversation, updateConversationList, removeConversationFromList, nearHistoryBottom, prependedScrollTop, type ConversationUpdate } from '../chat/chatState'
 import { useNotifications } from '../notifications/NotificationProvider'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MessageCircle, Send } from 'lucide-react'
+import { ArrowLeft, Check, MessageCircle, Pencil, Phone, Send, Trash2, Video } from 'lucide-react'
+import { useCall } from '../calls/CallContext'
 import {
   Alert,
   Button,
@@ -22,6 +23,9 @@ import {
   fetchConversation,
   fetchMessages,
   markConversationRead,
+  editChatMessage,
+  deleteChatMessage,
+  deleteConversation,
   type ChatMessage,
   type ConversationItem,
 } from '../api/chat'
@@ -32,6 +36,7 @@ import { getErrorMessage } from '../utils/errors'
 import { providerPath } from '../utils/publicPaths'
 import './Messages.css'
 import ConversationActions from '../chat/ConversationActions'
+import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { useChatPresence, presenceLabel } from '../chat/useChatPresence'
 import type { ChatDetails } from '../api/chat'
 import { REQUEST_STATUS } from './requestDisplay'
@@ -112,6 +117,13 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [peerTyping, setPeerTyping] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteChatTarget, setDeleteChatTarget] = useState<ConversationItem | null>(null)
+  const [deletingChat, setDeletingChat] = useState(false)
   const [chatDetails, setChatDetails] = useState<(ChatDetails & { conversationId: string }) | null>(null)
   const historyRef = useRef<HTMLDivElement | null>(null)
   const followBottomRef = useRef(true)
@@ -134,6 +146,7 @@ export default function MessagesPage() {
 
   const socket = useChatSocket(Boolean(user), user?.uid)
   const presence = useChatPresence(socket, [...conversations.map(c => c.id), ...(activeId ? [activeId] : [])])
+  const { initiateCall, stage: callStage } = useCall()
 
   useEffect(() => {
     mountedRef.current = true
@@ -154,6 +167,102 @@ export default function MessagesPage() {
     if (next === cached.messages) return
     threadsRef.current.set(id, { ...cached, messages: next })
     if (activeIdRef.current === id) setMessages(next)
+  }
+
+  function storeUpdatedMessage(updated: ChatMessage) {
+    const cached = threadsRef.current.get(updated.conversationId)
+    if (!cached) return
+    const next = replaceMessage(cached.messages, updated)
+    if (next === cached.messages) return
+    threadsRef.current.set(updated.conversationId, { ...cached, messages: next })
+    if (activeIdRef.current === updated.conversationId) setMessages(next)
+  }
+
+  function applyPreview(conversationId: string, preview: string) {
+    const cached = conversationCacheRef.current.get(conversationId)
+    if (cached && cached.lastMessagePreview !== preview) {
+      const updated = { ...cached, lastMessagePreview: preview }
+      conversationCacheRef.current.set(conversationId, updated)
+      conversationVersionsRef.current.set(conversationId, (conversationVersionsRef.current.get(conversationId) ?? 0) + 1)
+      if (activeIdRef.current === conversationId) setActiveConversation(updated)
+    }
+    setConversations(previous => updateConversationPreview(previous, conversationId, preview))
+  }
+
+  function handleMessageUpdated(updated: ChatMessage, lastMessagePreview?: string) {
+    storeUpdatedMessage(updated)
+    if (lastMessagePreview !== undefined) applyPreview(updated.conversationId, lastMessagePreview)
+    if (updated.deleted) setEditingId(current => (current === updated.id ? null : current))
+  }
+
+  function startEdit(message: ChatMessage) {
+    setEditingId(message.id)
+    setEditDraft(message.body)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditDraft('')
+  }
+
+  async function saveEdit(message: ChatMessage) {
+    const body = editDraft.trim()
+    if (!body || savingEdit) return
+    if (body === message.body) { cancelEdit(); return }
+    setSavingEdit(true)
+    try {
+      const updated = await editChatMessage(message.conversationId, message.id, body)
+      const isLatest = messages[messages.length - 1]?.id === message.id
+      handleMessageUpdated(updated, isLatest ? updated.body.slice(0, 140) : undefined)
+      toast.success('Mesazhi u ndryshua me sukses')
+      cancelEdit()
+    } catch (err) {
+      toast.danger(getErrorMessage(err) || 'Mesazhi nuk u ndryshua')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function confirmDelete() {
+    const target = deleteTarget
+    if (!target || deleting) return
+    setDeleting(true)
+    try {
+      const updated = await deleteChatMessage(target.conversationId, target.id)
+      const isLatest = messages[messages.length - 1]?.id === target.id
+      handleMessageUpdated(updated, isLatest ? 'Mesazhi u fshi' : undefined)
+      toast.success('Mesazhi u fshi')
+      setDeleteTarget(null)
+    } catch (err) {
+      toast.danger(getErrorMessage(err) || 'Mesazhi nuk u fshi')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function confirmDeleteChat() {
+    const target = deleteChatTarget
+    if (!target || deletingChat) return
+    setDeletingChat(true)
+    try {
+      await deleteConversation(target.id)
+      setConversations(previous => removeConversationFromList(previous, target.id))
+      threadsRef.current.delete(target.id)
+      conversationCacheRef.current.delete(target.id)
+      conversationVersionsRef.current.delete(target.id)
+
+      if (activeIdRef.current === target.id) {
+        setMessages([])
+        setActiveConversation(null)
+        setSearchParams({}, { replace: true })
+      }
+      toast.success('Biseda u fshi me sukses')
+      setDeleteChatTarget(null)
+    } catch (err) {
+      toast.danger(getErrorMessage(err) || 'Biseda nuk u fshi')
+    } finally {
+      setDeletingChat(false)
+    }
   }
 
   function applyUpdate(event: ConversationUpdate) {
@@ -265,6 +374,8 @@ export default function MessagesPage() {
     setHasOlderMessages(cached?.hasOlder ?? true)
     setLoadingThread(!cached)
     setPeerTyping(false)
+    setEditingId(null)
+    setDeleteTarget(null)
     setActiveConversation(conversationCacheRef.current.get(activeId) ?? null)
     restoreScrollRef.current = cached?.scrollTop ?? 'bottom'
     followBottomRef.current = cached?.scrollTop === undefined
@@ -332,7 +443,26 @@ export default function MessagesPage() {
     saveMessages(message.conversationId, [message])
   }), [socket.onMessageNew])
 
+  useEffect(() => socket.onMessageUpdated(event => {
+    handleMessageUpdated(event.message, event.lastMessagePreview)
+  }), [socket.onMessageUpdated])
+
   useEffect(() => socket.onConversationUpdated(applyUpdate), [socket.onConversationUpdated, user?.uid, page, listQuery])
+
+  useEffect(() => socket.onConversationDeleted(event => {
+    const deletedId = event.conversationId
+    setConversations(previous => removeConversationFromList(previous, deletedId))
+    threadsRef.current.delete(deletedId)
+    conversationCacheRef.current.delete(deletedId)
+    conversationVersionsRef.current.delete(deletedId)
+
+    if (activeIdRef.current === deletedId) {
+      setMessages([])
+      setActiveConversation(null)
+      setSearchParams({}, { replace: true })
+      toast.info('Kjo bisedë u fshi')
+    }
+  }), [socket.onConversationDeleted, setSearchParams])
 
   useEffect(() => {
     return socket.onTyping((event) => {
@@ -471,7 +601,7 @@ export default function MessagesPage() {
                 {filteredConversations.map((c) => {
                   const isActive = c.id === activeId
                   return (
-                    <li key={c.id}>
+                    <li key={c.id} className="msg-item-row-wrapper">
                       <button
                         type="button"
                         className={`msg-item${isActive ? ' is-active' : ''}${c.unread > 0 ? ' has-unread' : ''}`}
@@ -499,6 +629,18 @@ export default function MessagesPage() {
                             )}
                           </span>
                         </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="msg-item-del-btn"
+                        aria-label={`Fshi bisedën me ${c.peer.name}`}
+                        title="Fshi bisedën"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteChatTarget(c)
+                        }}
+                      >
+                        <Trash2 size={15} />
                       </button>
                     </li>
                   )
@@ -551,7 +693,56 @@ export default function MessagesPage() {
                           : active?.peer.roleLabel || 'Chat')}
                     </span>
                   </div>
-                  <ConversationActions conversationId={activeId} onAvailability={socket.onAvailability} onDetails={setChatDetails} />
+                  <div className="msg-call-actions" role="toolbar" aria-label="Thirrje">
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      className="msg-call-btn"
+                      aria-label="Nis video thirrje"
+                      isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
+                      onPress={() => {
+                        if (active?.peer.uid && activeId) {
+                          void initiateCall({
+                            conversationId: activeId,
+                            receiverUid: active.peer.uid,
+                            peerName: active.peer.name,
+                            peerPhoto: active.peer.profilePhoto,
+                            callType: 'video',
+                          })
+                        }
+                      }}
+                    >
+                      <Video size={19} />
+                    </Button>
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      className="msg-call-btn"
+                      aria-label="Nis thirrje zanore"
+                      isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
+                      onPress={() => {
+                        if (active?.peer.uid && activeId) {
+                          void initiateCall({
+                            conversationId: activeId,
+                            receiverUid: active.peer.uid,
+                            peerName: active.peer.name,
+                            peerPhoto: active.peer.profilePhoto,
+                            callType: 'audio',
+                          })
+                        }
+                      }}
+                    >
+                      <Phone size={18} />
+                    </Button>
+                  </div>
+                  <ConversationActions
+                    conversationId={activeId}
+                    onAvailability={socket.onAvailability}
+                    onDetails={setChatDetails}
+                    onDeleteConversation={() => {
+                      if (active) setDeleteChatTarget(active)
+                    }}
+                  />
                 </header>
                 {currentDetails?.requestContext && <div className="msg-request-context">
                   <div><span>{t('req.serviceRequest')}</span><strong>{currentDetails.requestContext.title}</strong><span>{t('req.statusLine')}: {t(REQUEST_STATUS[currentDetails.requestContext.status as keyof typeof REQUEST_STATUS]?.label || (currentDetails.requestContext.status === 'cancelled' ? 'status.cancelled' : currentDetails.requestContext.status))}</span></div>
@@ -604,6 +795,9 @@ export default function MessagesPage() {
                 ) : (
                   messages.map((m, index) => {
                     const mine = m.senderUid === user?.uid
+                    const editing = editingId === m.id && !m.deleted
+                    const canEdit = mine && !m.deleted && !messagingDisabled
+                    const canDelete = mine && !m.deleted
                     const day = dayKey(m.createdAt)
                     const showDay = index === 0 || day !== dayKey(messages[index - 1].createdAt)
                     return (
@@ -613,9 +807,83 @@ export default function MessagesPage() {
                             <span>{formatDay(m.createdAt)}</span>
                           </div>
                         ) : null}
-                        <div className={`msg-bubble${mine ? ' is-mine' : ''}`}>
-                          <p>{m.body}</p>
-                          <time dateTime={m.createdAt}>{formatClock(m.createdAt)}</time>
+                        <div className={`msg-bubble-row${mine ? ' is-mine' : ''}`}>
+                          {(canEdit || canDelete) && !editing ? (
+                            <div className="msg-bubble-actions" role="toolbar" aria-label="Veprimet e mesazhit">
+                              {canEdit ? (
+                                <button
+                                  type="button"
+                                  className="msg-action"
+                                  aria-label="Ndrysho mesazhin"
+                                  title="Ndrysho mesazhin"
+                                  onClick={() => startEdit(m)}
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="msg-action is-danger"
+                                aria-label="Fshi mesazhin"
+                                title="Fshi mesazhin"
+                                onClick={() => setDeleteTarget(m)}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ) : null}
+                          <div className={`msg-bubble${mine ? ' is-mine' : ''}${m.deleted ? ' is-deleted' : ''}${editing ? ' is-editing' : ''}`}>
+                            {m.deleted ? (
+                              <div className="msg-deleted-content">
+                                <Trash2 size={13} className="msg-deleted-icon" />
+                                <p className="msg-deleted-text">{mine ? 'E keni fshirë këtë mesazh' : 'Ky mesazh u fshi'}</p>
+                              </div>
+                            ) : editing ? (
+                              <form
+                                className="msg-edit"
+                                onSubmit={(event) => { event.preventDefault(); void saveEdit(m) }}
+                              >
+                                <div className="msg-edit-header">
+                                  <Pencil size={13} className="msg-edit-icon" />
+                                  <span>Ndrysho mesazhin</span>
+                                </div>
+                                <textarea
+                                  className="msg-edit-input"
+                                  value={editDraft}
+                                  placeholder="Shkruaj mesazhin e përditësuar..."
+                                  onChange={(event) => setEditDraft(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Escape') { event.preventDefault(); cancelEdit() }
+                                    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void saveEdit(m) }
+                                  }}
+                                  maxLength={4000}
+                                  rows={Math.min(8, Math.max(2, editDraft.split('\n').length))}
+                                  aria-label="Ndrysho mesazhin"
+                                  disabled={savingEdit}
+                                  autoFocus
+                                  onFocus={(event) => { const end = event.currentTarget.value.length; event.currentTarget.setSelectionRange(end, end) }}
+                                />
+                                <div className="msg-edit-actions">
+                                  <span className="msg-edit-hint">Enter për ruajtje · Shift+Enter për rresht të ri · Esc për anulim</span>
+                                  <div className="msg-edit-buttons">
+                                    <Button size="sm" variant="outline" isDisabled={savingEdit} onPress={cancelEdit}>
+                                      Anulo
+                                    </Button>
+                                    <Button size="sm" variant="primary" type="submit" isPending={savingEdit} isDisabled={savingEdit || !editDraft.trim()}>
+                                      <Check size={14} />
+                                      Ruaj
+                                    </Button>
+                                  </div>
+                                </div>
+                              </form>
+                            ) : (
+                              <p>{m.body}</p>
+                            )}
+                            <span className="msg-meta">
+                              {m.editedAt && !m.deleted && !editing ? <span className="msg-edited">ndryshuar</span> : null}
+                              <time dateTime={m.createdAt}>{formatClock(m.createdAt)}</time>
+                            </span>
+                          </div>
                         </div>
                       </Fragment>
                     )
@@ -658,6 +926,43 @@ export default function MessagesPage() {
           )}
         </section>
       </Card>
+      <ConfirmActionDialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Fshi mesazhin?"
+        confirmLabel="Fshi mesazhin"
+        pending={deleting}
+      >
+        <div className="msg-delete-dialog-content">
+          <p className="msg-delete-desc">
+            Mesazhi do të fshihet për të dy palët. Ky veprim nuk mund të kthehet mbrapsht.
+          </p>
+          {deleteTarget && (
+            <div className="msg-delete-quote">
+              <span className="msg-delete-quote-label">Mesazhi që do të fshihet:</span>
+              <p className="msg-delete-quote-body">
+                "{deleteTarget.body.length > 200 ? `${deleteTarget.body.slice(0, 200)}...` : deleteTarget.body}"
+              </p>
+            </div>
+          )}
+        </div>
+      </ConfirmActionDialog>
+
+      <ConfirmActionDialog
+        isOpen={Boolean(deleteChatTarget)}
+        onClose={() => setDeleteChatTarget(null)}
+        onConfirm={() => void confirmDeleteChat()}
+        title={`Fshi bisedën me ${deleteChatTarget?.peer?.name || 'këtë përdorues'}?`}
+        confirmLabel="Fshi bisedën"
+        pending={deletingChat}
+      >
+        <div className="msg-delete-dialog-content">
+          <p className="msg-delete-desc">
+            A jeni të sigurt që dëshironi të fshini këtë bisedë? Të gjitha mesazhet në këtë bisedë do të fshihen përgjithmonë. Ky veprim nuk mund të kthehet mbrapsht.
+          </p>
+        </div>
+      </ConfirmActionDialog>
     </div>
   )
 }
