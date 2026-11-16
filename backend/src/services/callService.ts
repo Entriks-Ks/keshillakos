@@ -1,13 +1,99 @@
 import mongoose, { type HydratedDocument } from 'mongoose'
 import { Call, type CallDoc, type CallType } from '../models/Call'
 export type { CallType }
+import { Message } from '../models/Message'
+import { Conversation } from '../models/Conversation'
 import { assertParticipant } from './chatService'
 import { assertChatUnblocked } from './chatSafetyService'
 import { findUserByUid, findUsersByUids } from './userService'
-import { emitToUser } from './realtime'
+import { emitToUser, emitChatMessage, isConversationActive } from './realtime'
+import { publishChatUnread } from './chatUnreadService'
 
 const RING_TIMEOUT_MS = 60_000
 const ringingTimers = new Map<string, NodeJS.Timeout>()
+
+export async function logCallToChat(call: HydratedDocument<CallDoc> | any): Promise<void> {
+  if (!call || call.hasLoggedChat || !call.conversationId) return
+  call.hasLoggedChat = true
+  if (typeof call.save === 'function') {
+    await call.save().catch(() => undefined)
+  }
+
+  // If MongoDB is not connected (e.g. unit tests), skip DB write to avoid buffering timeout
+  if (mongoose.connection.readyState !== 1) {
+    return
+  }
+
+  const conversationId = call.conversationId.toString()
+  const callerUid = call.callerId
+  const receiverUid = call.receiverId
+  const isVideo = call.callType === 'video'
+  const icon = isVideo ? '📹' : '📞'
+  const typeLabel = isVideo ? 'me video' : 'me zë'
+
+  let body = ''
+  if (call.status === 'completed' && (call.duration || 0) > 0) {
+    const mins = Math.floor((call.duration || 0) / 60)
+    const secs = (call.duration || 0) % 60
+    const durationStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+    body = `${icon} Thirrja ${typeLabel} përfundoi (${durationStr})`
+  } else if (call.status === 'rejected') {
+    body = `${icon} Thirrje ${typeLabel} e refuzuar`
+  } else if (call.status === 'busy') {
+    body = `${icon} Thirrje ${typeLabel} e zënë`
+  } else {
+    body = `${icon} Thirrje ${typeLabel} e humbur`
+  }
+
+  try {
+    const message = await Message.create({
+      conversation: call.conversationId,
+      senderUid: callerUid,
+      body,
+    })
+
+    if (message?._id) {
+      call.chatMessageId = message._id
+      if (typeof call.save === 'function') {
+        await call.save().catch(() => undefined)
+      }
+    }
+
+    const peerUid = receiverUid
+    if (typeof Conversation?.findById === 'function') {
+      const conversation = await Conversation.findById(call.conversationId).catch(() => null)
+      if (conversation) {
+        const isPeerSeeker = peerUid === conversation.seekerUid
+        const targetUnreadField = isPeerSeeker ? 'seekerUnread' : 'providerUnread'
+        const active = isConversationActive(peerUid, conversationId)
+
+        if (typeof Conversation?.findByIdAndUpdate === 'function') {
+          await Conversation.findByIdAndUpdate(conversation._id, {
+            $set: {
+              lastMessageAt: message?.createdAt || new Date(),
+              lastMessagePreview: body.slice(0, 140),
+              ...(active ? { [targetUnreadField]: 0 } : {}),
+            },
+            ...(!active ? { $inc: { [targetUnreadField]: 1 } } : {}),
+          }).catch(() => undefined)
+        }
+      }
+    }
+
+    const publicMsg = {
+      id: message?._id ? message._id.toString() : new mongoose.Types.ObjectId().toString(),
+      conversationId,
+      senderUid: callerUid,
+      body,
+      createdAt: message?.createdAt ? message.createdAt.toISOString() : new Date().toISOString(),
+    }
+
+    emitChatMessage(publicMsg, peerUid)
+    await publishChatUnread(peerUid).catch(() => undefined)
+  } catch (err) {
+    console.error('[CallService] Failed to record call chat message:', err)
+  }
+}
 
 export type InitiateCallInput = {
   callerUid: string
@@ -41,6 +127,7 @@ export async function getActiveCallForUser(uid: string) {
       active.status = 'missed'
       active.endedAt = new Date()
       await active.save()
+      void logCallToChat(active).catch(() => undefined)
       return null
     }
   }
@@ -52,6 +139,7 @@ export async function getActiveCallForUser(uid: string) {
       active.status = 'completed'
       active.endedAt = new Date()
       await active.save()
+      void logCallToChat(active).catch(() => undefined)
       return null
     }
   }
@@ -92,6 +180,7 @@ export async function initiateCall(input: InitiateCallInput) {
       c.duration = Math.max(0, Math.round((c.endedAt.getTime() - c.answeredAt.getTime()) / 1000))
     }
     await c.save()
+    void logCallToChat(c).catch(() => undefined)
   }
 
   // 4. Check if receiver is already in an active call with another user
@@ -106,6 +195,7 @@ export async function initiateCall(input: InitiateCallInput) {
       receiverActiveCall.status = receiverActiveCall.status === 'accepted' ? 'completed' : 'missed'
       receiverActiveCall.endedAt = new Date()
       await receiverActiveCall.save()
+      void logCallToChat(receiverActiveCall).catch(() => undefined)
     } else {
       return {
         busy: true,
@@ -156,6 +246,7 @@ export async function initiateCall(input: InitiateCallInput) {
         currentCall.status = 'missed'
         currentCall.endedAt = new Date()
         await currentCall.save()
+        void logCallToChat(currentCall).catch(() => undefined)
 
         emitToUser(callerUid, 'call:timeout', { callId, conversationId })
         emitToUser(receiverUid, 'call:missed', {
@@ -244,6 +335,7 @@ export async function rejectCall(callId: string, uid: string, reason?: string) {
   call.status = newStatus
   call.endedAt = new Date()
   await call.save()
+  void logCallToChat(call).catch(() => undefined)
 
   return call
 }
@@ -278,6 +370,7 @@ export async function endCall(callId: string, uid: string) {
   call.endedAt = now
   call.duration = duration
   await call.save()
+  void logCallToChat(call).catch(() => undefined)
 
   return { call, duration }
 }

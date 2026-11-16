@@ -5,7 +5,7 @@ import { usePagination } from '../hooks/usePagination'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, MessageCircle, Pencil, Phone, Send, Trash2, Video } from 'lucide-react'
+import { ArrowLeft, Check, MessageCircle, Pencil, Phone, PhoneMissed, Send, Trash2, Video } from 'lucide-react'
 import { useCall } from '../calls/CallContext'
 import {
   Alert,
@@ -796,7 +796,8 @@ export default function MessagesPage() {
                   messages.map((m, index) => {
                     const mine = m.senderUid === user?.uid
                     const editing = editingId === m.id && !m.deleted
-                    const canEdit = mine && !m.deleted && !messagingDisabled
+                    const isCall = !m.deleted && (m.body.startsWith('📹') || m.body.startsWith('📞') || m.body.toLowerCase().includes('thirrj'))
+                    const canEdit = mine && !m.deleted && !messagingDisabled && !isCall
                     const canDelete = mine && !m.deleted
                     const day = dayKey(m.createdAt)
                     const showDay = index === 0 || day !== dayKey(messages[index - 1].createdAt)
@@ -876,6 +877,30 @@ export default function MessagesPage() {
                                   </div>
                                 </div>
                               </form>
+                            ) : isCall ? (
+                              <div className={`msg-call-badge${m.body.includes('humbur') ? ' is-missed' : ''}`}>
+                                <div className="msg-call-icon-wrap">
+                                  {m.body.includes('humbur') ? (
+                                    <PhoneMissed size={16} className="msg-call-icon-missed" />
+                                  ) : m.body.startsWith('📹') || m.body.toLowerCase().includes('video') ? (
+                                    <Video size={16} className="msg-call-icon-success" />
+                                  ) : (
+                                    <Phone size={16} className="msg-call-icon-success" />
+                                  )}
+                                </div>
+                                <div className="msg-call-info">
+                                  <span className="msg-call-title">
+                                    {m.body.includes('humbur')
+                                      ? (!mine ? 'Ke pasur një thirrje të humbur' : 'Thirrje e humbur (pa përgjigje)')
+                                      : m.body.replace(/^[📹📞]\s*/, '')}
+                                  </span>
+                                  <span className="msg-call-subtitle">
+                                    {m.body.startsWith('📹') || m.body.toLowerCase().includes('video')
+                                      ? 'Thirrje me video'
+                                      : 'Thirrje me zë'}
+                                  </span>
+                                </div>
+                              </div>
                             ) : (
                               <p>{m.body}</p>
                             )}

@@ -88,6 +88,15 @@ const callSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    hasLoggedChat: {
+        type: Boolean,
+        default: false,
+    },
+    chatMessageId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Message',
+        default: null,
+    },
 }, {
     timestamps: true,
 });
