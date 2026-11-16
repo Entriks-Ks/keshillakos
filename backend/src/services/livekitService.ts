@@ -2,10 +2,11 @@ import { AccessToken } from 'livekit-server-sdk'
 import dotenv from 'dotenv'
 
 export function getLivekitConfig() {
-  // If process.env still holds the old placeholder cloud URL or dummy secret, reload from .env with override
   if (
-    process.env.LIVEKIT_URL === 'wss://keshillakos.livekit.cloud' ||
-    process.env.LIVEKIT_API_SECRET === 'secret_must_be_at_least_32_characters_long'
+    !process.env.LIVEKIT_URL ||
+    !process.env.LIVEKIT_API_KEY ||
+    process.env.LIVEKIT_API_KEY === 'devkey' ||
+    process.env.LIVEKIT_URL === 'ws://127.0.0.1:7880'
   ) {
     dotenv.config({ override: true })
   }
