@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
+// LiveKit WebRTC call support enabled
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {

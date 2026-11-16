@@ -117,25 +117,34 @@ export default function CallRoomModal() {
         const { token, livekitUrl } = await fetchLivekitToken(activeCall!.callId)
         if (isDisposed) return
 
+        const host = window.location.hostname || '127.0.0.1'
+        const defaultLocalUrl =
+          (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + host + ':7880'
+        const rawUrl = livekitUrl || import.meta.env.VITE_LIVEKIT_URL || defaultLocalUrl
         const resolvedUrl =
-          livekitUrl ||
-          import.meta.env.VITE_LIVEKIT_URL ||
-          (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':7880'
+          rawUrl.includes('127.0.0.1') || rawUrl.includes('localhost')
+            ? rawUrl.replace('127.0.0.1', host).replace('localhost', host)
+            : rawUrl
+
+        // Helper to attach tracks safely
+        const attachTrack = (track: RemoteTrack) => {
+          if (track.kind === Track.Kind.Video) {
+            if (remoteVideoRef.current) {
+              track.attach(remoteVideoRef.current)
+            }
+            setHasRemoteVideo(true)
+          } else if (track.kind === Track.Kind.Audio) {
+            if (remoteAudioRef.current) {
+              track.attach(remoteAudioRef.current)
+            }
+          }
+        }
 
         // 2. Set up Room Event Listeners
         room.on(
           RoomEvent.TrackSubscribed,
           (track: RemoteTrack, _pub: TrackPublication, _participant: RemoteParticipant) => {
-            if (track.kind === Track.Kind.Video) {
-              if (remoteVideoRef.current) {
-                track.attach(remoteVideoRef.current)
-                setHasRemoteVideo(true)
-              }
-            } else if (track.kind === Track.Kind.Audio) {
-              if (remoteAudioRef.current) {
-                track.attach(remoteAudioRef.current)
-              }
-            }
+            attachTrack(track)
           },
         )
 
@@ -154,6 +163,9 @@ export default function CallRoomModal() {
 
         room.on(RoomEvent.TrackUnmuted, (pub: TrackPublication) => {
           if (pub.kind === Track.Kind.Video) {
+            if (pub.track && remoteVideoRef.current) {
+              pub.track.attach(remoteVideoRef.current)
+            }
             setHasRemoteVideo(true)
           }
         })
@@ -174,32 +186,58 @@ export default function CallRoomModal() {
         await room.connect(resolvedUrl, token)
         if (isDisposed) return
 
-        // 4. Publish local tracks
+        // 3b. Check for already published tracks from remote participants
+        room.remoteParticipants.forEach((p) => {
+          p.trackPublications.forEach((pub) => {
+            if (pub.track) {
+              attachTrack(pub.track)
+            }
+          })
+        })
+
+        // 4. Publish local tracks - Microphone first
         try {
-          if (activeCall!.callType === 'video') {
-            await room.localParticipant.enableCameraAndMicrophone()
+          await room.localParticipant.setMicrophoneEnabled(true)
+        } catch (micErr: unknown) {
+          console.warn('Microphone permission warning:', micErr)
+          setPermissionError('Qasja në mikrofon u refuzua. Ju lutem lejoni mikrofonin në cilësime.')
+        }
+
+        // Publish local camera if video call
+        if (activeCall!.callType === 'video') {
+          try {
+            await room.localParticipant.setCameraEnabled(true)
             const camPub = room.localParticipant.getTrackPublication(Track.Source.Camera)
             if (camPub?.videoTrack && localVideoRef.current) {
               camPub.videoTrack.attach(localVideoRef.current)
             }
-          } else {
-            await room.localParticipant.setMicrophoneEnabled(true)
-            await room.localParticipant.setCameraEnabled(false)
+          } catch (camErr: any) {
+            console.warn('Camera capture warning:', camErr)
+            setIsCameraOff(true)
+            const isLocked =
+              camErr?.name === 'NotReadableError' ||
+              camErr?.name === 'AbortError' ||
+              camErr?.message?.includes('start video source') ||
+              camErr?.message?.includes('in use')
+
+            if (isLocked) {
+              setPermissionError(
+                'Kamera po përdoret nga një dritare ose aplikacion tjetër. Thirrja po vazhdon me mikrofon (zë).',
+              )
+            } else if (
+              camErr?.name === 'NotAllowedError' ||
+              camErr?.name === 'PermissionDeniedError' ||
+              camErr?.message?.includes('denied')
+            ) {
+              setPermissionError('Qasja në kamerë u refuzua në cilësimet e shfletuesit.')
+            } else if (camErr?.name === 'NotFoundError') {
+              setPermissionError('Nuk u gjet asnjë kamerë e lidhur.')
+            } else {
+              setPermissionError('Kamera nuk mund të aktivizohet. Thirrja po vazhdon me zë.')
+            }
           }
-        } catch (mediaErr: unknown) {
-          const err = mediaErr as Error
-          console.warn('Media permission warning:', err)
-          if (
-            err.name === 'NotAllowedError' ||
-            err.name === 'PermissionDeniedError' ||
-            err.message?.includes('denied')
-          ) {
-            setPermissionError(
-              'Qasja në kamerë ose mikrofon u refuzua. Ju lutem lejoni qasjen në cilësimet e shfletuesit tuaj.',
-            )
-          } else if (err.name === 'NotFoundError') {
-            setPermissionError('Nuk u gjet asnjë kamerë ose mikrofon i lidhur.')
-          }
+        } else {
+          await room.localParticipant.setCameraEnabled(false)
         }
       } catch (err: unknown) {
         if (!isDisposed) {
@@ -222,7 +260,7 @@ export default function CallRoomModal() {
         roomRef.current = null
       }
     }
-  }, [activeCall])
+  }, [activeCall?.callId])
 
   // Toggle Microphone
   const toggleMic = useCallback(async () => {
@@ -392,14 +430,15 @@ export default function CallRoomModal() {
 
       {/* Main View Area: Remote Participant Video / Audio Visualizer */}
       <main className="call-stage-area">
-        {hasRemoteVideo && !isVoiceOnly ? (
-          <video
-            ref={remoteVideoRef}
-            className="call-remote-video"
-            autoPlay
-            playsInline
-          />
-        ) : (
+        {/* Remote video element is kept always mounted in DOM so track.attach never misses a null ref */}
+        <video
+          ref={remoteVideoRef}
+          className={`call-remote-video${hasRemoteVideo && !isVoiceOnly ? '' : ' is-hidden'}`}
+          autoPlay
+          playsInline
+        />
+
+        {(!hasRemoteVideo || isVoiceOnly) && (
           <div className="call-voice-only-stage">
             <div className="call-voice-pulse-wrap">
               <div className="call-voice-wave wave-1" />
