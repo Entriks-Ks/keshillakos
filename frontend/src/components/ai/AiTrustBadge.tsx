@@ -4,7 +4,6 @@ import {
   ShieldCheck,
   Shield,
   AlertCircle,
-  Sparkles,
   ChevronRight,
   CheckCircle2,
   Lock,
@@ -126,7 +125,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
 
               <div className="kk-ai-trust-card-texts">
                 <div className="kk-ai-trust-card-title-row">
-                  <Sparkles size={13} className="kk-ai-trust-sparkle text-emerald-500" />
+                  <ShieldCheck size={13} className="kk-ai-trust-sparkle" />
                   <h4 className="kk-ai-trust-card-title">Siguria e Punës</h4>
                   <span className={`kk-ai-trust-level-pill ${levelClass}`}>
                     {data.safetyLabel}
@@ -168,7 +167,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
                   </div>
                   <div className="kk-ai-modal-title-area">
                     <div className="kk-ai-modal-eyebrow">
-                      <Sparkles size={12} />
+                      <ShieldCheck size={12} />
                       <span>Këshilla AI • Analizë e Verifikuar</span>
                     </div>
                     <h3 className="kk-ai-modal-main-title">

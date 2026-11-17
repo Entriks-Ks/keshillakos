@@ -8,7 +8,7 @@ import {
   Cookie,
   Scale,
   ShieldCheck,
-  Sparkles,
+  MessageSquareText,
 } from 'lucide-react'
 
 export default function HomeArticlesSection() {
@@ -55,7 +55,7 @@ export default function HomeArticlesSection() {
       category: t('home.articleCatAi', 'Inovacion & AI'),
       readTime: '2 min',
       to: '/ai-asistenti',
-      icon: Sparkles,
+      icon: MessageSquareText,
       iconClass: 'is-ai',
     },
     {
@@ -94,7 +94,7 @@ export default function HomeArticlesSection() {
             <div className="hm-featured-top">
               <div className="hm-featured-badge-row">
                 <span className="hm-featured-tag">
-                  <Sparkles size={13} aria-hidden />
+                  <BookOpen size={13} aria-hidden />
                   {t('home.articlesFeaturedBadge')}
                 </span>
                 <span className="hm-article-time">
@@ -183,7 +183,7 @@ export default function HomeArticlesSection() {
         <div className="hm-articles-ai-bar">
           <div className="hm-ai-bar-left">
             <div className="hm-ai-bar-icon" aria-hidden>
-              <Sparkles size={20} />
+              <MessageSquareText size={20} />
             </div>
             <div className="hm-ai-bar-copy">
               <strong>{t('home.articlesAiBannerTitle')}</strong>

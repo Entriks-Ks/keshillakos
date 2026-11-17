@@ -12,9 +12,10 @@ import {
   MapPin,
   Scale,
   Calculator,
-  Sparkles,
   UserCheck,
   Video,
+  MessageSquareText,
+  Search,
 } from 'lucide-react'
 
 type TabKey = 'legal' | 'accounting' | 'ai'
@@ -97,7 +98,7 @@ export default function AboutPlatformPreview() {
               className={`ab-tab-btn ${activeTab === 'ai' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('ai')}
             >
-              <Sparkles size={18} aria-hidden />
+              <MessageSquareText size={18} aria-hidden />
               <span>{t('about.tabAi')}</span>
             </button>
           </div>
@@ -309,7 +310,7 @@ export default function AboutPlatformPreview() {
                         className={`ab-sample-btn ${activeAiSample === idx ? 'is-active' : ''}`}
                         onClick={() => setActiveAiSample(idx)}
                       >
-                        <Sparkles size={14} aria-hidden />
+                        <Search size={14} aria-hidden />
                         <span>“{sample.query}”</span>
                       </button>
                     ))}
@@ -327,7 +328,7 @@ export default function AboutPlatformPreview() {
               {/* Simulated AI Response Card */}
               <div className="ab-sim-card ab-sim-ai-card">
                 <div className="ab-ai-head-badge">
-                  <Sparkles size={16} />
+                  <MessageSquareText size={16} />
                   <span>{t('about.aiResponsePrefix')}</span>
                 </div>
 
@@ -359,7 +360,7 @@ export default function AboutPlatformPreview() {
 
                 <div className="ab-sim-footer">
                   <Link to="/ai-asistenti" className="ab-sim-btn is-full">
-                    <Sparkles size={16} />
+                    <MessageSquareText size={16} />
                     {t('about.aiAction')}
                   </Link>
                 </div>

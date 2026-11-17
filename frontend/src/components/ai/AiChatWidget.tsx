@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent, type KeyboardEvent, type ChangeEvent } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import {
-  Sparkles,
   X,
   Maximize2,
   Send,
   RotateCcw,
-  Bot,
   User,
   ArrowRight,
   Copy,
@@ -16,6 +14,10 @@ import {
   Calculator,
   Building2,
   Trash2,
+  ArrowUpRight,
+  CreditCard,
+  MessageSquareText,
+  ShieldCheck,
 } from 'lucide-react'
 import { toast } from '@heroui/react'
 import {
@@ -90,7 +92,7 @@ const STARTER_TOPICS: StarterTopic[] = [
   {
     id: 'plans',
     category: 'platform',
-    icon: Sparkles,
+    icon: CreditCard,
     badge: 'Platforma',
     title: 'Planet & 0% Komision',
     prompt: 'Si funksionon platforma KeshillaKos dhe çfarë përfitimesh ka Plani Pro për ofruesit?',
@@ -110,6 +112,30 @@ function formatMessageTime(): string {
   }
 }
 
+/** True while the site footer is on screen, so the launcher can stay out of its way. */
+function useFooterInView(pathname: string) {
+  const [inView, setInView] = useState(false)
+  useEffect(() => {
+    setInView(false)
+    if (typeof IntersectionObserver === 'undefined') return
+    let observer: IntersectionObserver | undefined
+    // The footer can mount after lazy route content, so look it up on the next frame.
+    const frame = requestAnimationFrame(() => {
+      const footer = document.querySelector('.tt-footer')
+      if (!footer) return
+      observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+        rootMargin: '0px 0px -40px 0px',
+      })
+      observer.observe(footer)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      observer?.disconnect()
+    }
+  }, [pathname])
+  return inView
+}
+
 export default function AiChatWidget() {
   const location = useLocation()
   const isDedicatedAiPage = location.pathname === '/ai-asistenti'
@@ -119,6 +145,9 @@ export default function AiChatWidget() {
     location.pathname !== '/krahaso' &&
     location.pathname !== '/krahaso-avokatet'
   const isDashboard = location.pathname.startsWith('/dashboard')
+  // The floating assistant is shown only on the home page.
+  const isHomePage = location.pathname === '/'
+  const footerInView = useFooterInView(location.pathname)
 
   const [isOpen, setIsOpen] = useState(false)
   const [hasPromptPill, setHasPromptPill] = useState(true)
@@ -151,6 +180,11 @@ export default function AiChatWidget() {
       })
     }
   }, [])
+
+  // Close the chat when leaving the home page so it doesn't reopen on return
+  useEffect(() => {
+    if (!isHomePage) setIsOpen(false)
+  }, [isHomePage])
 
   // Close on Escape key
   useEffect(() => {
@@ -308,7 +342,7 @@ export default function AiChatWidget() {
   }
 
   // If we are already on the dedicated full AI page, we don't need the floating widget
-  if (isDedicatedAiPage) {
+  if (isDedicatedAiPage || !isHomePage) {
     return null
   }
 
@@ -320,9 +354,9 @@ export default function AiChatWidget() {
     <>
       {/* Floating launcher trigger */}
       <div
-        className={`kk-ai-trigger-container${hasCompareDock ? ' has-dock' : ''}${isDashboard ? ' has-dash-nav' : ''}${isOpen ? ' is-open' : ''}`}
+        className={`kk-ai-trigger-container${hasCompareDock ? ' has-dock' : ''}${isDashboard ? ' has-dash-nav' : ''}${isOpen ? ' is-open' : ''}${footerInView ? ' near-footer' : ''}`}
       >
-        {!isOpen && hasPromptPill && !hasCompareDock && (
+        {!isOpen && hasPromptPill && !hasCompareDock && !footerInView && (
           <button
             type="button"
             className="kk-ai-trigger-pill"
@@ -331,7 +365,7 @@ export default function AiChatWidget() {
               setHasPromptPill(false)
             }}
           >
-            <Sparkles size={14} className="text-yellow-400" />
+            <MessageSquareText size={14} />
             <span>Keni pyetje? Pyet AI</span>
           </button>
         )}
@@ -347,7 +381,7 @@ export default function AiChatWidget() {
           aria-label={isOpen ? 'Mbyll Këshilla AI' : 'Hap asistentin Këshilla AI'}
           aria-expanded={isOpen}
         >
-          {isOpen ? <X size={24} /> : <Sparkles size={24} />}
+          {isOpen ? <X size={24} /> : <MessageSquareText size={24} />}
           {!isOpen && <span className="kk-ai-trigger-badge" />}
         </button>
       </div>
@@ -386,7 +420,7 @@ export default function AiChatWidget() {
           <div className="kk-ai-header">
             <div className="kk-ai-header-info">
               <div className="kk-ai-header-avatar">
-                <Bot size={20} />
+                <MessageSquareText size={20} />
                 <span className="kk-ai-avatar-online" />
               </div>
               <div className="kk-ai-header-titles">
@@ -474,7 +508,7 @@ export default function AiChatWidget() {
             {messages.length === 0 ? (
               <div className="kk-ai-welcome-box">
                 <div className="kk-ai-welcome-badge">
-                  <Sparkles size={13} className="text-yellow-400" />
+                  <ShieldCheck size={13} />
                   <span>Asistenti Zyrtar i KeshillaKos</span>
                 </div>
                 <h4 className="kk-ai-welcome-title">Si mund t&apos;ju ndihmoj sot?</h4>
@@ -533,7 +567,7 @@ export default function AiChatWidget() {
                     }`}
                   >
                     <div className="kk-ai-msg-avatar" aria-hidden="true">
-                      {msg.role === 'user' ? <User size={15} /> : <Bot size={16} />}
+                      {msg.role === 'user' ? <User size={15} /> : <MessageSquareText size={16} />}
                     </div>
                     <div className="kk-ai-msg-bubble">
                       <FormattedAiMessage content={msg.content} />
@@ -593,7 +627,7 @@ export default function AiChatWidget() {
                           className="kk-ai-action-btn"
                           onClick={() => handleSendMessage(action)}
                         >
-                          <Sparkles size={11} className="kk-ai-action-sparkle" />
+                          <ArrowUpRight size={11} className="kk-ai-action-sparkle" />
                           <span>{action}</span>
                         </button>
                       ))}
@@ -607,7 +641,7 @@ export default function AiChatWidget() {
             {loading && (
               <div className="kk-ai-msg kk-ai-msg-assistant kk-ai-msg-loading">
                 <div className="kk-ai-msg-avatar" aria-hidden="true">
-                  <Bot size={16} />
+                  <MessageSquareText size={16} />
                 </div>
                 <div className="kk-ai-typing-card">
                   <div className="kk-ai-typing-dots">

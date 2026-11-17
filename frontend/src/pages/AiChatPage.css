@@ -10,7 +10,7 @@
 
 .kk-aipage-root {
   --ai-navy: #050a44;
-  --ai-grad: linear-gradient(135deg, #4f46e5 0%, #2563eb 55%, #0ea5e9 100%);
+  --ai-grad: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #0ea5e9 100%);
   --ai-muted: color-mix(in srgb, var(--foreground) 60%, transparent);
   --ai-soft: color-mix(in srgb, var(--foreground) 78%, transparent);
   --ai-line: color-mix(in srgb, var(--border) 85%, transparent);
@@ -78,7 +78,7 @@
   z-index: -1;
   inset: 0;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, #3b82f6, #8b5cf6, #ec4899, #22d3ee, #3b82f6);
+  background: conic-gradient(from 0deg, #3b82f6, #2563eb, #38bdf8, #38bdf8, #3b82f6);
   animation: kk-ai-rotate 7s linear infinite;
 }
 
@@ -102,7 +102,7 @@
   z-index: -2;
   inset: -18%;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, #3b82f6, #8b5cf6, #ec4899, #22d3ee, #3b82f6);
+  background: conic-gradient(from 0deg, #3b82f6, #2563eb, #38bdf8, #38bdf8, #3b82f6);
   filter: blur(10px);
   opacity: 0.55;
   animation: kk-ai-rotate 7s linear infinite;
@@ -139,7 +139,7 @@
   padding: clamp(36px, 6vh, 64px) 0 clamp(110px, 13vh, 140px);
   color: #ffffff;
   background:
-    radial-gradient(80% 120% at 85% 10%, #3b2bd6 0%, rgb(59 43 214 / 0%) 55%),
+    radial-gradient(80% 120% at 85% 10%, #0a21c0 0%, rgb(10 33 192 / 0%) 55%),
     radial-gradient(70% 90% at 0% 100%, #12207a 0%, rgb(18 32 122 / 0%) 60%),
     linear-gradient(160deg, #070d5a 0%, var(--ai-navy) 55%, #030628 100%);
 }
@@ -173,7 +173,7 @@
   right: 8%;
   width: 440px;
   height: 440px;
-  background: #6d28d9;
+  background: #0a21c0;
   opacity: 0.45;
 }
 
@@ -209,7 +209,7 @@
   border: 1px solid rgb(255 255 255 / 18%);
   border-radius: 999px;
   background: rgb(255 255 255 / 10%);
-  color: #ddd6fe;
+  color: #dbeafe;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -236,7 +236,7 @@
 }
 
 .kk-aipage-title-gradient {
-  background: linear-gradient(110deg, #c4b5fd 0%, #f0abfc 30%, #67e8f9 60%, #c4b5fd 100%);
+  background: linear-gradient(110deg, #93c5fd 0%, #bae6fd 30%, #7dd3fc 60%, #93c5fd 100%);
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -303,7 +303,7 @@
 .kk-aipage-ring--2 {
   width: 300px;
   height: 300px;
-  border: 1px dashed rgb(196 181 253 / 30%);
+  border: 1px dashed rgb(147 197 253 / 30%);
   animation: kk-ai-rotate 50s linear infinite;
 }
 
@@ -323,8 +323,8 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #67e8f9;
-  box-shadow: 0 0 16px 4px rgb(103 232 249 / 60%);
+  background: #7dd3fc;
+  box-shadow: 0 0 16px 4px rgb(125 211 252 / 60%);
 }
 
 .kk-aipage-ring--3::after {
@@ -334,8 +334,8 @@
   bottom: 10%;
   width: 7px;
   height: 7px;
-  background: #f0abfc;
-  box-shadow: 0 0 14px 3px rgb(240 171 252 / 60%);
+  background: #bae6fd;
+  box-shadow: 0 0 14px 3px rgb(186 230 253 / 60%);
 }
 
 .kk-aipage-hero-visual .kk-ai-orb--xl {
@@ -365,7 +365,7 @@
 }
 
 .kk-aipage-float-chip svg {
-  color: #a5f3fc;
+  color: #bae6fd;
 }
 
 .kk-aipage-float-chip--1 {
@@ -454,9 +454,9 @@
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #fbbf24, #f97316);
-  color: #ffffff;
-  box-shadow: 0 8px 18px -8px rgb(249 115 22 / 75%);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+  box-shadow: none;
 }
 
 .kk-aipage-sidehead h2 {
@@ -595,7 +595,7 @@
   border-color: transparent;
   color: #ffffff;
   background:
-    radial-gradient(18rem 12rem at 100% 0%, rgb(124 58 237 / 50%), transparent 70%),
+    radial-gradient(18rem 12rem at 100% 0%, rgb(29 78 216 / 50%), transparent 70%),
     linear-gradient(160deg, #0a1580, var(--ai-navy));
 }
 
@@ -696,9 +696,9 @@
     conic-gradient(
         from var(--kk-ai-angle),
         color-mix(in srgb, #3b82f6 70%, transparent),
-        color-mix(in srgb, #8b5cf6 60%, transparent),
-        color-mix(in srgb, #ec4899 45%, transparent),
-        color-mix(in srgb, #22d3ee 60%, transparent),
+        color-mix(in srgb, #2563eb 60%, transparent),
+        color-mix(in srgb, #38bdf8 45%, transparent),
+        color-mix(in srgb, #38bdf8 60%, transparent),
         color-mix(in srgb, #3b82f6 70%, transparent)
       )
       border-box;
@@ -765,7 +765,7 @@
 .kk-aipage-model-pill {
   padding: 2px 8px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: #ffffff;
   font-size: 0.62rem;
   font-weight: 800;
@@ -950,7 +950,7 @@
   left: 50%;
   width: 84px;
   height: 84px;
-  border: 1.5px solid color-mix(in srgb, #8b5cf6 45%, transparent);
+  border: 1.5px solid color-mix(in srgb, #2563eb 45%, transparent);
   border-radius: 50%;
   translate: -50% -50%;
   animation: kk-ai-halo 2.8s ease-out infinite;
@@ -966,7 +966,7 @@
 }
 
 .kk-aipage-welcome-title span {
-  background: linear-gradient(110deg, #6366f1, #a855f7, #06b6d4);
+  background: linear-gradient(110deg, #2563eb, #3b82f6, #0ea5e9);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1197,7 +1197,7 @@
   width: 21px;
   height: 21px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: #ffffff;
   font-size: 0.7rem;
   font-weight: 800;
@@ -1216,7 +1216,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
 }
 
 .kk-aipage-root .kk-ai-msg-actions {
@@ -1285,10 +1285,10 @@
   gap: 6px;
   height: 34px;
   padding: 0 14px;
-  border: 1px solid color-mix(in srgb, #6366f1 30%, var(--border));
+  border: 1px solid color-mix(in srgb, #2563eb 30%, var(--border));
   border-radius: 999px;
   background: var(--surface);
-  color: color-mix(in srgb, #4f46e5 90%, var(--foreground));
+  color: color-mix(in srgb, #1d4ed8 90%, var(--foreground));
   font: inherit;
   font-size: 0.8rem;
   font-weight: 650;
@@ -1297,19 +1297,19 @@
 }
 
 [data-theme='dark'] .kk-aipage-root .kk-ai-action-btn {
-  color: #c7d2fe;
+  color: #bfdbfe;
 }
 
 .kk-aipage-root .kk-ai-action-btn:hover {
   border-color: transparent;
   background: var(--ai-grad);
   color: #ffffff;
-  box-shadow: 0 8px 18px -8px rgb(79 70 229 / 70%);
+  box-shadow: 0 8px 18px -8px rgb(29 78 216 / 70%);
   transform: translateY(-1px);
 }
 
 .kk-aipage-root .kk-ai-action-sparkle {
-  color: #a855f7;
+  color: #3b82f6;
 }
 
 .kk-aipage-root .kk-ai-action-btn:hover .kk-ai-action-sparkle {
@@ -1338,7 +1338,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   animation: kk-ai-typing 1.4s infinite ease-in-out both;
 }
 
@@ -1355,7 +1355,7 @@
     90deg,
     var(--ai-muted) 0%,
     var(--ai-muted) 35%,
-    #8b5cf6 50%,
+    #2563eb 50%,
     var(--ai-muted) 65%,
     var(--ai-muted) 100%
   );
@@ -1393,10 +1393,10 @@
 }
 
 .kk-aipage-input-box:focus-within {
-  border-color: color-mix(in srgb, #6366f1 60%, transparent);
+  border-color: color-mix(in srgb, #2563eb 60%, transparent);
   box-shadow:
-    0 0 0 4px color-mix(in srgb, #6366f1 14%, transparent),
-    0 14px 30px -18px rgb(79 70 229 / 60%);
+    0 0 0 4px color-mix(in srgb, #2563eb 14%, transparent),
+    0 14px 30px -18px rgb(29 78 216 / 60%);
 }
 
 .kk-aipage-input-box.is-busy {
@@ -1447,7 +1447,7 @@
   margin-left: 2px;
   vertical-align: -0.18em;
   border-radius: 1px;
-  background: #8b5cf6;
+  background: #2563eb;
   animation: kk-ai-blink 1s steps(1) infinite;
 }
 
@@ -1481,13 +1481,13 @@
   background: var(--ai-grad);
   color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 10px 22px -10px rgb(79 70 229 / 80%);
+  box-shadow: 0 10px 22px -10px rgb(29 78 216 / 80%);
   transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.25, 1.3), box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .kk-aipage-send-btn:hover:not(:disabled) {
   transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 14px 26px -10px rgb(79 70 229 / 90%);
+  box-shadow: 0 14px 26px -10px rgb(29 78 216 / 90%);
 }
 
 .kk-aipage-send-btn:active:not(:disabled) {

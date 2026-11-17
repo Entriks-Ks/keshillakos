@@ -18,7 +18,7 @@
   --comm-card-shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 10px 28px -18px rgb(15 23 42 / 22%);
   --comm-card-shadow-hover: 0 2px 4px rgb(15 23 42 / 5%), 0 22px 44px -22px rgb(10 33 192 / 32%);
   --comm-success: #16a34a;
-  --comm-price: #047857;
+  --comm-price: #166534;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -31,7 +31,7 @@
 [data-theme='dark'] .kk-community-page {
   --comm-card-shadow: 0 1px 0 rgb(255 255 255 / 4%) inset, 0 14px 30px -18px rgb(0 0 0 / 60%);
   --comm-card-shadow-hover: 0 1px 0 rgb(255 255 255 / 6%) inset, 0 24px 48px -22px rgb(0 0 0 / 75%);
-  --comm-price: #6ee7b7;
+  --comm-price: #86efac;
   background:
     radial-gradient(60rem 30rem at 100% 40rem, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
     var(--background);
@@ -125,7 +125,7 @@
   height: 320px;
   right: 34%;
   bottom: -160px;
-  background: #7c3aed;
+  background: #1d4ed8;
   opacity: 0.35;
   animation-delay: -6s;
 }
@@ -180,7 +180,7 @@
 
 .kk-comm-hero-title-accent {
   display: inline-block;
-  background: linear-gradient(110deg, #93c5fd 0%, #c4b5fd 35%, #67e8f9 65%, #93c5fd 100%);
+  background: linear-gradient(110deg, #93c5fd 0%, #93c5fd 35%, #7dd3fc 65%, #93c5fd 100%);
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -293,8 +293,8 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #67e8f9;
-  box-shadow: 0 0 18px 4px rgb(103 232 249 / 60%);
+  background: #7dd3fc;
+  box-shadow: 0 0 18px 4px rgb(125 211 252 / 60%);
   top: 12%;
   left: 12%;
 }
@@ -302,8 +302,8 @@
 .kk-comm-hero-orbit::after {
   width: 7px;
   height: 7px;
-  background: #c4b5fd;
-  box-shadow: 0 0 16px 3px rgb(196 181 253 / 60%);
+  background: #93c5fd;
+  box-shadow: 0 0 16px 3px rgb(147 197 253 / 60%);
   top: auto;
   left: auto;
   bottom: 8%;
@@ -369,13 +369,13 @@
   height: 34px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, #60a5fa, #6366f1);
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
   font-size: 0.85rem;
   font-weight: 800;
 }
 
 .kk-comm-bubble-avatar.is-expert {
-  background: linear-gradient(135deg, #34d399, #059669);
+  background: linear-gradient(135deg, #4ade80, #15803d);
 }
 
 .kk-comm-bubble-head .kk-comm-bubble-chip {
@@ -385,8 +385,8 @@
   gap: 4px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgb(103 232 249 / 16%);
-  color: #a5f3fc;
+  background: rgb(125 211 252 / 16%);
+  color: #bae6fd;
   font-size: 0.7rem;
   font-weight: 700;
 }
@@ -415,21 +415,21 @@
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgb(52 211 153 / 22%), rgb(16 185 129 / 10%));
-  border: 1px solid rgb(110 231 183 / 28%);
+  background: linear-gradient(135deg, rgb(74 222 128 / 22%), rgb(22 163 74 / 10%));
+  border: 1px solid rgb(134 239 172 / 28%);
 }
 
 .kk-comm-bubble-price span {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #a7f3d0;
+  color: #bbf7d0;
 }
 
 .kk-comm-bubble-price strong {
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #ecfdf5;
+  color: #f0fdf4;
 }
 
 .kk-comm-bubble--question {
@@ -455,7 +455,7 @@
   gap: 8px;
   padding: 10px 16px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #22c55e, #059669);
+  background: linear-gradient(135deg, #22c55e, #15803d);
   border-color: rgb(255 255 255 / 30%);
   font-size: 0.85rem;
   font-weight: 750;
@@ -521,8 +521,8 @@
     linear-gradient(
         var(--kk-comm-angle),
         color-mix(in srgb, var(--accent) 70%, transparent),
-        color-mix(in srgb, #7c3aed 55%, transparent),
-        color-mix(in srgb, #06b6d4 55%, transparent),
+        color-mix(in srgb, #1d4ed8 55%, transparent),
+        color-mix(in srgb, #0ea5e9 55%, transparent),
         color-mix(in srgb, var(--accent) 70%, transparent)
       )
       border-box;
@@ -878,7 +878,7 @@
   height: 52px;
   flex-shrink: 0;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  background: linear-gradient(135deg, var(--accent), #1d4ed8);
   color: #fff;
   box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--accent) 80%, transparent);
 }
@@ -1380,7 +1380,7 @@
 
 .kk-comm-rail-answers.is-resolved {
   border-color: transparent;
-  background: linear-gradient(160deg, #22c55e, #059669);
+  background: linear-gradient(160deg, #22c55e, #15803d);
   color: #fff;
   box-shadow: 0 10px 20px -12px rgb(22 163 74 / 90%);
 }
@@ -1530,27 +1530,27 @@
 }
 
 .kk-role-badge-expert {
-  background: #ecfdf5;
-  color: #047857;
-  box-shadow: 0 0 0 1px #a7f3d0 inset;
+  background: #f0fdf4;
+  color: #166534;
+  box-shadow: 0 0 0 1px #bbf7d0 inset;
 }
 
 [data-theme='dark'] .kk-role-badge-expert {
-  background: rgb(16 185 129 / 16%);
-  color: #6ee7b7;
-  box-shadow: 0 0 0 1px rgb(52 211 153 / 35%) inset;
+  background: rgb(22 163 74 / 16%);
+  color: #86efac;
+  box-shadow: 0 0 0 1px rgb(74 222 128 / 35%) inset;
 }
 
 .kk-role-badge-company {
-  background: #f5f3ff;
-  color: #6d28d9;
-  box-shadow: 0 0 0 1px #ddd6fe inset;
+  background: #eff6ff;
+  color: #0a21c0;
+  box-shadow: 0 0 0 1px #dbeafe inset;
 }
 
 [data-theme='dark'] .kk-role-badge-company {
-  background: rgb(139 92 246 / 18%);
-  color: #c4b5fd;
-  box-shadow: 0 0 0 1px rgb(167 139 250 / 35%) inset;
+  background: rgb(37 99 235 / 18%);
+  color: #93c5fd;
+  box-shadow: 0 0 0 1px rgb(96 165 250 / 35%) inset;
 }
 
 .kk-role-badge-admin {
@@ -1617,7 +1617,7 @@
 
 [data-theme='dark'] .kk-comm-action-btn--primary {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: #c7d2fe;
+  color: #bfdbfe;
 }
 
 [data-theme='dark'] .kk-comm-action-btn--primary:hover,
@@ -1825,12 +1825,12 @@
   border: 1.5px solid transparent;
   background:
     linear-gradient(
-        color-mix(in srgb, #10b981 5%, var(--surface)),
-        color-mix(in srgb, #10b981 5%, var(--surface))
+        color-mix(in srgb, #16a34a 5%, var(--surface)),
+        color-mix(in srgb, #16a34a 5%, var(--surface))
       )
       padding-box,
-    linear-gradient(135deg, #34d399, #10b981 40%, color-mix(in srgb, #10b981 15%, transparent)) border-box;
-  box-shadow: 0 10px 24px -16px rgb(16 185 129 / 70%);
+    linear-gradient(135deg, #4ade80, #16a34a 40%, color-mix(in srgb, #16a34a 15%, transparent)) border-box;
+  box-shadow: 0 10px 24px -16px rgb(22 163 74 / 70%);
 }
 
 .kk-comm-expert-flag {
@@ -1840,7 +1840,7 @@
   margin-bottom: 8px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, #16a34a, #15803d);
   color: #fff;
   font-size: 0.66rem;
   font-weight: 800;
@@ -1924,29 +1924,29 @@
   gap: 8px;
   padding: 7px 14px 7px 11px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  color: #065f46;
+  background: linear-gradient(135deg, #d1fae5, #bbf7d0);
+  color: #14532d;
   font-size: 0.75rem;
   font-weight: 650;
-  box-shadow: 0 8px 16px -12px rgb(5 150 105 / 90%);
+  box-shadow: 0 8px 16px -12px rgb(21 128 61 / 90%);
 }
 
 .kk-comm-price-tag strong {
   padding-left: 9px;
-  border-left: 1.5px dashed rgb(6 95 70 / 30%);
+  border-left: 1.5px dashed rgb(20 83 45 / 30%);
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
 [data-theme='dark'] .kk-comm-price-tag {
-  background: linear-gradient(135deg, rgb(16 185 129 / 26%), rgb(5 150 105 / 14%));
-  color: #a7f3d0;
-  box-shadow: 0 0 0 1px rgb(52 211 153 / 25%) inset;
+  background: linear-gradient(135deg, rgb(22 163 74 / 26%), rgb(21 128 61 / 14%));
+  color: #bbf7d0;
+  box-shadow: 0 0 0 1px rgb(74 222 128 / 25%) inset;
 }
 
 [data-theme='dark'] .kk-comm-price-tag strong {
-  color: #ecfdf5;
+  color: #f0fdf4;
   border-left-color: rgb(167 243 208 / 30%);
 }
 
@@ -2062,7 +2062,7 @@
   gap: 4px;
   font-size: 0.78rem;
   font-weight: 750;
-  color: #059669;
+  color: #15803d;
   text-decoration: none;
 }
 
@@ -2075,7 +2075,7 @@
 }
 
 [data-theme='dark'] .kk-comm-contact-expert-link {
-  color: #34d399;
+  color: #4ade80;
 }
 
 /* New comment */
@@ -2141,7 +2141,7 @@
 }
 
 .kk-comm-meta-field:first-child svg {
-  color: #059669;
+  color: #15803d;
 }
 
 .kk-comm-meta-field:nth-child(2) svg {
@@ -2256,7 +2256,7 @@
   height: 76px;
   margin-bottom: 18px;
   border-radius: 24px;
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  background: linear-gradient(135deg, var(--accent), #1d4ed8);
   color: #fff;
   box-shadow: 0 18px 36px -16px color-mix(in srgb, var(--accent) 90%, transparent);
   animation: kk-comm-float 6s ease-in-out infinite;
@@ -2272,7 +2272,7 @@
   height: 14px;
   top: -6px;
   right: -8px;
-  background: #22d3ee;
+  background: #38bdf8;
 }
 
 .kk-comm-empty-dot--b {
@@ -2394,7 +2394,7 @@ a.kk-comm-side-card:hover {
   top: 10px;
   bottom: 10px;
   width: 2px;
-  background: linear-gradient(180deg, var(--accent), #7c3aed, #10b981);
+  background: linear-gradient(180deg, var(--accent), #1d4ed8, #16a34a);
   opacity: 0.35;
   border-radius: 2px;
 }
@@ -2420,11 +2420,11 @@ a.kk-comm-side-card:hover {
 }
 
 .kk-comm-steps li:nth-child(2) .kk-comm-step-num {
-  background: #7c3aed;
+  background: #1d4ed8;
 }
 
 .kk-comm-steps li:nth-child(3) .kk-comm-step-num {
-  background: #10b981;
+  background: #16a34a;
 }
 
 .kk-comm-steps strong {
@@ -2529,11 +2529,11 @@ a.kk-comm-side-card:hover .kk-comm-ai-btn svg {
   background:
     linear-gradient(
         160deg,
-        color-mix(in srgb, #a855f7 7%, var(--surface)),
+        color-mix(in srgb, #3b82f6 7%, var(--surface)),
         var(--surface)
       )
       padding-box,
-    conic-gradient(from var(--kk-comm-angle), #a855f7, #6366f1, #06b6d4, #ec4899, #a855f7) border-box;
+    conic-gradient(from var(--kk-comm-angle), #3b82f6, #2563eb, #0ea5e9, #38bdf8, #3b82f6) border-box;
   animation: kk-comm-rotate-border 6s linear infinite;
 }
 
@@ -2544,7 +2544,7 @@ a.kk-comm-side-card:hover .kk-comm-ai-btn svg {
   margin-bottom: 12px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #a855f7, #6366f1);
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 800;
@@ -2559,7 +2559,7 @@ a.kk-comm-side-card:hover .kk-comm-ai-btn svg {
 }
 
 .kk-comm-ai-btn {
-  background: linear-gradient(135deg, #9333ea, #6366f1);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
   color: #fff;
   box-shadow: 0 10px 20px -10px rgb(147 51 234 / 80%);
 }

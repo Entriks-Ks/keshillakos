@@ -1,5 +1,4 @@
-import dotenv from 'dotenv'
-dotenv.config({ override: true })
+import './config/loadEnv'
 import cors from 'cors'
 import compression from 'compression'
 import express from 'express'

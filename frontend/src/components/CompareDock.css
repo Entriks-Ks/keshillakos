@@ -299,16 +299,16 @@
 }
 
 .kk-dock-cta-btn.is-complete {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
   box-shadow:
-    0 4px 14px -2px rgba(16, 185, 129, 0.4),
-    0 2px 4px -1px rgba(16, 185, 129, 0.2);
+    0 4px 14px -2px rgba(22, 163, 74, 0.4),
+    0 2px 4px -1px rgba(22, 163, 74, 0.2);
 }
 
 .kk-dock-cta-btn.is-complete:hover {
   box-shadow:
-    0 6px 18px -2px rgba(16, 185, 129, 0.5),
-    0 2px 6px -1px rgba(16, 185, 129, 0.25);
+    0 6px 18px -2px rgba(22, 163, 74, 0.5),
+    0 2px 6px -1px rgba(22, 163, 74, 0.25);
 }
 
 /* --------------------------------------------------------------------------

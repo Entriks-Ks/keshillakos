@@ -9,7 +9,6 @@ import {
   Clock3,
   Coins,
   FileCheck,
-  Flame,
   Heart,
   HelpCircle,
   Home,
@@ -22,12 +21,16 @@ import {
   Search,
   Send,
   Share2,
-  Sparkles,
   Trash2,
   UserCheck,
   UserRound,
   X,
   type LucideIcon,
+  Info,
+  LayoutGrid,
+  MessageSquareText,
+  ShieldCheck,
+  TrendingUp,
 } from 'lucide-react'
 import { Button, toast } from '@heroui/react'
 import { useAuth } from '../auth/AuthContext'
@@ -60,12 +63,12 @@ type CategoryItem = {
 }
 
 const CATEGORY_ITEMS: CategoryItem[] = [
-  { id: 'all', label: 'Të gjitha', short: 'Të gjitha', icon: Sparkles, color: '#0a21c0' },
+  { id: 'all', label: 'Të gjitha', short: 'Të gjitha', icon: LayoutGrid, color: '#2563eb' },
   { id: 'avokat', label: 'Avokatë & Drejtësi', short: 'Avokatë', icon: Scale, color: '#2563eb' },
-  { id: 'kontabilitet', label: 'Kontabilitet & Financa', short: 'Kontabilitet', icon: Calculator, color: '#059669' },
-  { id: 'noter', label: 'Noteri & Akte', short: 'Noteri', icon: FileCheck, color: '#7c3aed' },
-  { id: 'biznes', label: 'Biznes & Konsulencë', short: 'Biznes', icon: Building2, color: '#d97706' },
-  { id: 'patundshmeri', label: 'Prona & Patundshmëri', short: 'Prona', icon: Home, color: '#0891b2' },
+  { id: 'kontabilitet', label: 'Kontabilitet & Financa', short: 'Kontabilitet', icon: Calculator, color: '#2563eb' },
+  { id: 'noter', label: 'Noteri & Akte', short: 'Noteri', icon: FileCheck, color: '#2563eb' },
+  { id: 'biznes', label: 'Biznes & Konsulencë', short: 'Biznes', icon: Building2, color: '#2563eb' },
+  { id: 'patundshmeri', label: 'Prona & Patundshmëri', short: 'Prona', icon: Home, color: '#2563eb' },
   { id: 'tjeter', label: 'Të tjera', short: 'Të tjera', icon: HelpCircle, color: '#64748b' },
 ]
 
@@ -80,7 +83,7 @@ function categoryOf(id: string): CategoryItem {
 
 const SORT_OPTIONS: { id: 'recent' | 'popular' | 'unanswered' | 'resolved'; label: string; icon: LucideIcon }[] = [
   { id: 'recent', label: 'Më të rejat', icon: Clock3 },
-  { id: 'popular', label: 'Më aktive', icon: Flame },
+  { id: 'popular', label: 'Më aktive', icon: TrendingUp },
   { id: 'unanswered', label: 'Pa përgjigje', icon: HelpCircle },
   { id: 'resolved', label: 'Të zgjidhura', icon: CheckCircle2 },
 ]
@@ -144,7 +147,7 @@ function RoleBadge({ role }: { role?: string }) {
   if (role === 'admin') {
     return (
       <span className="kk-role-badge kk-role-badge-admin">
-        <Sparkles size={12} aria-hidden /> Stafi
+        <ShieldCheck size={12} aria-hidden /> Stafi
       </span>
     )
   }
@@ -736,7 +739,7 @@ export default function CommunityPage() {
 
                       <div className="kk-comm-form-actions">
                         <span className="kk-comm-form-hint">
-                          <Sparkles size={13} aria-hidden /> Pyetjet janë publike — mos shkruaj të dhëna personale.
+                          <Info size={13} aria-hidden /> Pyetjet janë publike — mos shkruaj të dhëna personale.
                         </span>
                         <Button
                           type="button"
@@ -1294,7 +1297,7 @@ export default function CommunityPage() {
           <aside className="kk-comm-sidebar">
             <div className="kk-comm-side-card kk-comm-guide-widget">
               <div className="kk-comm-widget-title">
-                <Sparkles size={17} aria-hidden />
+                <Info size={17} aria-hidden />
                 <h3>Si funksionon?</h3>
               </div>
               <ol className="kk-comm-steps">
@@ -1335,7 +1338,7 @@ export default function CommunityPage() {
 
             <Link to="/ai-asistenti" className="kk-comm-side-card kk-comm-ai-widget">
               <span className="kk-comm-ai-badge">
-                <Sparkles size={13} aria-hidden /> Këshilla AI · 24/7
+                <MessageSquareText size={13} aria-hidden /> Këshilla AI · 24/7
               </span>
               <h4>S'do të presësh? Pyet AI-në.</h4>
               <p>Sqarime të menjëhershme për hapat ligjorë, dokumentet dhe afatet.</p>

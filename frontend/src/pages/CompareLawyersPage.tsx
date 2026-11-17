@@ -11,7 +11,6 @@ import {
   Check,
   Clock,
   Coins,
-  Crown,
   ExternalLink,
   Globe,
   GraduationCap,
@@ -21,7 +20,6 @@ import {
   Scale,
   Search,
   Share2,
-  Sparkles,
   Star,
   Target,
   Trash2,
@@ -29,8 +27,10 @@ import {
   UserPlus,
   Video,
   X,
-  Zap,
   type LucideIcon,
+  ClipboardCheck,
+  Highlighter,
+  ListChecks,
 } from 'lucide-react'
 import { Button, buttonVariants, Chip, Skeleton, toast } from '@heroui/react'
 import {
@@ -74,7 +74,7 @@ function formatDateLocale(dateStr: string) {
 }
 
 /** One identity colour per compared lawyer, shared by the scoreboard and the table columns. */
-const LAWYER_COLORS = ['#2563eb', '#8b5cf6', '#0891b2']
+const LAWYER_COLORS = ['#2563eb', '#0ea5e9', '#1e3a8a']
 
 function minServicePrice(item: ProviderComparisonItem): number | null {
   const prices = item.services
@@ -825,7 +825,7 @@ export default function CompareLawyersPage() {
                       className={`kk-compare-toggle-diff${highlightDiff ? ' is-active' : ''}`}
                       onClick={() => setHighlightDiff(!highlightDiff)}
                     >
-                      <Sparkles size={15} aria-hidden />
+                      <Highlighter size={15} aria-hidden />
                       <span>{t('compare.highlightDiff', 'Evidento përparësitë')}</span>
                       <span className="kk-compare-switch" aria-hidden />
                     </button>
@@ -923,7 +923,7 @@ export default function CompareLawyersPage() {
               {allExperts.length > 0 ? (
                 <div className="kk-compare-presets-wrap">
                   <span className="kk-compare-presets-title">
-                    <Sparkles size={14} aria-hidden />
+                    <ListChecks size={14} aria-hidden />
                     {t('compare.quickPresetsTitle', 'Kombinime të shpejta të rekomanduara:')}
                   </span>
                   <div className="kk-compare-presets-chips">
@@ -1037,7 +1037,7 @@ export default function CompareLawyersPage() {
                               />
                               {isLeader ? (
                                 <span className="kk-score-legend-crown" aria-hidden>
-                                  <Crown size={12} />
+                                  <Trophy size={12} />
                                 </span>
                               ) : null}
                             </span>
@@ -1092,7 +1092,7 @@ export default function CompareLawyersPage() {
                                     <span className="kk-score-bar-fill" />
                                   </span>
                                   <span className="kk-score-bar-value" title={v.display}>
-                                    {v.isWinner ? <Crown size={13} aria-label="Fitues" /> : null}
+                                    {v.isWinner ? <Trophy size={13} aria-label="Fitues" /> : null}
                                     {v.display}
                                   </span>
                                 </div>
@@ -1110,7 +1110,7 @@ export default function CompareLawyersPage() {
               <section className="kk-verdict-section" aria-labelledby="verdict-heading">
                 <div className="kk-verdict-head">
                   <div className="kk-verdict-tag">
-                    <Sparkles size={13} aria-hidden />
+                    <ClipboardCheck size={13} aria-hidden />
                     <span>Verdikti & Analiza Inteligjente</span>
                   </div>
                   <h2 id="verdict-heading" className="kk-verdict-title">
@@ -1154,7 +1154,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'urgency' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('urgency')}
                         >
-                          <Zap size={14} aria-hidden /> Takimi më i shpejtë
+                          <Clock size={14} aria-hidden /> Takimi më i shpejtë
                         </button>
                       ) : null}
                       {winnerUids.diaspora ? (
@@ -1204,7 +1204,7 @@ export default function CompareLawyersPage() {
                         </button>
                         {isWinner ? (
                           <span className="kk-verdict-crown">
-                            <Crown size={13} aria-hidden /> Më i përshtatshmi për këtë
+                            <Trophy size={13} aria-hidden /> Më i përshtatshmi për këtë
                           </span>
                         ) : null}
                         <div className={`kk-verdict-badge is-${v.badge.tone}`}>
@@ -1400,7 +1400,7 @@ export default function CompareLawyersPage() {
                   {/* 1.1 Row: Verdikti kryesor / Më i miri për */}
                   <div className="kk-compare-cell is-label">
                     <div className="flex items-center gap-1.5">
-                      <Sparkles size={16} className="text-primary" aria-hidden />
+                      <BadgeCheck size={16} className="text-primary" aria-hidden />
                       <span>Për çfarë dallohet</span>
                     </div>
                     <span className="kk-compare-cell-sub">

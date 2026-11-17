@@ -15,11 +15,11 @@ import {
   Scale,
   SearchX,
   SlidersHorizontal,
-  Sparkles,
   Star,
   UserRound,
   X,
   type LucideIcon,
+  Tag,
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import {
@@ -711,7 +711,7 @@ export default function OffersPage() {
               <div className="of-head-top">
                 <div className="of-head-copy">
                   <span className="of-kicker">
-                    <Sparkles size={14} aria-hidden />
+                    <Tag size={14} aria-hidden />
                     {t('offers.kicker')}
                   </span>
                   <h1 id="offers-heading">{t('offers.title')}</h1>
