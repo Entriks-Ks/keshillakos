@@ -11,9 +11,9 @@ import {
   MessageSquareLock,
   Search,
   ShieldCheck,
-  Sparkles,
   Target,
   UserPlus,
+  MessageSquareText,
 } from 'lucide-react'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
@@ -38,7 +38,7 @@ export default function AboutPage() {
           <div className="tt-section-inner ab-hero-grid">
             <div className="ab-hero-copy">
               <div className="ab-kicker-badge">
-                <Sparkles size={14} className="ab-kicker-icon" aria-hidden />
+                <BadgeCheck size={14} className="ab-kicker-icon" aria-hidden />
                 <span>{t('about.kicker')}</span>
               </div>
 
@@ -55,7 +55,7 @@ export default function AboutPage() {
                   <ArrowRight size={18} aria-hidden />
                 </Link>
                 <Link to="/ai-asistenti" className="ab-btn ab-btn-ai">
-                  <Sparkles size={16} aria-hidden />
+                  <MessageSquareText size={16} aria-hidden />
                   <span>{t('about.ctaAi')}</span>
                 </Link>
                 <Link to="/register" className="ab-btn ab-btn-ghost">

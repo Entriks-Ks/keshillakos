@@ -31,13 +31,12 @@ import {
   Search,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Trees,
   TrendingUp,
   User,
   WalletCards,
-  Zap,
   type LucideIcon,
+  Compass,
 } from 'lucide-react'
 import { fetchCategories, fetchSubcategories, type CatalogCategory, type CatalogSubcategory } from '../api/catalog'
 import { locationLabel, type LocationSelection } from '../api/locations'
@@ -388,7 +387,7 @@ export default function HomePage() {
             <div className="tt-hero-grid">
               <div className="tt-hero-copy">
                 <div className="hm-kicker-badge">
-                  <Sparkles size={14} className="hm-kicker-icon" aria-hidden />
+                  <BadgeCheck size={14} className="hm-kicker-icon" aria-hidden />
                   <span>{t('home.kicker')}</span>
                 </div>
 
@@ -421,7 +420,7 @@ export default function HomePage() {
                       className={`hm-tab-btn ${searchMode === 'guided' ? 'is-active' : ''}`}
                       onClick={startGuided}
                     >
-                      <Sparkles size={15} aria-hidden />
+                      <Compass size={15} aria-hidden />
                       <span>{t('home.matchTab')}</span>
                     </button>
                   </div>
@@ -495,7 +494,7 @@ export default function HomePage() {
                       <div className="hm-wizard-header">
                         <div className="hm-wizard-badge-row">
                           <span className="hm-wizard-badge">
-                            <Sparkles size={13} aria-hidden />
+                            <Compass size={13} aria-hidden />
                             {t('home.wizardBadge')}
                           </span>
                           <span className="hm-wizard-step-counter">
@@ -646,7 +645,7 @@ export default function HomePage() {
                             <div className="hm-choice-cards-grid is-3col">
                               {(
                                 [
-                                  ['today', t('home.today'), t('home.urgentTodayDesc'), Zap],
+                                  ['today', t('home.today'), t('home.urgentTodayDesc'), Clock],
                                   ['this_week', t('home.week'), t('home.urgentWeekDesc'), Calendar],
                                   ['flexible', t('home.flexible'), t('home.urgentFlexDesc'), Clock],
                                 ] as const

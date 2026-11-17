@@ -9,7 +9,6 @@ import {
 } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Sparkles,
   User,
   ArrowUp,
   RotateCcw,
@@ -23,12 +22,14 @@ import {
   ChevronRight,
   CheckCircle2,
   Clock3,
-  Zap,
   Copy,
   Check,
   Trash2,
   X,
   type LucideIcon,
+  ArrowUpRight,
+  ListChecks,
+  MessageSquareText,
 } from 'lucide-react'
 import { toast } from '@heroui/react'
 import SiteNav from '../components/SiteNav'
@@ -87,7 +88,7 @@ const POPULAR_TOPICS: PopularTopic[] = [
   {
     id: 'lawyer',
     icon: Scale,
-    color: '#7c3aed',
+    color: '#2563eb',
     badge: 'Ligj',
     title: 'Avokatë & Kontrata Pune',
     desc: 'Ligji i punës në Kosovë, kontratat dhe zgjidhja e mosmarrëveshjeve',
@@ -96,7 +97,7 @@ const POPULAR_TOPICS: PopularTopic[] = [
   {
     id: 'atk',
     icon: Calculator,
-    color: '#059669',
+    color: '#2563eb',
     badge: 'Taksat',
     title: 'Taksa & Kontabiliteti (ATK)',
     desc: 'Pragu i TVSH-së (30k€), 10% TAK, deklarimi mujor në EDI',
@@ -105,7 +106,7 @@ const POPULAR_TOPICS: PopularTopic[] = [
   {
     id: 'notary',
     icon: Building,
-    color: '#0891b2',
+    color: '#2563eb',
     badge: 'Prona',
     title: 'Prona & Shërbime Noteriale',
     desc: 'Kontratat e shitblerjes, verifikimi në Kadastër dhe akti noterial',
@@ -114,7 +115,7 @@ const POPULAR_TOPICS: PopularTopic[] = [
   {
     id: 'plans',
     icon: CreditCard,
-    color: '#d97706',
+    color: '#2563eb',
     badge: 'Platforma',
     title: 'Planet në KeshillaKos',
     desc: 'Plani Standard dhe Pro me 0% komision për ofruesit',
@@ -123,7 +124,7 @@ const POPULAR_TOPICS: PopularTopic[] = [
   {
     id: 'become-expert',
     icon: ShieldCheck,
-    color: '#db2777',
+    color: '#2563eb',
     badge: 'Karrierë',
     title: 'Regjistrohu si Ekspert',
     desc: 'Si të ofrosh shërbime profesionale dhe të marrësh klientë',
@@ -141,21 +142,21 @@ const QUICK_STARTS: { icon: LucideIcon; color: string; badge: string; text: stri
   },
   {
     icon: Scale,
-    color: '#7c3aed',
+    color: '#2563eb',
     badge: 'Drejtësi',
     text: 'Gjej avokat për kontratë pune',
     prompt: 'Më duhet një avokat në Prishtinë për kontratë pune',
   },
   {
     icon: Calculator,
-    color: '#059669',
+    color: '#2563eb',
     badge: 'ATK',
     text: 'Taksat, TVSH 18% & deklarimi EDI',
     prompt: 'Cilat janë normat e TVSH-së dhe taksave në ATK?',
   },
   {
     icon: CreditCard,
-    color: '#d97706',
+    color: '#2563eb',
     badge: 'Ekspertë',
     text: 'Plani Pro dhe 0% komision',
     prompt: 'Çfarë përfitimesh ka Plani Pro në KeshillaKos?',
@@ -184,7 +185,7 @@ function AiOrb({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) {
   return (
     <span className={`kk-ai-orb kk-ai-orb--${size}`} aria-hidden>
       <span className="kk-ai-orb-core" />
-      <Sparkles className="kk-ai-orb-icon" />
+      <MessageSquareText className="kk-ai-orb-icon" />
     </span>
   )
 }
@@ -461,7 +462,7 @@ export default function AiChatPage() {
             <div className="kk-aipage-sidecard">
               <div className="kk-aipage-sidehead">
                 <span className="kk-aipage-sidehead-icon">
-                  <Zap size={16} aria-hidden />
+                  <ListChecks size={16} aria-hidden />
                 </span>
                 <div>
                   <h2>Tema të shpeshta</h2>
@@ -692,7 +693,7 @@ export default function AiChatPage() {
                             className="kk-ai-action-btn"
                             onClick={() => handleSendMessage(action)}
                           >
-                            <Sparkles size={12} className="kk-ai-action-sparkle" aria-hidden />
+                            <ArrowUpRight size={12} className="kk-ai-action-sparkle" aria-hidden />
                             <span>{action}</span>
                           </button>
                         ))}

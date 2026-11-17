@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, memo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Sparkles,
   RotateCw,
   TrendingUp,
   Scale,
@@ -16,6 +15,7 @@ import {
   AlertTriangle,
   Lightbulb,
   type LucideIcon,
+  BadgeCheck,
 } from 'lucide-react'
 import {
   fetchProviderTrustRecommendations,
@@ -124,11 +124,11 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
       <div className="kk-ai-recs-head">
         <div className="kk-ai-recs-head-left">
           <div className="kk-ai-recs-badge-icon">
-            <Sparkles size={20} />
+            <ShieldCheck size={20} />
           </div>
           <div className="kk-ai-recs-title-box">
             <div className="kk-ai-recs-eyebrow">
-              <Sparkles size={11} />
+              <BadgeCheck size={11} />
               <span>Optimizim nga AI • Besueshmëria & Siguria</span>
             </div>
             <h3 className="kk-ai-recs-title">

@@ -5,8 +5,9 @@ import {
   Calculator,
   Globe,
   Scale,
-  Sparkles,
   TrendingUp,
+  MessageSquareText,
+  ShieldCheck,
 } from 'lucide-react'
 
 export default function AboutHeroVisual() {
@@ -73,11 +74,11 @@ export default function AboutHeroVisual() {
               <linearGradient id="gyroGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
                 <stop offset="50%" stopColor="#0a21c0" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#818cf8" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.8" />
               </linearGradient>
               <linearGradient id="gyroGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.2" />
               </linearGradient>
               <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.9" />
@@ -163,7 +164,7 @@ export default function AboutHeroVisual() {
 
           {/* Central Beacon Sparkle Badge */}
           <div className="ab-beacon-badge">
-            <Sparkles size={20} className="ab-sparkle-spin" />
+            <ShieldCheck size={20}  />
             <span>KeshillaKos</span>
           </div>
         </div>
@@ -234,7 +235,7 @@ export default function AboutHeroVisual() {
         <div className="ab-card-3d ab-card-ai">
           <div className="ab-card-header">
             <div className="ab-card-icon ab-icon-ai">
-              <Sparkles size={18} />
+              <MessageSquareText size={18} />
             </div>
             <div className="ab-card-meta">
               <span className="ab-card-title">{t('about.heroCardAi')}</span>

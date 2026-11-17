@@ -101,9 +101,9 @@
 }
 
 .pl-ribbon {
-  background: linear-gradient(135deg, #fbbf24, #f97316);
+  background: var(--accent);
   color: #ffffff;
-  box-shadow: 0 8px 18px -8px rgb(249 115 22 / 80%);
+  box-shadow: 0 8px 18px -8px rgb(10 33 192 / 80%);
 }
 
 .pl-save {
@@ -275,7 +275,7 @@
   left: 12%;
   width: 420px;
   height: 420px;
-  background: #7c3aed;
+  background: #1d4ed8;
   opacity: 0.35;
 }
 
@@ -313,13 +313,13 @@
 }
 
 .pl-kicker svg {
-  color: #fbbf24;
+  color: #7dd3fc;
 }
 
 .pl-hero h1 {
   margin: 0;
   padding-bottom: 0.06em;
-  background: linear-gradient(110deg, #ffffff 0%, #ffffff 35%, #c4b5fd 55%, #67e8f9 75%, #ffffff 100%);
+  background: linear-gradient(110deg, #ffffff 0%, #ffffff 35%, #93c5fd 55%, #7dd3fc 75%, #ffffff 100%);
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -433,9 +433,9 @@
   z-index: 1;
   border: 1.5px solid transparent;
   background:
-    radial-gradient(22rem 14rem at 100% 0%, rgb(124 58 237 / 45%), transparent 70%) padding-box,
+    radial-gradient(22rem 14rem at 100% 0%, rgb(29 78 216 / 45%), transparent 70%) padding-box,
     linear-gradient(165deg, #0d1a8c 0%, #070d5a 55%, #050a44 100%) padding-box,
-    conic-gradient(from var(--pl-angle), #60a5fa, #a78bfa, #f0abfc, #67e8f9, #60a5fa) border-box;
+    conic-gradient(from var(--pl-angle), #60a5fa, #60a5fa, #bae6fd, #7dd3fc, #60a5fa) border-box;
   color: #ffffff;
   transform: translateY(-14px);
   box-shadow:
@@ -456,7 +456,7 @@
 }
 
 .pl .pl-box.is-featured .pl-price {
-  background: linear-gradient(120deg, #ffffff 30%, #c4b5fd 70%, #67e8f9 100%);
+  background: linear-gradient(120deg, #ffffff 30%, #93c5fd 70%, #7dd3fc 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -468,20 +468,20 @@
 }
 
 .pl .pl-box.is-featured li svg {
-  background: rgb(103 232 249 / 18%);
-  color: #67e8f9;
+  background: rgb(125 211 252 / 18%);
+  color: #7dd3fc;
 }
 
 .pl .pl-box.is-featured a {
   border: 0;
-  background: linear-gradient(135deg, #60a5fa, #6366f1 55%, #a855f7);
+  background: linear-gradient(135deg, #60a5fa, #2563eb 55%, #3b82f6);
   color: #ffffff;
-  box-shadow: 0 14px 30px -12px rgb(99 102 241 / 85%);
+  box-shadow: 0 14px 30px -12px rgb(37 99 235 / 85%);
 }
 
 .pl .pl-box.is-featured a:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 36px -12px rgb(99 102 241 / 95%);
+  box-shadow: 0 18px 36px -12px rgb(37 99 235 / 95%);
 }
 
 .pl-login {
@@ -599,7 +599,7 @@
 }
 
 .pl-matrix thead th.is-pro .pl-matrix-plan svg {
-  color: #fbbf24;
+  color: #7dd3fc;
 }
 
 .pl-matrix thead th.is-pro .pl-matrix-price {
@@ -640,11 +640,11 @@
 }
 
 .pl-matrix tbody td.is-pro {
-  background: color-mix(in srgb, #4f46e5 6%, transparent);
+  background: color-mix(in srgb, #1d4ed8 6%, transparent);
 }
 
 [data-theme="dark"] .pl-matrix tbody td.is-pro {
-  background: color-mix(in srgb, #818cf8 9%, transparent);
+  background: color-mix(in srgb, #60a5fa 9%, transparent);
 }
 
 .pl-cell-yes,
@@ -657,7 +657,7 @@
 }
 
 .pl-cell-yes {
-  background: linear-gradient(135deg, #22c55e, #059669);
+  background: linear-gradient(135deg, #22c55e, #15803d);
   color: #ffffff;
   box-shadow: 0 6px 14px -6px rgb(22 163 74 / 70%);
 }
@@ -676,11 +676,11 @@
 }
 
 .is-pro .pl-cell-text {
-  color: color-mix(in srgb, #4f46e5 85%, var(--heading));
+  color: color-mix(in srgb, #1d4ed8 85%, var(--heading));
 }
 
 [data-theme="dark"] .is-pro .pl-cell-text {
-  color: #c7d2fe;
+  color: #bfdbfe;
 }
 
 /* ---------- Dashboard extras (DashboardPlansPage) ---------- */

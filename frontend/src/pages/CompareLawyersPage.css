@@ -87,7 +87,7 @@
   left: 32%;
   width: 320px;
   height: 320px;
-  background: #7c3aed;
+  background: #1d4ed8;
   opacity: 0.32;
   animation-delay: -7s;
 }
@@ -208,7 +208,7 @@
 .kk-compare-title {
   margin: 0;
   padding-bottom: 0.06em;
-  background: linear-gradient(110deg, #ffffff 0%, #ffffff 38%, #93c5fd 58%, #c4b5fd 78%, #67e8f9 100%);
+  background: linear-gradient(110deg, #ffffff 0%, #ffffff 38%, #93c5fd 58%, #93c5fd 78%, #7dd3fc 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -325,8 +325,8 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #60a5fa, #67e8f9, #a78bfa);
-  box-shadow: 0 0 14px rgb(103 232 249 / 70%);
+  background: linear-gradient(90deg, #60a5fa, #7dd3fc, #60a5fa);
+  box-shadow: 0 0 14px rgb(125 211 252 / 70%);
   transition: width 0.6s cubic-bezier(0.2, 0.9, 0.25, 1);
 }
 
@@ -360,7 +360,7 @@
   border: 1px solid rgb(255 255 255 / 22%);
   border-radius: 50%;
   background: #0b1250;
-  color: #c7d2fe;
+  color: #bfdbfe;
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -410,8 +410,8 @@
   background: conic-gradient(
     from 200deg,
     var(--lawyer, #2563eb),
-    #67e8f9,
-    color-mix(in srgb, var(--lawyer, #8b5cf6) 55%, #fff),
+    #7dd3fc,
+    color-mix(in srgb, var(--lawyer, #2563eb) 55%, #fff),
     var(--lawyer, #2563eb)
   );
   box-shadow:
@@ -432,7 +432,7 @@
   place-items: center;
   border: 2px dashed rgb(255 255 255 / 35%);
   background: rgb(255 255 255 / 5%);
-  color: #c7d2fe;
+  color: #bfdbfe;
   cursor: pointer;
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.25s ease, color 0.2s ease;
 }
@@ -581,7 +581,7 @@
 .kk-compare-toggle-diff.is-active .kk-compare-switch {
   background:
     radial-gradient(circle at 27px 50%, #ffffff 0 8px, transparent 8.5px),
-    linear-gradient(135deg, #f59e0b, #f97316);
+    var(--accent);
 }
 
 .kk-compare-toolbar-hint {
@@ -858,7 +858,7 @@
   color: #ffffff;
   background:
     radial-gradient(30rem 18rem at 100% 0%, rgb(59 91 255 / 45%), transparent 70%),
-    radial-gradient(26rem 16rem at 0% 100%, rgb(124 58 237 / 28%), transparent 70%),
+    radial-gradient(26rem 16rem at 0% 100%, rgb(29 78 216 / 28%), transparent 70%),
     linear-gradient(160deg, #0a1580 0%, #050a44 60%, #030628 100%);
   box-shadow: 0 34px 70px -36px rgb(5 10 68 / 75%);
   animation: kk-cmp-rise 0.55s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
@@ -906,13 +906,13 @@
   width: fit-content;
   padding: 5px 12px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #fbbf24, #f97316);
+  background: var(--accent);
   color: #ffffff;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: 0 8px 20px -8px rgb(249 115 22 / 80%);
+  box-shadow: 0 8px 20px -8px rgb(10 33 192 / 80%);
 }
 
 .kk-score-intro h2 {
@@ -953,7 +953,7 @@
 
 .kk-score-legend li.is-leader {
   border-color: rgb(251 191 36 / 65%);
-  background: linear-gradient(135deg, rgb(251 191 36 / 18%), rgb(249 115 22 / 8%));
+  background: linear-gradient(135deg, rgb(251 191 36 / 18%), rgb(10 33 192 / 8%));
   box-shadow: 0 0 24px -6px rgb(251 191 36 / 55%);
 }
 
@@ -1165,12 +1165,12 @@
   margin-bottom: 10px;
   padding: 4px 11px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #fbbf24, #f97316);
+  background: var(--accent);
   color: #ffffff;
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.02em;
-  box-shadow: 0 8px 18px -8px rgb(249 115 22 / 80%);
+  box-shadow: 0 8px 18px -8px rgb(10 33 192 / 80%);
   animation: kk-cmp-pop 0.35s cubic-bezier(0.2, 0.9, 0.25, 1.4);
 }
 
@@ -1290,7 +1290,7 @@
 }
 
 [data-theme="dark"] .kk-intent-btn:not(.is-active) svg {
-  color: #a5b4fc;
+  color: #93c5fd;
 }
 
 .kk-intent-btn:hover {
@@ -1396,18 +1396,18 @@
 }
 
 .kk-verdict-card.is-tone-emerald {
-  --tone: #10b981;
-  --tone-bar: linear-gradient(90deg, #10b981, #14b8a6);
+  --tone: #16a34a;
+  --tone-bar: linear-gradient(90deg, #16a34a, #0ea5e9);
 }
 
 .kk-verdict-card.is-tone-cyan {
-  --tone: #06b6d4;
-  --tone-bar: linear-gradient(90deg, #06b6d4, #38bdf8);
+  --tone: #0ea5e9;
+  --tone-bar: linear-gradient(90deg, #0ea5e9, #38bdf8);
 }
 
 .kk-verdict-card.is-tone-purple {
-  --tone: #8b5cf6;
-  --tone-bar: linear-gradient(90deg, #8b5cf6, #c084fc);
+  --tone: #2563eb;
+  --tone-bar: linear-gradient(90deg, #2563eb, #60a5fa);
 }
 
 .kk-verdict-card.is-spotlight {
@@ -1443,21 +1443,21 @@
 }
 
 .kk-verdict-badge.is-emerald {
-  border: 1px solid color-mix(in srgb, #10b981 35%, transparent);
-  background: color-mix(in srgb, #10b981 14%, transparent);
-  color: #047857;
+  border: 1px solid color-mix(in srgb, #16a34a 35%, transparent);
+  background: color-mix(in srgb, #16a34a 14%, transparent);
+  color: #166534;
 }
 
 .kk-verdict-badge.is-cyan {
-  border: 1px solid color-mix(in srgb, #06b6d4 35%, transparent);
-  background: color-mix(in srgb, #06b6d4 14%, transparent);
-  color: #0e7490;
+  border: 1px solid color-mix(in srgb, #0ea5e9 35%, transparent);
+  background: color-mix(in srgb, #0ea5e9 14%, transparent);
+  color: #0369a1;
 }
 
 .kk-verdict-badge.is-purple {
-  border: 1px solid color-mix(in srgb, #8b5cf6 35%, transparent);
-  background: color-mix(in srgb, #8b5cf6 14%, transparent);
-  color: #6d28d9;
+  border: 1px solid color-mix(in srgb, #2563eb 35%, transparent);
+  background: color-mix(in srgb, #2563eb 14%, transparent);
+  color: #0a21c0;
 }
 
 .kk-verdict-badge.is-blue {
@@ -1467,10 +1467,10 @@
 }
 
 [data-theme="dark"] .kk-verdict-badge.is-gold { color: #fbbf24; }
-[data-theme="dark"] .kk-verdict-badge.is-emerald { color: #34d399; }
+[data-theme="dark"] .kk-verdict-badge.is-emerald { color: #4ade80; }
 [data-theme="dark"] .kk-verdict-badge.is-cyan { color: #38bdf8; }
-[data-theme="dark"] .kk-verdict-badge.is-purple { color: #c4b5fd; }
-[data-theme="dark"] .kk-verdict-badge.is-blue { color: #a5b4fc; }
+[data-theme="dark"] .kk-verdict-badge.is-purple { color: #93c5fd; }
+[data-theme="dark"] .kk-verdict-badge.is-blue { color: #93c5fd; }
 
 /* Profile row */
 .kk-verdict-profile {
@@ -1486,7 +1486,7 @@
   height: 56px;
   padding: 2px;
   border-radius: 999px;
-  background: conic-gradient(from 200deg, #2563eb, #38bdf8, #8b5cf6, #2563eb);
+  background: conic-gradient(from 200deg, #2563eb, #38bdf8, #2563eb, #2563eb);
   box-shadow: 0 8px 18px -10px rgb(37 99 235 / 60%);
 }
 
@@ -1579,12 +1579,12 @@
   margin-top: 0.05rem;
   padding: 3px;
   border-radius: 999px;
-  background: color-mix(in srgb, #10b981 14%, transparent);
-  color: #059669;
+  background: color-mix(in srgb, #16a34a 14%, transparent);
+  color: #15803d;
 }
 
 [data-theme="dark"] .kk-verdict-strength-icon {
-  color: #34d399;
+  color: #4ade80;
 }
 
 .kk-verdict-cta-wrap {
@@ -1605,16 +1605,16 @@
 }
 
 .kk-table-verdict-pill.is-gold { background: color-mix(in srgb, #f59e0b 14%, transparent); color: #b45309; }
-.kk-table-verdict-pill.is-emerald { background: color-mix(in srgb, #10b981 14%, transparent); color: #047857; }
-.kk-table-verdict-pill.is-cyan { background: color-mix(in srgb, #06b6d4 14%, transparent); color: #0e7490; }
-.kk-table-verdict-pill.is-purple { background: color-mix(in srgb, #8b5cf6 14%, transparent); color: #6d28d9; }
+.kk-table-verdict-pill.is-emerald { background: color-mix(in srgb, #16a34a 14%, transparent); color: #166534; }
+.kk-table-verdict-pill.is-cyan { background: color-mix(in srgb, #0ea5e9 14%, transparent); color: #0369a1; }
+.kk-table-verdict-pill.is-purple { background: color-mix(in srgb, #2563eb 14%, transparent); color: #0a21c0; }
 .kk-table-verdict-pill.is-blue { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 
 [data-theme="dark"] .kk-table-verdict-pill.is-gold { color: #fbbf24; }
-[data-theme="dark"] .kk-table-verdict-pill.is-emerald { color: #34d399; }
+[data-theme="dark"] .kk-table-verdict-pill.is-emerald { color: #4ade80; }
 [data-theme="dark"] .kk-table-verdict-pill.is-cyan { color: #38bdf8; }
-[data-theme="dark"] .kk-table-verdict-pill.is-purple { color: #c4b5fd; }
-[data-theme="dark"] .kk-table-verdict-pill.is-blue { color: #a5b4fc; }
+[data-theme="dark"] .kk-table-verdict-pill.is-purple { color: #93c5fd; }
+[data-theme="dark"] .kk-table-verdict-pill.is-blue { color: #93c5fd; }
 
 /* ==========================================================================
    Comparison table
@@ -1796,7 +1796,7 @@
     from 200deg,
     var(--lawyer, #2563eb),
     #38bdf8,
-    color-mix(in srgb, var(--lawyer, #8b5cf6) 55%, #fff),
+    color-mix(in srgb, var(--lawyer, #2563eb) 55%, #fff),
     var(--lawyer, #2563eb)
   );
   box-shadow: 0 12px 26px -12px var(--lawyer, rgb(37 99 235 / 60%));
@@ -1925,7 +1925,7 @@
 }
 
 [data-theme="dark"] .kk-compare-tag.is-law {
-  color: #c7d2fe;
+  color: #bfdbfe;
 }
 
 .kk-compare-license {
@@ -2000,15 +2000,15 @@
   margin-bottom: 0.7rem;
   padding: 6px 13px;
   border-radius: 10px;
-  background: color-mix(in srgb, #10b981 12%, transparent);
-  color: #059669;
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #15803d;
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 800;
 }
 
 [data-theme="dark"] .kk-compare-starting-fee {
-  color: #34d399;
+  color: #4ade80;
 }
 
 .kk-compare-services-list {
@@ -2056,12 +2056,12 @@
 }
 
 .kk-compare-slot-status.is-open {
-  background: color-mix(in srgb, #10b981 12%, transparent);
-  color: #059669;
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #15803d;
 }
 
 [data-theme="dark"] .kk-compare-slot-status.is-open {
-  color: #34d399;
+  color: #4ade80;
 }
 
 .kk-compare-slot-status.is-request {
@@ -2134,13 +2134,13 @@
   margin-left: 0.4rem;
   padding: 2px 8px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #fbbf24, #f97316);
+  background: var(--accent);
   color: #ffffff;
   font-family: var(--font-body);
   font-size: 0.68rem;
   font-weight: 800;
   vertical-align: middle;
-  box-shadow: 0 4px 10px -4px rgb(249 115 22 / 70%);
+  box-shadow: 0 4px 10px -4px rgb(10 33 192 / 70%);
   animation: kk-cmp-pop 0.35s cubic-bezier(0.2, 0.9, 0.25, 1.4);
 }
 
@@ -2359,7 +2359,7 @@
   height: 54px;
   padding: 2px;
   border-radius: 999px;
-  background: conic-gradient(from 200deg, #2563eb, #38bdf8, #8b5cf6, #2563eb);
+  background: conic-gradient(from 200deg, #2563eb, #38bdf8, #2563eb, #2563eb);
 }
 
 .kk-suggested-card-avatar > * {

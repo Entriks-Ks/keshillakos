@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, Check, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, Star } from 'lucide-react'
 import type { PlanChoice } from '../api/plans'
 
 const BASIC = ['profile', 'identity', 'contact', 'bioBasic', 'ratings'] as const
@@ -83,7 +83,7 @@ export default function PlanBoxes({ current, busy, onChoose, hrefFor }: Props) {
           <article className={className} key={card.choice} style={{ animationDelay: `${index * 90}ms` }}>
             {card.featured ? (
               <span className="pl-ribbon">
-                <Sparkles size={13} aria-hidden /> {t('plans.recommended')}
+                <Star size={13} aria-hidden /> {t('plans.recommended')}
               </span>
             ) : null}
             {card.save ? <span className="pl-save">{card.save}</span> : null}

@@ -1,7 +1,6 @@
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY
-
-if (!FIREBASE_API_KEY) {
-  console.warn('FIREBASE_API_KEY is not set')
+// Read lazily so the key is picked up even if env loads after this module is imported.
+function firebaseApiKey() {
+  return process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY
 }
 
 type FirebaseAuthResponse = {
@@ -25,12 +24,13 @@ type AccountInfoResponse = {
 }
 
 async function postFirebase<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  if (!FIREBASE_API_KEY) {
+  const apiKey = firebaseApiKey()
+  if (!apiKey) {
     throw new Error('FIREBASE_API_KEY is missing')
   }
 
   const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/${path}?key=${FIREBASE_API_KEY}`,
+    `https://identitytoolkit.googleapis.com/v1/${path}?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

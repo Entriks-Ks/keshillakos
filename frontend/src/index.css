@@ -5486,6 +5486,8 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 14px 28px;
+  /* Keep legal links clear of the floating AI launcher (58px + 1.5rem offset) */
+  padding-right: 72px;
   color: rgb(255 255 255 / 58%);
 }
 

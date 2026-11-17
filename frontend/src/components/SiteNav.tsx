@@ -13,10 +13,10 @@ import {
   Menu,
   MessageCircle,
   Settings,
-  Sparkles,
   UserRound,
   Users,
   type LucideIcon,
+  MessageSquareText,
 } from 'lucide-react'
 import type { AuthUser } from '../api/auth'
 import ThemeToggle from './ThemeToggle'
@@ -256,7 +256,7 @@ export default function SiteNav() {
                 data-indicator="off"
                 aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
               >
-                <Sparkles size={14} className="kk-nav-ai-icon" aria-hidden />
+                <MessageSquareText size={14} className="kk-nav-ai-icon" aria-hidden />
                 <span className="kk-nav-ai-label">Këshilla AI</span>
               </Link>
             </li>
@@ -386,7 +386,7 @@ export default function SiteNav() {
                             aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
-                            <Sparkles size={18} aria-hidden />
+                            <MessageSquareText size={18} aria-hidden />
                             <span>Këshilla AI</span>
                           </Link>
                         </li>

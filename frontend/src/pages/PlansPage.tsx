@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BadgeCheck, Check, Gift, Minus, Sparkles } from 'lucide-react'
+import { BadgeCheck, Check, Gift, Minus, Star } from 'lucide-react'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import PlanBoxes, { type PlanBoxChoice } from '../components/PlanBoxes'
@@ -74,7 +74,7 @@ export default function PlansPage() {
           </div>
           <div className="tt-section-inner">
             <p className="pl-kicker">
-              <Sparkles size={14} aria-hidden />
+              <BadgeCheck size={14} aria-hidden />
               {t('plans.kicker')}
             </p>
             <h1>{t('plans.title')}</h1>
@@ -84,7 +84,7 @@ export default function PlansPage() {
                 <Gift size={15} aria-hidden /> {t('plans.basic')}: {t('plans.free')}
               </li>
               <li>
-                <Sparkles size={15} aria-hidden /> {t('plans.trial')}
+                <Gift size={15} aria-hidden /> {t('plans.trial')}
               </li>
               <li>
                 <BadgeCheck size={15} aria-hidden /> {t('plans.rows.badge')}
@@ -124,7 +124,7 @@ export default function PlansPage() {
                     </th>
                     <th scope="col" className="is-pro">
                       <span className="pl-matrix-plan">
-                        <Sparkles size={14} aria-hidden /> {t('plans.pro')}
+                        <Star size={14} aria-hidden /> {t('plans.pro')}
                       </span>
                       <span className="pl-matrix-price">{t('plans.monthly')}</span>
                     </th>

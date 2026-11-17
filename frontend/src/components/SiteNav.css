@@ -19,9 +19,9 @@
 
 .kk-nav {
   --kk-nav-height: 64px;
-  --kk-nav-gradient: linear-gradient(90deg, #2563eb 0%, #38bdf8 50%, #8b5cf6 100%);
+  --kk-nav-gradient: linear-gradient(90deg, #2563eb 0%, #38bdf8 50%, #2563eb 100%);
   --kk-chip-bg: var(--surface);
-  --kk-ai-text: linear-gradient(90deg, #0a21c0, #2563eb, #0891b2, #7c3aed, #0a21c0);
+  --kk-ai-text: linear-gradient(90deg, #0a21c0, #2563eb, #0284c7, #1d4ed8, #0a21c0);
   position: fixed;
   top: 0;
   left: 0;
@@ -38,7 +38,7 @@
 
 [data-theme="dark"] .kk-nav {
   --kk-chip-bg: #10172e;
-  --kk-ai-text: linear-gradient(90deg, #a5b4fc, #7dd3fc, #c4b5fd, #a5b4fc);
+  --kk-ai-text: linear-gradient(90deg, #93c5fd, #7dd3fc, #93c5fd, #93c5fd);
   background: rgba(9, 13, 24, 0.85);
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
@@ -56,7 +56,7 @@
     transparent 0%,
     rgb(37 99 235 / 55%) 28%,
     rgb(56 189 248 / 60%) 50%,
-    rgb(139 92 246 / 50%) 72%,
+    rgb(37 99 235 / 50%) 72%,
     transparent 100%
   );
   opacity: 0.6;
@@ -302,7 +302,7 @@
   border: 1px solid transparent;
   background:
     linear-gradient(var(--kk-chip-bg), var(--kk-chip-bg)) padding-box,
-    conic-gradient(from var(--kk-ai-angle), #2563eb, #38bdf8, #8b5cf6, #0a21c0, #2563eb) border-box;
+    conic-gradient(from var(--kk-ai-angle), #2563eb, #38bdf8, #2563eb, #0a21c0, #2563eb) border-box;
   box-shadow: 0 4px 14px -6px rgb(37 99 235 / 50%);
   font-weight: 650;
   animation: kk-ai-spin 5s linear infinite;
@@ -337,7 +337,7 @@
 .kk-nav-link-ai[aria-current='page'] {
   background:
     linear-gradient(135deg, #2563eb, #0a21c0) padding-box,
-    conic-gradient(from var(--kk-ai-angle), #38bdf8, #a78bfa, #2563eb, #38bdf8) border-box;
+    conic-gradient(from var(--kk-ai-angle), #38bdf8, #60a5fa, #2563eb, #38bdf8) border-box;
   box-shadow: 0 8px 22px -8px rgb(37 99 235 / 75%);
 }
 
@@ -738,7 +738,7 @@
   background: linear-gradient(
     135deg,
     color-mix(in srgb, #2563eb 8%, transparent),
-    color-mix(in srgb, #8b5cf6 6%, transparent)
+    color-mix(in srgb, #2563eb 6%, transparent)
   );
 }
 
@@ -840,7 +840,7 @@
   background: linear-gradient(
     135deg,
     color-mix(in srgb, #2563eb 8%, var(--surface)),
-    color-mix(in srgb, #8b5cf6 6%, var(--surface))
+    color-mix(in srgb, #2563eb 6%, var(--surface))
   );
 }
 
@@ -908,7 +908,7 @@
   left: 0;
   width: 3px;
   border-radius: 3px;
-  background: linear-gradient(180deg, #38bdf8, #2563eb, #8b5cf6);
+  background: linear-gradient(180deg, #38bdf8, #2563eb, #2563eb);
 }
 
 .kk-nav-drawer-link[aria-current='page'] svg {
@@ -919,7 +919,7 @@
   border: 1px solid transparent;
   background:
     linear-gradient(var(--surface), var(--surface)) padding-box,
-    linear-gradient(120deg, #2563eb, #38bdf8, #8b5cf6) border-box;
+    linear-gradient(120deg, #2563eb, #38bdf8, #2563eb) border-box;
   color: var(--accent);
   font-weight: 650;
 }
@@ -931,7 +931,7 @@
 .kk-nav-drawer-link-ai[aria-current='page'] {
   background:
     linear-gradient(135deg, #2563eb, #0a21c0) padding-box,
-    linear-gradient(120deg, #38bdf8, #8b5cf6) border-box;
+    linear-gradient(120deg, #38bdf8, #2563eb) border-box;
   color: #ffffff;
 }
 

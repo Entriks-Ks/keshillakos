@@ -6,8 +6,9 @@ import {
   CheckCircle2,
   Clock,
   Scale,
-  Sparkles,
   TrendingUp,
+  MessageSquareText,
+  ShieldCheck,
 } from 'lucide-react'
 
 export default function HomeHeroVisual() {
@@ -65,7 +66,7 @@ export default function HomeHeroVisual() {
           <div className="hm-core-ring hm-core-ring-1" />
           <div className="hm-core-ring hm-core-ring-2" />
           <div className="hm-core-shield">
-            <Sparkles size={28} className="hm-core-sparkle" />
+            <ShieldCheck size={28} className="hm-core-sparkle" />
           </div>
         </div>
 
@@ -134,7 +135,7 @@ export default function HomeHeroVisual() {
         <div className="hm-card-3d hm-card-ai">
           <div className="hm-card-top">
             <div className="hm-icon-box hm-icon-ai">
-              <Sparkles size={18} />
+              <MessageSquareText size={18} />
             </div>
             <div className="hm-card-info">
               <strong className="hm-card-title">Këshilla AI</strong>
