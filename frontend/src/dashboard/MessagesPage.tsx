@@ -880,7 +880,7 @@ export default function MessagesPage() {
                     if (nowAway !== isAway) setAway(nowAway ? { conversationId: activeId, anchorId: messages[messages.length - 1]?.id ?? null } : null)
                     if (history.scrollTop < 200 && hasOlderMessages && !loadingHistory && !loadingThread && history.scrollHeight > history.clientHeight) loadOlder()
                   }}>
-                  <div className="msg-stream">
+                  <div className="msg-stream" key={activeId}>
                     {!loadingThread && messages.length > 0 && hasOlderMessages ? (
                       <div className="msg-older">
                         {loadingHistory ? (
