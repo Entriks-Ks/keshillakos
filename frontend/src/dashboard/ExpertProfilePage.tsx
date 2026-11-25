@@ -50,6 +50,7 @@ import SocialIcon from '../components/SocialIcon'
 import type { DomainDefinition } from '../data/domains'
 import { domainRequires } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
+import { cleanProfileRows } from '../utils/profileRows'
 import { catalogLanguage, dateLocale } from '../i18n'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
 import { EmptyBlock, RowsSkeleton, SectionHead } from './OverviewParts'
@@ -371,6 +372,14 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       setError(t('profile.expert.yearsInvalid'))
       return
     }
+    const rows = cleanProfileRows({ workExperience, education, certifications })
+    if (rows.problem) {
+      const key = rows.problem.section === 'experience' ? 'profile.expert.incompleteExperience'
+        : rows.problem.section === 'education' ? 'profile.expert.incompleteEducation'
+          : 'profile.expert.incompleteCertification'
+      setError(t(key, { n: rows.problem.index + 1 }))
+      return
+    }
     setError('')
     setSaving(true)
     try {
@@ -380,9 +389,9 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
         yearsOfExperience: years,
         specializations: parseSkills(skillsText),
         socialLinks,
-        workExperience,
-        education,
-        certifications,
+        workExperience: rows.workExperience,
+        education: rows.education,
+        certifications: rows.certifications,
         publicProfile: {
           displayName: [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || user?.name || profile.publicProfile.displayName || 'Ekspert',
           title,

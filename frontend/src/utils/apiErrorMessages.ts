@@ -16,6 +16,8 @@ export type ApiErrorTranslation = {
 
 export const API_ERROR_KEYS: Readonly<Record<string, string>> = {
   'Server error': 'apiErrors.serverError',
+  // Zod's default message for an empty required text field (routes forward issues[0].message).
+  'Too small: expected string to have >=1 characters': 'apiErrors.requiredFieldEmpty',
   'Gabim': 'apiErrors.error',
   'ID i pavlefshëm': 'apiErrors.invalidId',
   'Të dhëna të pavlefshme': 'apiErrors.invalidData',

@@ -1269,6 +1269,7 @@ const en = {
     },
   },
   apiErrors: {
+    requiredFieldEmpty: 'A required field is empty. Fill it in and try again.',
     serverError: 'Server error',
     error: 'Error',
     invalidId: 'Invalid ID',
@@ -2556,6 +2557,9 @@ const en = {
       discardText: 'Unsaved changes to the company profile will be lost.',
     },
     expert: {
+      incompleteExperience: 'Fill in the position and company for experience {{n}}, or remove it.',
+      incompleteEducation: 'Fill in the institution, degree and field of study for education {{n}}, or remove it.',
+      incompleteCertification: 'Fill in the name and issuing organization for certification {{n}}, or remove it.',
       lead: 'Manage your professional profile. These details appear on your public profile and on the services you offer.',
       editLead: 'Manage the details of your professional profile.',
       sections: 'Profile sections',

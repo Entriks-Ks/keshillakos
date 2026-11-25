@@ -1269,6 +1269,7 @@ const sq = {
     },
   },
   apiErrors: {
+    requiredFieldEmpty: 'Një fushë e detyrueshme është bosh. Plotësoje dhe provo përsëri.',
     serverError: 'Gabim në server',
     error: 'Gabim',
     invalidId: 'ID i pavlefshëm',
@@ -2556,6 +2557,9 @@ const sq = {
       discardText: 'Ndryshimet e paruajtura në profilin e kompanisë do të humbasin.',
     },
     expert: {
+      incompleteExperience: 'Plotëso pozitën dhe kompaninë te përvoja {{n}}, ose hiqe atë.',
+      incompleteEducation: 'Plotëso institucionin, diplomën dhe fushën e studimit te arsimi {{n}}, ose hiqe atë.',
+      incompleteCertification: 'Plotëso emrin dhe institucionin lëshues te certifikimi {{n}}, ose hiqe atë.',
       lead: 'Menaxho profilin tënd profesional. Këto të dhëna shfaqen te profili publik dhe te shërbimet që ofron.',
       editLead: 'Menaxho të dhënat e profilit tënd profesional.',
       sections: 'Seksionet e profilit',

@@ -1269,6 +1269,7 @@ const de = {
     },
   },
   apiErrors: {
+    requiredFieldEmpty: 'Ein Pflichtfeld ist leer. Bitte ausfüllen und erneut versuchen.',
     serverError: 'Serverfehler',
     error: 'Fehler',
     invalidId: 'Ungültige ID',
@@ -2556,6 +2557,9 @@ const de = {
       discardText: 'Ungespeicherte Änderungen am Firmenprofil gehen verloren.',
     },
     expert: {
+      incompleteExperience: 'Fülle Position und Unternehmen bei Erfahrung {{n}} aus oder entferne sie.',
+      incompleteEducation: 'Fülle Einrichtung, Abschluss und Studienfach bei Ausbildung {{n}} aus oder entferne sie.',
+      incompleteCertification: 'Fülle Name und ausstellende Stelle bei Zertifizierung {{n}} aus oder entferne sie.',
       lead: 'Verwalte dein Berufsprofil. Diese Angaben erscheinen in deinem öffentlichen Profil und bei den Diensten, die du anbietest.',
       editLead: 'Verwalte die Angaben deines Berufsprofils.',
       sections: 'Profilbereiche',
