@@ -7,8 +7,6 @@ import { useAuth } from '../auth/AuthContext'
 import SendRequestButton from './SendRequestButton'
 import StartChatButton from './StartChatButton'
 
-const OWN_PROFILE_HINT = 'Ky është profili yt'
-
 type Props = {
   provider: MarketplaceProvider
   profilePath: string
@@ -40,7 +38,7 @@ export default function ProviderCardActions({ provider, profilePath, need }: Pro
               <span className="tt-dir-action-text">{t('card.contact')}</span>
             </a>
           ) : isOwn ? (
-            <span className="tt-dir-action is-icon" aria-disabled="true" aria-label={t('card.contact')} title={OWN_PROFILE_HINT}>
+            <span className="tt-dir-action is-icon" aria-disabled="true" aria-label={t('card.contact')} title={t('cards.ownProfile')}>
               <Mail size={18} aria-hidden />
               <span className="tt-dir-action-text">{t('card.contact')}</span>
             </span>
@@ -70,29 +68,29 @@ export default function ProviderCardActions({ provider, profilePath, need }: Pro
             href={website.startsWith('http') ? website : `https://${website}`}
             target="_blank"
             rel="noreferrer"
-            aria-label="Website"
+            aria-label={t('cards.website')}
             onClick={(e) => e.stopPropagation()}
           >
             <Globe size={18} aria-hidden />
-            <span className="tt-dir-action-text">Website</span>
+            <span className="tt-dir-action-text">{t('cards.website')}</span>
           </a>
         ) : (
           <Link
             className="tt-dir-action is-icon"
             to={profilePath}
-            aria-label="Website"
+            aria-label={t('cards.website')}
             onClick={(e) => e.stopPropagation()}
           >
             <Globe size={18} aria-hidden />
-            <span className="tt-dir-action-text">Website</span>
+            <span className="tt-dir-action-text">{t('cards.website')}</span>
           </Link>
         )}
 
         <div className="tt-dir-action-slot" onClick={(e) => e.stopPropagation()}>
           {isOwn ? (
-            <span className="tt-dir-action is-icon" aria-disabled="true" aria-label="Live Chat" title={OWN_PROFILE_HINT}>
+            <span className="tt-dir-action is-icon" aria-disabled="true" aria-label={t('cards.liveChat')} title={t('cards.ownProfile')}>
               <MessageCircle size={18} aria-hidden />
-              <span className="tt-dir-action-text">Live Chat</span>
+              <span className="tt-dir-action-text">{t('cards.liveChat')}</span>
             </span>
           ) : (
             <StartChatButton
@@ -100,7 +98,7 @@ export default function ProviderCardActions({ provider, profilePath, need }: Pro
               providerName={provider.name}
               compact
               hideGuestHint
-              label="Live Chat"
+              label={t('cards.liveChat')}
               className="tt-dir-action is-icon"
             />
           )}

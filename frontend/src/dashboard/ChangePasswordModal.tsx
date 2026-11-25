@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Modal, toast } from '@heroui/react'
 import { useAuth } from '../auth/AuthContext'
 import PasswordInput from '../components/PasswordInput'
@@ -11,6 +12,7 @@ export default function ChangePasswordModal({
   isOpen: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useTranslation()
   const { changePassword } = useAuth()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -33,19 +35,19 @@ export default function ChangePasswordModal({
     setError('')
 
     if (newPassword.length < 6) {
-      setError('Fjalëkalimi i ri duhet të ketë të paktën 6 karaktere')
+      setError(t('settings.passwordShort'))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Fjalëkalimi i ri dhe konfirmimi nuk përputhen')
+      setError(t('settings.passwordMismatch'))
       return
     }
 
     setSubmitting(true)
     try {
       await changePassword(currentPassword, newPassword)
-      toast.success('Fjalëkalimi u ndryshua me sukses.')
+      toast.success(t('settings.passwordChanged'))
       handleOpenChange(false)
     } catch (err) {
       setError(getErrorMessage(err))
@@ -61,13 +63,13 @@ export default function ChangePasswordModal({
           <Modal.Dialog className="st-modal">
             <Modal.CloseTrigger />
             <Modal.Header className="st-modal-head">
-              <Modal.Heading>Ndrysho fjalëkalimin</Modal.Heading>
-              <p>Vendos fjalëkalimin aktual dhe zgjidh një të ri me të paktën 6 karaktere.</p>
+              <Modal.Heading>{t('settings.changePassword')}</Modal.Heading>
+              <p>{t('settings.passwordLead')}</p>
             </Modal.Header>
             <form onSubmit={onSubmit} className="st-form">
               <Modal.Body className="st-form-body">
                 <label className="st-field">
-                  <span>Fjalëkalimi aktual</span>
+                  <span>{t('settings.currentPassword')}</span>
                   <PasswordInput
                     autoComplete="current-password"
                     value={currentPassword}
@@ -76,7 +78,7 @@ export default function ChangePasswordModal({
                   />
                 </label>
                 <label className="st-field">
-                  <span>Fjalëkalimi i ri</span>
+                  <span>{t('settings.newPassword')}</span>
                   <PasswordInput
                     autoComplete="new-password"
                     value={newPassword}
@@ -86,7 +88,7 @@ export default function ChangePasswordModal({
                   />
                 </label>
                 <label className="st-field">
-                  <span>Konfirmo fjalëkalimin e ri</span>
+                  <span>{t('settings.confirmPassword')}</span>
                   <PasswordInput
                     autoComplete="new-password"
                     value={confirmPassword}
@@ -103,10 +105,10 @@ export default function ChangePasswordModal({
               </Modal.Body>
               <Modal.Footer className="st-modal-foot">
                 <Button variant="ghost" isDisabled={submitting} onPress={() => handleOpenChange(false)}>
-                  Anulo
+                  {t('notifications.cancel')}
                 </Button>
                 <Button type="submit" variant="primary" isDisabled={submitting}>
-                  {submitting ? 'Duke ndryshuar…' : 'Ruaj fjalëkalimin'}
+                  {submitting ? t('settings.changing') : t('settings.savePassword')}
                 </Button>
               </Modal.Footer>
             </form>

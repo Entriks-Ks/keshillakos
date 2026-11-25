@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { AlertDialog, Button, Modal, toast } from '@heroui/react'
 import { submitPlatformFeedback } from '../api/feedback'
 import type { AuthUser } from '../api/auth'
@@ -6,25 +7,25 @@ import { getErrorMessage } from '../utils/errors'
 
 export type AccountRequestKind = 'deletion' | 'export'
 
+/** `subject` is sent to the admin team as-is; everything else is a translation key. */
 const COPY: Record<
   AccountRequestKind,
   { title: string; intro: string; subject: string; confirm?: string; submit: string; done: string }
 > = {
   deletion: {
-    title: 'Kërko fshirjen e llogarisë',
-    intro:
-      'Kërkesa i dërgohet ekipit të Këshillohu. Pasi ta verifikojmë, llogaria mbyllet dhe të dhënat e saj fshihen sipas politikës së privatësisë. Ky veprim nuk mund të kthehet.',
+    title: 'settings.deletion.title',
+    intro: 'settings.deletion.intro',
     subject: 'Kërkesë për fshirjen e llogarisë',
-    confirm: 'Kuptoj që fshirja e llogarisë është e përhershme.',
-    submit: 'Dërgo kërkesën për fshirje',
-    done: 'Kërkesa për fshirje u dërgua. Ekipi do ta shqyrtojë dhe do të të kontaktojë në',
+    confirm: 'settings.deletion.confirm',
+    submit: 'settings.deletion.submit',
+    done: 'settings.deletion.done',
   },
   export: {
-    title: 'Kërko kopjen e të dhënave',
-    intro: 'Ekipi i Këshillohu do të përgatisë një kopje të të dhënave personale që ruajmë për llogarinë tënde.',
+    title: 'settings.export.title',
+    intro: 'settings.export.intro',
     subject: 'Kërkesë për kopjen e të dhënave personale',
-    submit: 'Dërgo kërkesën',
-    done: 'Kërkesa u dërgua. Ekipi do të të kontaktojë në',
+    submit: 'settings.export.submit',
+    done: 'settings.export.done',
   },
 }
 
@@ -41,6 +42,7 @@ export default function AccountRequestModal({
   user: AuthUser
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [reason, setReason] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [sending, setSending] = useState(false)
@@ -72,7 +74,7 @@ export default function AccountRequestModal({
         email: user.email,
       })
       setSent(true)
-      toast.success('Kërkesa u dërgua.')
+      toast.success(t('settings.requestSent'))
     } catch (err) {
       setError(getErrorMessage(err))
       toast.danger(getErrorMessage(err))
@@ -89,19 +91,19 @@ export default function AccountRequestModal({
         <Dialog.Container size="sm" placement="center">
           <Dialog.Dialog className={`st-modal${shownKind === 'deletion' ? ' is-danger' : ''}`}>
             <Dialog.Header className="st-modal-head">
-              <Dialog.Heading>{copy?.title}</Dialog.Heading>
-              {!sent ? <p>{copy?.intro}</p> : null}
+              <Dialog.Heading>{copy ? t(copy.title) : null}</Dialog.Heading>
+              {!sent && copy ? <p>{t(copy.intro)}</p> : null}
             </Dialog.Header>
             {sent ? (
               <>
                 <Dialog.Body>
                   <p className="st-modal-done" role="status">
-                    {copy?.done} <strong>{user.email}</strong>.
+                    {copy ? <Trans i18nKey={copy.done} values={{ email: user.email }} components={{ strong: <strong /> }} /> : null}
                   </p>
                 </Dialog.Body>
                 <Dialog.Footer className="st-modal-foot">
                   <Button variant="primary" onPress={() => handleOpenChange(false)}>
-                    Mbyll
+                    {t('feedback.close')}
                   </Button>
                 </Dialog.Footer>
               </>
@@ -110,7 +112,7 @@ export default function AccountRequestModal({
                 <Dialog.Body className="st-form-body">
                   <label className="st-field">
                     <span>
-                      Arsyeja <em>(opsionale)</em>
+                      {t('settings.reason')} <em>{t('settings.optional')}</em>
                     </span>
                     <textarea
                       value={reason}
@@ -122,7 +124,7 @@ export default function AccountRequestModal({
                   {copy?.confirm ? (
                     <label className="st-check">
                       <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-                      <span>{copy.confirm}</span>
+                      <span>{t(copy.confirm)}</span>
                     </label>
                   ) : null}
                   {error ? (
@@ -133,14 +135,14 @@ export default function AccountRequestModal({
                 </Dialog.Body>
                 <Dialog.Footer className="st-modal-foot">
                   <Button variant="ghost" isDisabled={sending} onPress={() => handleOpenChange(false)}>
-                    Anulo
+                    {t('notifications.cancel')}
                   </Button>
                   <Button
                     type="submit"
                     variant={shownKind === 'deletion' ? 'danger' : 'primary'}
                     isDisabled={sending || Boolean(copy?.confirm && !confirmed)}
                   >
-                    {sending ? 'Duke u dërguar…' : copy?.submit}
+                    {sending ? t('feedback.sending') : copy ? t(copy.submit) : null}
                   </Button>
                 </Dialog.Footer>
               </form>

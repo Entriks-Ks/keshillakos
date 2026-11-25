@@ -1,12 +1,5 @@
 import { Star } from 'lucide-react'
-import i18n, { uiText } from '../i18n'
-
-function dateLocale() {
-  const language = (i18n.language || 'sq').toLowerCase()
-  if (language.startsWith('de')) return 'de-DE'
-  if (language.startsWith('en')) return 'en-GB'
-  return 'sq-AL'
-}
+import { dateLocale, uiText } from '../i18n'
 
 export function ratingWord(average: number, count: number) {
   if (count <= 0) return uiText('Ende pa vlerësime', 'No ratings yet', 'Noch keine Bewertungen')

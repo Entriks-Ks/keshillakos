@@ -79,6 +79,7 @@ function contextSentence(data: OverviewData) {
 }
 
 function StatsSection({ data, loading }: { data: OverviewData | null; loading: boolean }) {
+  const { t } = useTranslation()
   const services = data?.services ?? []
   const conversations = data?.conversations ?? []
   const upcoming = upcomingAppointments(data?.appointments ?? [])
@@ -86,28 +87,28 @@ function StatsSection({ data, loading }: { data: OverviewData | null; loading: b
   const pending = data?.pendingCount ?? 0
   const stats: OverviewStat[] = [
     {
-      label: 'Kërkesa në pritje',
+      label: t('overview.stats.pendingRequests'),
       value: pending,
-      hint: `${collectionTotal(data?.requests)} të marra gjithsej`,
+      hint: t('overview.stats.receivedTotal', { count: collectionTotal(data?.requests) }),
       to: INBOX_PATH,
       highlight: pending > 0,
     },
     {
-      label: 'Shërbime aktive',
+      label: t('overview.stats.activeServices'),
       value: collectionSummary(services).active ?? 0,
-      hint: services.length > 0 ? `${collectionTotal(services)} gjithsej` : 'Asnjë e publikuar',
+      hint: services.length > 0 ? t('overview.stats.total', { count: collectionTotal(services) }) : t('overview.stats.nonePublished'),
       to: SERVICES_PATH,
     },
     {
-      label: 'Termine të ardhshme',
+      label: t('overview.stats.upcomingAppointments'),
       value: collectionSummary(data?.appointments).upcoming ?? upcoming.length,
-      hint: upcoming[0] ? `Tjetri: ${formatWhen(upcoming[0].startAt)}` : 'Asnjë i planifikuar',
+      hint: upcoming[0] ? t('overview.stats.next', { when: formatWhen(upcoming[0].startAt) }) : t('overview.stats.noneScheduled'),
       to: AVAILABILITY_PATH,
     },
     {
-      label: 'Mesazhe të palexuara',
+      label: t('overview.stats.unreadMessages'),
       value: unread,
-      hint: `${collectionTotal(conversations)} biseda`,
+      hint: t('overview.stats.conversations', { count: collectionTotal(conversations) }),
       to: MESSAGES_PATH,
       highlight: unread > 0,
     },
@@ -117,33 +118,30 @@ function StatsSection({ data, loading }: { data: OverviewData | null; loading: b
 }
 
 function ActivityCard({ data, loading, publicPath }: { data: OverviewData | null; loading: boolean; publicPath: string | null }) {
+  const { t } = useTranslation()
   const entries = data ? inboxActivity(data.requests, data.conversations, INBOX_PATH, MESSAGES_PATH) : []
   const hasServices = (data?.services.length ?? 0) > 0
 
   return (
     <Card className="uo-card uo-activity">
-      <SectionHead title="Aktiviteti i fundit" action={entries.length > 0 ? <TextLink to={INBOX_PATH}>Kërkesat</TextLink> : null} />
+      <SectionHead title={t('overview.recentActivity')} action={entries.length > 0 ? <TextLink to={INBOX_PATH}>{t('dash.requests')}</TextLink> : null} />
       <Card.Content className="uo-card-body">
         {loading ? (
           <RowsSkeleton rows={4} />
         ) : entries.length === 0 ? (
           <EmptyBlock
-            title="Ende s'ka aktivitet"
-            text={
-              hasServices
-                ? 'Kërkesat nga klientët dhe bisedat me ta do të shfaqen këtu sapo të vijnë.'
-                : 'Kërkesat nga klientët vijnë pasi të publikosh një shërbim në ofertat e Këshillohu.'
-            }
+            title={t('overview.noActivity')}
+            text={hasServices ? t('overview.provider.activityTextServices') : t('overview.provider.activityTextNoServices')}
             action={
               hasServices ? (
                 publicPath ? (
                   <Link to={publicPath} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                    Shiko profilin publik
+                    {t('overview.provider.viewPublicProfile')}
                   </Link>
                 ) : null
               ) : (
                 <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                  Shto shërbim
+                  {t('overview.addService')}
                 </Link>
               )
             }
@@ -157,23 +155,24 @@ function ActivityCard({ data, loading, publicPath }: { data: OverviewData | null
 }
 
 function ServicesCard({ services, loading }: { services: ServiceItem[]; loading: boolean }) {
+  const { t } = useTranslation()
   return (
     <Card className="uo-card">
       <SectionHead
-        title="Shërbimet e mia"
+        title={t('overview.myServices')}
         meta={services.length > 0 ? <span className="uo-card-meta">{services.length}</span> : null}
-        action={services.length > 0 ? <TextLink to={SERVICES_PATH}>Shiko të gjitha</TextLink> : null}
+        action={services.length > 0 ? <TextLink to={SERVICES_PATH}>{t('overview.viewAll')}</TextLink> : null}
       />
       <Card.Content className="uo-card-body">
         {loading ? (
           <RowsSkeleton rows={2} />
         ) : services.length === 0 ? (
           <EmptyBlock
-            title="Nuk ke publikuar shërbime ende"
-            text="Krijo shërbimin e parë. Shërbimet aktive shfaqen në ofertat e Këshillohu dhe klientët të dërgojnë kërkesa."
+            title={t('overview.noServicesTitle')}
+            text={t('overview.provider.noServicesText')}
             action={
               <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                Shto shërbim
+                {t('overview.addService')}
               </Link>
             }
           />
@@ -253,7 +252,7 @@ export function ProviderOverviewPage() {
         </div>
         <Link to={SERVICES_PATH} className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
           <Plus size={16} aria-hidden />
-          Shto shërbim
+          {t('overview.addService')}
         </Link>
       </header>
 
@@ -261,11 +260,11 @@ export function ProviderOverviewPage() {
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Nuk u ngarkuan të dhënat</Alert.Title>
+            <Alert.Title>{t('overview.loadError')}</Alert.Title>
             <Alert.Description>{error}</Alert.Description>
           </Alert.Content>
           <Button size="sm" variant="outline" onPress={reload}>
-            Provo përsëri
+            {t('page.retry')}
           </Button>
         </Alert>
       ) : (

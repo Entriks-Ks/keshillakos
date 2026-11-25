@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { CalendarDays, Mail, X, type LucideIcon } from 'lucide-react'
 import type { MatchIntake } from '../api/match'
@@ -37,10 +38,13 @@ export default function SendRequestButton({
   serviceTitle,
   intake,
   compact = false,
-  ctaLabel = 'Dërgo kërkesë',
-  guestLabel = 'Hyr për të dërguar kërkesë',
+  ctaLabel: ctaLabelProp,
+  guestLabel: guestLabelProp,
   ctaIcon = 'calendar',
 }: Props) {
+  const { t } = useTranslation()
+  const ctaLabel = ctaLabelProp ?? t('booking.cta')
+  const guestLabel = guestLabelProp ?? t('booking.guest')
   const CtaIcon = ctaIcon === 'mail' ? Mail : ctaIcon === 'calendar' ? CalendarDays : ctaIcon
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
@@ -99,17 +103,17 @@ export default function SendRequestButton({
     if (!slotId) {
       setError(
         freeCount > 0
-          ? 'Zgjidh një orë të lirë. Termini është i detyrueshëm.'
-          : 'Ofruesi nuk ka orare të lira. Nuk mund të dërgosh kërkesë pa termin.',
+          ? t('booking.slotRequired')
+          : t('booking.noSlots'),
       )
       return
     }
     if (!contactPhone.replace(/[\s()-]/g, '')) {
-      setError('Shkruaj numrin e telefonit.')
+      setError(t('booking.phoneRequired'))
       return
     }
     if (contactMethod === 'email' && !contactEmail.trim()) {
-      setError('Shkruaj email-in.')
+      setError(t('booking.emailRequired'))
       return
     }
     setSubmitting(true)
@@ -122,7 +126,7 @@ export default function SendRequestButton({
         serviceId,
         serviceTitle,
         need: intake.need,
-        message: message.trim() || `Përshëndetje, kam nevojë për ndihmë: ${intake.need}`,
+        message: message.trim() || t('booking.defaultMessage', { need: intake.need }),
         location: intake.location,
         language: intake.language,
         urgency: intake.urgency,
@@ -131,7 +135,7 @@ export default function SendRequestButton({
         contactEmail: contactMethod === 'email' ? contactEmail.trim() : undefined,
         slotId,
       })
-      toast.success('Kërkesa u dërgua. Ora pret konfirmimin e ofruesit.')
+      toast.success(t('booking.sent'))
       setMessage('')
       setSlotId('')
       setScheduleKey((k) => k + 1)
@@ -157,16 +161,16 @@ export default function SendRequestButton({
           >
             <header className="booking-modal-head">
               <div>
-                <p className="booking-modal-kicker">Rezervim</p>
-                <h2 id="booking-modal-title">Zgjidh orën me {providerName}</h2>
-                <p className="muted">Zgjidh ditën në kalendar, pastaj orën e lirë.</p>
+                <p className="booking-modal-kicker">{t('booking.kicker')}</p>
+                <h2 id="booking-modal-title">{t('booking.title', { name: providerName })}</h2>
+                <p className="muted">{t('booking.lead')}</p>
               </div>
               <button
                 type="button"
                 className="ghost booking-modal-close"
                 onClick={close}
                 disabled={submitting}
-                aria-label="Mbyll"
+                aria-label={t('feedback.close')}
               >
                 <X size={18} />
               </button>
@@ -186,70 +190,70 @@ export default function SendRequestButton({
 
               <div className="booking-modal-form">
                 <label>
-                  Çfarë të duhet?
+                  {t('home.what')}
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={compact ? 3 : 5}
-                    placeholder="Shkruaj shkurt: çfarë të duhet, kur dhe si preferon të flisni."
+                    placeholder={t('booking.needPlaceholder')}
                     required
                     minLength={8}
                   />
                 </label>
 
                 <label>
-                  Si të të kontaktojnë
+                  {t('home.contact')}
                   <select
                     value={contactMethod}
                     onChange={(e) => setContactMethod(e.target.value as ContactMethod)}
                   >
-                    <option value="chat">Chat në platformë</option>
-                    <option value="phone">Telefon</option>
-                    <option value="email">Email</option>
+                    <option value="chat">{t('booking.chatOption')}</option>
+                    <option value="phone">{t('req.phone')}</option>
+                    <option value="email">{t('req.email')}</option>
                   </select>
                 </label>
 
                 <label>
-                  Numri i telefonit
+                  {t('booking.phoneLabel')}
                   <input
                     type="tel"
                     inputMode="tel"
                     autoComplete="tel"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="p.sh. 044 123 456"
+                    placeholder={t('booking.phonePlaceholder')}
                     required
                   />
                 </label>
 
                 {contactMethod === 'email' ? (
                   <label>
-                    Email-i
+                    {t('req.email')}
                     <input
                       type="email"
                       autoComplete="email"
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder="p.sh. emri@email.com"
+                      placeholder={t('booking.emailPlaceholder')}
                       required
                     />
                   </label>
                 ) : null}
 
                 {slotId ? (
-                  <p className="success booking-modal-picked">Ora u zgjodh. Dërgo kërkesën për ta rezervuar.</p>
+                  <p className="success booking-modal-picked">{t('booking.picked')}</p>
                 ) : (
-                  <p className="muted booking-modal-picked">Zgjidh një orë të lirë në kalendar.</p>
+                  <p className="muted booking-modal-picked">{t('booking.pickInCalendar')}</p>
                 )}
 
                 {error ? <p className="error">{error}</p> : null}
 
                 <div className="send-request-actions">
                   <button type="submit" className="primary-btn" disabled={submitting || !slotId || !contactPhone.trim()}>
-                    {submitting ? 'Duke dërguar…' : ctaLabel}
+                    {submitting ? t('feedback.sending') : ctaLabel}
                   </button>
                   <button type="button" className="ghost" onClick={close} disabled={submitting}>
-                    Anulo
+                    {t('notifications.cancel')}
                   </button>
                 </div>
               </div>
@@ -273,7 +277,7 @@ export default function SendRequestButton({
         <CtaIcon size={16} aria-hidden />
         <span className={compact ? 'tt-dir-action-text' : undefined}>{ctaLabel}</span>
       </button>
-      <p className="muted send-request-hint">Zgjidh orën dhe dërgo kërkesën në një hap.</p>
+      <p className="muted send-request-hint">{t('booking.hint')}</p>
       {modal}
     </div>
   )

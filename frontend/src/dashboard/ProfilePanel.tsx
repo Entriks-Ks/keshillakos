@@ -3,6 +3,7 @@ import { Button, Card, Chip, buttonVariants, toast } from '@heroui/react'
 import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { Camera, ExternalLink, Globe, ImageIcon, MapPin, Pencil } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { fetchMyBusinesses, updateBusinessProfile, uploadBusinessCover, uploadBusinessLogo, type BusinessProfile } from '../api/businesses'
 import { fetchCategories, type CatalogCategory } from '../api/catalog'
 import { IMAGE_ACCEPT, mediaUrl, validateImageFile } from '../api/media'
@@ -19,6 +20,7 @@ import { useAuth } from '../auth/AuthContext'
 import LocationSelector from '../components/LocationSelector'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { getErrorMessage } from '../utils/errors'
+import { catalogLanguage } from '../i18n'
 import ExpertProfilePage from './ExpertProfilePage'
 import { SectionHead } from './OverviewParts'
 import { EmptyNote, filledSocialLinks, SocialLinksList, UserProfile } from './UserProfilePage'
@@ -39,7 +41,8 @@ function websiteHref(value: string) {
 }
 
 function FieldHint({ required }: { required: boolean }) {
-  return <span className="profile-field-hint">{required ? 'E detyrueshme' : 'Opsionale'}</span>
+  const { t } = useTranslation()
+  return <span className="profile-field-hint">{required ? t('profile.required') : t('profile.optional')}</span>
 }
 
 function profileTypeFromPath(pathname: string): ProfileType {
@@ -57,9 +60,10 @@ function SocialLinksFields({
   onChange: (next: SocialLinks) => void
   disabled?: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <fieldset className="full checkbox-fieldset profile-social-fieldset">
-      <legend>Lidhjet sociale <FieldHint required={false} /></legend>
+      <legend>{t('profile.socialLinks')} <FieldHint required={false} /></legend>
       <div className="profile-social-grid">
         {SOCIAL_LINK_KEYS.map((key) => (
           <label key={key}>
@@ -112,6 +116,7 @@ export default function ProfilePanel() {
 }
 
 function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise<void>; completion: ProfileCompletion | null }) {
+  const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const route = useLocation()
@@ -194,7 +199,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
       setBusiness(next)
       setLogoPreview(mediaUrl(next.logoUrl))
       await onSaved()
-      toast.success('Logoja u ngarkua.')
+      toast.success(t('profile.company.logoUploaded'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
       setLogoPreview(mediaUrl(business.logoUrl))
@@ -220,7 +225,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
       setBusiness(next)
       setCoverPreview(mediaUrl(next.coverUrl))
       await onSaved()
-      toast.success('Sfondi u ngarkua.')
+      toast.success(t('profile.coverUploaded'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
       setCoverPreview(mediaUrl(business.coverUrl))
@@ -234,16 +239,16 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
     e.preventDefault()
     if (!business) return
     if (!city) {
-      setError('Qyteti i kompanisë është i detyrueshëm.')
+      setError(t('profile.company.cityRequired'))
       return
     }
     if (!categoryId) {
-      setError('Kategoria / industria është e detyrueshme.')
+      setError(t('profile.company.categoryRequired'))
       return
     }
     const selected = categories.find((item) => item._id === categoryId)
     if (!selected) {
-      setError('Kategoria nuk është e vlefshme.')
+      setError(t('profile.company.categoryInvalid'))
       return
     }
     setError('')
@@ -273,7 +278,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
       })
       setBusiness(next)
       await onSaved()
-      toast.success('Profili i kompanisë u ruajt.')
+      toast.success(t('profile.company.saved'))
       navigate('/dashboard/company/profile')
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -284,30 +289,30 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
 
   function startEdit() { navigate('/dashboard/company/profile/edit') }
 
-  if (loading) return <p className="muted" role="status">Profili i kompanisë po ngarkohet...</p>
+  if (loading) return <p className="muted" role="status">{t('profile.company.loading')}</p>
 
   if (!business) {
     return (
       <div className="profile-section-block">
         <p className="muted">
-          Nuk ke ende kompani.{' '}
-          <Link to="/dashboard/company/create">Krijo kompaninë</Link>
+          {t('profile.company.none')}{' '}
+          <Link to="/dashboard/company/create">{t('profile.createCompany')}</Link>
         </p>
       </div>
     )
   }
 
   const statusLabel = business.status === 'active'
-    ? 'Aktive'
+    ? t('status.active')
     : business.status === 'suspended'
-      ? 'Pezulluar'
+      ? t('status.suspended')
       : business.status === 'closed'
-        ? 'E mbyllur'
-        : 'Draft'
+        ? t('status.closed')
+        : t('status.draft')
 
   const category = categories.find((item) => item._id === categoryId)
-  const place = city ? locationLabel(city, 'sq') : business.branches?.[0]?.location?.cityName || ''
-  const missing = <span className="up-missing">Nuk është shtuar</span>
+  const place = city ? locationLabel(city, catalogLanguage(i18n.language)) : business.branches?.[0]?.location?.cityName || ''
+  const missing = <span className="up-missing">{t('profile.notAdded')}</span>
   const socialEntries = filledSocialLinks(socialLinks)
   const completionMissing = completion?.exists ? completion.section.missingRequired : []
   const isComplete = completion?.exists && completion.overallPercent !== null && completionMissing.length === 0
@@ -315,44 +320,44 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
   if (editing) {
     return (
       <section className="uo up">
-        <header className="uo-head"><div className="uo-head-copy"><h1>Ndrysho profilin</h1><p>Përditëso të dhënat e kompanisë që shfaqen në Këshillohu.</p></div></header>
+        <header className="uo-head"><div className="uo-head-copy"><h1>{t('profile.editProfile')}</h1><p>{t('profile.company.editLead')}</p></div></header>
         <form className="up-form" onSubmit={onSave}>
           <Card className="uo-card">
-            <SectionHead title="Logoja e kompanisë" />
+            <SectionHead title={t('profile.company.logo')} />
             <Card.Content className="uo-card-body">
               <div className="up-photo">
                 <ProfileAvatar src={logoPreview} seed={business._id} alt={publicName} size="fill" fit="contain" className="up-photo-avatar" />
                 <div className="up-photo-copy">
-                  <Button size="sm" variant="outline" isPending={uploading === 'logo'} isDisabled={saving} onPress={() => logoInput.current?.click()}><Camera size={16} aria-hidden />{uploading === 'logo' ? 'Duke ngarkuar…' : logoPreview ? 'Ndrysho logon' : 'Ngarko logon'}</Button>
-                  <p className="up-hint">Logoja ruhet menjëherë pas ngarkimit.</p>
+                  <Button size="sm" variant="outline" isPending={uploading === 'logo'} isDisabled={saving} onPress={() => logoInput.current?.click()}><Camera size={16} aria-hidden />{uploading === 'logo' ? t('profile.uploading') : logoPreview ? t('profile.company.changeLogo') : t('profile.company.uploadLogo')}</Button>
+                  <p className="up-hint">{t('profile.company.logoHint')}</p>
                 </div>
                 <input ref={logoInput} type="file" accept={IMAGE_ACCEPT} hidden disabled={uploading === 'logo'} onChange={(e) => { void onLogoChange(e.target.files?.[0]); e.target.value = '' }} />
               </div>
             </Card.Content>
           </Card>
           <Card className="uo-card">
-            <SectionHead title="Informacioni i kompanisë" />
+            <SectionHead title={t('profile.company.info')} />
             <Card.Content className="uo-card-body"><div className="service-form cp-form">
-              <label>Emri i kompanisë <FieldHint required /><input value={publicName} onChange={(e) => setPublicName(e.target.value)} required maxLength={160} /></label>
-              <label>Kategoria / industria <FieldHint required /><select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required disabled={!categories.length}><option value="">{categories.length ? 'Zgjidh kategorinë' : 'Duke ngarkuar kategoritë…'}</option>{categories.map((item) => <option key={item._id} value={item._id}>{item.name.sq}</option>)}</select></label>
-              <div className="full field"><span className="profile-inline-label">Qyteti <FieldHint required /></span><LocationSelector value={city} onChange={setCity} disabled={saving} /></div>
-              <label className="full">Përshkrimi <FieldHint required /><textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={4} maxLength={3000} /></label>
+              <label>{t('profile.company.name')} <FieldHint required /><input value={publicName} onChange={(e) => setPublicName(e.target.value)} required maxLength={160} /></label>
+              <label>{t('profile.categoryIndustry')} <FieldHint required /><select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required disabled={!categories.length}><option value="">{categories.length ? t('profile.chooseCategory') : t('home.loadingCategories')}</option>{categories.map((item) => <option key={item._id} value={item._id}>{item.name.sq}</option>)}</select></label>
+              <div className="full field"><span className="profile-inline-label">{t('profile.city')} <FieldHint required /></span><LocationSelector value={city} onChange={setCity} disabled={saving} /></div>
+              <label className="full">{t('profile.description')} <FieldHint required /><textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={4} maxLength={3000} /></label>
             </div></Card.Content>
           </Card>
           <Card className="uo-card">
-            <SectionHead title="Kontakti" />
+            <SectionHead title={t('profile.company.contact')} />
             <Card.Content className="uo-card-body"><div className="service-form cp-form">
-              <label>Email i kompanisë <FieldHint required /><input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required type="email" maxLength={160} /></label>
-              <label>Numri i telefonit <FieldHint required /><input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} required placeholder="+38344123456" maxLength={32} /></label>
-              <label>Website <FieldHint required={false} /><input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://" maxLength={500} /></label>
-              <label>Adresa <FieldHint required={false} /><input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={240} /></label>
+              <label>{t('profile.company.email')} <FieldHint required /><input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required type="email" maxLength={160} /></label>
+              <label>{t('profile.phoneNumber')} <FieldHint required /><input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} required placeholder="+38344123456" maxLength={32} /></label>
+              <label>{t('profile.website')} <FieldHint required={false} /><input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://" maxLength={500} /></label>
+              <label>{t('profile.address')} <FieldHint required={false} /><input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={240} /></label>
             </div></Card.Content>
           </Card>
-          <Card className="uo-card"><SectionHead title="Rrjetet sociale" /><Card.Content className="uo-card-body"><div className="service-form cp-form"><SocialLinksFields value={socialLinks} onChange={setSocialLinks} disabled={saving} /></div></Card.Content></Card>
+          <Card className="uo-card"><SectionHead title={t('footer.social')} /><Card.Content className="uo-card-body"><div className="service-form cp-form"><SocialLinksFields value={socialLinks} onChange={setSocialLinks} disabled={saving} /></div></Card.Content></Card>
           {error ? <p className="up-error" role="alert">{error}</p> : null}
-          <div className="up-actions"><Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={saving || uploading !== null}>Anulo</Button><Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null || !categories.length}>{saving ? 'Duke ruajtur…' : 'Ruaj ndryshimet'}</Button></div>
+          <div className="up-actions"><Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={saving || uploading !== null}>{t('notifications.cancel')}</Button><Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null || !categories.length}>{saving ? t('req.saving') : t('profile.saveChanges')}</Button></div>
         </form>
-        <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { setConfirmCancel(false); navigate('/dashboard/company/profile') }} title="Hidh ndryshimet?" description="Ndryshimet e paruajtura në profilin e kompanisë do të humbasin." confirmLabel="Hidh ndryshimet" />
+        <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { setConfirmCancel(false); navigate('/dashboard/company/profile') }} title={t('profile.discardTitle')} description={t('profile.company.discardText')} confirmLabel={t('profile.discardConfirm')} />
       </section>
     )
   }
@@ -361,11 +366,11 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
     <section className="uo up cp">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>Profili</h1>
-          <p>Menaxho të dhënat e kompanisë që shfaqen në Këshillohu.</p>
+          <h1>{t('dash.profile')}</h1>
+          <p>{t('profile.company.lead')}</p>
         </div>
         {user ? <Link to={`/providers/${user.uid}`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
-          <ExternalLink size={16} aria-hidden /> Shiko profilin publik
+          <ExternalLink size={16} aria-hidden /> {t('profile.viewPublic')}
         </Link> : null}
       </header>
 
@@ -373,15 +378,15 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
         <div className="up-hero-main">
           <div className="ep-avatar">
             <ProfileAvatar src={logoPreview} seed={business._id} alt={publicName} size="fill" fit="contain" className="up-hero-avatar" />
-            <button type="button" className="ep-avatar-btn" aria-label="Ndrysho logon e kompanisë" title="Ndrysho logon e kompanisë" disabled={uploading === 'logo'} onClick={() => logoInput.current?.click()}><Camera size={15} aria-hidden /></button>
+            <button type="button" className="ep-avatar-btn" aria-label={t('profile.company.changeLogoAria')} title={t('profile.company.changeLogoAria')} disabled={uploading === 'logo'} onClick={() => logoInput.current?.click()}><Camera size={15} aria-hidden /></button>
             <input ref={logoInput} type="file" accept={IMAGE_ACCEPT} hidden disabled={uploading === 'logo'} onChange={(e) => { void onLogoChange(e.target.files?.[0]); e.target.value = '' }} />
           </div>
           <div className="up-hero-copy">
             <div className="up-hero-title">
-              <h2>{publicName || 'Kompania'}</h2>
-              {isComplete ? <Chip size="sm" variant="soft" color="success"><Chip.Label>Profili i plotë</Chip.Label></Chip> : null}
+              <h2>{publicName || t('profile.company.fallbackName')}</h2>
+              {isComplete ? <Chip size="sm" variant="soft" color="success"><Chip.Label>{t('profile.complete')}</Chip.Label></Chip> : null}
               <Chip size="sm" variant="soft"><Chip.Label>{statusLabel}</Chip.Label></Chip>
-              {business.verification?.status === 'verified' ? <Chip size="sm" variant="soft" color="accent"><Chip.Label>E verifikuar</Chip.Label></Chip> : null}
+              {business.verification?.status === 'verified' ? <Chip size="sm" variant="soft" color="accent"><Chip.Label>{t('profile.company.verified')}</Chip.Label></Chip> : null}
             </div>
             <ul className="up-hero-meta">
               {category ? <li>{category.name.sq}</li> : null}
@@ -390,7 +395,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
             </ul>
           </div>
         </div>
-        <Button variant="primary" className="up-hero-action" onPress={startEdit}><Pencil size={16} aria-hidden />Ndrysho profilin</Button>
+        <Button variant="primary" className="up-hero-action" onPress={startEdit}><Pencil size={16} aria-hidden />{t('profile.editProfile')}</Button>
       </Card>
 
       <AiTrustRecommendationsCard isCompany providerUid={user?.uid} />
@@ -398,47 +403,47 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
       <div className="uo-grid up-grid">
         <div className="up-col">
           <Card className="uo-card">
-            <SectionHead title="Informacioni i kompanisë" action={<Button size="sm" variant="ghost" className="uo-link-btn" onPress={startEdit}><Pencil size={14} aria-hidden />Ndrysho</Button>} />
+            <SectionHead title={t('profile.company.info')} action={<Button size="sm" variant="ghost" className="uo-link-btn" onPress={startEdit}><Pencil size={14} aria-hidden />{t('profile.edit')}</Button>} />
             <Card.Content className="uo-card-body ep-stack">
               <dl className="up-facts">
-                <div className="up-fact"><dt>Emri i kompanisë</dt><dd>{publicName || missing}</dd></div>
-                <div className="up-fact"><dt>Kategoria / industria</dt><dd>{category?.name.sq || missing}</dd></div>
-                <div className="up-fact"><dt>Qyteti</dt><dd>{place || missing}</dd></div>
+                <div className="up-fact"><dt>{t('profile.company.name')}</dt><dd>{publicName || missing}</dd></div>
+                <div className="up-fact"><dt>{t('profile.categoryIndustry')}</dt><dd>{category?.name.sq || missing}</dd></div>
+                <div className="up-fact"><dt>{t('profile.city')}</dt><dd>{place || missing}</dd></div>
               </dl>
-              <div className="ep-block"><h3 className="ep-sub">Përshkrimi</h3>{description ? <p className="ep-bio">{description}</p> : missing}</div>
+              <div className="ep-block"><h3 className="ep-sub">{t('profile.description')}</h3>{description ? <p className="ep-bio">{description}</p> : missing}</div>
             </Card.Content>
           </Card>
           <Card className="uo-card">
-            <SectionHead title="Kontakti" action={<Button size="sm" variant="ghost" className="uo-link-btn" onPress={startEdit}><Pencil size={14} aria-hidden />Ndrysho</Button>} />
+            <SectionHead title={t('profile.company.contact')} action={<Button size="sm" variant="ghost" className="uo-link-btn" onPress={startEdit}><Pencil size={14} aria-hidden />{t('profile.edit')}</Button>} />
             <Card.Content className="uo-card-body">
               <dl className="up-facts">
-                <div className="up-fact"><dt>Email</dt><dd>{contactEmail ? <a className="cp-link" href={`mailto:${contactEmail}`}>{contactEmail}</a> : missing}</dd></div>
-                <div className="up-fact"><dt>Telefoni</dt><dd>{contactPhone ? <a className="cp-link" href={`tel:${contactPhone}`}>{contactPhone}</a> : missing}</dd></div>
-                <div className="up-fact"><dt>Website</dt><dd>{website ? <a className="cp-link" href={websiteHref(website)} target="_blank" rel="noopener noreferrer">{website}</a> : missing}</dd></div>
-                <div className="up-fact"><dt>Adresa</dt><dd>{address || missing}</dd></div>
+                <div className="up-fact"><dt>{t('req.email')}</dt><dd>{contactEmail ? <a className="cp-link" href={`mailto:${contactEmail}`}>{contactEmail}</a> : missing}</dd></div>
+                <div className="up-fact"><dt>{t('req.phone')}</dt><dd>{contactPhone ? <a className="cp-link" href={`tel:${contactPhone}`}>{contactPhone}</a> : missing}</dd></div>
+                <div className="up-fact"><dt>{t('profile.website')}</dt><dd>{website ? <a className="cp-link" href={websiteHref(website)} target="_blank" rel="noopener noreferrer">{website}</a> : missing}</dd></div>
+                <div className="up-fact"><dt>{t('profile.address')}</dt><dd>{address || missing}</dd></div>
               </dl>
             </Card.Content>
           </Card>
         </div>
         <aside className="up-col">
           {completion?.exists && completionMissing.length > 0 ? <Card className="uo-card">
-            <SectionHead title="Plotëso profilin" meta={<span className="uo-card-meta is-strong">{completionMissing.length} {completionMissing.length === 1 ? 'e dhënë mbetet' : 'të dhëna mbeten'}</span>} />
+            <SectionHead title={t('profile.completeTitle')} meta={<span className="uo-card-meta is-strong">{t('profile.company.remaining', { count: completionMissing.length })}</span>} />
             <Card.Content className="uo-card-body uo-setup">
-              <div className="uo-missing"><span>Mungojnë:</span>{completionMissing.map((field) => <Chip key={field.key} size="sm" variant="soft"><Chip.Label>{field.label}</Chip.Label></Chip>)}</div>
-              <Button size="sm" variant="primary" onPress={startEdit}>Plotëso profilin</Button>
+              <div className="uo-missing"><span>{t('profile.missing')}</span>{completionMissing.map((field) => <Chip key={field.key} size="sm" variant="soft"><Chip.Label>{field.label}</Chip.Label></Chip>)}</div>
+              <Button size="sm" variant="primary" onPress={startEdit}>{t('profile.completeTitle')}</Button>
             </Card.Content>
           </Card> : null}
           <Card className="uo-card">
-            <SectionHead title="Rrjetet sociale" meta={socialEntries.length ? <span className="uo-card-meta">{socialEntries.length}</span> : null} action={socialEntries.length ? <Button size="sm" variant="ghost" className="uo-link-btn" onPress={startEdit}><Pencil size={14} aria-hidden />Ndrysho</Button> : null} />
+            <SectionHead title={t('footer.social')} meta={socialEntries.length ? <span className="uo-card-meta">{socialEntries.length}</span> : null} action={socialEntries.length ? <Button size="sm" variant="ghost" className="uo-link-btn" onPress={startEdit}><Pencil size={14} aria-hidden />{t('profile.edit')}</Button> : null} />
             <Card.Content className="uo-card-body">
-              {socialEntries.length ? <SocialLinksList entries={socialEntries} className="ep-social" /> : <EmptyNote text="Nuk ke shtuar asnjë rrjet social." action="Shto rrjete" onAction={startEdit} />}
+              {socialEntries.length ? <SocialLinksList entries={socialEntries} className="ep-social" /> : <EmptyNote text={t('profile.socialEmpty')} action={t('profile.socialAdd')} onAction={startEdit} />}
             </Card.Content>
           </Card>
           <Card className="uo-card">
-            <SectionHead title="Sfondi i profilit publik" />
+            <SectionHead title={t('profile.cover')} />
             <Card.Content className="uo-card-body ep-stack">
               <div className="ep-cover"><img src={coverPreview || '/images/login-advice.png'} alt="" /></div>
-              <Button size="sm" variant="outline" className="ep-cover-btn" isPending={uploading === 'cover'} onPress={() => coverInput.current?.click()}><ImageIcon size={15} aria-hidden />{uploading === 'cover' ? 'Duke ngarkuar…' : 'Ndrysho sfondin'}</Button>
+              <Button size="sm" variant="outline" className="ep-cover-btn" isPending={uploading === 'cover'} onPress={() => coverInput.current?.click()}><ImageIcon size={15} aria-hidden />{uploading === 'cover' ? t('profile.uploading') : t('profile.changeCover')}</Button>
               <input ref={coverInput} type="file" accept={IMAGE_ACCEPT} hidden disabled={uploading === 'cover'} onChange={(e) => { void onCoverChange(e.target.files?.[0]); e.target.value = '' }} />
             </Card.Content>
           </Card>

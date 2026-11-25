@@ -105,7 +105,7 @@ export default function FooterFeedback() {
                           <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" maxLength={80} />
                         </label>
                         <label>
-                          Email
+                          {t('req.email')}
                           <input
                             type="email"
                             value={email}

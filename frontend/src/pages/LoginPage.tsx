@@ -11,9 +11,10 @@ import { LogoMark, LogoWordmark } from '../components/Logo'
 import { getErrorMessage } from '../utils/errors'
 import './LoginPage.css'
 
-const loginSchema = (t: (key: string) => string) => z.object({
-  email: z.string().trim().min(1, t('auth.emailRequired')).email(t('auth.emailInvalid')),
-  password: z.string().min(6, t('auth.passwordShort')),
+/** Messages are i18n keys, translated where they are displayed. */
+const loginSchema = z.object({
+  email: z.string().trim().min(1, 'auth.emailRequired').email('auth.emailInvalid'),
+  password: z.string().min(6, 'auth.passwordShort'),
 })
 
 type LoginField = 'email' | 'password'
@@ -30,7 +31,7 @@ export default function LoginPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    const result = loginSchema(t).safeParse({ email, password })
+    const result = loginSchema.safeParse({ email, password })
     if (!result.success) {
       const next: Partial<Record<LoginField, string>> = {}
       for (const issue of result.error.issues) {
@@ -58,7 +59,7 @@ export default function LoginPage() {
       <div className="login-split">
         <AuthShowcase />
         <div className="auth-panel">
-        <Link to="/" className="brand brand-link" aria-label="keshillohu">
+        <Link to="/" className="brand brand-link" aria-label={t('nav.home')}>
           <LogoMark size={36} />
           <LogoWordmark height={23} />
         </Link>
@@ -67,7 +68,7 @@ export default function LoginPage() {
 
         <form onSubmit={onSubmit} className="auth-form login-form" noValidate>
           <TextField isInvalid={Boolean(fieldErrors.email)} validationBehavior="aria" fullWidth>
-            <Label>Email</Label>
+            <Label>{t('req.email')}</Label>
             <Input
               type="email"
               autoComplete="email"
@@ -77,7 +78,7 @@ export default function LoginPage() {
                 setFieldErrors((current) => ({ ...current, email: undefined }))
               }}
             />
-            <FieldError>{fieldErrors.email}</FieldError>
+            <FieldError>{fieldErrors.email ? t(fieldErrors.email) : null}</FieldError>
           </TextField>
           <TextField isInvalid={Boolean(fieldErrors.password)} validationBehavior="aria" fullWidth>
             <Label>{t('auth.password')}</Label>
@@ -105,7 +106,7 @@ export default function LoginPage() {
                 </Button>
               </InputGroup.Suffix>
             </InputGroup>
-            <FieldError>{fieldErrors.password}</FieldError>
+            <FieldError>{fieldErrors.password ? t(fieldErrors.password) : null}</FieldError>
           </TextField>
 
           <Button type="submit" size="md" className="auth-submit" isDisabled={submitting} fullWidth>

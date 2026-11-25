@@ -1,5 +1,6 @@
 import { pagedItems, type PageParams, type PaginationMeta, type CollectionSummary } from './pagination'
 import api from './auth'
+import { dateLocale } from '../i18n'
 
 export type SlotStatus = 'open' | 'held' | 'booked' | 'cancelled'
 
@@ -92,7 +93,7 @@ export async function deleteAvailabilitySlot(id: string) {
 /** Ora e fillimit, p.sh. "14:00" */
 export function formatSlotTime(startAt: string) {
   try {
-    return new Date(startAt).toLocaleTimeString('sq-AL', {
+    return new Date(startAt).toLocaleTimeString(dateLocale(), {
       hour: '2-digit',
       minute: '2-digit',
     })
@@ -103,7 +104,7 @@ export function formatSlotTime(startAt: string) {
 
 export function formatSlotDay(startAt: string) {
   try {
-    return new Date(startAt).toLocaleDateString('sq-AL', {
+    return new Date(startAt).toLocaleDateString(dateLocale(), {
       weekday: 'short',
       day: 'numeric',
       month: 'short',

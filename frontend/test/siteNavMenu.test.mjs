@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   activeMarketplaceLink,
   getAccountMenu,
+  marketplaceLink,
   userDisplayName,
 } from '../src/utils/siteNavMenu.ts'
 
@@ -52,6 +53,13 @@ test('active marketplace link follows the ofertat tab', () => {
   assert.equal(activeMarketplaceLink('/services/abc', ''), 'services')
   assert.equal(activeMarketplaceLink('/', ''), null)
   assert.equal(activeMarketplaceLink('/rreth-nesh', '?tab=experts'), null)
+})
+
+test('marketplace links expose i18n keys, not hardcoded labels', () => {
+  assert.equal(marketplaceLink('services').label, 'offers.services')
+  assert.equal(marketplaceLink('experts').label, 'offers.experts')
+  assert.equal(marketplaceLink('companies').to, '/ofertat?tab=companies')
+  assert.equal(marketplaceLink('companies').label, 'offers.companies')
 })
 
 test('display name prefers first and last name', () => {

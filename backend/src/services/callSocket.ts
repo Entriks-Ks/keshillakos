@@ -20,7 +20,11 @@ export function registerCallHandlers(io: Server) {
     try {
       const active = await getActiveCallForUser(user.uid)
       if (active && active.status === 'accepted') {
-        void socket.join(`call:${active._id.toString()}`)
+        const activeCallId = active._id.toString()
+        void socket.join(`call:${activeCallId}`)
+        // Clears any "peer disconnected" warning the other participant is showing.
+        const peerUid = active.callerId === user.uid ? active.receiverId : active.callerId
+        emitToUser(peerUid, 'call:peer-reconnected', { callId: activeCallId, uid: user.uid })
       }
     } catch {
       // Ignore initial lookup failure
@@ -141,7 +145,12 @@ export function registerCallHandlers(io: Server) {
           const callId = payload?.callId
           if (!callId) throw new Error('Mungon ID e thirrjes')
 
-          const call = await rejectCall(callId, user.uid, payload.reason)
+          const { call, changed } = await rejectCall(callId, user.uid, payload.reason)
+          // A duplicate or late rejection must not announce a new outcome for a finished call.
+          if (!changed) {
+            if (typeof ack === 'function') ack({ ok: true })
+            return
+          }
           const rejectPayload = {
             callId,
             rejectedBy: user.uid,
@@ -174,7 +183,11 @@ export function registerCallHandlers(io: Server) {
           const callId = payload?.callId
           if (!callId) throw new Error('Mungon ID e thirrjes')
 
-          const { call, duration } = await endCall(callId, user.uid)
+          const { call, duration, changed } = await endCall(callId, user.uid)
+          if (!changed) {
+            if (typeof ack === 'function') ack({ ok: true, duration })
+            return
+          }
           const endPayload = {
             callId,
             endedBy: user.uid,
@@ -239,8 +252,8 @@ export function registerCallHandlers(io: Server) {
 
                 const currentCall = await getActiveCallForUser(user.uid)
                 if (currentCall && currentCall._id.toString() === callId && currentCall.status === 'ringing') {
-                  await endCall(callId, user.uid)
-                  emitToUser(peerUid, 'call:ended', {
+                  const { changed } = await endCall(callId, user.uid)
+                  if (changed) emitToUser(peerUid, 'call:ended', {
                     callId,
                     endedBy: user.uid,
                     reason: 'caller_disconnected',
@@ -269,7 +282,8 @@ export function registerCallHandlers(io: Server) {
 
               const currentCall = await Call.findById(callId)
               if (currentCall && currentCall.status === 'accepted') {
-                const { duration } = await endCall(callId, user.uid)
+                const { duration, changed } = await endCall(callId, user.uid)
+                if (!changed) return
                 const endPayload = {
                   callId,
                   endedBy: user.uid,

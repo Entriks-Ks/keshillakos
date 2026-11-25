@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Briefcase, ChevronRight, MapPin, Users, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import { humanLabels } from '../utils/displayLabels'
@@ -15,6 +16,7 @@ type Props = {
 
 export default function CompanyCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const { t } = useTranslation()
   const profilePath = providerPath(provider)
   const specialties = humanLabels(
     [...provider.specializations, ...provider.categoryLabels],
@@ -24,17 +26,17 @@ export default function CompanyCard({ provider }: Props) {
   const verified = isProviderVerified(provider)
   const expertCount = provider.expertCount ?? 0
   const featured = provider.featuredExpert
-  const subtitle = specialties[0] || 'Kompani'
+  const subtitle = specialties[0] || t('role.company')
 
   return (
     <CardShell
       href={profilePath}
-      label={`Shiko profilin e ${provider.name}`}
+      label={t('cards.viewProfileNamed', { name: provider.name })}
       mediaKind="company"
       media={<ProfileAvatar src={provider.photoUrl} seed={provider.uid} size="fill" fit="contain" />}
       footer={<ProviderCardActions provider={provider} profilePath={profilePath} need={provider.name} />}
     >
-      <CardTitle to={profilePath} verified={verified ? 'E verifikuar' : undefined}>{provider.name}</CardTitle>
+      <CardTitle to={profilePath} verified={verified ? t('cards.verifiedCompany') : undefined}>{provider.name}</CardTitle>
       <p className="pc-subtitle">{subtitle}</p>
 
       <CardMeta>
@@ -47,18 +49,18 @@ export default function CompanyCard({ provider }: Props) {
         <RatingMeta average={provider.ratingAverage ?? 0} count={provider.ratingCount ?? 0} href={profilePath} />
         <li>
           <Users size={14} aria-hidden />
-          {expertCount === 1 ? '1 ekspert' : `${expertCount} ekspertë`}
+          {t('cards.expertCount', { count: expertCount })}
         </li>
         {provider.serviceCount > 0 ? (
           <li>
             <Briefcase size={14} aria-hidden />
-            {provider.serviceCount === 1 ? '1 shërbim' : `${provider.serviceCount} shërbime`}
+            {t('cards.serviceCount', { count: provider.serviceCount })}
           </li>
         ) : null}
         {provider.modes.includes('online') ? (
           <li>
             <Video size={14} aria-hidden />
-            Online
+            {t('cards.online')}
           </li>
         ) : null}
       </CardMeta>
@@ -71,17 +73,17 @@ export default function CompanyCard({ provider }: Props) {
 
       {featured ? (
         <div className="pc-sub">
-          <span className="pc-sub-label">Ekspertët</span>
+          <span className="pc-sub-label">{t('cards.teamLabel')}</span>
           <Link to={providerPath(featured)} className="pc-sub-person" onClick={(e) => e.stopPropagation()}>
             <span className="pc-sub-photo" aria-hidden>
               <ProfileAvatar src={featured.photoUrl} seed={featured.uid} size="fill" />
             </span>
             <strong>{featured.name}</strong>
-            <span className="pc-sub-muted">{featured.title || 'Ekspert i ekipit'}</span>
+            <span className="pc-sub-muted">{featured.title || t('cards.teamExpert')}</span>
           </Link>
           {expertCount > 1 ? (
             <Link to={`${profilePath}#ekspertet`} className="pc-sub-more" onClick={(e) => e.stopPropagation()}>
-              Shiko ekipin
+              {t('cards.viewTeam')}
               <ChevronRight size={14} aria-hidden />
             </Link>
           ) : null}

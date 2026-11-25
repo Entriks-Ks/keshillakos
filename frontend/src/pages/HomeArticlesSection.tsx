@@ -16,57 +16,45 @@ export default function HomeArticlesSection() {
 
   const featured = {
     id: 'terms',
-    title: t('home.articleTermsTitle', 'Kushtet e Përdorimit dhe Marrëveshjet e Shërbimit'),
-    desc: t(
-      'home.articleTermsDesc',
-      'Gjithçka që duhet të dini mbi angazhimin e profesionistëve, fushëveprimin e marrëveshjeve dhe mbrojtjen reciproke të të drejtave në Kosovë.',
-    ),
-    category: t('home.articleCatLegal', 'Ligjore & Rregullore'),
-    readTime: '4 min',
+    title: t('home.articleTermsTitle'),
+    desc: t('home.articleTermsDesc'),
+    category: t('home.articleCatLegal'),
+    readTime: t('home.articleReadTime', { minutes: 4 }),
     to: '/kushtet',
     highlights: [
-      'Marrëveshje direkte me ofruesin e licencuar',
-      'Transparencë e plotë mbi tarifat dhe oraret',
-      'Mbrojtje e standardeve profesionale në Kosovë',
+      t('landing.articles.highlight1'),
+      t('landing.articles.highlight2'),
+      t('landing.articles.highlight3'),
     ],
   }
 
   const secondaryArticles = [
     {
       id: 'privacy',
-      title: t('home.articlePrivacyTitle', 'Privatësia & Mbrojtja e të Dhënave'),
-      desc: t(
-        'home.articlePrivacyDesc',
-        'Si ruhen dhe mbrohen të dhënat tuaja sipas Ligjit për Mbrojtjen e të Dhënave Personale dhe standardeve evropiane.',
-      ),
-      category: t('home.articleCatPrivacy', 'Siguria & Privatësia'),
-      readTime: '3 min',
+      title: t('home.articlePrivacyTitle'),
+      desc: t('home.articlePrivacyDesc'),
+      category: t('home.articleCatPrivacy'),
+      readTime: t('home.articleReadTime', { minutes: 3 }),
       to: '/privatesia',
       icon: ShieldCheck,
       iconClass: 'is-privacy',
     },
     {
       id: 'ai',
-      title: t('home.articleAiTitle', 'AI Asistenti & Përputhja e Inteligjencës'),
-      desc: t(
-        'home.articleAiDesc',
-        'Mësoni si algoritmi ynë analizon nevojën tuaj specifike për të gjetur ekspertin më të kualifikuar në kohë reale.',
-      ),
-      category: t('home.articleCatAi', 'Inovacion & AI'),
-      readTime: '2 min',
+      title: t('home.articleAiTitle'),
+      desc: t('home.articleAiDesc'),
+      category: t('home.articleCatAi'),
+      readTime: t('home.articleReadTime', { minutes: 2 }),
       to: '/ai-asistenti',
       icon: MessageSquareText,
       iconClass: 'is-ai',
     },
     {
       id: 'cookies',
-      title: t('home.articleCookiesTitle', 'Transparenca & Rregullorja e Cookies'),
-      desc: t(
-        'home.articleCookiesDesc',
-        'Informacione të qarta mbi mënyrën se si përdorim cookie-t për të ruajtur preferencat dhe sesionin tuaj të sigurt.',
-      ),
-      category: t('home.articleCatCookies', 'Transparencë'),
-      readTime: '2 min',
+      title: t('home.articleCookiesTitle'),
+      desc: t('home.articleCookiesDesc'),
+      category: t('home.articleCatCookies'),
+      readTime: t('home.articleReadTime', { minutes: 2 }),
       to: '/cookies',
       icon: Cookie,
       iconClass: 'is-cookies',
@@ -99,7 +87,7 @@ export default function HomeArticlesSection() {
                 </span>
                 <span className="hm-article-time">
                   <Clock size={13} aria-hidden />
-                  {featured.readTime} lexim
+                  {featured.readTime}
                 </span>
               </div>
 
@@ -121,7 +109,7 @@ export default function HomeArticlesSection() {
 
               <p className="hm-featured-desc">{featured.desc}</p>
 
-              <ul className="hm-featured-highlights" aria-label="Pikat kryesore">
+              <ul className="hm-featured-highlights" aria-label={t('landing.articles.highlightsLabel')}>
                 {featured.highlights.map((item) => (
                   <li key={item}>
                     <CheckCircle2 size={16} className="hm-highlight-check" aria-hidden />

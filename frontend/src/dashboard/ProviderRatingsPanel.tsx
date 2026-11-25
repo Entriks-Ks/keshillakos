@@ -2,6 +2,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Alert, Button, buttonVariants, Card, Label, TextArea, TextField } from '@heroui/react'
 import { BadgeCheck, ExternalLink, MessageSquareReply, Star } from 'lucide-react'
 import { fetchProviderRatings, respondToRating, type RatingItem } from '../api/ratings'
@@ -19,6 +20,7 @@ export default function ProviderRatingsPanel({
   providerUid: string
   audience?: 'provider' | 'company'
 }) {
+  const { t } = useTranslation()
   const [average, setAverage] = useState(0)
   const [count, setCount] = useState(0)
   const [buckets, setBuckets] = useState<Array<{ stars: number; count: number; pct: number }>>([])
@@ -90,16 +92,16 @@ export default function ProviderRatingsPanel({
     <section className="uo ds">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>Vlerësimet</h1>
+          <h1>{t('dash.ratings')}</h1>
           <p>
             {audience === 'company'
-              ? 'Vlerësimet që klientët kanë lënë për kompaninë dhe ekspertët e saj pas punës së përfunduar.'
-              : 'Vlerësimet që klientët kanë lënë pas punës së përfunduar me ty. Mund t’u përgjigjesh drejtpërdrejt.'}
+              ? t('ratings.leadCompany')
+              : t('ratings.leadProvider')}
           </p>
         </div>
         <Link to={`/providers/${providerUid}#vleresimet`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
           <ExternalLink size={16} aria-hidden />
-          Shiko te profili publik
+          {t('ratings.viewPublic')}
         </Link>
       </header>
 
@@ -107,11 +109,11 @@ export default function ProviderRatingsPanel({
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Vlerësimet nuk u ngarkuan</Alert.Title>
+            <Alert.Title>{t('ratings.loadError')}</Alert.Title>
             <Alert.Description>{error}</Alert.Description>
           </Alert.Content>
           <Button size="sm" variant="outline" onPress={reload}>
-            Provo përsëri
+            {t('page.retry')}
           </Button>
         </Alert>
       ) : loading ? (
@@ -125,11 +127,11 @@ export default function ProviderRatingsPanel({
           <span className="ur-empty-icon" aria-hidden>
             <Star size={22} />
           </span>
-          <h2>Ende pa vlerësime</h2>
+          <h2>{t('ratings.emptyTitle')}</h2>
           <p>
             {audience === 'company'
-              ? 'Pasi kompania të përfundojë një kërkesë ose takim, klienti mund të lërë yje dhe koment. Vlerësimet shfaqen këtu dhe në profilin publik.'
-              : 'Pasi të përfundosh një kërkesë ose takim, klienti mund të lërë yje dhe koment. Vlerësimet shfaqen këtu dhe në profilin tënd publik.'}
+              ? t('ratings.emptyCompany')
+              : t('ratings.emptyProvider')}
           </p>
         </Card>
       ) : (
@@ -139,14 +141,14 @@ export default function ProviderRatingsPanel({
               <div className="ds-rating-score">
                 <strong className="ds-rating-num">{average.toFixed(1)}</strong>
                 <div className="ds-rating-copy">
-                  <StarRow value={average} size={16} label={`${average.toFixed(1)} nga 5 yje`} />
+                  <StarRow value={average} size={16} label={t('ratings.outOfFive', { score: average.toFixed(1) })} />
                   <span className="ds-rating-word">{ratingWord(average, count)}</span>
                   <span className="ds-muted">
-                    {count} {count === 1 ? 'vlerësim publik' : 'vlerësime publike'}
+                    {t('ratings.publicCount', { count })}
                   </span>
                 </div>
               </div>
-              <ul className="ds-rating-bars" aria-label="Shpërndarja e vlerësimeve">
+              <ul className="ds-rating-bars" aria-label={t('ratings.distribution')}>
                 {buckets.map((bucket) => (
                   <li key={bucket.stars}>
                     <span className="ds-rating-bar-label">
@@ -164,7 +166,7 @@ export default function ProviderRatingsPanel({
           ) : null}
 
           <Card className="uo-card ur-card">
-            <SectionHead title="Të gjitha vlerësimet" meta={<span className="uo-card-meta">{ratings.length}</span>} />
+            <SectionHead title={t('ratings.all')} meta={<span className="uo-card-meta">{ratings.length}</span>} />
             <ul className="ur-list ds-divided">
               {ratings.map((item) => (
                 <li key={item.id} className="ur-item">
@@ -183,40 +185,40 @@ export default function ProviderRatingsPanel({
                           ) : null}
                         </p>
                       </div>
-                      <StarRow value={item.score} size={14} label={`${item.score} nga 5 yje`} />
+                      <StarRow value={item.score} size={14} label={t('ratings.outOfFive', { score: item.score })} />
                     </div>
 
                     <p className={`ds-review-origin${item.verified ? ' is-verified' : ''}`}>
                       {item.verified ? <BadgeCheck size={14} aria-hidden /> : null}
-                      {item.verified ? 'Punë e përfunduar në Këshillohu' : 'Klient në Këshillohu'}
+                      {item.verified ? t('ratings.verified') : t('ratings.client')}
                     </p>
 
                     {item.comment?.trim() ? (
                       <p className="ur-need ds-review-text">{item.comment}</p>
                     ) : (
-                      <p className="ur-message">Pa koment, vetëm yje.</p>
+                      <p className="ur-message">{t('ratings.noComment')}</p>
                     )}
 
                     {item.response ? (
                       <div className="ur-response">
                         <div className="ur-response-head">
-                          <span className="ur-response-label">Përgjigja jote</span>
+                          <span className="ur-response-label">{t('ratings.yourReply')}</span>
                         </div>
                         <p>{item.response}</p>
                       </div>
                     ) : replyId === item.id ? (
                       <form className="ds-reply" onSubmit={(e) => void onReply(e, item.id)}>
                         <TextField fullWidth value={replyText} onChange={setReplyText} isDisabled={replying} isRequired>
-                          <Label>Përgjigju klientit</Label>
-                          <TextArea rows={3} maxLength={2000} placeholder="Faleminderit për feedback-un…" />
+                          <Label>{t('ratings.replyLabel')}</Label>
+                          <TextArea rows={3} maxLength={2000} placeholder={t('ratings.replyPlaceholder')} />
                         </TextField>
                         {replyError ? <p className="ds-error">{replyError}</p> : null}
                         <div className="ds-actions">
                           <Button type="button" variant="outline" size="sm" onPress={closeReply} isDisabled={replying}>
-                            Anulo
+                            {t('notifications.cancel')}
                           </Button>
                           <Button type="submit" variant="primary" size="sm" isPending={replying} isDisabled={!replyText.trim()}>
-                            {replying ? 'Duke dërguar…' : 'Dërgo përgjigjen'}
+                            {replying ? t('feedback.sending') : t('ratings.sendReply')}
                           </Button>
                         </div>
                       </form>
@@ -233,7 +235,7 @@ export default function ProviderRatingsPanel({
                           }}
                         >
                           <MessageSquareReply size={14} aria-hidden />
-                          Përgjigju
+                          {t('ratings.reply')}
                         </Button>
                       </div>
                     )}

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { toast } from '@heroui/react'
+import i18n from '../i18n'
 import {
   changePassword as changePasswordRequest,
   API_BASE_URL,
@@ -151,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       import('firebase/app'), import('firebase/auth'), import('../firebase'),
     ])
     if (!isFirebaseConfigured()) {
-      throw new Error('Hyrja me Google nuk është e konfiguruar')
+      throw new Error(i18n.t('system.google.notConfigured'))
     }
     try {
       const credential = await signInWithPopup(firebaseAuth(), googleProvider)
@@ -211,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearSession()
     setUserState(null)
-    toast.info('U çkyçe me sukses.')
+    toast.info(i18n.t('system.loggedOut'))
   }, [])
 
   const value = useMemo(

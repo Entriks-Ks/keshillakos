@@ -26,6 +26,7 @@ test('End-to-end complete call & chat flow with two authenticated users', async 
   const originalCallFindOne = Call.findOne
   const originalCallFindMany = Call.find
   const originalCallCreate = Call.create
+  const originalCallFindOneAndUpdate = Call.findOneAndUpdate
   const originalBlockFindOne = ChatBlock.findOne
   const originalBlockFind = ChatBlock.find
 
@@ -142,6 +143,13 @@ test('End-to-end complete call & chat flow with two authenticated users', async 
   }) as any
   Call.findById = (async (id: any) => {
     if (id.toString() === fakeCallId) return mockCall
+    return null
+  }) as any
+  Call.findOneAndUpdate = (async (filter: any, update: any) => {
+    if (String(filter._id) === String(fakeCallId) && mockCall.status === filter.status) {
+      Object.assign(mockCall, update.$set)
+      return mockCall
+    }
     return null
   }) as any
 
@@ -308,6 +316,7 @@ test('End-to-end complete call & chat flow with two authenticated users', async 
     Call.find = originalCallFindMany
     Call.findOne = originalCallFindOne
     Call.create = originalCallCreate
+    Call.findOneAndUpdate = originalCallFindOneAndUpdate
     ChatBlock.findOne = originalBlockFindOne
     ChatBlock.find = originalBlockFind
   }

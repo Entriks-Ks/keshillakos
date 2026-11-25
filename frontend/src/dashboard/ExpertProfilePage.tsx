@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Alert, Button, buttonVariants, Card, Chip, ProgressBar, Separator, Skeleton, toast } from '@heroui/react'
 import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import {
@@ -49,6 +50,7 @@ import SocialIcon from '../components/SocialIcon'
 import type { DomainDefinition } from '../data/domains'
 import { domainRequires } from '../data/domains'
 import { getErrorMessage } from '../utils/errors'
+import { catalogLanguage, dateLocale } from '../i18n'
 import ExpertInvitationsPanel from './ExpertInvitationsPanel'
 import { EmptyBlock, RowsSkeleton, SectionHead } from './OverviewParts'
 import { EmptyNote, filledSocialLinks, SocialLinksList } from './UserProfilePage'
@@ -60,30 +62,31 @@ import './ExpertProfile.css'
 
 type EditSection = 'professional' | 'location' | 'experience' | 'education' | 'certifications' | 'social'
 
+/** Translation keys; resolved with t() at render time. */
 const SECTION_COPY: Record<EditSection, { title: string; description: string }> = {
   professional: {
-    title: 'Informacioni profesional',
-    description: 'Titulli, kategoria, bio dhe specializimet shfaqen te profili yt publik.',
+    title: 'profile.expert.section.professional',
+    description: 'profile.expert.section.professionalText',
   },
   location: {
-    title: 'Lokacioni',
-    description: 'Qyteti ku bazohesh dhe zonat ku ofron shërbime.',
+    title: 'profile.expert.section.location',
+    description: 'profile.expert.section.locationText',
   },
   experience: {
-    title: 'Përvoja e punës',
-    description: 'Pozitat e mëparshme ose aktuale. Opsionale.',
+    title: 'profile.expert.section.experience',
+    description: 'profile.expert.section.experienceText',
   },
   education: {
-    title: 'Arsimi',
-    description: 'Diplomat dhe programet e studimit. Opsionale.',
+    title: 'profile.expert.section.education',
+    description: 'profile.expert.section.educationText',
   },
   certifications: {
-    title: 'Certifikimet',
-    description: 'Certifikimet dhe licencat profesionale. Opsionale.',
+    title: 'profile.expert.section.certifications',
+    description: 'profile.expert.section.certificationsText',
   },
   social: {
-    title: 'Rrjetet sociale',
-    description: 'Lidhjet shfaqen te profili publik. Të gjitha janë opsionale.',
+    title: 'profile.expert.section.social',
+    description: 'profile.expert.section.socialText',
   },
 }
 
@@ -94,7 +97,7 @@ function parseSkills(raw: string) {
 function formatMonthYear(value?: MonthYear) {
   if (!value?.year) return ''
   try {
-    return new Date(value.year, Math.max(0, (value.month || 1) - 1)).toLocaleDateString('sq-AL', { month: 'short', year: 'numeric' })
+    return new Date(value.year, Math.max(0, (value.month || 1) - 1)).toLocaleDateString(dateLocale(), { month: 'short', year: 'numeric' })
   } catch {
     return `${value.month}/${value.year}`
   }
@@ -105,14 +108,16 @@ function formatPeriod(from: MonthYear, to: MonthYear | undefined, current: boole
 }
 
 function Optional() {
-  return <span className="ep-optional">Opsionale</span>
+  const { t } = useTranslation()
+  return <span className="ep-optional">{t('profile.optional')}</span>
 }
 
-function EditButton({ onPress, label = 'Ndrysho' }: { onPress: () => void; label?: string }) {
+function EditButton({ onPress, label }: { onPress: () => void; label?: string }) {
+  const { t } = useTranslation()
   return (
     <Button size="sm" variant="ghost" className="uo-link-btn" onPress={onPress}>
-      {label === 'Ndrysho' ? <Pencil size={14} aria-hidden /> : <Plus size={15} aria-hidden />}
-      {label}
+      {label ? <Plus size={15} aria-hidden /> : <Pencil size={14} aria-hidden />}
+      {label || t('profile.edit')}
     </Button>
   )
 }
@@ -128,6 +133,7 @@ function MonthYearFields({
   disabled?: boolean
   label: string
 }) {
+  const { t } = useTranslation()
   const years = Array.from({ length: 76 }, (_, i) => new Date().getFullYear() - i)
   return (
     <div className="ds-field">
@@ -138,7 +144,7 @@ function MonthYearFields({
             value={value.month}
             onChange={(e) => onChange({ ...value, month: Number(e.target.value) })}
             disabled={disabled}
-            aria-label={`${label} muaji`}
+            aria-label={t('profile.expert.monthAria', { label })}
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
               <option key={month} value={month}>{String(month).padStart(2, '0')}</option>
@@ -151,7 +157,7 @@ function MonthYearFields({
             value={value.year}
             onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
             disabled={disabled}
-            aria-label={`${label} viti`}
+            aria-label={t('profile.expert.yearAria', { label })}
           >
             {years.map((year) => (
               <option key={year} value={year}>{year}</option>
@@ -165,13 +171,14 @@ function MonthYearFields({
 }
 
 function RepeatItem({ title, onRemove, disabled, children }: { title: string; onRemove: () => void; disabled?: boolean; children: ReactNode }) {
+  const { t } = useTranslation()
   return (
     <div className="ep-repeat-item">
       <div className="ep-repeat-head">
         <strong>{title}</strong>
         <Button size="sm" variant="ghost" className="ds-danger-btn" onPress={onRemove} isDisabled={disabled}>
           <Trash2 size={14} aria-hidden />
-          Hiq
+          {t('profile.expert.remove')}
         </Button>
       </div>
       <div className="ep-fields">{children}</div>
@@ -180,6 +187,7 @@ function RepeatItem({ title, onRemove, disabled, children }: { title: string; on
 }
 
 export default function ExpertProfilePage({ onSaved, completion }: { onSaved: () => Promise<void>; completion: ProfileCompletion | null }) {
+  const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const route = useLocation()
@@ -311,7 +319,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       setProfile(next)
       setPhotoPreview(mediaUrl(next.publicProfile.photoUrl))
       await onSaved()
-      toast.success('Fotoja e profilit u ngarkua.')
+      toast.success(t('profile.photoUploaded'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
       setPhotoPreview(mediaUrl(profile.publicProfile.photoUrl))
@@ -337,7 +345,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       setProfile(next)
       setCoverPreview(mediaUrl(next.publicProfile.coverUrl))
       await onSaved()
-      toast.success('Sfondi u ngarkua.')
+      toast.success(t('profile.coverUploaded'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
       setCoverPreview(mediaUrl(profile.publicProfile.coverUrl))
@@ -351,16 +359,16 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
     e.preventDefault()
     if (!profile) return
     if (!category || !subcategoryId) {
-      setError('Kategoria dhe nënkategoria janë të detyrueshme.')
+      setError(t('profile.expert.categoryRequired'))
       return
     }
     if (!location) {
-      setError('Zgjidh qytetin / zonën e shërbimit.')
+      setError(t('profile.expert.locationRequired'))
       return
     }
     const years = Number(yearsOfExperience)
     if (!Number.isInteger(years) || years < 0 || years > 60) {
-      setError('Vitet e përvojës duhet të jenë një numër i plotë 0–60.')
+      setError(t('profile.expert.yearsInvalid'))
       return
     }
     setError('')
@@ -390,7 +398,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       setProfile(next)
       hydrate(next, domains)
       await onSaved()
-      toast.success('Profili i ekspertit u ruajt.')
+      toast.success(t('profile.expert.saved'))
       navigate('/dashboard/provider/profile')
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -418,13 +426,13 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
   const header = (
     <header className="uo-head">
       <div className="uo-head-copy">
-        <h1>Profili</h1>
-        <p>Menaxho profilin tënd profesional. Këto të dhëna shfaqen te profili publik dhe te shërbimet që ofron.</p>
+        <h1>{t('dash.profile')}</h1>
+        <p>{t('profile.expert.lead')}</p>
       </div>
       {profile && user ? (
         <Link to={`/providers/${user.uid}`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
           <ExternalLink size={16} aria-hidden />
-          Shiko profilin publik
+          {t('profile.viewPublic')}
         </Link>
       ) : null}
     </header>
@@ -460,7 +468,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
           <Alert status="danger" className="uo-alert">
             <Alert.Indicator />
             <Alert.Content>
-              <Alert.Title>Profili nuk u ngarkua</Alert.Title>
+              <Alert.Title>{t('profile.expert.loadError')}</Alert.Title>
               <Alert.Description>{loadError}</Alert.Description>
             </Alert.Content>
           </Alert>
@@ -468,11 +476,11 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
           <Card className="uo-card">
             <Card.Content className="uo-card-body ds-pad-top">
               <EmptyBlock
-                title="Nuk ke ende profil eksperti"
-                text="Krijo profilin e ekspertit për të publikuar shërbime dhe për t’u shfaqur te ofertat."
+                title={t('profile.expert.emptyTitle')}
+                text={t('profile.expert.emptyText')}
                 action={
                   <Link to="/dashboard/provider/create" className={buttonVariants({ variant: 'primary' })}>
-                    Krijo profilin e ekspertit
+                    {t('profile.expert.create')}
                   </Link>
                 }
               />
@@ -486,37 +494,37 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || user?.name || profile.publicProfile.displayName
   const subcategory = subcategories.find((item) => item._id === subcategoryId)
   const categoryText = [selectedDomain?.labelSq, subcategory?.name.sq].filter(Boolean).join(' › ')
-  const locationText = location ? locationLabel(location, 'sq') : ''
+  const locationText = location ? locationLabel(location, catalogLanguage(i18n.language)) : ''
   const skills = parseSkills(skillsText)
   const socialEntries = filledSocialLinks(socialLinks)
   const percent = completion?.exists && completion.overallPercent !== null
     ? Math.max(0, Math.min(100, Math.round(completion.overallPercent)))
     : null
   const missing = completion?.section.missingRequired ?? []
-  const notAdded = <span className="up-missing">Nuk është shtuar</span>
+  const notAdded = <span className="up-missing">{t('profile.notAdded')}</span>
   const copy = SECTION_COPY[section]
 
   if (editing) {
     return (
       <section className="uo up">
-        <header className="uo-head"><div className="uo-head-copy"><h1>Ndrysho profilin</h1><p>Menaxho të dhënat e profilit tënd profesional.</p></div></header>
-        <div className="ep-edit-nav" role="group" aria-label="Seksionet e profilit">
-          {(Object.keys(SECTION_COPY) as EditSection[]).map((item) => <Button key={item} size="sm" variant={section === item ? 'primary' : 'outline'} onPress={() => setSection(item)}>{SECTION_COPY[item].title}</Button>)}
+        <header className="uo-head"><div className="uo-head-copy"><h1>{t('profile.editProfile')}</h1><p>{t('profile.expert.editLead')}</p></div></header>
+        <div className="ep-edit-nav" role="group" aria-label={t('profile.expert.sections')}>
+          {(Object.keys(SECTION_COPY) as EditSection[]).map((item) => <Button key={item} size="sm" variant={section === item ? 'primary' : 'outline'} onPress={() => setSection(item)}>{t(SECTION_COPY[item].title)}</Button>)}
         </div>
         <form className="up-form" onSubmit={onSave}>
           <Card className="uo-card">
-            <SectionHead title={copy.title} />
+            <SectionHead title={t(copy.title)} />
             <Card.Content className="uo-card-body ep-modal-body">
-              <p className="ds-hint">{copy.description}</p>
+              <p className="ds-hint">{t(copy.description)}</p>
 
                   {section === 'professional' ? (
                     <div className="ep-fields">
                       <label className="ds-field ep-full">
-                        <span className="ds-label">Titulli profesional</span>
-                        <input className="ds-input" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} placeholder="p.sh. Avokat" />
+                        <span className="ds-label">{t('profile.expert.titleLabel')}</span>
+                        <input className="ds-input" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} placeholder={t('profile.expert.titlePlaceholder')} />
                       </label>
                       <label className="ds-field">
-                        <span className="ds-label">Kategoria</span>
+                        <span className="ds-label">{t('offers.category')}</span>
                         <span className="ds-select">
                           <select value={category} onChange={(e) => setCategory(e.target.value)} required>
                             {domains.map((domain) => (
@@ -527,10 +535,10 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                         </span>
                       </label>
                       <label className="ds-field">
-                        <span className="ds-label">Nënkategoria</span>
+                        <span className="ds-label">{t('profile.expert.subcategory')}</span>
                         <span className="ds-select">
                           <select value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} required disabled={!subcategories.length}>
-                            {!subcategories.length ? <option value="">Nuk ka nënkategori</option> : null}
+                            {!subcategories.length ? <option value="">{t('profile.expert.noSubcategories')}</option> : null}
                             {subcategories.map((item) => (
                               <option key={item._id} value={item._id}>{item.name.sq}</option>
                             ))}
@@ -539,7 +547,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                         </span>
                       </label>
                       <label className="ds-field">
-                        <span className="ds-label">Vitet e përvojës</span>
+                        <span className="ds-label">{t('profile.expert.years')}</span>
                         <input
                           className="ds-input"
                           type="number"
@@ -549,31 +557,31 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                           value={yearsOfExperience}
                           onChange={(e) => setYearsOfExperience(e.target.value)}
                           required
-                          placeholder="p.sh. 5"
+                          placeholder={t('profile.expert.yearsPlaceholder')}
                         />
                       </label>
                       {needsLicense ? (
                         <label className="ds-field">
-                          <span className="ds-label">Licenca / certifikimi</span>
-                          <input className="ds-input" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required maxLength={120} placeholder="Numri i licencës" />
+                          <span className="ds-label">{t('profile.expert.license')}</span>
+                          <input className="ds-input" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required maxLength={120} placeholder={t('profile.expert.licensePlaceholder')} />
                         </label>
                       ) : null}
                       <label className="ds-field ep-full">
-                        <span className="ds-label">Bio / Përshkrimi</span>
+                        <span className="ds-label">{t('profile.expert.bioDescription')}</span>
                         <textarea className="ds-input ep-textarea" value={bio} onChange={(e) => setBio(e.target.value)} required rows={5} maxLength={3000} />
                       </label>
                       <label className="ds-field ep-full">
-                        <span className="ds-label">Specializimet</span>
-                        <input className="ds-input" value={skillsText} onChange={(e) => setSkillsText(e.target.value)} required placeholder="p.sh. Kontrata, Tatime" />
-                        <span className="ds-hint">Ndaji me presje.</span>
+                        <span className="ds-label">{t('profile.expert.specializations')}</span>
+                        <input className="ds-input" value={skillsText} onChange={(e) => setSkillsText(e.target.value)} required placeholder={t('profile.expert.specializationsPlaceholder')} />
+                        <span className="ds-hint">{t('profile.expert.commaHint')}</span>
                       </label>
-                      <p className="ds-hint ep-full">Emri publik ndryshohet nga profili privat.</p>
+                      <p className="ds-hint ep-full">{t('profile.expert.publicNameHint')}</p>
                     </div>
                   ) : null}
 
                   {section === 'location' ? (
                     <div className="ds-field">
-                      <span className="ds-label">Qyteti / zona e shërbimit</span>
+                      <span className="ds-label">{t('profile.expert.serviceArea')}</span>
                       <ProviderLocationFields
                         location={location}
                         serviceAreas={serviceAreas}
@@ -589,12 +597,12 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                       {workExperience.map((entry, index) => (
                         <RepeatItem
                           key={`work-${index}`}
-                          title={`Përvoja ${index + 1}`}
+                          title={t('profile.expert.experienceN', { n: index + 1 })}
                           disabled={saving}
                           onRemove={() => setWorkExperience((rows) => rows.filter((_, i) => i !== index))}
                         >
                           <label className="ds-field">
-                            <span className="ds-label">Pozita</span>
+                            <span className="ds-label">{t('profile.expert.position')}</span>
                             <input
                               className="ds-input"
                               value={entry.position}
@@ -604,7 +612,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <label className="ds-field">
-                            <span className="ds-label">Kompania / Organizata</span>
+                            <span className="ds-label">{t('profile.expert.organization')}</span>
                             <input
                               className="ds-input"
                               value={entry.organization}
@@ -614,14 +622,14 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <MonthYearFields
-                            label="Nga"
+                            label={t('profile.expert.from')}
                             value={entry.from}
                             disabled={saving}
                             onChange={(from) => setWorkExperience((rows) => rows.map((row, i) => (i === index ? { ...row, from } : row)))}
                           />
                           {!entry.current ? (
                             <MonthYearFields
-                              label="Deri"
+                              label={t('profile.expert.to')}
                               value={entry.to || entry.from}
                               disabled={saving}
                               onChange={(to) => setWorkExperience((rows) => rows.map((row, i) => (i === index ? { ...row, to } : row)))}
@@ -635,10 +643,10 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                                 i === index ? { ...row, current: e.target.checked, to: e.target.checked ? undefined : (row.to || row.from) } : row
                               )))}
                             />
-                            Aktualisht punoj këtu
+                            {t('profile.expert.workingHere')}
                           </label>
                           <label className="ds-field ep-full">
-                            <span className="ds-label">Përshkrimi <Optional /></span>
+                            <span className="ds-label">{t('profile.description')} <Optional /></span>
                             <textarea
                               className="ds-input ep-textarea"
                               value={entry.description || ''}
@@ -651,7 +659,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                       ))}
                       <Button variant="outline" className="ep-add" onPress={() => setWorkExperience((rows) => [...rows, emptyWorkExperience()])} isDisabled={saving}>
                         <Plus size={16} aria-hidden />
-                        Shto përvojë pune
+                        {t('profile.expert.addWork')}
                       </Button>
                     </div>
                   ) : null}
@@ -661,12 +669,12 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                       {education.map((entry, index) => (
                         <RepeatItem
                           key={`edu-${index}`}
-                          title={`Arsimi ${index + 1}`}
+                          title={t('profile.expert.educationN', { n: index + 1 })}
                           disabled={saving}
                           onRemove={() => setEducation((rows) => rows.filter((_, i) => i !== index))}
                         >
                           <label className="ds-field ep-full">
-                            <span className="ds-label">Institucioni</span>
+                            <span className="ds-label">{t('profile.expert.institution')}</span>
                             <input
                               className="ds-input"
                               value={entry.institution}
@@ -676,7 +684,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <label className="ds-field">
-                            <span className="ds-label">Diploma / Programi</span>
+                            <span className="ds-label">{t('profile.expert.degree')}</span>
                             <input
                               className="ds-input"
                               value={entry.degree}
@@ -686,7 +694,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <label className="ds-field">
-                            <span className="ds-label">Fusha e studimit</span>
+                            <span className="ds-label">{t('profile.expert.fieldOfStudy')}</span>
                             <input
                               className="ds-input"
                               value={entry.fieldOfStudy}
@@ -696,14 +704,14 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <MonthYearFields
-                            label="Nga"
+                            label={t('profile.expert.from')}
                             value={entry.from}
                             disabled={saving}
                             onChange={(from) => setEducation((rows) => rows.map((row, i) => (i === index ? { ...row, from } : row)))}
                           />
                           {!entry.current ? (
                             <MonthYearFields
-                              label="Deri"
+                              label={t('profile.expert.to')}
                               value={entry.to || entry.from}
                               disabled={saving}
                               onChange={(to) => setEducation((rows) => rows.map((row, i) => (i === index ? { ...row, to } : row)))}
@@ -717,13 +725,13 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                                 i === index ? { ...row, current: e.target.checked, to: e.target.checked ? undefined : (row.to || row.from) } : row
                               )))}
                             />
-                            Aktualisht studioj
+                            {t('profile.expert.studying')}
                           </label>
                         </RepeatItem>
                       ))}
                       <Button variant="outline" className="ep-add" onPress={() => setEducation((rows) => [...rows, emptyEducation()])} isDisabled={saving}>
                         <Plus size={16} aria-hidden />
-                        Shto arsim
+                        {t('profile.expert.addEducation')}
                       </Button>
                     </div>
                   ) : null}
@@ -733,12 +741,12 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                       {certifications.map((entry, index) => (
                         <RepeatItem
                           key={`cert-${index}`}
-                          title={`Certifikimi ${index + 1}`}
+                          title={t('profile.expert.certificationN', { n: index + 1 })}
                           disabled={saving}
                           onRemove={() => setCertifications((rows) => rows.filter((_, i) => i !== index))}
                         >
                           <label className="ds-field">
-                            <span className="ds-label">Emri i certifikimit</span>
+                            <span className="ds-label">{t('profile.expert.certName')}</span>
                             <input
                               className="ds-input"
                               value={entry.name}
@@ -748,7 +756,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <label className="ds-field">
-                            <span className="ds-label">Institucioni që e ka lëshuar</span>
+                            <span className="ds-label">{t('profile.expert.issuer')}</span>
                             <input
                               className="ds-input"
                               value={entry.issuer}
@@ -758,7 +766,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <label className="ds-field">
-                            <span className="ds-label">Viti</span>
+                            <span className="ds-label">{t('profile.expert.year')}</span>
                             <input
                               className="ds-input"
                               type="number"
@@ -771,7 +779,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                             />
                           </label>
                           <label className="ds-field">
-                            <span className="ds-label">URL e kredencialit <Optional /></span>
+                            <span className="ds-label">{t('profile.expert.credentialUrl')} <Optional /></span>
                             <input
                               className="ds-input"
                               value={entry.credentialUrl || ''}
@@ -785,7 +793,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                       ))}
                       <Button variant="outline" className="ep-add" onPress={() => setCertifications((rows) => [...rows, emptyCertification()])} isDisabled={saving}>
                         <Plus size={16} aria-hidden />
-                        Shto certifikim
+                        {t('profile.expert.addCertification')}
                       </Button>
                     </div>
                   ) : null}
@@ -817,8 +825,8 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
             </Card.Content>
           </Card>
           <div className="up-actions">
-            <Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={saving}>Anulo</Button>
-            <Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null}>{saving ? 'Duke ruajtur…' : 'Ruaj ndryshimet'}</Button>
+            <Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={saving}>{t('notifications.cancel')}</Button>
+            <Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null}>{saving ? t('req.saving') : t('profile.saveChanges')}</Button>
           </div>
         </form>
       </section>
@@ -833,7 +841,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Disa të dhëna nuk u ngarkuan</Alert.Title>
+            <Alert.Title>{t('profile.expert.partialError')}</Alert.Title>
             <Alert.Description>{loadError}</Alert.Description>
           </Alert.Content>
         </Alert>
@@ -850,8 +858,8 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
               className="ep-avatar-btn"
               onClick={() => photoInput.current?.click()}
               disabled={uploading === 'photo'}
-              aria-label="Ndrysho foton e profilit"
-              title="Ndrysho foton e profilit"
+              aria-label={t('profile.changePhotoAria')}
+              title={t('profile.changePhotoAria')}
             >
               <Camera size={15} aria-hidden />
             </button>
@@ -872,25 +880,25 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
               <h2>{displayName}</h2>
               {percent === 100 ? (
                 <Chip size="sm" variant="soft" color="success">
-                  <Chip.Label>Profili i plotë</Chip.Label>
+                  <Chip.Label>{t('profile.complete')}</Chip.Label>
                 </Chip>
               ) : null}
             </div>
-            <p className="up-hero-role">{title || 'Ofrues shërbimi'}</p>
+            <p className="up-hero-role">{title || t('role.provider')}</p>
             <ul className="up-hero-meta">
               {categoryText ? (
                 <li className="ep-hero-category"><BriefcaseBusiness size={15} aria-hidden />{categoryText}</li>
               ) : null}
               {locationText ? <li><MapPin size={15} aria-hidden />{locationText}</li> : null}
               {yearsOfExperience ? (
-                <li><Clock size={15} aria-hidden />{yearsOfExperience} {yearsOfExperience === '1' ? 'vit' : 'vite'} përvojë</li>
+                <li><Clock size={15} aria-hidden />{t('profile.expert.yearsExperience', { count: Number(yearsOfExperience) })}</li>
               ) : null}
             </ul>
           </div>
         </div>
         <Button variant="primary" className="up-hero-action" onPress={() => openEdit('professional')}>
           <Pencil size={16} aria-hidden />
-          Ndrysho profilin
+          {t('profile.editProfile')}
         </Button>
       </Card>
 
@@ -899,38 +907,38 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       <div className="uo-grid up-grid">
         <div className="up-col">
           <Card className="uo-card">
-            <SectionHead title="Informacioni profesional" action={<EditButton onPress={() => openEdit('professional')} />} />
+            <SectionHead title={t('profile.expert.section.professional')} action={<EditButton onPress={() => openEdit('professional')} />} />
             <Card.Content className="uo-card-body ep-stack">
               <dl className="up-facts">
                 <div className="up-fact">
-                  <dt>Titulli profesional</dt>
+                  <dt>{t('profile.expert.titleLabel')}</dt>
                   <dd>{title || notAdded}</dd>
                 </div>
                 <div className="up-fact">
-                  <dt>Vitet e përvojës</dt>
+                  <dt>{t('profile.expert.years')}</dt>
                   <dd>{yearsOfExperience || notAdded}</dd>
                 </div>
                 <div className="up-fact">
-                  <dt>Kategoria</dt>
+                  <dt>{t('offers.category')}</dt>
                   <dd>{selectedDomain?.labelSq || notAdded}</dd>
                 </div>
                 <div className="up-fact">
-                  <dt>Nënkategoria</dt>
+                  <dt>{t('profile.expert.subcategory')}</dt>
                   <dd>{subcategory?.name.sq || notAdded}</dd>
                 </div>
                 {needsLicense ? (
                   <div className="up-fact">
-                    <dt>Licenca / certifikimi</dt>
+                    <dt>{t('profile.expert.license')}</dt>
                     <dd>{licenseNumber || notAdded}</dd>
                   </div>
                 ) : null}
               </dl>
               <div className="ep-block">
-                <h3 className="ep-sub">Bio</h3>
+                <h3 className="ep-sub">{t('profile.expert.bio')}</h3>
                 {bio ? <p className="ep-bio">{bio}</p> : notAdded}
               </div>
               <div className="ep-block">
-                <h3 className="ep-sub">Specializimet</h3>
+                <h3 className="ep-sub">{t('profile.expert.specializations')}</h3>
                 {skills.length ? (
                   <div className="up-chips">
                     {skills.map((skill) => (
@@ -946,7 +954,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
 
           <Card className="uo-card">
             <SectionHead
-              title="Përvoja e punës"
+              title={t('profile.expert.section.experience')}
               meta={workExperience.length ? <span className="uo-card-meta">{workExperience.length}</span> : null}
               action={workExperience.length ? <EditButton onPress={() => openEdit('experience')} /> : null}
             />
@@ -959,21 +967,21 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                       <div className="ep-entry-copy">
                         <strong>{entry.position}</strong>
                         <span>{entry.organization}</span>
-                        <span className="ep-entry-period">{formatPeriod(entry.from, entry.to, entry.current, 'Sot')}</span>
+                        <span className="ep-entry-period">{formatPeriod(entry.from, entry.to, entry.current, t('profile.expert.present'))}</span>
                         {entry.description ? <p>{entry.description}</p> : null}
                       </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <EmptyNote text="Nuk ke shtuar përvojë pune." action="Shto përvojë" onAction={() => openEdit('experience')} />
+                <EmptyNote text={t('profile.expert.experienceEmpty')} action={t('profile.expert.addExperience')} onAction={() => openEdit('experience')} />
               )}
             </Card.Content>
           </Card>
 
           <Card className="uo-card">
             <SectionHead
-              title="Arsimi"
+              title={t('profile.expert.section.education')}
               meta={education.length ? <span className="uo-card-meta">{education.length}</span> : null}
               action={education.length ? <EditButton onPress={() => openEdit('education')} /> : null}
             />
@@ -986,20 +994,20 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                       <div className="ep-entry-copy">
                         <strong>{[entry.degree, entry.fieldOfStudy].filter(Boolean).join(' · ')}</strong>
                         <span>{entry.institution}</span>
-                        <span className="ep-entry-period">{formatPeriod(entry.from, entry.to, entry.current, 'Aktualisht')}</span>
+                        <span className="ep-entry-period">{formatPeriod(entry.from, entry.to, entry.current, t('profile.expert.ongoing'))}</span>
                       </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <EmptyNote text="Nuk ke shtuar arsimin." action="Shto arsim" onAction={() => openEdit('education')} />
+                <EmptyNote text={t('profile.expert.educationEmpty')} action={t('profile.expert.addEducation')} onAction={() => openEdit('education')} />
               )}
             </Card.Content>
           </Card>
 
           <Card className="uo-card">
             <SectionHead
-              title="Certifikimet"
+              title={t('profile.expert.section.certifications')}
               meta={certifications.length ? <span className="uo-card-meta">{certifications.length}</span> : null}
               action={certifications.length ? <EditButton onPress={() => openEdit('certifications')} /> : null}
             />
@@ -1014,7 +1022,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                         <span>{[entry.issuer, entry.year].filter(Boolean).join(' · ')}</span>
                         {entry.credentialUrl ? (
                           <a href={entry.credentialUrl} target="_blank" rel="noopener noreferrer" className="ep-entry-link">
-                            Shiko kredencialin
+                            {t('profile.expert.viewCredential')}
                             <ExternalLink size={13} aria-hidden />
                           </a>
                         ) : null}
@@ -1023,7 +1031,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                   ))}
                 </ul>
               ) : (
-                <EmptyNote text="Nuk ke shtuar certifikime." action="Shto certifikim" onAction={() => openEdit('certifications')} />
+                <EmptyNote text={t('profile.expert.certificationsEmpty')} action={t('profile.expert.addCertification')} onAction={() => openEdit('certifications')} />
               )}
             </Card.Content>
           </Card>
@@ -1032,16 +1040,16 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
         <aside className="up-col">
           {percent !== null && percent < 100 ? (
             <Card className="uo-card">
-              <SectionHead title="Plotëso profilin" meta={<span className="uo-card-meta is-strong">{percent}%</span>} />
+              <SectionHead title={t('profile.completeTitle')} meta={<span className="uo-card-meta is-strong">{percent}%</span>} />
               <Card.Content className="uo-card-body uo-setup">
-                <ProgressBar aria-label={`Kompletimi i profilit ${percent}%`} value={percent} className="uo-progress">
+                <ProgressBar aria-label={t('profile.completionAria', { percent })} value={percent} className="uo-progress">
                   <ProgressBar.Track>
                     <ProgressBar.Fill />
                   </ProgressBar.Track>
                 </ProgressBar>
                 {missing.length ? (
                   <div className="uo-missing">
-                    <span>Mungojnë:</span>
+                    <span>{t('profile.missing')}</span>
                     {missing.map((field) => (
                       <Chip key={field.key} size="sm" variant="soft">
                         <Chip.Label>{field.label}</Chip.Label>
@@ -1051,29 +1059,29 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                 ) : null}
                 <Separator />
                 <Button size="sm" variant="ghost" className="uo-link-btn up-setup-action" onPress={() => openEdit('professional')}>
-                  Plotëso tani
+                  {t('profile.completeNow')}
                 </Button>
               </Card.Content>
             </Card>
           ) : null}
 
           <Card className="uo-card">
-            <SectionHead title="Lokacioni" action={<EditButton onPress={() => openEdit('location')} />} />
+            <SectionHead title={t('profile.expert.section.location')} action={<EditButton onPress={() => openEdit('location')} />} />
             <Card.Content className="uo-card-body ep-stack">
               <div className="ep-place">
                 <span className="uo-row-icon" aria-hidden><MapPin size={16} /></span>
                 <div className="ep-entry-copy">
-                  <span>Qyteti</span>
+                  <span>{t('profile.city')}</span>
                   <strong>{locationText || notAdded}</strong>
                 </div>
               </div>
               {serviceAreas.length ? (
                 <div className="ep-block">
-                  <h3 className="ep-sub">Zonat e shërbimit</h3>
+                  <h3 className="ep-sub">{t('profile.expert.serviceAreas')}</h3>
                   <div className="up-chips">
                     {serviceAreas.map((area) => (
                       <Chip key={area.city._id} size="sm" variant="soft">
-                        <Chip.Label>{locationLabel(area, 'sq')}</Chip.Label>
+                        <Chip.Label>{locationLabel(area, catalogLanguage(i18n.language))}</Chip.Label>
                       </Chip>
                     ))}
                   </div>
@@ -1084,7 +1092,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
 
           <Card className="uo-card">
             <SectionHead
-              title="Rrjetet sociale"
+              title={t('footer.social')}
               meta={socialEntries.length ? <span className="uo-card-meta">{socialEntries.length}</span> : null}
               action={socialEntries.length ? <EditButton onPress={() => openEdit('social')} /> : null}
             />
@@ -1092,19 +1100,19 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
               {socialEntries.length ? (
                 <SocialLinksList entries={socialEntries} className="ep-social" />
               ) : (
-                <EmptyNote text="Nuk ke shtuar asnjë rrjet social." action="Shto rrjete" onAction={() => openEdit('social')} />
+                <EmptyNote text={t('profile.socialEmpty')} action={t('profile.socialAdd')} onAction={() => openEdit('social')} />
               )}
             </Card.Content>
           </Card>
 
           <Card className="uo-card">
-            <SectionHead title="Sfondi i profilit publik" />
+            <SectionHead title={t('profile.cover')} />
             <Card.Content className="uo-card-body ep-stack">
               <div className="ep-cover">
                 <img src={coverPreview || '/images/login-advice.png'} alt="" />
               </div>
               <p className="ds-hint">
-                {coverPreview ? '' : 'Po përdoret sfondi i parazgjedhur. '}
+                {coverPreview ? '' : `${t('profile.coverDefault')} `}
                 {IMAGE_ACCEPT_HINT}.
               </p>
               <Button
@@ -1115,7 +1123,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                 onPress={() => coverInput.current?.click()}
               >
                 <ImageIcon size={15} aria-hidden />
-                {uploading === 'cover' ? 'Duke ngarkuar…' : 'Ndrysho sfondin'}
+                {uploading === 'cover' ? t('profile.uploading') : t('profile.changeCover')}
               </Button>
               <input
                 ref={coverInput}
@@ -1134,7 +1142,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       </div>
 
 
-      <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { cancelEdit(); setConfirmCancel(false) }} title="Hidh ndryshimet?" description="Ndryshimet e paruajtura në profilin e ekspertit do të humbasin." confirmLabel="Hidh ndryshimet" />
+      <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { cancelEdit(); setConfirmCancel(false) }} title={t('profile.discardTitle')} description={t('profile.expert.discardText')} confirmLabel={t('profile.discardConfirm')} />
     </section>
   )
 }

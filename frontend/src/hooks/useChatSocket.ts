@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { API_BASE_URL } from '../api/auth'
 import type { ChatMessage } from '../api/chat'
+import i18n from '../i18n'
 
 type TypingEvent = {
   conversationId: string
@@ -56,13 +57,13 @@ export function useChatSocket(enabled: boolean, ownerUid?: string) {
 
   const joinConversation = useCallback((conversationId: string): Promise<AckResult> => {
     const socket = socketRef.current
-    if (!socket) return Promise.resolve({ ok: false, error: 'Socket i shkëputur' })
+    if (!socket) return Promise.resolve({ ok: false, error: i18n.t('chat.socket.disconnected') })
 
     return new Promise((resolve) => {
       activeConversationRef.current = conversationId
       socket.emit('conversation:join', { conversationId, active: document.visibilityState === 'visible' }, (res: AckResult) => {
         if (res?.ok && activeConversationRef.current === conversationId) socket.emit('conversation:visibility', { conversationId, active: document.visibilityState === 'visible' })
-        resolve(res || { ok: false, error: 'Pa përgjigje' })
+        resolve(res || { ok: false, error: i18n.t('chat.socket.noResponse') })
       })
     })
   }, [])
@@ -74,7 +75,7 @@ export function useChatSocket(enabled: boolean, ownerUid?: string) {
 
   const sendMessage = useCallback((conversationId: string, body: string): Promise<AckResult> => {
     const socket = socketRef.current
-    if (!socket) return Promise.resolve({ ok: false, error: 'Socket i shkëputur' })
+    if (!socket) return Promise.resolve({ ok: false, error: i18n.t('chat.socket.disconnected') })
 
     return new Promise((resolve) => {
       socket.emit('message:send', { conversationId, body }, (res: AckResult) => {
@@ -82,7 +83,7 @@ export function useChatSocket(enabled: boolean, ownerUid?: string) {
           resolve({ ok: true, message: res.message })
           return
         }
-        resolve({ ok: false, error: res?.error || 'Dërgimi dështoi' })
+        resolve({ ok: false, error: res?.error || i18n.t('chat.socket.sendFailed') })
       })
     })
   }, [])

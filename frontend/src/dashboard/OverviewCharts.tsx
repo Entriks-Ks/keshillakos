@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+import i18n, { dateLocale } from '../i18n'
+
 type ChartSlice = {
   label: string
   value: number
@@ -46,13 +49,15 @@ export function OverviewBarChart({
   title,
   subtitle,
   items,
-  emptyText = 'Nuk ka të dhëna ende.',
+  emptyText: emptyTextProp,
 }: {
   title: string
   subtitle?: string
   items: ChartSlice[]
   emptyText?: string
 }) {
+  const { t } = useTranslation()
+  const emptyText = emptyTextProp ?? t('overview.charts.noData')
   const max = Math.max(...items.map((item) => item.value), 1)
   const hasData = items.some((item) => item.value > 0)
 
@@ -107,7 +112,7 @@ export function OverviewDonutChart({
   items,
   centerLabel,
   centerValue,
-  emptyText = 'Nuk ka të dhëna ende.',
+  emptyText: emptyTextProp,
 }: {
   title: string
   subtitle?: string
@@ -116,6 +121,8 @@ export function OverviewDonutChart({
   centerValue?: string | number
   emptyText?: string
 }) {
+  const { t } = useTranslation()
+  const emptyText = emptyTextProp ?? t('overview.charts.noData')
   const total = items.reduce((sum, item) => sum + item.value, 0)
   const hasData = total > 0
   const size = 180
@@ -182,7 +189,7 @@ export function OverviewDonutChart({
               {centerValue ?? total}
             </text>
             <text x={cx} y={cy + 16} textAnchor="middle" className="dash-donut-center-label">
-              {centerLabel || 'Gjithsej'}
+              {centerLabel || t('overview.charts.total')}
             </text>
           </svg>
           <ul className="dash-donut-legend">
@@ -263,10 +270,10 @@ export function requestStatusSlices(
   counts: Partial<Record<string, number>>,
 ): ChartSlice[] {
   return [
-    { label: 'Në pritje', value: counts.pending || 0, color: CHART_COLORS.warning },
-    { label: 'Pranuara', value: counts.accepted || 0, color: CHART_COLORS.success },
-    { label: 'Përfunduar', value: counts.completed || 0, color: CHART_COLORS.accent },
-    { label: 'Refuzuar', value: counts.rejected || 0, color: CHART_COLORS.danger },
+    { label: i18n.t('status.pending'), value: counts.pending || 0, color: CHART_COLORS.warning },
+    { label: i18n.t('status.accepted'), value: counts.accepted || 0, color: CHART_COLORS.success },
+    { label: i18n.t('status.completed'), value: counts.completed || 0, color: CHART_COLORS.accent },
+    { label: i18n.t('status.rejected'), value: counts.rejected || 0, color: CHART_COLORS.danger },
   ]
 }
 
@@ -301,7 +308,7 @@ export function weekActivitySlices(
   return counts.map((value, index) => {
     const date = new Date(today)
     date.setDate(today.getDate() - (6 - index))
-    const label = date.toLocaleDateString('sq-AL', { weekday: 'narrow' })
+    const label = date.toLocaleDateString(dateLocale(), { weekday: 'narrow' })
     const isToday = index === 6
     return {
       label,

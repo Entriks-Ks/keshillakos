@@ -64,7 +64,7 @@ export default function AboutPage() {
               </div>
 
               {/* Trust highlights under Hero CTAs */}
-              <div className="ab-hero-pills" aria-label="Karakteristikat kryesore">
+              <div className="ab-hero-pills" aria-label={t('landing.about.highlightsLabel')}>
                 <div className="ab-hero-pill">
                   <BadgeCheck size={16} className="ab-pill-icon" aria-hidden />
                   <span>{t('about.pillVerified')}</span>

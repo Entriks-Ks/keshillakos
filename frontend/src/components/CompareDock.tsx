@@ -1,8 +1,9 @@
+import { useEffect } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Scale, X, Trash2, Plus } from 'lucide-react'
 import { toast } from '@heroui/react'
-import { MAX_COMPARE_LAWYERS, useCompareLawyers } from '../hooks/useCompareLawyers'
+import { MAX_COMPARE_LAWYERS, setCompareTranslator, useCompareLawyers } from '../hooks/useCompareLawyers'
 import ProfileAvatar from './ProfileAvatar'
 import './CompareDock.css'
 
@@ -10,6 +11,11 @@ export default function CompareDock() {
   const { t } = useTranslation()
   const location = useLocation()
   const { selectedUids, metaMap, removeLawyer, clearComparison, count } = useCompareLawyers()
+
+  // The dock is always mounted, so it supplies the translator for the compare hook's toasts.
+  useEffect(() => {
+    setCompareTranslator((key, params) => t(key, params))
+  }, [t])
 
   // Hide dock if no lawyers selected or if already on the comparison page
   if (count === 0 || location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet') {
@@ -33,17 +39,17 @@ export default function CompareDock() {
             <Scale size={16} />
           </span>
           <span className="kk-dock-title">{t('compare.dockTitle', 'Krahaso Avokatët')}</span>
-          <span className="kk-dock-counter" aria-label={`${count} nga ${MAX_COMPARE_LAWYERS}`}>
+          <span className="kk-dock-counter" aria-label={t('compareUi.dock.counter', { n: count, max: MAX_COMPARE_LAWYERS })}>
             {count}/{MAX_COMPARE_LAWYERS}
           </span>
         </div>
 
         <span className="kk-dock-divider" aria-hidden="true" />
 
-        <div className="kk-dock-items" aria-label="Avokatët e zgjedhur">
+        <div className="kk-dock-items" aria-label={t('compareUi.dock.selected')}>
           {selectedUids.map((uid) => {
             const meta = metaMap[uid]
-            const name = meta?.name || 'Avokat'
+            const name = meta?.name || t('compareUi.lawyerFallback')
             return (
               <div key={uid} className="kk-dock-chip" title={name}>
                 <div className="kk-dock-avatar">
@@ -57,8 +63,8 @@ export default function CompareDock() {
                     e.stopPropagation()
                     removeLawyer(uid)
                   }}
-                  aria-label={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
-                  title={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
+                  aria-label={t('compareUi.removeNamed', { name })}
+                  title={t('compareUi.removeNamed', { name })}
                 >
                   <X size={11} strokeWidth={2.5} aria-hidden="true" />
                 </button>

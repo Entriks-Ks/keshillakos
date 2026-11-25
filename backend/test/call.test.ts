@@ -55,6 +55,7 @@ test('Call model validates status transitions and computes duration', async () =
   const origFindById = Call.findById
   const origFindOne = Call.findOne
   const origCreate = Call.create
+  const origFindOneAndUpdate = Call.findOneAndUpdate
 
   try {
     const fakeCallId = new mongoose.Types.ObjectId().toString()
@@ -83,6 +84,13 @@ test('Call model validates status transitions and computes duration', async () =
     }) as any
 
     Call.findOne = (async () => null) as any
+    Call.findOneAndUpdate = (async (filter: any, update: any) => {
+      if (String(filter._id) === fakeCallId && mockCallData.status === filter.status) {
+        Object.assign(mockCallData, update.$set)
+        return mockCallData
+      }
+      return null
+    }) as any
 
     // 1. Accept call
     const accepted = await acceptCall(fakeCallId, 'bob')
@@ -101,6 +109,7 @@ test('Call model validates status transitions and computes duration', async () =
     Call.findById = origFindById
     Call.findOne = origFindOne
     Call.create = origCreate
+    Call.findOneAndUpdate = origFindOneAndUpdate
   }
 })
 

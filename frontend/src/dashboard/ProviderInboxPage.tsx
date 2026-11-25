@@ -3,6 +3,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { dateLocale } from '../i18n'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Alert,
@@ -39,9 +40,9 @@ const FILTERS: Array<{ id: FilterId; label: string; statuses?: RequestStatus[] }
 ]
 
 const CONTACT = {
-  chat: { label: 'Chat', icon: MessageCircle },
-  phone: { label: 'Telefon', icon: Phone },
-  email: { label: 'Email', icon: Mail },
+  chat: { label: 'req.chat', icon: MessageCircle },
+  phone: { label: 'req.phone', icon: Phone },
+  email: { label: 'req.email', icon: Mail },
 } as const
 
 const STATUS_TOAST: Partial<Record<RequestStatus, string>> = {
@@ -71,9 +72,9 @@ function formatAppointment(startAt?: string, endAt?: string) {
   const start = new Date(startAt)
   const end = new Date(endAt)
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
-  const day = start.toLocaleDateString('sq-AL', { weekday: 'short', day: 'numeric', month: 'short' })
-  const from = start.toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit' })
-  const to = end.toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit' })
+  const day = start.toLocaleDateString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short' })
+  const from = start.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
+  const to = end.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
   return `${day} · ${from} – ${to}`
 }
 

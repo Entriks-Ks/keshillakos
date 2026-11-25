@@ -1,17 +1,19 @@
 import { PhoneOff, Video, Phone } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { useCall } from './CallContext'
 import './Call.css'
 
 export default function OutgoingCallDialog() {
   const { outgoingCall, endCall } = useCall()
+  const { t } = useTranslation()
 
   if (!outgoingCall) return null
 
   const isVideo = outgoingCall.callType === 'video'
 
   return (
-    <div className="call-overlay" role="dialog" aria-modal="true" aria-label="Duke thirrur">
+    <div className="call-overlay" role="dialog" aria-modal="true" aria-label={t('calls.calling')}>
       <div className="call-card call-outgoing-card">
         <div className="call-avatar-pulse-wrap">
           <div className="call-avatar-ring is-outgoing" />
@@ -27,7 +29,7 @@ export default function OutgoingCallDialog() {
           <h2 className="call-caller-name">{outgoingCall.receiver.name}</h2>
           <div className="call-type-badge is-ringing">
             {isVideo ? <Video size={16} /> : <Phone size={16} />}
-            <span>Duke thirrur...</span>
+            <span>{t('calls.calling')}</span>
           </div>
         </div>
 
@@ -36,10 +38,10 @@ export default function OutgoingCallDialog() {
             type="button"
             className="call-btn call-btn-end"
             onClick={() => endCall()}
-            aria-label="Ndërprit thirrjen"
+            aria-label={t('calls.cancelCall')}
           >
             <PhoneOff size={24} />
-            <span>Mbyll</span>
+            <span>{t('calls.end')}</span>
           </button>
         </div>
       </div>

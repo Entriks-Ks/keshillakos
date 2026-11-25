@@ -3,7 +3,9 @@ import { useNotifications } from '../notifications/NotificationProvider'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import { dateLocale } from '../i18n'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, MessageCircle, Pencil, Phone, PhoneMissed, Send, Trash2, Video } from 'lucide-react'
 import { useCall } from '../calls/CallContext'
@@ -42,6 +44,9 @@ import type { ChatDetails } from '../api/chat'
 import { REQUEST_STATUS } from './requestDisplay'
 import { getDashboardPath } from '../utils/dashboardPath'
 
+/** Backend placeholder stored as the conversation preview after the latest message is deleted. */
+const DELETED_MESSAGE_PREVIEW = 'Mesazhi u fshi'
+
 function sameDate(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
@@ -50,7 +55,7 @@ function formatClock(iso?: string) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
 }
 
 function dayKey(iso: string) {
@@ -58,41 +63,43 @@ function dayKey(iso: string) {
   return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
-function formatDay(iso: string) {
+function formatDay(iso: string, t: TFunction) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const now = new Date()
-  if (sameDate(d, now)) return 'Sot'
+  if (sameDate(d, now)) return t('home.today')
   const yesterday = new Date(now)
   yesterday.setDate(now.getDate() - 1)
-  if (sameDate(d, yesterday)) return 'Dje'
-  return d.toLocaleDateString('sq-AL', {
+  if (sameDate(d, yesterday)) return t('inbox.yesterday')
+  return d.toLocaleDateString(dateLocale(), {
     day: 'numeric',
     month: 'long',
     year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric',
   })
 }
 
-function formatListTime(iso?: string) {
+function formatListTime(iso: string | undefined, t: TFunction) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const now = new Date()
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  if (sameDay) {
-    return d.toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit' })
+  if (sameDate(d, now)) {
+    return d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
   }
   const yesterday = new Date(now)
   yesterday.setDate(now.getDate() - 1)
-  const isYesterday =
-    d.getFullYear() === yesterday.getFullYear() &&
-    d.getMonth() === yesterday.getMonth() &&
-    d.getDate() === yesterday.getDate()
-  if (isYesterday) return 'Dje'
-  return d.toLocaleDateString('sq-AL', { day: '2-digit', month: 'short' })
+  if (sameDate(d, yesterday)) return t('inbox.yesterday')
+  return d.toLocaleDateString(dateLocale(), { day: '2-digit', month: 'short' })
+}
+
+/** Call summaries are stored by the backend in Albanian; map the known shapes to the UI language. */
+function callTitle(body: string, mine: boolean, t: TFunction) {
+  if (body.includes('humbur')) return mine ? t('inbox.missedOutgoing') : t('inbox.missedIncoming')
+  const ended = body.match(/përfundoi \(([^)]+)\)/)
+  if (ended) return t('inbox.callEnded', { duration: ended[1] })
+  if (body.includes('refuzuar')) return t('inbox.callDeclined')
+  if (body.includes('zënë')) return t('inbox.callBusy')
+  return body.replace(/^[📹📞]\s*/u, '')
 }
 
 export default function MessagesPage() {
@@ -214,10 +221,10 @@ export default function MessagesPage() {
       const updated = await editChatMessage(message.conversationId, message.id, body)
       const isLatest = messages[messages.length - 1]?.id === message.id
       handleMessageUpdated(updated, isLatest ? updated.body.slice(0, 140) : undefined)
-      toast.success('Mesazhi u ndryshua me sukses')
+      toast.success(t('inbox.editSuccess'))
       cancelEdit()
     } catch (err) {
-      toast.danger(getErrorMessage(err) || 'Mesazhi nuk u ndryshua')
+      toast.danger(getErrorMessage(err) || t('inbox.editError'))
     } finally {
       setSavingEdit(false)
     }
@@ -230,11 +237,11 @@ export default function MessagesPage() {
     try {
       const updated = await deleteChatMessage(target.conversationId, target.id)
       const isLatest = messages[messages.length - 1]?.id === target.id
-      handleMessageUpdated(updated, isLatest ? 'Mesazhi u fshi' : undefined)
-      toast.success('Mesazhi u fshi')
+      handleMessageUpdated(updated, isLatest ? DELETED_MESSAGE_PREVIEW : undefined)
+      toast.success(t('inbox.deleteSuccess'))
       setDeleteTarget(null)
     } catch (err) {
-      toast.danger(getErrorMessage(err) || 'Mesazhi nuk u fshi')
+      toast.danger(getErrorMessage(err) || t('inbox.deleteError'))
     } finally {
       setDeleting(false)
     }
@@ -256,10 +263,10 @@ export default function MessagesPage() {
         setActiveConversation(null)
         setSearchParams({}, { replace: true })
       }
-      toast.success('Biseda u fshi me sukses')
+      toast.success(t('inbox.chatDeleteSuccess'))
       setDeleteChatTarget(null)
     } catch (err) {
-      toast.danger(getErrorMessage(err) || 'Biseda nuk u fshi')
+      toast.danger(getErrorMessage(err) || t('inbox.chatDeleteError'))
     } finally {
       setDeletingChat(false)
     }
@@ -460,9 +467,9 @@ export default function MessagesPage() {
       setMessages([])
       setActiveConversation(null)
       setSearchParams({}, { replace: true })
-      toast.info('Kjo bisedë u fshi')
+      toast.info(t('inbox.chatDeletedRemote'))
     }
-  }), [socket.onConversationDeleted, setSearchParams])
+  }), [socket.onConversationDeleted, setSearchParams, t])
 
   useEffect(() => {
     return socket.onTyping((event) => {
@@ -509,7 +516,7 @@ export default function MessagesPage() {
     const result = await socket.sendMessage(activeId, body)
     if (!result.ok || !result.message) {
       setDraft(body)
-      toast.danger(result.error || 'Mesazhi nuk u dërgua')
+      toast.danger(result.error || t('inbox.sendError'))
     } else {
       saveMessages(result.message.conversationId, [result.message])
       applyUpdate({ conversationId: result.message.conversationId, senderUid: result.message.senderUid, lastMessageAt: result.message.createdAt, lastMessagePreview: result.message.body.slice(0, 140) })
@@ -529,31 +536,31 @@ export default function MessagesPage() {
   }
 
   const listSummary = totalUnread > 0
-    ? `${totalUnread} të palexuara`
-    : `${conversations.length} ${conversations.length === 1 ? 'bisedë' : 'biseda'}`
+    ? t('inbox.unreadSummary', { count: totalUnread })
+    : t('inbox.conversationCount', { count: conversations.length })
 
   return (
     <div className={`msg-page${activeId ? ' has-active' : ''}`}>
       <Card className="msg-shell">
-        <aside className="msg-list" aria-label="Bisedat">
+        <aside className="msg-list" aria-label={t('inbox.listLabel')}>
           <div className="msg-list-head">
             <div className="msg-list-title">
-              <h1>Mesazhet</h1>
+              <h1>{t('dash.messages')}</h1>
               {!loadingList ? <span>{listSummary}</span> : null}
             </div>
             <span
               className={`msg-conn${socket.connected ? ' is-online' : ''}`}
               role="status"
-              title={socket.connected ? 'Lidhur' : 'Duke u lidhur'}
+              title={socket.connected ? t('inbox.connected') : t('inbox.connecting')}
             >
             </span>
           </div>
 
           <div className="msg-list-search">
-            <SearchField aria-label="Kërko bisedë" value={listQuery} onChange={setListQuery} fullWidth>
+            <SearchField aria-label={t('inbox.search')} value={listQuery} onChange={setListQuery} fullWidth>
               <SearchField.Group>
                 <SearchField.SearchIcon />
-                <SearchField.Input placeholder="Kërko bisedë..." />
+                <SearchField.Input placeholder={t('inbox.searchPlaceholder')} />
                 <SearchField.ClearButton />
               </SearchField.Group>
             </SearchField>
@@ -588,14 +595,14 @@ export default function MessagesPage() {
                 <span className="msg-empty-icon" aria-hidden>
                   <MessageCircle size={20} />
                 </span>
-                <strong>Ende pa biseda</strong>
-                <p>Hap një ofertë dhe kliko “Dërgo mesazh”.</p>
+                <strong>{t('inbox.emptyTitle')}</strong>
+                <p>{t('inbox.emptyText')}</p>
                 <Link to="/ofertat" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                  Shiko ofertat
+                  {t('home.seeOffers')}
                 </Link>
               </div>
             ) : filteredConversations.length === 0 ? (
-              <p className="msg-list-note">Asnjë rezultat për “{listQuery}”.</p>
+              <p className="msg-list-note">{t('inbox.noResults', { query: listQuery })}</p>
             ) : (
               <ul className="msg-items">
                 {filteredConversations.map((c) => {
@@ -614,15 +621,15 @@ export default function MessagesPage() {
                         <span className="msg-item-body">
                           <span className="msg-item-row">
                             <strong>{c.peer.name}</strong>
-                            {c.lastMessageAt ? <time dateTime={c.lastMessageAt}>{formatListTime(c.lastMessageAt)}</time> : null}
+                            {c.lastMessageAt ? <time dateTime={c.lastMessageAt}>{formatListTime(c.lastMessageAt, t)}</time> : null}
                           </span>
-                          <span className="msg-item-context">{c.serviceTitle || c.peer.roleLabel || 'Bisedë'}</span>
+                          <span className="msg-item-context">{c.serviceTitle || c.peer.roleLabel || t('inbox.conversation')}</span>
                           <span className="msg-item-preview-row">
-                            <span className="msg-item-preview">{c.lastMessagePreview || 'Nis bisedën'}</span>
+                            <span className="msg-item-preview">{c.lastMessagePreview === DELETED_MESSAGE_PREVIEW ? t('inbox.deletedPreview') : c.lastMessagePreview || t('inbox.startConversation')}</span>
                             {c.unread > 0 && (
                               <span
                                 className={`msg-item-unread${c.unread > 1 ? ' is-count' : ''}`}
-                                aria-label={`${c.unread} mesazhe të palexuara`}
+                                aria-label={t('inbox.unreadMessages', { count: c.unread })}
                               >
                                 {c.unread > 1 ? (c.unread > 99 ? '99+' : c.unread) : null}
                               </span>
@@ -633,8 +640,8 @@ export default function MessagesPage() {
                       <button
                         type="button"
                         className="msg-item-del-btn"
-                        aria-label={`Fshi bisedën me ${c.peer.name}`}
-                        title="Fshi bisedën"
+                        aria-label={t('inbox.deleteChatWith', { name: c.peer.name })}
+                        title={t('inbox.deleteChat')}
                         onClick={(e) => {
                           e.stopPropagation()
                           setDeleteChatTarget(c)
@@ -651,7 +658,7 @@ export default function MessagesPage() {
           <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loadingList} />
         </aside>
 
-        <section className="msg-thread" aria-label={active ? `Biseda me ${active.peer.name}` : 'Biseda'}>
+        <section className="msg-thread" aria-label={active ? t('inbox.threadWith', { name: active.peer.name }) : t('inbox.thread')}>
           {!activeId ? (
             <div className="msg-thread-placeholder">
               <span className="msg-empty-icon is-lg" aria-hidden>
@@ -659,13 +666,13 @@ export default function MessagesPage() {
               </span>
               {!loadingList && conversations.length === 0 ? (
                 <>
-                  <h2>Bisedat shfaqen këtu</h2>
-                  <p>Kur të nisësh një bisedë me një ekspert ose kompani, do ta gjesh në këtë faqe.</p>
+                  <h2>{t('inbox.placeholderEmptyTitle')}</h2>
+                  <p>{t('inbox.placeholderEmptyText')}</p>
                 </>
               ) : (
                 <>
-                  <h2>Zgjidh një bisedë</h2>
-                  <p>Zgjidh dikë nga lista për të vazhduar bisedën.</p>
+                  <h2>{t('inbox.selectTitle')}</h2>
+                  <p>{t('inbox.selectText')}</p>
                 </>
               )}
             </div>
@@ -677,28 +684,28 @@ export default function MessagesPage() {
                     isIconOnly
                     variant="ghost"
                     className="msg-back"
-                    aria-label="Kthehu te bisedat"
+                    aria-label={t('inbox.back')}
                     onPress={() => selectConversation('')}
                   >
                     <ArrowLeft size={20} />
                   </Button>
                   <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} alt="" size={40} />
                   <div className="msg-thread-meta">
-                    <strong>{active?.peer.uid && active.peer.roleLabel !== 'Admin' ? <Link to={providerPath(active.peer)}>{active.peer.name}</Link> : active?.peer.name || 'Bisedë'}</strong>
+                    <strong>{active?.peer.uid && active.peer.roleLabel !== 'Admin' ? <Link to={providerPath(active.peer)}>{active.peer.name}</Link> : active?.peer.name || t('inbox.conversation')}</strong>
                     <span className={peerTyping ? 'is-typing' : undefined}>
                       {peerTyping && !messagingDisabled
-                        ? 'Po shkruan...'
-                        : (active?.peer.uid && socket.connected ? presenceLabel(presence.get(active.peer.uid)) : '') || (active?.serviceTitle
-                          ? `Për: ${active.serviceTitle}`
-                          : active?.peer.roleLabel || 'Chat')}
+                        ? t('inbox.typing')
+                        : (active?.peer.uid && socket.connected ? presenceLabel(presence.get(active.peer.uid), t, dateLocale()) : '') || (active?.serviceTitle
+                          ? t('inbox.regarding', { title: active.serviceTitle })
+                          : active?.peer.roleLabel || t('dash.chat'))}
                     </span>
                   </div>
-                  <div className="msg-call-actions" role="toolbar" aria-label="Thirrje">
+                  <div className="msg-call-actions" role="toolbar" aria-label={t('inbox.calls')}>
                     <Button
                       isIconOnly
                       variant="ghost"
                       className="msg-call-btn"
-                      aria-label="Nis video thirrje"
+                      aria-label={t('inbox.startVideo')}
                       isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
                       onPress={() => {
                         if (active?.peer.uid && activeId) {
@@ -718,7 +725,7 @@ export default function MessagesPage() {
                       isIconOnly
                       variant="ghost"
                       className="msg-call-btn"
-                      aria-label="Nis thirrje zanore"
+                      aria-label={t('inbox.startAudio')}
                       isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
                       onPress={() => {
                         if (active?.peer.uid && activeId) {
@@ -746,9 +753,9 @@ export default function MessagesPage() {
                 </header>
                 {currentDetails?.requestContext && <div className="msg-request-context">
                   <div><span>{t('req.serviceRequest')}</span><strong>{currentDetails.requestContext.title}</strong><span>{t('req.statusLine')}: {t(REQUEST_STATUS[currentDetails.requestContext.status as keyof typeof REQUEST_STATUS]?.label || (currentDetails.requestContext.status === 'cancelled' ? 'status.cancelled' : currentDetails.requestContext.status))}</span></div>
-                  <Link to={`${getDashboardPath(user?.role || 'user')}/${user?.role === 'provider' || user?.role === 'company' ? active?.seekerUid === user?.uid ? 'my-requests' : 'inbox' : 'requests'}`} className="uo-link">Shiko kërkesën</Link>
+                  <Link to={`${getDashboardPath(user?.role || 'user')}/${user?.role === 'provider' || user?.role === 'company' ? active?.seekerUid === user?.uid ? 'my-requests' : 'inbox' : 'requests'}`} className="uo-link">{t('inbox.viewRequest')}</Link>
                 </div>}
-                {currentDetails?.messagingBlocked && <p className="msg-blocked-note" role="status">{currentDetails.blockedByMe ? 'E ke bllokuar këtë përdorues. Zhbllokoje nga menuja për të dërguar mesazhe.' : 'Mesazhet nuk janë të disponueshme për këtë bisedë.'}</p>}
+                {currentDetails?.messagingBlocked && <p className="msg-blocked-note" role="status">{currentDetails.blockedByMe ? t('inbox.blockedByMe') : t('inbox.blocked')}</p>}
               </div>
 
               <div className="msg-history" ref={historyRef}
@@ -776,9 +783,9 @@ export default function MessagesPage() {
                     if (cached) cached.hasOlder = older.pagination.total > older.length
                     saveMessages(conversationId, older)
                   }).catch((error: unknown) => setError(getErrorMessage(error))).finally(() => setLoadingHistory(false))
-                }}>Shfaq mesazhet e mëparshme</Button> : null}
+                }}>{t('inbox.loadOlder')}</Button> : null}
                 {loadingThread ? (
-                  <div className="msg-history-loading" aria-label="Duke ngarkuar mesazhet">
+                  <div className="msg-history-loading" aria-label={t('inbox.loadingMessages')}>
                     <Skeleton className="msg-skel-bubble" />
                     <Skeleton className="msg-skel-bubble is-mine" />
                     <Skeleton className="msg-skel-bubble is-short" />
@@ -789,7 +796,7 @@ export default function MessagesPage() {
                       <MessageCircle size={20} />
                     </span>
                     <p>
-                      Nis bisedën me <strong>{active?.peer.name}</strong>
+                      <Trans i18nKey="inbox.startWith" values={{ name: active?.peer.name ?? '' }} components={{ strong: <strong /> }} />
                     </p>
                   </div>
                 ) : (
@@ -805,18 +812,18 @@ export default function MessagesPage() {
                       <Fragment key={m.id}>
                         {showDay && day ? (
                           <div className="msg-day" role="separator">
-                            <span>{formatDay(m.createdAt)}</span>
+                            <span>{formatDay(m.createdAt, t)}</span>
                           </div>
                         ) : null}
                         <div className={`msg-bubble-row${mine ? ' is-mine' : ''}`}>
                           {(canEdit || canDelete) && !editing ? (
-                            <div className="msg-bubble-actions" role="toolbar" aria-label="Veprimet e mesazhit">
+                            <div className="msg-bubble-actions" role="toolbar" aria-label={t('inbox.messageActions')}>
                               {canEdit ? (
                                 <button
                                   type="button"
                                   className="msg-action"
-                                  aria-label="Ndrysho mesazhin"
-                                  title="Ndrysho mesazhin"
+                                  aria-label={t('inbox.editMessage')}
+                                  title={t('inbox.editMessage')}
                                   onClick={() => startEdit(m)}
                                 >
                                   <Pencil size={14} />
@@ -825,8 +832,8 @@ export default function MessagesPage() {
                               <button
                                 type="button"
                                 className="msg-action is-danger"
-                                aria-label="Fshi mesazhin"
-                                title="Fshi mesazhin"
+                                aria-label={t('inbox.deleteMessage')}
+                                title={t('inbox.deleteMessage')}
                                 onClick={() => setDeleteTarget(m)}
                               >
                                 <Trash2 size={14} />
@@ -837,7 +844,7 @@ export default function MessagesPage() {
                             {m.deleted ? (
                               <div className="msg-deleted-content">
                                 <Trash2 size={13} className="msg-deleted-icon" />
-                                <p className="msg-deleted-text">{mine ? 'E keni fshirë këtë mesazh' : 'Ky mesazh u fshi'}</p>
+                                <p className="msg-deleted-text">{mine ? t('inbox.deletedMine') : t('inbox.deletedPeer')}</p>
                               </div>
                             ) : editing ? (
                               <form
@@ -846,12 +853,12 @@ export default function MessagesPage() {
                               >
                                 <div className="msg-edit-header">
                                   <Pencil size={13} className="msg-edit-icon" />
-                                  <span>Ndrysho mesazhin</span>
+                                  <span>{t('inbox.editMessage')}</span>
                                 </div>
                                 <textarea
                                   className="msg-edit-input"
                                   value={editDraft}
-                                  placeholder="Shkruaj mesazhin e përditësuar..."
+                                  placeholder={t('inbox.editPlaceholder')}
                                   onChange={(event) => setEditDraft(event.target.value)}
                                   onKeyDown={(event) => {
                                     if (event.key === 'Escape') { event.preventDefault(); cancelEdit() }
@@ -859,20 +866,20 @@ export default function MessagesPage() {
                                   }}
                                   maxLength={4000}
                                   rows={Math.min(8, Math.max(2, editDraft.split('\n').length))}
-                                  aria-label="Ndrysho mesazhin"
+                                  aria-label={t('inbox.editMessage')}
                                   disabled={savingEdit}
                                   autoFocus
                                   onFocus={(event) => { const end = event.currentTarget.value.length; event.currentTarget.setSelectionRange(end, end) }}
                                 />
                                 <div className="msg-edit-actions">
-                                  <span className="msg-edit-hint">Enter për ruajtje · Shift+Enter për rresht të ri · Esc për anulim</span>
+                                  <span className="msg-edit-hint">{t('inbox.editHint')}</span>
                                   <div className="msg-edit-buttons">
                                     <Button size="sm" variant="outline" isDisabled={savingEdit} onPress={cancelEdit}>
-                                      Anulo
+                                      {t('notifications.cancel')}
                                     </Button>
                                     <Button size="sm" variant="primary" type="submit" isPending={savingEdit} isDisabled={savingEdit || !editDraft.trim()}>
                                       <Check size={14} />
-                                      Ruaj
+                                      {t('inbox.save')}
                                     </Button>
                                   </div>
                                 </div>
@@ -890,14 +897,12 @@ export default function MessagesPage() {
                                 </div>
                                 <div className="msg-call-info">
                                   <span className="msg-call-title">
-                                    {m.body.includes('humbur')
-                                      ? (!mine ? 'Ke pasur një thirrje të humbur' : 'Thirrje e humbur (pa përgjigje)')
-                                      : m.body.replace(/^[📹📞]\s*/, '')}
+                                    {callTitle(m.body, mine, t)}
                                   </span>
                                   <span className="msg-call-subtitle">
                                     {m.body.startsWith('📹') || m.body.toLowerCase().includes('video')
-                                      ? 'Thirrje me video'
-                                      : 'Thirrje me zë'}
+                                      ? t('inbox.videoCall')
+                                      : t('inbox.voiceCall')}
                                   </span>
                                 </div>
                               </div>
@@ -905,7 +910,7 @@ export default function MessagesPage() {
                               <p>{m.body}</p>
                             )}
                             <span className="msg-meta">
-                              {m.editedAt && !m.deleted && !editing ? <span className="msg-edited">ndryshuar</span> : null}
+                              {m.editedAt && !m.deleted && !editing ? <span className="msg-edited">{t('inbox.edited')}</span> : null}
                               <time dateTime={m.createdAt}>{formatClock(m.createdAt)}</time>
                             </span>
                           </div>
@@ -915,7 +920,7 @@ export default function MessagesPage() {
                   })
                 )}
                 {peerTyping ? (
-                  <div className="msg-typing" aria-live="polite" aria-label="Po shkruan">
+                  <div className="msg-typing" aria-live="polite" aria-label={t('inbox.typing')}>
                     <span />
                     <span />
                     <span />
@@ -929,8 +934,8 @@ export default function MessagesPage() {
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => onDraftChange(e.target.value)}
-                  placeholder={`Shkruaj mesazh për ${active?.peer.name || 'ta'}...`}
-                  aria-label="Mesazhi"
+                  placeholder={active?.peer.name ? t('inbox.composerPlaceholder', { name: active.peer.name }) : t('inbox.composerPlaceholderAnon')}
+                  aria-label={t('feedback.message')}
                   maxLength={4000}
                   disabled={sending || messagingDisabled}
                   fullWidth
@@ -942,7 +947,7 @@ export default function MessagesPage() {
                   isIconOnly
                   className="msg-send"
                   isDisabled={sending || messagingDisabled || !draft.trim()}
-                  aria-label="Dërgo"
+                  aria-label={t('feedback.send')}
                 >
                   <Send size={18} />
                 </Button>
@@ -955,17 +960,17 @@ export default function MessagesPage() {
         isOpen={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
-        title="Fshi mesazhin?"
-        confirmLabel="Fshi mesazhin"
+        title={t('inbox.deleteMessageTitle')}
+        confirmLabel={t('inbox.deleteMessage')}
         pending={deleting}
       >
         <div className="msg-delete-dialog-content">
           <p className="msg-delete-desc">
-            Mesazhi do të fshihet për të dy palët. Ky veprim nuk mund të kthehet mbrapsht.
+            {t('inbox.deleteMessageDesc')}
           </p>
           {deleteTarget && (
             <div className="msg-delete-quote">
-              <span className="msg-delete-quote-label">Mesazhi që do të fshihet:</span>
+              <span className="msg-delete-quote-label">{t('inbox.deleteMessageQuote')}</span>
               <p className="msg-delete-quote-body">
                 "{deleteTarget.body.length > 200 ? `${deleteTarget.body.slice(0, 200)}...` : deleteTarget.body}"
               </p>
@@ -978,13 +983,13 @@ export default function MessagesPage() {
         isOpen={Boolean(deleteChatTarget)}
         onClose={() => setDeleteChatTarget(null)}
         onConfirm={() => void confirmDeleteChat()}
-        title={`Fshi bisedën me ${deleteChatTarget?.peer?.name || 'këtë përdorues'}?`}
-        confirmLabel="Fshi bisedën"
+        title={deleteChatTarget?.peer?.name ? t('inbox.deleteChatTitle', { name: deleteChatTarget.peer.name }) : t('inbox.deleteChatTitleAnon')}
+        confirmLabel={t('inbox.deleteChat')}
         pending={deletingChat}
       >
         <div className="msg-delete-dialog-content">
           <p className="msg-delete-desc">
-            A jeni të sigurt që dëshironi të fshini këtë bisedë? Të gjitha mesazhet në këtë bisedë do të fshihen përgjithmonë. Ky veprim nuk mund të kthehet mbrapsht.
+            {t('inbox.deleteChatDesc')}
           </p>
         </div>
       </ConfirmActionDialog>

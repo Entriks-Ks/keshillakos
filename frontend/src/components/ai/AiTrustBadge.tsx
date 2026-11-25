@@ -1,5 +1,6 @@
 import { useState, useEffect, memo } from 'react'
 import { Modal, Button } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import {
   ShieldCheck,
   Shield,
@@ -38,6 +39,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
   compact = false,
   className = '',
 }: AiTrustBadgeProps) {
+  const { t } = useTranslation()
   const [data, setData] = useState<ProviderTrustScore | null>(null)
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -68,7 +70,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
     return (
       <div className={`kk-ai-trust-compact ${className}`} style={{ opacity: 0.65 }}>
         <ShieldCheck size={15} className="animate-pulse" />
-        <span>Duke llogaritur sigurinë nga AI...</span>
+        <span>{t('ai.trust.loading')}</span>
       </div>
     )
   }
@@ -81,6 +83,9 @@ export const AiTrustBadge = memo(function AiTrustBadge({
   const isHigh = data.overallScore >= 75
   const levelClass = isVeryHigh ? 'level-very-high' : isHigh ? 'level-high' : 'level-moderate'
   const Icon = isVeryHigh ? ShieldCheck : isHigh ? Shield : AlertCircle
+  // The backend sends Albanian labels; translate the known enum/keys and fall back to its text.
+  const safetyLabel = t(`ai.trust.level.${data.safetyLevel}`, { defaultValue: data.safetyLabel })
+  const name = data.providerName || providerName || ''
 
   // SVG Radial progress calculations (r = 36)
   const radius = 36
@@ -94,12 +99,12 @@ export const AiTrustBadge = memo(function AiTrustBadge({
           type="button"
           onClick={() => setModalOpen(true)}
           className={`kk-ai-trust-compact ${levelClass} ${className}`}
-          title="Kliko për të parë analizën e plotë të sigurisë nga AI"
-          aria-label={`Vlerësimi i Sigurisë nga AI: ${data.overallScore}%`}
+          title={t('ai.trust.compactTitle')}
+          aria-label={t('ai.trust.compactAria', { score: data.overallScore })}
         >
           <Icon size={15} className="kk-ai-trust-compact-icon" />
           <span className="kk-ai-trust-compact-score">{data.overallScore}%</span>
-          <span className="kk-ai-trust-compact-label">Siguri e Punës</span>
+          <span className="kk-ai-trust-compact-label">{t('ai.trust.compactLabel')}</span>
         </button>
       ) : (
         <div
@@ -113,8 +118,8 @@ export const AiTrustBadge = memo(function AiTrustBadge({
             }
           }}
           className={`kk-ai-trust-card ${className}`}
-          title="Kliko për të parë faktorët e vlerësimit nga AI"
-          aria-label={`Vlerësimi i Sigurisë: ${data.overallScore}%`}
+          title={t('ai.trust.cardTitle')}
+          aria-label={t('ai.trust.cardAria', { score: data.overallScore })}
         >
           <div className="kk-ai-trust-card-top">
             <div className="kk-ai-trust-card-left">
@@ -126,25 +131,21 @@ export const AiTrustBadge = memo(function AiTrustBadge({
               <div className="kk-ai-trust-card-texts">
                 <div className="kk-ai-trust-card-title-row">
                   <ShieldCheck size={13} className="kk-ai-trust-sparkle" />
-                  <h4 className="kk-ai-trust-card-title">Siguria e Punës</h4>
-                  <span className={`kk-ai-trust-level-pill ${levelClass}`}>
-                    {data.safetyLabel}
-                  </span>
+                  <h4 className="kk-ai-trust-card-title">{t('ai.trust.title')}</h4>
+                  <span className={`kk-ai-trust-level-pill ${levelClass}`}>{safetyLabel}</span>
                 </div>
-                <p className="kk-ai-trust-card-subtitle">
-                  Vlerësuar nga AI në bazë të kërkesave, licencës dhe shërbimeve të postuara
-                </p>
+                <p className="kk-ai-trust-card-subtitle">{t('ai.trust.subtitle')}</p>
               </div>
             </div>
 
             <div className="kk-ai-trust-card-btn">
-              <span>Analiza e AI</span>
+              <span>{t('ai.trust.analysis')}</span>
               <ChevronRight size={14} />
             </div>
           </div>
 
           <div className="kk-ai-trust-card-cta">
-            <span>Shiko analizën e plotë nga AI</span>
+            <span>{t('ai.trust.viewFull')}</span>
             <ChevronRight size={14} />
           </div>
         </div>
@@ -156,7 +157,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
           <Modal.Container size="md" placement="center">
             <Modal.Dialog
               className="kk-ai-trust-dialog"
-              aria-label={`Vlerësimi i Sigurisë • ${data.providerName || providerName}`}
+              aria-label={t('ai.trust.modalTitle', { name })}
             >
               <Modal.CloseTrigger />
               
@@ -168,11 +169,9 @@ export const AiTrustBadge = memo(function AiTrustBadge({
                   <div className="kk-ai-modal-title-area">
                     <div className="kk-ai-modal-eyebrow">
                       <ShieldCheck size={12} />
-                      <span>Këshilla AI • Analizë e Verifikuar</span>
+                      <span>{t('ai.trust.eyebrow')}</span>
                     </div>
-                    <h3 className="kk-ai-modal-main-title">
-                      Vlerësimi i Sigurisë • {data.providerName || providerName}
-                    </h3>
+                    <h3 className="kk-ai-modal-main-title">{t('ai.trust.modalTitle', { name })}</h3>
                   </div>
                 </div>
               </Modal.Header>
@@ -203,14 +202,14 @@ export const AiTrustBadge = memo(function AiTrustBadge({
                     </svg>
                     <div className="kk-ai-radial-center">
                       <span className="kk-ai-radial-number">{data.overallScore}</span>
-                      <span className="kk-ai-radial-pct">% Siguri</span>
+                      <span className="kk-ai-radial-pct">{t('ai.trust.pctSafety')}</span>
                     </div>
                   </div>
 
                   <div className="kk-ai-hero-score-texts">
                     <div className="kk-ai-hero-level-pill">
                       <CheckCircle2 size={14} />
-                      <span>{data.safetyLabel}</span>
+                      <span>{safetyLabel}</span>
                     </div>
                     <p className="kk-ai-hero-summary-quote">{data.aiSummary}</p>
                   </div>
@@ -219,8 +218,8 @@ export const AiTrustBadge = memo(function AiTrustBadge({
                 {/* 5 Factors Breakdown */}
                 <div className="kk-ai-factors-section">
                   <div className="kk-ai-section-header">
-                    <h4 className="kk-ai-section-title">Zbërthimi i Vlerësimit sipas AI</h4>
-                    <span className="kk-ai-section-hint">Pesha totale: 100 pikë</span>
+                    <h4 className="kk-ai-section-title">{t('ai.trust.breakdown')}</h4>
+                    <span className="kk-ai-section-hint">{t('ai.trust.totalWeight')}</span>
                   </div>
 
                   <div className="kk-ai-factors-grid">
@@ -233,12 +232,14 @@ export const AiTrustBadge = memo(function AiTrustBadge({
                               <div className={`kk-ai-factor-icon-wrap status-${factor.status}`}>
                                 <FactorIcon size={16} />
                               </div>
-                              <span className="kk-ai-factor-name">{factor.title}</span>
+                              <span className="kk-ai-factor-name">
+                                {t(`ai.trust.factors.${factor.key}`, { defaultValue: factor.title })}
+                              </span>
                             </div>
 
                             <div className="kk-ai-factor-metrics">
                               <span className="kk-ai-factor-score-pill">
-                                {factor.score}/{factor.maxScore} pikë
+                                {t('ai.trust.factorPoints', { score: factor.score, max: factor.maxScore })}
                               </span>
                               <span className="kk-ai-factor-pct">{factor.percentage}%</span>
                             </div>
@@ -263,7 +264,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
                 {data.highlights && data.highlights.length > 0 && (
                   <div className="kk-ai-guarantees-section">
                     <div className="kk-ai-section-header">
-                      <h4 className="kk-ai-section-title">Garancitë Kryesore</h4>
+                      <h4 className="kk-ai-section-title">{t('ai.trust.guarantees')}</h4>
                     </div>
                     <div className="kk-ai-guarantees-grid">
                       {data.highlights.map((item, idx) => (
@@ -280,9 +281,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
               <Modal.Footer className="kk-ai-modal-footer">
                 <div className="kk-ai-modal-footer-disclaimer">
                   <Lock size={14} className="flex-shrink-0 text-emerald-500" />
-                  <span>
-                    Vlerësim i paanshëm nga AI bazuar në licencë, kërkesa dhe shërbimet e postuara.
-                  </span>
+                  <span>{t('ai.trust.disclaimer')}</span>
                 </div>
 
                 <Button
@@ -290,7 +289,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
                   className="kk-ai-modal-confirm-btn"
                   onPress={() => setModalOpen(false)}
                 >
-                  U kuptua
+                  {t('ai.trust.gotIt')}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

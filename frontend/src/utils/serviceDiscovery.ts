@@ -30,13 +30,22 @@ export function isVerified(provider?: { verification?: { identity?: string; busi
   return v.identity === 'verified' || v.business === 'verified' || v.qualification === 'verified'
 }
 
+export type PriceTranslate = (key: 'system.price.from' | 'system.price.upTo', options: { price: string }) => string
+
+/** Albanian default keeps this module free of i18n imports (node tests); the app registers i18next at startup. */
+let priceTranslate: PriceTranslate = (key, { price }) => (key === 'system.price.from' ? `nga ${price}` : `deri ${price}`)
+
+export function setPriceTranslator(translate: PriceTranslate) {
+  priceTranslate = translate
+}
+
 export function formatServicePrice(service: ServiceItem) {
   const from = service.priceFrom
   const to = service.details?.priceTo
   if (from == null && to == null) return null
   if (from != null && to != null) return `€${from} – €${to}`
-  if (from != null) return `nga €${from}`
-  return `deri €${to}`
+  if (from != null) return priceTranslate('system.price.from', { price: `€${from}` })
+  return priceTranslate('system.price.upTo', { price: `€${to}` })
 }
 
 function matchesQuery(haystack: Array<string | null | undefined>, query: string) {

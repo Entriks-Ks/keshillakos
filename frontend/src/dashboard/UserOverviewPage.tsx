@@ -1,6 +1,7 @@
 import { collectionSummary, collectionTotal } from '../api/pagination'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '../i18n'
 import { Link, useNavigate } from 'react-router-dom'
 import { Alert, Button, buttonVariants, Card, Chip, toast } from '@heroui/react'
 import { ArrowRight, Plus } from 'lucide-react'
@@ -43,29 +44,31 @@ type OverviewData = {
 }
 
 function requestDetail(item: ServiceRequestItem) {
-  const provider = item.providerName || 'ofruesi'
+  const provider = item.providerName || i18n.t('requests.activity.providerFallback')
   if (item.offer) {
     const amount = formatAmount(item.offer)
-    return `${provider} dërgoi një ofertë${amount ? ` · ${amount}` : ''}`
+    return amount
+      ? i18n.t('requests.activity.offerSentAmount', { provider, amount })
+      : i18n.t('requests.activity.offerSent', { provider })
   }
   switch (item.status) {
     case 'accepted':
-      return `Pranuar nga ${provider}`
+      return i18n.t('requests.activity.acceptedBy', { provider })
     case 'completed':
-      return `Përfunduar me ${provider}`
+      return i18n.t('requests.activity.completedWith', { provider })
     case 'rejected':
-      return `Refuzuar nga ${provider}`
+      return i18n.t('requests.activity.rejectedBy', { provider })
     case 'withdrawn':
-      return `Tërhequr · ${provider}`
+      return i18n.t('requests.activity.withdrawn', { provider })
     default:
-      return `Dërguar te ${provider}`
+      return i18n.t('requests.activity.sentTo', { provider })
   }
 }
 
 function buildActivity(requests: ServiceRequestItem[]): ActivityEntry[] {
   const fromRequests = requests.map((item) => ({
     id: `r-${item.id}`,
-    title: item.need || item.serviceTitle || 'Kërkesë',
+    title: item.need || item.serviceTitle || i18n.t('req.request'),
     detail: requestDetail(item),
     at: item.updatedAt || item.createdAt,
     to: REQUESTS_PATH,
@@ -75,6 +78,7 @@ function buildActivity(requests: ServiceRequestItem[]): ActivityEntry[] {
 }
 
 function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boolean }) {
+  const { t } = useTranslation()
   const requests = data?.requests ?? []
   const conversations = data?.conversations ?? []
   const upcoming = upcomingAppointments(data?.appointments ?? [])
@@ -82,27 +86,27 @@ function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boo
   const offers = collectionSummary(requests).offers ?? 0
   const stats = [
     {
-      label: 'Kërkesa aktive',
+      label: t('overview.stats.activeRequests'),
       value: collectionSummary(requests).active ?? 0,
-      hint: `${collectionTotal(requests)} gjithsej`,
+      hint: t('overview.stats.total', { count: collectionTotal(requests) }),
       to: REQUESTS_PATH,
     },
     {
-      label: 'Oferta të marra',
+      label: t('overview.stats.receivedOffers'),
       value: offers,
-      hint: offers > 0 ? 'Nga ofruesit' : 'Asnjë ende',
+      hint: offers > 0 ? t('overview.stats.fromProviders') : t('overview.stats.noneYet'),
       to: REQUESTS_PATH,
     },
     {
-      label: 'Termine të ardhshme',
+      label: t('overview.stats.upcomingAppointments'),
       value: collectionSummary(data?.appointments).upcoming ?? upcoming.length,
-      hint: upcoming[0] ? `Tjetri: ${formatWhen(upcoming[0].startAt)}` : 'Asnjë i planifikuar',
+      hint: upcoming[0] ? t('overview.stats.next', { when: formatWhen(upcoming[0].startAt) }) : t('overview.stats.noneScheduled'),
       to: REQUESTS_PATH,
     },
     {
-      label: 'Mesazhe të palexuara',
+      label: t('overview.stats.unreadMessages'),
       value: unread,
-      hint: `${collectionTotal(conversations)} biseda`,
+      hint: t('overview.stats.conversations', { count: collectionTotal(conversations) }),
       to: MESSAGES_PATH,
       highlight: unread > 0,
     },
@@ -112,21 +116,22 @@ function StatsStrip({ data, loading }: { data: OverviewData | null; loading: boo
 }
 
 function ActivityCard({ data, loading }: { data: OverviewData | null; loading: boolean }) {
+  const { t } = useTranslation()
   const entries = data ? buildActivity(data.requests) : []
 
   return (
     <Card className="uo-card uo-activity">
-      <SectionHead title="Aktiviteti i fundit" action={entries.length > 0 ? <TextLink to={REQUESTS_PATH}>Kërkesat</TextLink> : null} />
+      <SectionHead title={t('overview.recentActivity')} action={entries.length > 0 ? <TextLink to={REQUESTS_PATH}>{t('dash.requests')}</TextLink> : null} />
       <Card.Content className="uo-card-body">
         {loading ? (
           <RowsSkeleton rows={4} />
         ) : entries.length === 0 ? (
           <EmptyBlock
-            title="Ende s'ka aktivitet"
-            text="Kërkesat që dërgon dhe ndryshimet e statusit të tyre do të shfaqen këtu."
+            title={t('overview.noActivity')}
+            text={t('overview.user.activityText')}
             action={
               <Link to="/ofertat" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                Shfleto ofertat
+                {t('req.browse')}
               </Link>
             }
           />
@@ -139,6 +144,7 @@ function ActivityCard({ data, loading }: { data: OverviewData | null; loading: b
 }
 
 function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | null | undefined; roles: UserRole[]; loading: boolean }) {
+  const { t } = useTranslation()
   const { switchContext } = useAuth()
   const navigate = useNavigate()
   const [switching, setSwitching] = useState(false)
@@ -160,18 +166,18 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
   if (!loading && services === null) {
     return (
       <Card className="uo-card">
-        <SectionHead title="Shërbimet e mia" />
+        <SectionHead title={t('overview.myServices')} />
         <Card.Content className="uo-card-body">
           <EmptyBlock
-            title="Ofro shërbimet e tua"
-            text="Krijo profil eksperti për të publikuar shërbime dhe për të marrë kërkesa nga klientët."
+            title={t('overview.user.offerServicesTitle')}
+            text={t('overview.user.offerServicesText')}
             action={
               <div className="uo-empty-actions">
                 <Link to="/dashboard/user/become-expert" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                  Bëhu ekspert
+                  {t('overview.user.becomeExpert')}
                 </Link>
                 <Link to="/dashboard/user/create-company" className="uo-link">
-                  ose regjistro kompaninë
+                  {t('overview.user.orRegisterCompany')}
                 </Link>
               </div>
             }
@@ -184,12 +190,12 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
   return (
     <Card className="uo-card">
       <SectionHead
-        title="Shërbimet e mia"
+        title={t('overview.myServices')}
         meta={list.length > 0 ? <span className="uo-card-meta">{list.length}</span> : null}
         action={
           list.length > 0 ? (
             <Button variant="ghost" size="sm" className="uo-link-btn" isDisabled={switching} onPress={() => void openServices()}>
-              Shiko të gjitha
+              {t('overview.viewAll')}
               <ArrowRight size={14} aria-hidden />
             </Button>
           ) : null
@@ -200,11 +206,11 @@ function ServicesCard({ services, roles, loading }: { services: ServiceItem[] | 
           <RowsSkeleton rows={2} />
         ) : list.length === 0 ? (
           <EmptyBlock
-            title="Nuk ke publikuar shërbime ende"
-            text="Shërbimet e publikuara shfaqen në ofertat e Këshillohu."
+            title={t('overview.noServicesTitle')}
+            text={t('overview.user.noServicesText')}
             action={
               <Button variant="outline" size="sm" isDisabled={switching} onPress={() => void openServices()}>
-                Shto shërbim
+                {t('overview.addService')}
               </Button>
             }
           />
@@ -276,7 +282,7 @@ export function UserOverviewPage() {
         </div>
         <Link to="/" className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
           <Plus size={16} aria-hidden />
-          Kërko ndihmë
+          {t('dash.findHelp')}
         </Link>
       </header>
 
@@ -284,11 +290,11 @@ export function UserOverviewPage() {
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Nuk u ngarkuan të dhënat</Alert.Title>
+            <Alert.Title>{t('overview.loadError')}</Alert.Title>
             <Alert.Description>{error}</Alert.Description>
           </Alert.Content>
           <Button size="sm" variant="outline" onPress={reload}>
-            Provo përsëri
+            {t('page.retry')}
           </Button>
         </Alert>
       ) : (

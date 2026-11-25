@@ -3,7 +3,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { emptyPagination, type PaginationMeta } from '../api/pagination'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import i18n, { uiText } from '../i18n'
+import i18n, { dateLocale, uiText } from '../i18n'
 import { Button, buttonVariants, Card, Chip, Skeleton, toast, Tooltip } from '@heroui/react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
@@ -61,13 +61,6 @@ import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendati
 import { useAuth } from '../auth/AuthContext'
 import { useCompareLawyers } from '../hooks/useCompareLawyers'
 import './PublicProfile.css'
-
-function dateLocale() {
-  const language = (i18n.language || 'sq').toLowerCase()
-  if (language.startsWith('de')) return 'de-DE'
-  if (language.startsWith('en')) return 'en-GB'
-  return 'sq-AL'
-}
 
 function modeLabel(mode: 'online' | 'on_site') {
   if (mode === 'on_site') return uiText('Në vend', 'On site', 'Vor Ort')
@@ -209,7 +202,7 @@ function ServiceRow({ service }: { service: ServiceItem }) {
 
 export default function ProviderProfilePage() {
   const { user } = useAuth()
-  const { i18n: ui } = useTranslation()
+  const { t, i18n: ui } = useTranslation()
   void ui.language
   const { uid: param } = useParams<{ uid: string }>()
   const uid = idFromPublicParam(param)
@@ -237,7 +230,7 @@ export default function ProviderProfilePage() {
 
   useEffect(() => {
     if (!uid) {
-      setError('Profili nuk u gjet')
+      setError(i18n.t('detail.profileNotFound'))
       setLoading(false)
       return
     }
@@ -712,7 +705,7 @@ export default function ProviderProfilePage() {
                           <li>
                             <a href={`mailto:${email}`}>
                               <span className="pp-contact-icon"><Mail size={16} aria-hidden /></span>
-                              <span><small>Email</small>{email}</span>
+                              <span><small>{t('req.email')}</small>{email}</span>
                             </a>
                           </li>
                         ) : null}
@@ -720,7 +713,7 @@ export default function ProviderProfilePage() {
                           <li>
                             <a href={externalHref(website)} target="_blank" rel="noopener noreferrer">
                               <span className="pp-contact-icon"><Globe size={16} aria-hidden /></span>
-                              <span><small>Website</small>{displayUrl(website)}</span>
+                              <span><small>{t('cards.website')}</small>{displayUrl(website)}</span>
                             </a>
                           </li>
                         ) : null}

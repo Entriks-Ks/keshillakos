@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useCallRingtone } from './useCallRingtone'
 import { type CallPeer, type CallType } from '../api/calls'
 import { toast } from '@heroui/react'
+import i18n from '../i18n'
 
 export type CallStage = 'idle' | 'calling' | 'ringing' | 'connected'
 
@@ -147,7 +148,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
           // Genuinely in an active call with another user
           console.log('[CallContext] User is busy in an active call with another user.')
           socket.emit('call:reject', { callId: data.callId, reason: 'busy' })
-          toast.info(`Thirrje e re nga ${data.caller?.name || 'Përdorues'} (U refuzua pasi je në thirrje)`)
+          toast.info(i18n.t('calls.busyDeclined', { name: data.caller?.name || i18n.t('role.user') }))
           return
         } else {
           // Stale stage without active call data
@@ -163,7 +164,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       if (incomingTimeoutRef.current) clearTimeout(incomingTimeoutRef.current)
       incomingTimeoutRef.current = window.setTimeout(() => {
         if (stageRef.current === 'ringing') {
-          toast.info(`Thirrje e humbur nga ${data.caller?.name || 'Përdorues'}`)
+          toast.info(i18n.t('calls.missedFrom', { name: data.caller?.name || i18n.t('role.user') }))
           resetCalls()
         }
       }, 62_000)
@@ -215,9 +216,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
       ) {
         ringtone.stop()
         if (data.reason === 'busy') {
-          toast.danger('Përdoruesi është i zënë në një thirrje tjetër')
+          toast.danger(i18n.t('calls.peerBusy'))
         } else {
-          toast.info('Thirrja u refuzua')
+          toast.info(i18n.t('calls.declined'))
         }
         resetCalls()
       }
@@ -226,7 +227,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     socket.on('call:timeout', (data: { callId: string }) => {
       if (outgoingRef.current && outgoingRef.current.callId === data.callId) {
         ringtone.stop()
-        toast.info('Nuk u përgjigj (Koha mbaroi)')
+        toast.info(i18n.t('calls.noAnswer'))
         resetCalls()
       }
     })
@@ -234,7 +235,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     socket.on('call:missed', (data: { callId: string; caller: CallPeer; callType: CallType }) => {
       ringtone.stop()
       if (!data?.callId || (incomingRef.current && incomingRef.current.callId === data.callId) || stageRef.current === 'ringing') {
-        toast.info(`Thirrje e humbur nga ${data?.caller?.name || incomingRef.current?.caller?.name || 'Përdorues'}`)
+        toast.info(i18n.t('calls.missedFrom', { name: data?.caller?.name || incomingRef.current?.caller?.name || i18n.t('role.user') }))
         resetCalls()
       }
     })
@@ -252,9 +253,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
           const mins = Math.floor(data.duration / 60)
           const secs = data.duration % 60
           const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
-          toast.info(`Thirrja përfundoi (${timeStr})`)
+          toast.info(i18n.t('calls.endedAfter', { duration: timeStr }))
         } else if (stageRef.current === 'connected') {
-          toast.info('Thirrja përfundoi')
+          toast.info(i18n.t('calls.ended'))
         }
         resetCalls()
       }
@@ -304,14 +305,18 @@ export function CallProvider({ children }: { children: ReactNode }) {
           console.log('[CallContext] Recovering from previous stage with same peer to place new call')
           resetCalls()
         } else {
-          toast.danger(`Je tashmë në një thirrje me ${activeRef.current.peer.name || 'një person tjetër'}`)
+          toast.danger(
+            activeRef.current.peer.name
+              ? i18n.t('calls.alreadyInCallWith', { name: activeRef.current.peer.name })
+              : i18n.t('calls.alreadyInCall'),
+          )
           return false
         }
       }
 
       const socket = socketRef.current
       if (!socket || !socket.connected) {
-        toast.danger('Lidhja me serverin nuk është gati')
+        toast.danger(i18n.t('calls.serverNotReady'))
         return false
       }
 
@@ -341,9 +346,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
             if (!res?.ok) {
               ringtone.stop()
               if (res?.busy) {
-                toast.danger('Përdoruesi është i zënë në një thirrje tjetër')
+                toast.danger(i18n.t('calls.peerBusy'))
               } else {
-                toast.danger(res?.error || 'Nisja e thirrjes dështoi')
+                toast.danger(res?.error || i18n.t('calls.startFailed'))
               }
               resetCalls()
               resolve(false)
@@ -396,7 +401,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         setStage('connected')
       } else {
         activeRef.current = null
-        toast.danger(res?.error || 'Pranimi i thirrjes dështoi')
+        toast.danger(res?.error || i18n.t('calls.acceptFailed'))
         resetCalls()
       }
     })

@@ -32,26 +32,30 @@ export default function AboutPlatformPreview() {
       query: t('about.aiSample1'),
       category: t('about.tabAccounting'),
       sub: t('about.accSub3') + ' & ' + t('about.accSub2'),
-      matchRate: '98%',
+      matchRate: 98,
       specialists: 4,
     },
     {
       query: t('about.aiSample2'),
       category: t('about.tabLegal'),
       sub: t('about.legalSub4') + ' & ' + t('about.legalSub1'),
-      matchRate: '99%',
+      matchRate: 99,
       specialists: 6,
     },
     {
       query: t('about.aiSample3'),
       category: t('about.tabLegal'),
-      sub: t('about.legalSub5') + ' (Diasporë)',
-      matchRate: '97%',
+      sub: t('landing.preview.diaspora', { service: t('about.legalSub5') }),
+      matchRate: 97,
       specialists: 3,
     },
   ]
 
-  const slots = ['Sot · 14:30', 'Nesër · 10:00', 'E Premte · 16:00']
+  const slots = [
+    t('landing.preview.slotToday', { time: '14:30' }),
+    t('landing.preview.slotTomorrow', { time: '10:00' }),
+    t('landing.preview.slotFriday', { time: '16:00' }),
+  ]
 
   return (
     <section className="ab-preview" aria-labelledby="about-preview-heading">
@@ -118,7 +122,7 @@ export default function AboutPlatformPreview() {
                 <h3>{t('about.tabLegal')}</h3>
                 <p>{t('about.legalDesc')}</p>
 
-                <div className="ab-sub-chips" aria-label="Nënkategoritë ligjore">
+                <div className="ab-sub-chips" aria-label={t('landing.preview.legalSubcategories')}>
                   <span className="ab-sub-chip">{t('about.legalSub1')}</span>
                   <span className="ab-sub-chip">{t('about.legalSub2')}</span>
                   <span className="ab-sub-chip">{t('about.legalSub3')}</span>
@@ -143,7 +147,7 @@ export default function AboutPlatformPreview() {
                   </span>
                   <span className="ab-badge-mode">
                     <Video size={13} />
-                    Video & Zyrë
+                    {t('landing.preview.videoOffice')}
                   </span>
                 </div>
 
@@ -156,7 +160,7 @@ export default function AboutPlatformPreview() {
                   </span>
                   <span>
                     <Clock size={14} />
-                    45 minuta
+                    {t('landing.preview.duration45')}
                   </span>
                 </div>
 
@@ -175,12 +179,12 @@ export default function AboutPlatformPreview() {
                 <div className="ab-sim-slots">
                   <span className="ab-slots-label">
                     <Calendar size={14} />
-                    Zgjidh orarin e lirë:
+                    {t('landing.preview.pickSlot')}
                   </span>
                   <div className="ab-slots-row">
                     {slots.map((slot, idx) => (
                       <button
-                        key={slot}
+                        key={idx}
                         type="button"
                         className={`ab-slot-pill ${selectedSlot === idx ? 'is-selected' : ''}`}
                         onClick={() => setSelectedSlot(idx)}
@@ -192,9 +196,9 @@ export default function AboutPlatformPreview() {
                 </div>
 
                 <div className="ab-sim-footer">
-                  <span className="ab-sim-price">Nga €40</span>
+                  <span className="ab-sim-price">{t('landing.preview.priceFrom', { price: 40 })}</span>
                   <Link to="/ofertat" className="ab-sim-btn">
-                    Rezervo Konsultë
+                    {t('landing.preview.bookConsultation')}
                   </Link>
                 </div>
               </div>
@@ -213,7 +217,7 @@ export default function AboutPlatformPreview() {
                 <h3>{t('about.tabAccounting')}</h3>
                 <p>{t('about.accDesc')}</p>
 
-                <div className="ab-sub-chips" aria-label="Nënkategoritë e kontabilitetit">
+                <div className="ab-sub-chips" aria-label={t('landing.preview.accSubcategories')}>
                   <span className="ab-sub-chip">{t('about.accSub1')}</span>
                   <span className="ab-sub-chip">{t('about.accSub2')}</span>
                   <span className="ab-sub-chip">{t('about.accSub3')}</span>
@@ -242,14 +246,14 @@ export default function AboutPlatformPreview() {
                       className={`ab-toggle-btn ${deliveryMode === 'office' ? 'is-active' : ''}`}
                       onClick={() => setDeliveryMode('office')}
                     >
-                      Në Zyrë
+                      {t('landing.preview.inOffice')}
                     </button>
                     <button
                       type="button"
                       className={`ab-toggle-btn ${deliveryMode === 'online' ? 'is-active' : ''}`}
                       onClick={() => setDeliveryMode('online')}
                     >
-                      Online
+                      {t('site.online')}
                     </button>
                   </div>
                 </div>
@@ -263,7 +267,7 @@ export default function AboutPlatformPreview() {
                   </span>
                   <span>
                     <FileText size={14} />
-                    Paketë e Plotë
+                    {t('landing.preview.fullPackage')}
                   </span>
                 </div>
 
@@ -279,9 +283,9 @@ export default function AboutPlatformPreview() {
                 </ul>
 
                 <div className="ab-sim-footer">
-                  <span className="ab-sim-price">Pako Fillestare</span>
+                  <span className="ab-sim-price">{t('landing.preview.starterPackage')}</span>
                   <Link to="/ofertat" className="ab-sim-btn">
-                    Shiko Ofertën
+                    {t('landing.preview.viewOffer')}
                   </Link>
                 </div>
               </div>
@@ -340,10 +344,10 @@ export default function AboutPlatformPreview() {
                   <div className="ab-ai-match-header">
                     <span className="ab-match-pill">
                       <UserCheck size={14} />
-                      {aiSamples[activeAiSample].matchRate} përputhje
+                      {t('landing.preview.matchRate', { rate: aiSamples[activeAiSample].matchRate })}
                     </span>
                     <span className="ab-match-count">
-                      {aiSamples[activeAiSample].specialists} ekspertë të disponueshëm
+                      {t('landing.preview.specialists', { count: aiSamples[activeAiSample].specialists })}
                     </span>
                   </div>
 
@@ -353,8 +357,7 @@ export default function AboutPlatformPreview() {
                   </div>
 
                   <p className="ab-ai-advice-hint">
-                    Kemi identifikuar specialistët e licencuar që mbulojnë këtë fushë në Kosovë dhe
-                    me konsultim online nga diaspora.
+                    {t('landing.preview.aiHint')}
                   </p>
                 </div>
 

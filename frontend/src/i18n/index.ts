@@ -31,6 +31,14 @@ export function uiText(sq: string, en: string, de: string) {
   return sq
 }
 
+/** BCP-47 locale for Intl date/number formatting in the active UI language. */
+export function dateLocale(language?: string) {
+  const current = (language || i18n.language || 'sq').toLowerCase()
+  if (current.startsWith('de')) return 'de-DE'
+  if (current.startsWith('en')) return 'en-GB'
+  return 'sq-AL'
+}
+
 export function applyLanguage(language: AppLanguage) {
   document.documentElement.lang = language
   try {

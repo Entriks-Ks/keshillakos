@@ -4,11 +4,17 @@ import CallManagerUI from './calls/CallManagerUI'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { RouterProvider, Toast } from '@heroui/react'
 import { BrowserRouter, Navigate, Route, Routes, useHref, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
 import ScrollToTop from './components/ScrollToTop'
 import HomePage from './pages/HomePage'
 import CompareDock from './components/CompareDock'
+import i18n from './i18n'
+import { setPriceTranslator } from './utils/serviceDiscovery'
+
+// Price labels are built in a node-tested util; route them through i18next at call time.
+setPriceTranslator((key, options) => i18n.t(key, options))
 
 const DashboardShell = lazy(() => import('./dashboard/DashboardShell'))
 const AdminUsersPanel = lazy(() => import('./dashboard/AdminUsersPanel'))
@@ -65,9 +71,10 @@ function ExpertOnboardingRedirect() {
 
 function HeroRouterProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   return (
     <RouterProvider navigate={navigate} useHref={useHref}>
-      <Suspense fallback={<div className="page-center"><p className="muted">Duke u ngarkuar...</p></div>}>
+      <Suspense fallback={<div className="page-center"><p className="muted">{t('notifications.loading')}</p></div>}>
         {children}
       </Suspense>
     </RouterProvider>
@@ -75,10 +82,11 @@ function HeroRouterProvider({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
+  const { t } = useTranslation()
   return (
     <AuthProvider>
       <Toast.Provider
-        aria-label="Njoftime"
+        aria-label={t('notifications.title')}
         className="kk-toast-region"
         placement="top end"
         maxVisibleToasts={3}

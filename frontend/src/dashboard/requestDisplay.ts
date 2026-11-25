@@ -1,5 +1,5 @@
 import type { RequestStatus, ServiceRequestItem } from '../api/requests'
-import i18n from '../i18n'
+import { dateLocale } from '../i18n'
 
 export type ChipColor = 'default' | 'accent' | 'success' | 'warning' | 'danger'
 
@@ -14,13 +14,10 @@ export const REQUEST_STATUS: Record<RequestStatus, { label: string; color: ChipC
   withdrawn: { label: 'status.withdrawn', color: 'default' },
 }
 
-const DATE_LOCALE: Record<string, string> = { sq: 'sq-AL', en: 'en-GB', de: 'de-DE' }
-
 export function formatWhen(iso: string) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  const language = (i18n.language || 'sq').slice(0, 2)
-  return date.toLocaleString(DATE_LOCALE[language] || 'sq-AL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleString(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 export function formatAmount(offer: NonNullable<ServiceRequestItem['offer']>) {

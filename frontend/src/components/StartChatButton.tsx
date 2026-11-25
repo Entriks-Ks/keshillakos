@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from '@heroui/react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Trans, useTranslation } from 'react-i18next'
 import { MessageCircle } from 'lucide-react'
 import { openConversation } from '../api/chat'
 import { useAuth } from '../auth/AuthContext'
@@ -35,7 +36,14 @@ export default function StartChatButton({
   const { user } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const peerName = seekerUid ? seekerName || 'klientin' : providerName || 'ofruesin'
+  const { t } = useTranslation()
+  const peerName = seekerUid ? seekerName : providerName
+  const loginHintKey = peerName
+    ? 'cards.chatLoginHint'
+    : seekerUid
+      ? 'cards.chatLoginHintClient'
+      : 'cards.chatLoginHintProvider'
+  const liveChatLabel = label || t('cards.liveChat')
   const asProvider = Boolean(user && seekerUid && user.uid !== seekerUid)
 
   if (!user) {
@@ -45,17 +53,17 @@ export default function StartChatButton({
           <Link
             to="/login"
             className={className ? `${className} chat-start-btn` : 'ghost chat-start-btn'}
-            aria-label={label || 'Live Chat'}
+            aria-label={liveChatLabel}
           >
             <MessageCircle size={16} aria-hidden />
-            <span className="tt-dir-action-text">{label || 'Live Chat'}</span>
+            <span className="tt-dir-action-text">{liveChatLabel}</span>
           </Link>
         </div>
       )
     }
     return (
       <p className={`muted${compact ? ' chat-start-hint' : ''}`}>
-        <Link to="/login">Hyr</Link> për të dërguar mesazh te {peerName}.
+        <Trans i18nKey={loginHintKey} values={{ name: peerName }} components={{ login: <Link to="/login" /> }} />
       </p>
     )
   }
@@ -103,7 +111,7 @@ export default function StartChatButton({
         disabled={loading}
       >
         <MessageCircle size={16} aria-hidden />
-        <span className="tt-dir-action-text">{loading ? 'Duke hapur...' : label || 'Dërgo mesazh'}</span>
+        <span className="tt-dir-action-text">{loading ? t('cards.opening') : label || t('cards.sendMessage')}</span>
       </button>
     </div>
   )

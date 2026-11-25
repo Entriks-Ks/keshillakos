@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
+import i18n from '../i18n'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { createCompany, becomeExpert, fetchOwnedCompany } from '../api/onboarding'
 import { uploadBusinessLogo } from '../api/businesses'
@@ -16,6 +18,7 @@ import ProviderLocationFields from '../components/ProviderLocationFields'
 import DashPageHeader from './DashPageHeader'
 
 export function ExpertOnboardingPage() {
+  const { t } = useTranslation()
   const { user, refreshUser } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -43,11 +46,11 @@ export function ExpertOnboardingPage() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     if (!publicName.trim()) {
-      setError('Plotëso emrin dhe mbiemrin në profilin privat para se të bëhesh ekspert.')
+      setError(t('onboarding.expert.nameRequired'))
       return
     }
     if (!serviceLocation || (mode === 'on_site' && !serviceAreas.length)) {
-      setError('Zgjidh lokacionin dhe të paktën një qytet ku ofron shërbime.')
+      setError(t('onboarding.expert.locationRequired'))
       return
     }
     setError('')
@@ -64,7 +67,7 @@ export function ExpertOnboardingPage() {
         serviceAreaCityIds: serviceAreas.map((area) => area.city._id),
       })
       await refreshUser()
-      toast.success('Profili i ekspertit u krijua. Mund të menaxhosh profilin menjëherë.')
+      toast.success(t('onboarding.expert.created'))
       navigate('/dashboard/provider/profile', { replace: true })
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -76,18 +79,18 @@ export function ExpertOnboardingPage() {
   return (
     <section className="provider-section">
       <DashPageHeader
-        title="Bëhu ekspert"
-        description="Krijo profilin profesional mbi llogarinë tënde. Emri publik vjen nga profili privat. Nuk krijohet llogari e re dhe nuk nevojitet miratim admini."
+        title={t('onboarding.expert.title')}
+        description={t('onboarding.expert.description')}
       />
       <form className="service-form" onSubmit={onSubmit}>
-        <label>Emri publik<input value={publicName} readOnly disabled /></label>
-        <label>Kategoria<select value={category} onChange={(e) => setCategory(e.target.value)} required>
+        <label>{t('onboarding.expert.publicName')}<input value={publicName} readOnly disabled /></label>
+        <label>{t('offers.category')}<select value={category} onChange={(e) => setCategory(e.target.value)} required>
           {domains.map((domain) => <option key={domain.id} value={domain.id}>{domain.labelSq}</option>)}
         </select></label>
-        <label>Titulli<input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} /></label>
-        <label>Gjuhët (ndara me presje)<input value={languages} onChange={(e) => setLanguages(e.target.value)} /></label>
-        <label>Mënyra e punës<select value={mode} onChange={(e) => setMode(e.target.value as 'online' | 'on_site')}>
-          <option value="online">Online</option><option value="on_site">Në lokacion</option>
+        <label>{t('onboarding.expert.titleField')}<input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} /></label>
+        <label>{t('onboarding.expert.languages')}<input value={languages} onChange={(e) => setLanguages(e.target.value)} /></label>
+        <label>{t('onboarding.expert.mode')}<select value={mode} onChange={(e) => setMode(e.target.value as 'online' | 'on_site')}>
+          <option value="online">{t('onboarding.expert.online')}</option><option value="on_site">{t('onboarding.expert.onSite')}</option>
         </select></label>
         <ProviderLocationFields
           location={serviceLocation}
@@ -96,20 +99,22 @@ export function ExpertOnboardingPage() {
           onServiceAreasChange={setServiceAreas}
           disabled={saving}
         />
-        <label className="full">Përshkrimi<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} /></label>
+        <label className="full">{t('profile.description')}<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} /></label>
         {error ? <p className="error full">{error}</p> : null}
-        <button type="submit" className="full" disabled={saving || !category}>{saving ? 'Duke krijuar...' : 'Krijo profilin e ekspertit'}</button>
+        <button type="submit" className="full" disabled={saving || !category}>{saving ? t('onboarding.creating') : t('profile.expert.create')}</button>
       </form>
-      <p><Link to={profileBackTo}>Kthehu te profili</Link></p>
+      <p><Link to={profileBackTo}>{t('onboarding.back')}</Link></p>
     </section>
   )
 }
 
 function FieldHint({ required }: { required: boolean }) {
-  return <span className="profile-field-hint">{required ? 'E detyrueshme' : 'Opsionale'}</span>
+  const { t } = useTranslation()
+  return <span className="profile-field-hint">{required ? t('profile.required') : t('profile.optional')}</span>
 }
 
 export function CompanyOnboardingPage() {
+  const { t } = useTranslation()
   const { user, refreshUser } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -137,7 +142,7 @@ export function CompanyOnboardingPage() {
         if (controller.signal.aborted) return
         if (business) {
           const roles = user?.roles ?? (user?.role ? [user.role] : [])
-          toast.success('Ke tashmë një kompani.')
+          toast.success(i18n.t('onboarding.company.exists'))
           navigate(roles.includes('company') ? '/dashboard/company/profile' : '/dashboard/user/profile', { replace: true })
           return
         }
@@ -177,12 +182,12 @@ export function CompanyOnboardingPage() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     if (!city) {
-      setError('Qyteti është i detyrueshëm.')
+      setError(t('onboarding.company.cityRequired'))
       return
     }
     const selected = categories.find((item) => item._id === categoryId)
     if (!selected) {
-      setError('Kategoria është e detyrueshme.')
+      setError(t('onboarding.company.categoryRequired'))
       return
     }
     setError('')
@@ -202,7 +207,7 @@ export function CompanyOnboardingPage() {
         await uploadBusinessLogo(business._id, logoFile)
       }
       await refreshUser()
-      toast.success('Kompania u krijua. Mund të menaxhosh profilin dhe të ftosh ekspertë menjëherë.')
+      toast.success(t('onboarding.company.created'))
       navigate('/dashboard/company/profile', { replace: true })
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -214,7 +219,7 @@ export function CompanyOnboardingPage() {
   if (checking) {
     return (
       <section className="provider-section">
-        <p className="muted" role="status">Duke kontrolluar kompaninë…</p>
+        <p className="muted" role="status">{t('onboarding.company.checking')}</p>
       </section>
     )
   }
@@ -222,8 +227,8 @@ export function CompanyOnboardingPage() {
   return (
     <section className="provider-section">
       <DashPageHeader
-        title="Krijo kompani"
-        description="Pas krijimit kompania është e gatshme për përdorim. Verifikimi profesional mbetet opsional dhe i ndarë nga statusi."
+        title={t('onboarding.company.title')}
+        description={t('onboarding.company.description')}
       />
 
       <div className="profile-photo-row">
@@ -232,7 +237,7 @@ export function CompanyOnboardingPage() {
         </div>
         <div className="profile-photo-actions">
           <label className="primary-btn profile-upload-btn">
-            Ngarko logo
+            {t('onboarding.company.uploadLogo')}
             <input
               type="file"
               accept={IMAGE_ACCEPT}
@@ -247,11 +252,11 @@ export function CompanyOnboardingPage() {
 
       <form className="service-form" onSubmit={onSubmit}>
         <label>
-          Emri i kompanisë <FieldHint required />
+          {t('profile.company.name')} <FieldHint required />
           <input value={publicName} onChange={(e) => setPublicName(e.target.value)} required maxLength={160} />
         </label>
         <label>
-          Email kontakti <FieldHint required />
+          {t('onboarding.company.contactEmail')} <FieldHint required />
           <input
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
@@ -262,7 +267,7 @@ export function CompanyOnboardingPage() {
           />
         </label>
         <label>
-          Numri i telefonit <FieldHint required />
+          {t('profile.phoneNumber')} <FieldHint required />
           <input
             value={contactPhone}
             onChange={(e) => setContactPhone(e.target.value)}
@@ -274,36 +279,36 @@ export function CompanyOnboardingPage() {
           />
         </label>
         <div className="full field">
-          <span className="profile-inline-label">Qyteti <FieldHint required /></span>
+          <span className="profile-inline-label">{t('profile.city')} <FieldHint required /></span>
           <LocationSelector value={city} onChange={setCity} disabled={saving} />
         </div>
         <label className="full">
-          Përshkrimi <FieldHint required />
+          {t('profile.description')} <FieldHint required />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={4} maxLength={3000} />
         </label>
         <label>
-          Kategoria / industria <FieldHint required />
+          {t('profile.categoryIndustry')} <FieldHint required />
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required disabled={!categories.length}>
-            {!categories.length ? <option value="">Duke ngarkuar kategoritë…</option> : null}
+            {!categories.length ? <option value="">{t('home.loadingCategories')}</option> : null}
             {categories.map((item) => (
               <option key={item._id} value={item._id}>{item.name.sq}</option>
             ))}
           </select>
         </label>
         <label>
-          Website <FieldHint required={false} />
+          {t('profile.website')} <FieldHint required={false} />
           <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://" maxLength={500} />
         </label>
         <label className="full">
-          Adresa <FieldHint required={false} />
+          {t('profile.address')} <FieldHint required={false} />
           <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={240} />
         </label>
         {error ? <p className="error full">{error}</p> : null}
         <button type="submit" className="full" disabled={saving || !categoryId || !categories.length}>
-          {saving ? 'Duke krijuar...' : 'Krijo kompaninë'}
+          {saving ? t('onboarding.creating') : t('profile.createCompany')}
         </button>
       </form>
-      <p><Link to={profileBackTo}>Kthehu te profili</Link></p>
+      <p><Link to={profileBackTo}>{t('onboarding.back')}</Link></p>
     </section>
   )
 }

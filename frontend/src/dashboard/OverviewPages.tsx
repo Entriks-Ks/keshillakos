@@ -71,17 +71,17 @@ export function AdminOverviewPage() {
     .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
     .slice(0, 6)
   const queues = [
-    { label: 'Role', detail: 'Presin shqyrtim', count: data?.pendingRoles ?? 0, to: '/dashboard/admin/users', icon: Users },
-    { label: 'Feedback', detail: 'Të palexuara', count: data?.newFeedback ?? 0, to: '/dashboard/admin/feedback', icon: MessageSquarePlus },
-    { label: 'Kërkesa', detail: 'Në pritje', count: waitingRequests, to: '/dashboard/admin/requests', icon: FolderKanban },
+    { id: 'roles', label: t('auth.roles'), detail: t('admin.overview.awaitingReview'), count: data?.pendingRoles ?? 0, to: '/dashboard/admin/users', icon: Users },
+    { id: 'feedback', label: t('dash.feedback'), detail: t('admin.overview.unread'), count: data?.newFeedback ?? 0, to: '/dashboard/admin/feedback', icon: MessageSquarePlus },
+    { id: 'requests', label: t('admin.overview.requests'), detail: t('status.pending'), count: waitingRequests, to: '/dashboard/admin/requests', icon: FolderKanban },
   ]
   const totalUsers = data ? Object.values(data.counts).reduce((sum, count) => sum + count, 0) : 0
   const firstName = user?.firstName || user?.name?.split(' ')[0] || ''
   const stats = [
-    { label: 'Klientë', value: data?.counts.user ?? 0, hint: `${totalUsers} gjithsej`, to: '/dashboard/admin/users' },
-    { label: 'Ofrues', value: data?.counts.provider ?? 0, hint: 'Ekspertë', to: '/dashboard/admin/users' },
-    { label: 'Kompani', value: data?.counts.company ?? 0, hint: 'Biznese', to: '/dashboard/admin/users' },
-    { label: 'Në pritje', value: waitingRequests, hint: waitingRequests ? 'Kërkesa aktive' : 'Asnjë', to: '/dashboard/admin/requests', highlight: waitingRequests > 0 },
+    { label: t('admin.overview.clients'), value: data?.counts.user ?? 0, hint: t('overview.stats.total', { count: totalUsers }), to: '/dashboard/admin/users' },
+    { label: t('admin.overview.providers'), value: data?.counts.provider ?? 0, hint: t('admin.overview.experts'), to: '/dashboard/admin/users' },
+    { label: t('admin.overview.companies'), value: data?.counts.company ?? 0, hint: t('admin.overview.businesses'), to: '/dashboard/admin/users' },
+    { label: t('status.pending'), value: waitingRequests, hint: waitingRequests ? t('overview.stats.activeRequests') : t('admin.overview.none'), to: '/dashboard/admin/requests', highlight: waitingRequests > 0 },
   ]
 
   return (
@@ -92,14 +92,14 @@ export function AdminOverviewPage() {
           <h1>{timeGreeting(new Date().getHours())}{firstName ? `, ${firstName}` : ''}</h1>
           <p>{t(ROLE_HINTS.admin)}</p>
         </div>
-        <Link to="/dashboard/admin/users" className={`${buttonVariants({ variant: 'primary' })} uo-primary`}><Users size={16} aria-hidden />Përdoruesit</Link>
+        <Link to="/dashboard/admin/users" className={`${buttonVariants({ variant: 'primary' })} uo-primary`}><Users size={16} aria-hidden />{t('dash.users')}</Link>
       </header>
 
       {error ? (
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
-          <Alert.Content><Alert.Title>Nuk u ngarkuan të dhënat</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content>
-          <Button size="sm" variant="outline" onPress={reload}>Provo përsëri</Button>
+          <Alert.Content><Alert.Title>{t('overview.loadError')}</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content>
+          <Button size="sm" variant="outline" onPress={reload}>{t('page.retry')}</Button>
         </Alert>
       ) : (
         <>
@@ -107,17 +107,17 @@ export function AdminOverviewPage() {
 
         <div className="uo-grid ad-overview-grid">
           <Card className="uo-card">
-            <SectionHead title="Kërkesat e fundit" action={<Link to="/dashboard/admin/requests" className="uo-link">Të gjitha <ArrowRight size={14} aria-hidden /></Link>} />
+            <SectionHead title={t('admin.overview.recentRequests')} action={<Link to="/dashboard/admin/requests" className="uo-link">{t('req.all')} <ArrowRight size={14} aria-hidden /></Link>} />
             {loading ? <Card.Content className="uo-card-body"><RowsSkeleton rows={4} /></Card.Content> : recent.length ? (
               <Card.Content className="uo-card-body ad-recent-body">
-                <ul className="ad-recent-list" aria-label="Kërkesat e fundit">
+                <ul className="ad-recent-list" aria-label={t('admin.overview.recentRequests')}>
                   {recent.map((item) => {
                     const date = item.updatedAt || item.createdAt
                     const status = REQUEST_STATUS[item.status] ?? { label: item.status, color: 'default' as const }
                     return <li key={item.id} className="ad-recent-row">
                       <div className="ad-recent-main">
-                        <Link to="/dashboard/admin/requests" className="ad-recent-title">{item.serviceTitle || item.need || 'Kërkesë'}</Link>
-                        <p className="ad-recent-people">{item.seekerName || 'Kërkuesi'} <span aria-hidden>→</span> {item.providerName || 'Ofruesi'}</p>
+                        <Link to="/dashboard/admin/requests" className="ad-recent-title">{item.serviceTitle || item.need || t('req.request')}</Link>
+                        <p className="ad-recent-people">{item.seekerName || t('admin.overview.seeker')} <span aria-hidden>→</span> {item.providerName || t('req.provider')}</p>
                       </div>
                       <div className="ad-recent-end">
                         <Chip size="sm" variant="soft" color={status.color}><Chip.Label>{t(status.label)}</Chip.Label></Chip>
@@ -127,18 +127,18 @@ export function AdminOverviewPage() {
                   })}
                 </ul>
               </Card.Content>
-            ) : <EmptyBlock title="Nuk ka kërkesa" text="Kërkesat e platformës shfaqen këtu." />}
+            ) : <EmptyBlock title={t('req.emptyIn')} text={t('admin.overview.emptyText')} />}
           </Card>
 
           <aside className="uo-side">
             <Card className="uo-card">
-              <SectionHead title="Për shqyrtim" />
+              <SectionHead title={t('admin.overview.toReview')} />
               {loading ? <Card.Content className="uo-card-body"><RowsSkeleton rows={3} /></Card.Content> : (
-                <ul className="ad-queues" aria-label="Për t’u shqyrtuar">
+                <ul className="ad-queues" aria-label={t('admin.overview.toReview')}>
                   {queues.map((item) => {
                     const Icon = item.icon
                     return (
-                      <li key={item.label}>
+                      <li key={item.id}>
                         <Link to={item.to} className="ad-queue">
                           <span className="ad-queue-icon"><Icon size={16} aria-hidden /></span>
                           <span className="ad-queue-copy">

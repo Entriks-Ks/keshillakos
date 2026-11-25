@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Award, Building2, Check, MapPin, Scale, Video } from 'lucide-react'
 import type { MarketplaceProvider } from '../api/providerProfiles'
 import { useCompareLawyers } from '../hooks/useCompareLawyers'
@@ -15,6 +16,7 @@ type Props = {
 
 export default function ExpertCard({ provider }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const { t } = useTranslation()
   const { isLawyerSelected, toggleLawyer } = useCompareLawyers()
   const compared = isLawyerSelected(provider.uid)
   const profilePath = providerPath(provider)
@@ -25,23 +27,23 @@ export default function ExpertCard({ provider }: Props) {
   const description = (provider.description || provider.experience || '').trim()
   const verified = isProviderVerified(provider)
   const title = provider.title?.trim()
-  const subtitle = title || specialties[0] || 'Ekspert'
+  const subtitle = title || specialties[0] || t('role.expert')
   const tags = title ? specialties : specialties.slice(1)
   const experienceLabel = provider.yearsOfExperience != null
-    ? (provider.yearsOfExperience === 1 ? '1 vit përvojë' : `${provider.yearsOfExperience} vite përvojë`)
+    ? t('cards.experience', { count: provider.yearsOfExperience })
     : null
 
   return (
     <CardShell
       href={profilePath}
-      label={`Shiko profilin e ${provider.name}`}
+      label={t('cards.viewProfileNamed', { name: provider.name })}
       mediaKind="person"
       media={<ProfileAvatar src={provider.photoUrl} seed={provider.uid} size="fill" />}
       footer={<ProviderCardActions provider={provider} profilePath={profilePath} need={provider.title || provider.name} />}
     >
       <CardTitle
         to={profilePath}
-        verified={verified ? 'I verifikuar' : undefined}
+        verified={verified ? t('compare.verified') : undefined}
         action={(
           <button
             type="button"
@@ -56,10 +58,10 @@ export default function ExpertCard({ provider }: Props) {
               })
             }}
             aria-pressed={compared}
-            title={compared ? 'Hiq nga krahasimi' : 'Shto në krahasim'}
+            title={compared ? t('cards.compareRemove') : t('cards.compareAdd')}
           >
             {compared ? <Check size={12} aria-hidden /> : <Scale size={12} aria-hidden />}
-            <span>{compared ? 'Në krahasim' : 'Krahaso'}</span>
+            <span>{compared ? t('cards.compared') : t('cards.compare')}</span>
           </button>
         )}
       >
@@ -90,7 +92,7 @@ export default function ExpertCard({ provider }: Props) {
         {provider.modes.includes('online') ? (
           <li>
             <Video size={14} aria-hidden />
-            Online
+            {t('cards.online')}
           </li>
         ) : null}
       </CardMeta>

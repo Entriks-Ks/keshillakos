@@ -4,6 +4,7 @@ import { usePagination } from '../hooks/usePagination'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Button, buttonVariants, Card, Chip, ProgressBar, toast } from '@heroui/react'
 import { Link, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft,
   ArrowRight,
@@ -243,6 +244,7 @@ function ReviewItem({ label, children, wide }: { label: string; children: ReactN
 }
 
 export default function ProviderServicesPanel() {
+  const { t } = useTranslation()
   const formRef = useRef<HTMLFormElement>(null)
   const editingCatalogRef = useRef<{ categoryId?: string; subcategoryId?: string; subcategory?: string } | null>(null)
   const routeLocation = useLocation()
@@ -826,7 +828,7 @@ export default function ProviderServicesPanel() {
   }
   if (showCategoryFields) {
     for (const field of categorySpecificFields(extensionFields)) {
-      const label = fieldLabel(field, catalogLanguage)
+      const label = fieldLabel(field)
       const value = extensionValues[field.key]
       const required = Boolean(field.required || field.mustBeTrue)
       if (field.type === 'boolean') {
@@ -1705,7 +1707,7 @@ export default function ProviderServicesPanel() {
               <ReviewItem label={L(uiLang, 'Rezervimi', 'Booking', 'Buchung')}>{reviewAvailability}</ReviewItem>
               {showCategoryFields
                 ? categorySpecificFields(extensionFields).map((field) => (
-                  <ReviewItem key={field.key} label={fieldLabel(field, catalogLanguage)}>
+                  <ReviewItem key={field.key} label={fieldLabel(field)}>
                     {extensionReviewValue(extensionValues[field.key])}
                   </ReviewItem>
                 ))
@@ -1728,7 +1730,7 @@ export default function ProviderServicesPanel() {
                   <span className="ds-review-empty">{L(uiLang, 'Pa foto (opsionale)', 'No photos (optional)', 'Keine Fotos (optional)')}</span>
                 )}
               </ReviewItem>
-              <ReviewItem label="Portfolio URL" wide>
+              <ReviewItem label={t('services.portfolioUrl')} wide>
                 {portfolioUrl.trim() ? <span className="ds-review-url">{portfolioUrl.trim()}</span> : notFilled}
               </ReviewItem>
               <ReviewItem label={L(uiLang, 'Shembuj pune', 'Work samples', 'Arbeitsproben')} wide>

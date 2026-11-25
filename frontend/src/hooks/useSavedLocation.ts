@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from '@heroui/react'
+import i18n from '../i18n'
 import { useAuth } from '../auth/AuthContext'
 import { resolveSavedLocation, type LocationSelection, type SavedLocationIds } from '../api/locations'
 import { getErrorMessage } from '../utils/errors'
@@ -60,14 +61,14 @@ export function useSavedLocation() {
         if (ids) localStorage.setItem(GUEST_LOCATION_KEY, JSON.stringify(ids))
         else localStorage.removeItem(GUEST_LOCATION_KEY)
       } catch {
-        toast.danger('Lokacioni nuk mund të ruhet në këtë pajisje.')
+        toast.danger(i18n.t('system.location.cannotSave'))
       }
       return
     }
     setLocationSaving(true)
     try {
       await updateProfile({ savedLocation: ids })
-      toast.success(ids ? 'Lokacioni u ruajt.' : 'Lokacioni u hoq.')
+      toast.success(i18n.t(ids ? 'system.location.saved' : 'system.location.removed'))
     } catch (err) {
       if (version === changeVersion.current) {
         setSelectedLocation(previous)

@@ -8,6 +8,19 @@ const LEGACY_STORAGE_KEY = 'klaw_compare_lawyers'
 const LEGACY_META_KEY = 'klaw_compare_lawyers_meta'
 export const MAX_COMPARE_LAWYERS = 3
 
+/**
+ * Toast copy is translated through a translator registered by the UI (CompareDock, which is
+ * always mounted in App). This module is imported by node tests, so it must not import i18n.
+ * Until a translator is registered, messages fall back to their translation key.
+ */
+export type CompareTranslator = (key: string, params?: Record<string, string | number>) => string
+
+let translate: CompareTranslator = (key) => key
+
+export function setCompareTranslator(translator: CompareTranslator) {
+  translate = translator
+}
+
 export type CompareLawyerMeta = {
   uid: string
   name: string
@@ -139,9 +152,7 @@ export function useCompareLawyers() {
         return true
       }
       if (currentUids.length >= MAX_COMPARE_LAWYERS) {
-        toast.warning(
-          'Mund të krahasoni deri në 3 avokatë njëherësh. Hiqni një avokat ekzistues për të shtuar këtë.',
-        )
+        toast.warning(translate('compareUi.toast.maxReached', { max: MAX_COMPARE_LAWYERS }))
         return false
       }
 
@@ -160,10 +171,11 @@ export function useCompareLawyers() {
       setSelectedUids(updatedUids)
       setMetaMap({ ...currentMeta })
 
+      const progress = { n: updatedUids.length, max: MAX_COMPARE_LAWYERS }
       toast.success(
         meta?.name
-          ? `"${meta.name}" u shtua në krahasim (${updatedUids.length}/3)`
-          : `Avokati u shtua në krahasim (${updatedUids.length}/3)`,
+          ? translate('compareUi.toast.added', { name: meta.name, ...progress })
+          : translate('compareUi.toast.addedAnon', progress),
       )
       return true
     },
@@ -191,8 +203,8 @@ export function useCompareLawyers() {
 
     toast.info(
       removedName
-        ? `"${removedName}" u hoq nga krahasimi`
-        : 'Avokati u hoq nga krahasimi',
+        ? translate('compareUi.toast.removed', { name: removedName })
+        : translate('compareUi.toast.removedAnon'),
     )
   }, [])
 

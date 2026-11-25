@@ -1,6 +1,7 @@
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@heroui/react'
 import { createCustomDomain, fetchDomains } from '../api/domains'
 import {
@@ -17,6 +18,7 @@ export { ProviderServicesPanel }
 export { default as CompanyExpertsPanel } from './CompanyExpertsPanel'
 
 export function UserRateProvidersPanel() {
+  const { t } = useTranslation()
   const { page, setPage, pagination, receivePagination } = usePagination()
   const [revision, setRevision] = useState(0)
   const [providers, setProviders] = useState<RateableProvider[]>([])
@@ -45,16 +47,14 @@ export function UserRateProvidersPanel() {
   return (
     <section className="provider-section">
       <DashPageHeader
-        title="Si ishte shërbimi?"
-        description="Këtu shfaqen ofruesit me të cilët ke përfunduar një bashkëpunim. Zgjidh yjet dhe, nëse do, shto një koment."
+        title={t('dashUi.rateTitle')}
+        description={t('dashUi.rateLead')}
       />
 
-      {loading ? <p className="muted">Duke u ngarkuar…</p> : null}
+      {loading ? <p className="muted">{t('notifications.loading')}</p> : null}
       {error ? <p className="error">{error}</p> : null}
       {!loading && providers.length === 0 ? (
-        <p className="muted">
-          Nuk ke ende një shërbim të përfunduar. Kur ofruesi ta shënojë kërkesën si të përfunduar, mund ta vlerësosh këtu.
-        </p>
+        <p className="muted">{t('dashUi.rateEmpty')}</p>
       ) : null}
 
       <ul className="rate-provider-list">
@@ -84,6 +84,7 @@ export function UserRateProvidersPanel() {
 }
 
 export function AdminDomainsPanel() {
+  const { t } = useTranslation()
   const [domains, setDomains] = useState<DomainDefinition[]>([])
   const [labelSq, setLabelSq] = useState('')
   const [labelDe, setLabelDe] = useState('')
@@ -122,7 +123,7 @@ export function AdminDomainsPanel() {
       setLabelDe('')
       setExamples('')
       setKeywords('')
-      toast.success('Kategoria e re u krijua (Ekspertë të tjerë / custom).')
+      toast.success(t('dashUi.domainCreated'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -133,8 +134,8 @@ export function AdminDomainsPanel() {
   return (
     <section className="provider-section">
       <DashPageHeader
-        title="Kategori"
-        description="Sistemi ka domenet bazë. Këtu shto kategori të reja kur del një shërbim që nuk hyn te ato ekzistuese."
+        title={t('dashUi.domainsTitle')}
+        description={t('dashUi.domainsLead')}
       />
 
       <ul className="domain-admin-list">
@@ -143,7 +144,7 @@ export function AdminDomainsPanel() {
             <strong>{d.labelSq}</strong>
             <span>
               {d.labelDe}
-              {d.system ? ' · sistem' : ' · custom'}
+              {' · '}{d.system ? t('dashUi.domainSystem') : t('dashUi.domainCustom')}
             </span>
           </li>
         ))}
@@ -151,24 +152,24 @@ export function AdminDomainsPanel() {
 
       <form onSubmit={onSubmit} className="service-form">
         <label>
-          Emri (SQ)
+          {t('dashUi.nameSq')}
           <input value={labelSq} onChange={(e) => setLabelSq(e.target.value)} required />
         </label>
         <label>
-          Emri (DE)
+          {t('dashUi.nameDe')}
           <input value={labelDe} onChange={(e) => setLabelDe(e.target.value)} />
         </label>
         <label className="full">
-          Shembuj (ndarë me presje)
+          {t('dashUi.examples')}
           <input value={examples} onChange={(e) => setExamples(e.target.value)} />
         </label>
         <label className="full">
-          Keywords (ndarë me presje)
+          {t('dashUi.keywords')}
           <input value={keywords} onChange={(e) => setKeywords(e.target.value)} />
         </label>
         {error ? <p className="error full">{error}</p> : null}
         <button type="submit" className="full" disabled={submitting}>
-          {submitting ? 'Duke krijuar...' : 'Krijo kategori të re'}
+          {submitting ? t('dashUi.creating') : t('dashUi.createDomain')}
         </button>
       </form>
     </section>

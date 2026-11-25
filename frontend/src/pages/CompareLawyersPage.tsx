@@ -49,8 +49,14 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { MAX_COMPARE_LAWYERS, useCompareLawyers } from '../hooks/useCompareLawyers'
-import i18n from '../i18n/index.ts'
-import { analyzeLawyers, type IntentType, type LawyerVerdict } from '../utils/compareAnalyzer'
+import i18n, { dateLocale } from '../i18n/index.ts'
+import {
+  analyzeLawyers,
+  translateText,
+  type I18nText,
+  type IntentType,
+  type LawyerVerdict,
+} from '../utils/compareAnalyzer'
 import { humanLabels } from '../utils/displayLabels'
 import { providerPath } from '../utils/publicPaths'
 import { formatServicePrice } from '../utils/serviceDiscovery'
@@ -59,9 +65,7 @@ import './CompareLawyersPage.css'
 function formatDateLocale(dateStr: string) {
   try {
     const d = new Date(dateStr)
-    const lang = (i18n.language || 'sq').toLowerCase()
-    const locale = lang.startsWith('de') ? 'de-DE' : lang.startsWith('en') ? 'en-GB' : 'sq-AL'
-    return d.toLocaleDateString(locale, {
+    return d.toLocaleDateString(dateLocale(), {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -83,16 +87,19 @@ function minServicePrice(item: ProviderComparisonItem): number | null {
   return prices.length ? Math.min(...prices) : null
 }
 
-function lawyerLanguages(item: ProviderComparisonItem): string[] {
+/** Profile languages, or an empty list when none are published (render a translated fallback). */
+function publishedLanguages(item: ProviderComparisonItem): string[] {
   if (item.profile?.languages?.length) return item.profile.languages
   if (item.provider.languages?.length) return item.provider.languages
-  return ['Shqip']
+  return []
 }
 
 function lawyerHasOnline(item: ProviderComparisonItem): boolean {
   const modes = item.profile?.modes || item.provider.skills || []
   return modes.includes('online') || item.services.some((s) => s.details?.deliveryModes?.includes('online'))
 }
+
+type Translate = (key: string, params?: Record<string, string | number>) => string
 
 type ScoreValue = { uid: string; display: string; ratio: number; isWinner: boolean }
 type ScoreMetric = { key: string; label: string; hint: string; icon: LucideIcon; values: ScoreValue[] }
@@ -101,7 +108,11 @@ type ScoreMetric = { key: string; label: string; hint: string; icon: LucideIcon;
  * Head-to-head metrics built only from published profile data. A metric crowns a winner only
  * when someone is strictly ahead (all-tied rows crown nobody).
  */
-function buildScoreboard(items: ProviderComparisonItem[]) {
+function buildScoreboard(items: ProviderComparisonItem[], t: Translate) {
+  const languagesOf = (item: ProviderComparisonItem) => {
+    const langs = publishedLanguages(item)
+    return langs.length ? langs : [t('compareUi.defaultLanguage')]
+  }
   const metric = (
     key: string,
     label: string,
@@ -138,45 +149,45 @@ function buildScoreboard(items: ProviderComparisonItem[]) {
   const metrics: ScoreMetric[] = [
     metric(
       'rating',
-      'Vlerësimi',
-      'Mesatarja nga klientët',
+      t('compareUi.score.rating'),
+      t('compareUi.score.ratingHint'),
       Star,
       (i) => ((i.provider.ratingCount || 0) > 0 ? i.provider.ratingAverage || 0 : null),
-      (v, i) => (v ? `${v.toFixed(1)} ★ (${i.provider.ratingCount})` : 'Pa vlerësime'),
+      (v, i) => (v ? `${v.toFixed(1)} ★ (${i.provider.ratingCount})` : t('offers.noRatings')),
       { fixedMax: 5 },
     ),
     metric(
       'experience',
-      'Përvoja',
-      'Vite të deklaruara',
+      t('compareUi.score.experience'),
+      t('compareUi.score.experienceHint'),
       Award,
       (i) => i.profile?.yearsOfExperience ?? null,
-      (v) => (v ? `${v} ${v === 1 ? 'vit' : 'vite'}` : 'E padeklaruar'),
+      (v) => (v ? t('compareUi.score.years', { count: v }) : t('compareUi.score.notDeclared')),
     ),
     metric(
       'price',
-      'Çmimi fillestar',
-      'Më i ulëti fiton',
+      t('compareUi.score.price'),
+      t('compareUi.score.priceHint'),
       Coins,
       minServicePrice,
-      (v) => (v ? `nga €${v}` : 'Me marrëveshje'),
+      (v) => (v ? t('compareUi.priceFrom', { price: v }) : t('compare.byAgreement')),
       { lowerIsBetter: true },
     ),
     metric(
       'slots',
-      'Termine të lira',
-      'Gati për rezervim',
+      t('compareUi.score.slots'),
+      t('compareUi.score.slotsHint'),
       Calendar,
       (i) => i.openSlots.length,
-      (v) => (v ? `${v} ${v === 1 ? 'termin' : 'termine'}` : 'Me kërkesë'),
+      (v) => (v ? t('compareUi.score.slotCount', { count: v }) : t('compareUi.onRequest')),
     ),
     metric(
       'languages',
-      'Gjuhët',
-      'Gjuhë komunikimi',
+      t('compareUi.score.languages'),
+      t('compareUi.score.languagesHint'),
       Globe,
-      (i) => lawyerLanguages(i).length,
-      (_v, i) => lawyerLanguages(i).join(', '),
+      (i) => languagesOf(i).length,
+      (_v, i) => languagesOf(i).join(', '),
     ),
   ]
 
@@ -223,7 +234,11 @@ export default function CompareLawyersPage() {
   const [activeIntent, setActiveIntent] = useState<IntentType>('all')
 
   const { verdicts, winnerUids } = useMemo(() => analyzeLawyers(items), [items])
-  const scoreboard = useMemo(() => (items.length >= 2 ? buildScoreboard(items) : null), [items])
+  const scoreboard = useMemo(
+    () => (items.length >= 2 ? buildScoreboard(items, (key, params) => t(key, params)) : null),
+    [items, t],
+  )
+  const tx = (value: I18nText) => translateText((key, params) => t(key, params), value)
 
   function isSpotlighted(uid: string): boolean {
     if (activeIntent === 'all') return false
@@ -376,9 +391,9 @@ export default function CompareLawyersPage() {
               uid,
               provider: {
                 uid,
-                name: meta?.name || 'Avokat',
+                name: meta?.name || i18n.t('compareUi.lawyerFallback'),
                 role: 'provider',
-                roleLabel: 'Ofrues',
+                roleLabel: i18n.t('role.provider'),
                 headline: meta?.title || '',
                 bio: '',
                 ratingAverage: 0,
@@ -409,9 +424,9 @@ export default function CompareLawyersPage() {
               uid,
               provider: {
                 uid,
-                name: meta?.name || 'Avokat',
+                name: meta?.name || i18n.t('compareUi.lawyerFallback'),
                 role: 'provider',
-                roleLabel: 'Ofrues',
+                roleLabel: i18n.t('role.provider'),
                 headline: meta?.title || '',
                 bio: '',
                 ratingAverage: 0,
@@ -593,7 +608,7 @@ export default function CompareLawyersPage() {
       const picked = sorted.slice(0, MAX_COMPARE_LAWYERS).map((p) => p.uid)
       if (picked.length > 0) {
         setComparison(picked)
-        toast.success(t('compare.presetLoaded', 'U ngarkuan avokatët e rekomanduar'))
+        toast.success(t('compareUi.toast.presetLoaded'))
       }
     },
     [allExperts, setComparison, t],
@@ -655,7 +670,7 @@ export default function CompareLawyersPage() {
               <div className="kk-compare-picker-item-info">
                 <div className="kk-compare-picker-item-name">{lawyer.name}</div>
                 <div className="kk-compare-picker-item-sub">
-                  {lawyer.title || lawyer.specializations[0] || 'Avokat'}
+                  {lawyer.title || lawyer.specializations[0] || t('compareUi.lawyerFallback')}
                   {lawyer.location ? ` · ${lawyer.location}` : ''}
                 </div>
               </div>
@@ -684,12 +699,12 @@ export default function CompareLawyersPage() {
                 <ArrowLeft size={16} aria-hidden />
                 <span>{t('compare.backToOffers', 'Kthehu tek Ofertat')}</span>
               </Link>
-              <nav className="kk-compare-breadcrumbs" aria-label="Breadcrumbs">
-                <Link to="/">Ballina</Link>
+              <nav className="kk-compare-breadcrumbs" aria-label={t('compareUi.breadcrumbs')}>
+                <Link to="/">{t('compareUi.home')}</Link>
                 <span className="sep">/</span>
-                <Link to="/ofertat">Ofertat</Link>
+                <Link to="/ofertat">{t('nav.offers')}</Link>
                 <span className="sep">/</span>
-                <span className="current">Krahaso Avokatët</span>
+                <span className="current">{t('compare.title')}</span>
               </nav>
             </div>
 
@@ -706,21 +721,21 @@ export default function CompareLawyersPage() {
                     'Klienti zgjedh deri në tre avokatë dhe i krahason në një ekran të vetëm: specializimi, përvoja e deklaruar, tarifat e publikuara, terminët e lirë dhe konsultimi online.',
                   )}
                 </p>
-                <ul className="kk-cmp-hero-features" aria-label={t('compare.whatWeCompare', 'Çfarë krahasojmë')}>
+                <ul className="kk-cmp-hero-features" aria-label={t('compareUi.hero.whatWeCompare')}>
                   <li>
                     <Briefcase size={14} aria-hidden /> {t('compare.specialization', 'Specializimi')}
                   </li>
                   <li>
-                    <Award size={14} aria-hidden /> {t('compare.featExperience', 'Përvoja')}
+                    <Award size={14} aria-hidden /> {t('compareUi.score.experience')}
                   </li>
                   <li>
-                    <Coins size={14} aria-hidden /> {t('compare.featFees', 'Tarifat')}
+                    <Coins size={14} aria-hidden /> {t('compareUi.hero.fees')}
                   </li>
                   <li>
-                    <Calendar size={14} aria-hidden /> {t('compare.featSlots', 'Terminet')}
+                    <Calendar size={14} aria-hidden /> {t('compareUi.hero.slots')}
                   </li>
                   <li>
-                    <Video size={14} aria-hidden /> {t('compare.featOnline', 'Online')}
+                    <Video size={14} aria-hidden /> {t('compareUi.mode.online')}
                   </li>
                 </ul>
               </header>
@@ -771,7 +786,7 @@ export default function CompareLawyersPage() {
                     }
                     const item = items.find((entry) => entry.uid === uid)
                     const meta = metaMap[uid]
-                    const name = item?.provider.name || meta?.name || 'Avokat'
+                    const name = item?.provider.name || meta?.name || t('compareUi.lawyerFallback')
                     return (
                       <li
                         key={uid}
@@ -796,8 +811,8 @@ export default function CompareLawyersPage() {
                               e.stopPropagation()
                               handleRemoveLawyer(uid)
                             }}
-                            aria-label={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
-                            title={`${t('compare.removeLawyer', 'Hiq')} ${name}`}
+                            aria-label={t('compareUi.removeNamed', { name })}
+                            title={t('compareUi.removeNamed', { name })}
                           >
                             <X size={12} strokeWidth={2.5} aria-hidden />
                           </button>
@@ -861,8 +876,8 @@ export default function CompareLawyersPage() {
                 style={{ '--cols': Math.max(1, selectedUids.length) } as CSSProperties}
               >
                 <div className="kk-compare-cell is-label">
-                  <span>Duke u ngarkuar...</span>
-                  <span className="kk-compare-cell-sub">Krahasimi po përgatitet</span>
+                  <span>{t('compareUi.loading')}</span>
+                  <span className="kk-compare-cell-sub">{t('compareUi.loadingSub')}</span>
                 </div>
                 {selectedUids.map((uid) => (
                   <div key={uid} className="kk-compare-card-head">
@@ -873,7 +888,7 @@ export default function CompareLawyersPage() {
                 ))}
 
                 <div className="kk-compare-cell is-label">
-                  <span>Specializimi</span>
+                  <span>{t('compare.specialization')}</span>
                 </div>
                 {selectedUids.map((uid) => (
                   <div key={`sk-spec-${uid}`} className="kk-compare-cell">
@@ -882,7 +897,7 @@ export default function CompareLawyersPage() {
                 ))}
 
                 <div className="kk-compare-cell is-label">
-                  <span>Përvoja</span>
+                  <span>{t('compareUi.score.experience')}</span>
                 </div>
                 {selectedUids.map((uid) => (
                   <div key={`sk-exp-${uid}`} className="kk-compare-cell">
@@ -931,28 +946,28 @@ export default function CompareLawyersPage() {
                       type="button"
                       className="kk-compare-preset-chip"
                       onClick={() => loadPreset('experienced')}
-                      title="Krahaso 3 avokatë me përvojën më të madhe"
+                      title={t('compareUi.preset.experiencedHint')}
                     >
                       <Award size={15} aria-hidden />
-                      Më me Përvojë
+                      {t('compareUi.preset.experienced')}
                     </button>
                     <button
                       type="button"
                       className="kk-compare-preset-chip"
                       onClick={() => loadPreset('online')}
-                      title="Krahaso avokatë me konsultim online dhe orare fleksibile"
+                      title={t('compareUi.preset.onlineHint')}
                     >
                       <Globe size={15} aria-hidden />
-                      Konsultim Online & Diasporë
+                      {t('compareUi.preset.online')}
                     </button>
                     <button
                       type="button"
                       className="kk-compare-preset-chip"
                       onClick={() => loadPreset('topRated')}
-                      title="Krahaso avokatët me vlerësimet më të larta"
+                      title={t('compareUi.preset.topRatedHint')}
                     >
                       <Star size={15} aria-hidden />
-                      Më të Vlerësuarit
+                      {t('compareUi.preset.topRated')}
                     </button>
                   </div>
                 </div>
@@ -986,7 +1001,7 @@ export default function CompareLawyersPage() {
                           type="button"
                           className="kk-cmp-suggest-chip"
                           onClick={() => pickLawyer(lawyer)}
-                          title={`${t('compare.addLawyer', 'Shto avokat')}: ${lawyer.name}`}
+                          title={t('compareUi.addNamed', { name: lawyer.name })}
                         >
                           <span className="kk-cmp-suggest-avatar">
                             <ProfileAvatar src={lawyer.photoUrl} seed={lawyer.uid} size="fill" alt="" />
@@ -1007,14 +1022,11 @@ export default function CompareLawyersPage() {
                     <div className="kk-score-intro">
                       <span className="kk-score-kicker">
                         <Trophy size={13} aria-hidden />
-                        {t('compare.scoreKicker', 'Përballja në shifra')}
+                        {t('compareUi.score.kicker')}
                       </span>
-                      <h2 id="score-heading">{t('compare.scoreTitle', 'Kush fiton në çdo kategori?')}</h2>
+                      <h2 id="score-heading">{t('compareUi.score.title')}</h2>
                       <p>
-                        {t(
-                          'compare.scoreLead',
-                          'Llogaritur vetëm nga të dhënat e publikuara në profilet e avokatëve.',
-                        )}
+                        {t('compareUi.score.lead')}
                       </p>
                     </div>
 
@@ -1044,10 +1056,10 @@ export default function CompareLawyersPage() {
                             <span className="kk-score-legend-text">
                               <strong>{item.provider.name}</strong>
                               <span>
-                                {isLeader
-                                  ? t('compare.scoreLeader', 'Kryeson')
-                                  : t('compare.scoreWinsLabel', 'Fitore')}{' '}
-                                · {wins}/{scoreboard.metrics.length}
+                                {t(isLeader ? 'compareUi.score.leaderWins' : 'compareUi.score.wins', {
+                                  wins,
+                                  total: scoreboard.metrics.length,
+                                })}
                               </span>
                             </span>
                           </li>
@@ -1092,7 +1104,7 @@ export default function CompareLawyersPage() {
                                     <span className="kk-score-bar-fill" />
                                   </span>
                                   <span className="kk-score-bar-value" title={v.display}>
-                                    {v.isWinner ? <Trophy size={13} aria-label="Fitues" /> : null}
+                                    {v.isWinner ? <Trophy size={13} aria-label={t('compareUi.score.winner')} /> : null}
                                     {v.display}
                                   </span>
                                 </div>
@@ -1111,24 +1123,22 @@ export default function CompareLawyersPage() {
                 <div className="kk-verdict-head">
                   <div className="kk-verdict-tag">
                     <ClipboardCheck size={13} aria-hidden />
-                    <span>Verdikti & Analiza Inteligjente</span>
+                    <span>{t('compareUi.verdict.tag')}</span>
                   </div>
                   <h2 id="verdict-heading" className="kk-verdict-title">
-                    Cili është më i mirë për çfarë?
+                    {t('compareUi.verdict.title')}
                   </h2>
-                  <p className="kk-verdict-subtitle">
-                    Krahasim i drejtpërdrejtë për t'ju ndihmuar të zgjidhni avokatin e duhur sipas nevojës suaj konkrete pa pasur nevojë të hapni shumë faqe.
-                  </p>
+                  <p className="kk-verdict-subtitle">{t('compareUi.verdict.subtitle')}</p>
 
                   <div className="kk-intent-filter">
-                    <span className="kk-intent-filter-label">Zgjidhni përparësinë tuaj kryesore:</span>
+                    <span className="kk-intent-filter-label">{t('compareUi.verdict.intentLabel')}</span>
                     <div className="kk-intent-pills">
                       <button
                         type="button"
                         className={`kk-intent-btn${activeIntent === 'all' ? ' is-active' : ''}`}
                         onClick={() => setActiveIntent('all')}
                       >
-                        <Target size={14} aria-hidden /> Të gjitha
+                        <Target size={14} aria-hidden /> {t('offers.all')}
                       </button>
                       {winnerUids.experience ? (
                         <button
@@ -1136,7 +1146,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'experience' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('experience')}
                         >
-                          <Award size={14} aria-hidden /> Përvoja më e gjatë
+                          <Award size={14} aria-hidden /> {t('compareUi.intent.experience')}
                         </button>
                       ) : null}
                       {winnerUids.budget ? (
@@ -1145,7 +1155,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'budget' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('budget')}
                         >
-                          <Coins size={14} aria-hidden /> Çmimi më ekonomik
+                          <Coins size={14} aria-hidden /> {t('compareUi.intent.budget')}
                         </button>
                       ) : null}
                       {winnerUids.urgency ? (
@@ -1154,7 +1164,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'urgency' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('urgency')}
                         >
-                          <Clock size={14} aria-hidden /> Takimi më i shpejtë
+                          <Clock size={14} aria-hidden /> {t('compareUi.intent.urgency')}
                         </button>
                       ) : null}
                       {winnerUids.diaspora ? (
@@ -1163,7 +1173,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'diaspora' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('diaspora')}
                         >
-                          <Globe size={14} aria-hidden /> Online & diasporë
+                          <Globe size={14} aria-hidden /> {t('compareUi.intent.diaspora')}
                         </button>
                       ) : null}
                       {winnerUids.reputation ? (
@@ -1172,7 +1182,7 @@ export default function CompareLawyersPage() {
                           className={`kk-intent-btn${activeIntent === 'reputation' ? ' is-active' : ''}`}
                           onClick={() => setActiveIntent('reputation')}
                         >
-                          <Star size={14} aria-hidden /> Reputacioni më i lartë
+                          <Star size={14} aria-hidden /> {t('compareUi.intent.reputation')}
                         </button>
                       ) : null}
                     </div>
@@ -1197,19 +1207,19 @@ export default function CompareLawyersPage() {
                           type="button"
                           className="kk-verdict-remove-btn"
                           onClick={() => handleRemoveLawyer(item.uid)}
-                          aria-label={`${t('compare.removeLawyer', 'Hiq')} ${item.provider.name}`}
-                          title={`${t('compare.removeLawyer', 'Hiq')} ${item.provider.name}`}
+                          aria-label={t('compareUi.removeNamed', { name: item.provider.name })}
+                          title={t('compareUi.removeNamed', { name: item.provider.name })}
                         >
                           <X size={14} aria-hidden />
                         </button>
                         {isWinner ? (
                           <span className="kk-verdict-crown">
-                            <Trophy size={13} aria-hidden /> Më i përshtatshmi për këtë
+                            <Trophy size={13} aria-hidden /> {t('compareUi.verdict.bestMatch')}
                           </span>
                         ) : null}
                         <div className={`kk-verdict-badge is-${v.badge.tone}`}>
                           {renderBadgeIcon(v.badge.iconName)}
-                          <span>{v.badge.label}</span>
+                          <span>{tx(v.badge.label)}</span>
                         </div>
 
                         <div className="kk-verdict-profile">
@@ -1225,23 +1235,23 @@ export default function CompareLawyersPage() {
                               {item.provider.name}
                             </Link>
                             <span className="kk-verdict-profile-sub">
-                              {item.profile?.title || item.provider.headline || 'Avokat'}
+                              {item.profile?.title || item.provider.headline || t('compareUi.lawyerFallback')}
                             </span>
                           </div>
                         </div>
 
                         <div className="kk-verdict-bestfor-box">
-                          <div className="kk-verdict-bestfor-title">Më i miri për:</div>
-                          <div className="kk-verdict-bestfor-text">{v.bestForSummary}</div>
+                          <div className="kk-verdict-bestfor-title">{t('compareUi.verdict.bestFor')}</div>
+                          <div className="kk-verdict-bestfor-text">{tx(v.bestForSummary)}</div>
                         </div>
 
-                        <p className="kk-verdict-scenario">{v.scenarioDescription}</p>
+                        <p className="kk-verdict-scenario">{tx(v.scenarioDescription)}</p>
 
                         <ul className="kk-verdict-strengths">
                           {v.keyStrengths.map((str, sIdx) => (
                             <li key={sIdx} className="kk-verdict-strength-item">
                               <Check size={14} className="kk-verdict-strength-icon" aria-hidden />
-                              <span>{str}</span>
+                              <span>{tx(str)}</span>
                             </li>
                           ))}
                         </ul>
@@ -1251,14 +1261,14 @@ export default function CompareLawyersPage() {
                             providerUid={item.uid}
                             providerName={item.provider.name}
                             intake={{
-                              need: item.provider.headline || `Konsulencë me ${item.provider.name}`,
+                              need: item.provider.headline || t('compareUi.intakeNeed', { name: item.provider.name }),
                               location: item.provider.location || 'Online',
                               language: 'Albanian',
                               urgency: 'flexible',
                               contact: 'chat',
                             }}
                             compact
-                            ctaLabel={`Zgjidh ${item.provider.name.split(' ')[0]}`}
+                            ctaLabel={t('compareUi.chooseNamed', { name: item.provider.name.split(' ')[0] })}
                           />
                         </div>
                       </article>
@@ -1274,7 +1284,7 @@ export default function CompareLawyersPage() {
               </div>
 
               {/* Comparison Table / Matrix */}
-              <div className="kk-compare-board" role="region" aria-label="Tabela krahasuese">
+              <div className="kk-compare-board" role="region" aria-label={t('compareUi.table.label')}>
                 <div
                   className="kk-compare-grid"
                   style={{ '--cols': Math.max(1, items.length) } as CSSProperties}
@@ -1305,7 +1315,7 @@ export default function CompareLawyersPage() {
                           type="button"
                           className="kk-compare-remove-btn"
                           onClick={() => handleRemoveLawyer(item.uid)}
-                          aria-label={`${t('compare.removeLawyer', 'Hiq')} ${item.provider.name}`}
+                          aria-label={t('compareUi.removeNamed', { name: item.provider.name })}
                           title={t('compare.removeLawyer', 'Hiq')}
                         >
                           <X size={15} aria-hidden />
@@ -1333,13 +1343,13 @@ export default function CompareLawyersPage() {
                             ) : null}
                           </div>
                           <p className="kk-compare-card-title">
-                            {item.profile?.title || item.provider.headline || 'Avokat'}
+                            {item.profile?.title || item.provider.headline || t('compareUi.lawyerFallback')}
                           </p>
 
                           {v ? (
                             <div className={`kk-verdict-badge is-${v.badge.tone} mt-2`} style={{ alignSelf: 'center', marginInline: 'auto' }}>
                               {renderBadgeIcon(v.badge.iconName)}
-                              <span>{v.badge.label}</span>
+                              <span>{tx(v.badge.label)}</span>
                             </div>
                           ) : null}
                         </div>
@@ -1359,8 +1369,8 @@ export default function CompareLawyersPage() {
                           />
                           {highlightDiff && advantages.bestRatingUid === item.uid ? (
                             <li>
-                              <span className="kk-advantage-badge" title="Vlerësimi më i lartë">
-                                ★ Top
+                              <span className="kk-advantage-badge" title={t('compareUi.adv.topRatingHint')}>
+                                {t('compareUi.adv.topRating')}
                               </span>
                             </li>
                           ) : null}
@@ -1372,7 +1382,7 @@ export default function CompareLawyersPage() {
                             providerUid={item.uid}
                             providerName={item.provider.name}
                             intake={{
-                              need: item.provider.headline || `Konsulencë me ${item.provider.name}`,
+                              need: item.provider.headline || t('compareUi.intakeNeed', { name: item.provider.name }),
                               location: item.provider.location || 'Online',
                               language: 'Albanian',
                               urgency: 'flexible',
@@ -1401,11 +1411,9 @@ export default function CompareLawyersPage() {
                   <div className="kk-compare-cell is-label">
                     <div className="flex items-center gap-1.5">
                       <BadgeCheck size={16} className="text-primary" aria-hidden />
-                      <span>Për çfarë dallohet</span>
+                      <span>{t('compareUi.table.standsOut')}</span>
                     </div>
-                    <span className="kk-compare-cell-sub">
-                      Rekomandimi dhe verdikti parësor
-                    </span>
+                    <span className="kk-compare-cell-sub">{t('compareUi.table.standsOutSub')}</span>
                   </div>
 
                   {items.map((item) => {
@@ -1420,10 +1428,10 @@ export default function CompareLawyersPage() {
                       >
                         <div className={`kk-table-verdict-pill is-${v.badge.tone}`}>
                           {renderBadgeIcon(v.badge.iconName)}
-                          <span>{v.badge.label}</span>
+                          <span>{tx(v.badge.label)}</span>
                         </div>
-                        <p className="text-xs font-bold text-heading mt-1 mb-1">{v.bestForSummary}</p>
-                        <p className="text-xs text-muted leading-relaxed">{v.scenarioDescription}</p>
+                        <p className="text-xs font-bold text-heading mt-1 mb-1">{tx(v.bestForSummary)}</p>
+                        <p className="text-xs text-muted leading-relaxed">{tx(v.scenarioDescription)}</p>
                       </div>
                     )
                   })}
@@ -1435,9 +1443,7 @@ export default function CompareLawyersPage() {
                     <Briefcase size={16} className="text-primary" aria-hidden />
                     <span>{t('compare.specialization', 'Specializimi')}</span>
                   </div>
-                  <span className="kk-compare-cell-sub">
-                    Fushat juridike, lëmitë & Oda e Avokatëve
-                  </span>
+                  <span className="kk-compare-cell-sub">{t('compareUi.table.specSub')}</span>
                 </div>
 
                 {items.map((item) => {
@@ -1457,7 +1463,7 @@ export default function CompareLawyersPage() {
                             </span>
                           ))
                         ) : (
-                          <span className="text-sm muted">Konsulencë e përgjithshme ligjore</span>
+                          <span className="text-sm muted">{t('compareUi.table.generalConsulting')}</span>
                         )}
                       </div>
 
@@ -1476,9 +1482,7 @@ export default function CompareLawyersPage() {
                     <Award size={16} className="text-primary" aria-hidden />
                     <span>{t('compare.experience', 'Përvoja e deklaruar')}</span>
                   </div>
-                  <span className="kk-compare-cell-sub">
-                    Vitet e përvojës, formimi & historiku
-                  </span>
+                  <span className="kk-compare-cell-sub">{t('compareUi.table.experienceSub')}</span>
                 </div>
 
                 {items.map((item) => {
@@ -1493,20 +1497,16 @@ export default function CompareLawyersPage() {
                       {years != null ? (
                         <div className="kk-compare-exp-highlight">
                           <Award size={15} aria-hidden />
-                          <span>
-                            {years === 1
-                              ? `1 ${t('compare.yearExp', 'vit përvojë')}`
-                              : `${years} ${t('compare.yearsExp', 'vite përvojë')}`}
-                          </span>
+                          <span>{t('compareUi.table.yearsExp', { count: years })}</span>
                           {isTopExp ? (
-                            <span className="kk-advantage-badge" title="Përvoja më e madhe">
-                              Më me përvojë
+                            <span className="kk-advantage-badge" title={t('compareUi.adv.mostExperienceHint')}>
+                              {t('compareUi.adv.mostExperience')}
                             </span>
                           ) : null}
                         </div>
                       ) : (
                         <div className="kk-compare-exp-highlight">
-                          <span>Ekspert Juridik</span>
+                          <span>{t('compareUi.table.legalExpert')}</span>
                         </div>
                       )}
 
@@ -1544,9 +1544,7 @@ export default function CompareLawyersPage() {
                     <Coins size={16} className="text-primary" aria-hidden />
                     <span>{t('compare.fees', 'Tarifat e publikuara')}</span>
                   </div>
-                  <span className="kk-compare-cell-sub">
-                    Shërbimet, çmimet transparente & modeli
-                  </span>
+                  <span className="kk-compare-cell-sub">{t('compareUi.table.feesSub')}</span>
                 </div>
 
                 {items.map((item) => {
@@ -1557,10 +1555,10 @@ export default function CompareLawyersPage() {
                     <div key={`fees-${item.uid}`} className="kk-compare-cell">
                       {minPrice != null ? (
                         <div className="kk-compare-starting-fee">
-                          <span>Nga €{minPrice}</span>
+                          <span>{t('compareUi.priceFrom', { price: minPrice })}</span>
                           {isLowestPrice ? (
-                            <span className="kk-advantage-badge" title="Tarifa më e ulët fillestare">
-                              Çmimi më i favorshëm
+                            <span className="kk-advantage-badge" title={t('compareUi.adv.lowestPriceHint')}>
+                              {t('compareUi.adv.lowestPrice')}
                             </span>
                           ) : null}
                         </div>
@@ -1580,14 +1578,14 @@ export default function CompareLawyersPage() {
                                   {service.title}
                                 </span>
                                 <span className="kk-compare-service-price">
-                                  {formattedPrice || 'Me kërkesë'}
+                                  {formattedPrice || t('compareUi.onRequest')}
                                 </span>
                               </div>
                             )
                           })}
                           {item.services.length > 3 ? (
                             <span className="text-xs text-muted">
-                              + edhe {item.services.length - 3} shërbime të tjera
+                              {t('compareUi.table.moreServices', { count: item.services.length - 3 })}
                             </span>
                           ) : null}
                         </div>
@@ -1603,9 +1601,7 @@ export default function CompareLawyersPage() {
                     <Calendar size={16} className="text-primary" aria-hidden />
                     <span>{t('compare.slots', 'Terminët e lirë')}</span>
                   </div>
-                  <span className="kk-compare-cell-sub">
-                    Oraret e lira & takimi më i hershëm
-                  </span>
+                  <span className="kk-compare-cell-sub">{t('compareUi.table.slotsSub')}</span>
                 </div>
 
                 {items.map((item) => {
@@ -1622,12 +1618,10 @@ export default function CompareLawyersPage() {
                         <>
                           <div className="kk-compare-slot-status is-open">
                             <Clock size={13} aria-hidden />
-                            <span>
-                              {slotCount} {t('compare.availableSlots', 'terminë të lirë')}
-                            </span>
+                            <span>{t('compareUi.table.freeSlots', { count: slotCount })}</span>
                             {isEarliest ? (
-                              <span className="kk-advantage-badge" title="Më i shpejti për takim">
-                                Më i hershmi
+                              <span className="kk-advantage-badge" title={t('compareUi.adv.earliestHint')}>
+                                {t('compareUi.adv.earliest')}
                               </span>
                             ) : null}
                           </div>
@@ -1644,7 +1638,7 @@ export default function CompareLawyersPage() {
                               <div key={slot.id} className="kk-compare-slot-pill">
                                 <span>{formatDateLocale(slot.startAt)}</span>
                                 <span className="font-semibold text-primary">
-                                  {slot.mode === 'online' ? 'Online' : 'Në zyrë'}
+                                  {slot.mode === 'online' ? t('compareUi.mode.online') : t('compareUi.mode.office')}
                                 </span>
                               </div>
                             ))}
@@ -1667,14 +1661,13 @@ export default function CompareLawyersPage() {
                     <Video size={16} className="text-primary" aria-hidden />
                     <span>{t('compare.modes', 'Gjuha dhe konsultimi online')}</span>
                   </div>
-                  <span className="kk-compare-cell-sub">
-                    Takim virtual me video, zyrë & gjuhët
-                  </span>
+                  <span className="kk-compare-cell-sub">{t('compareUi.table.modesSub')}</span>
                 </div>
 
                 {items.map((item) => {
                   const hasOnline = lawyerHasOnline(item)
-                  const languages = lawyerLanguages(item)
+                  const published = publishedLanguages(item)
+                  const languages = published.length ? published : [t('compareUi.defaultLanguage')]
 
                   return (
                     <div key={`modes-${item.uid}`} className="kk-compare-cell">
@@ -1686,15 +1679,16 @@ export default function CompareLawyersPage() {
                       ) : (
                         <div className="kk-compare-mode-item text-muted">
                           <Video size={16} aria-hidden />
-                          <span>Konsultim në zyrë</span>
+                          <span>{t('compareUi.table.officeOnly')}</span>
                         </div>
                       )}
 
                       <div className="kk-compare-mode-item is-physical">
                         <MapPin size={16} aria-hidden />
                         <span>
-                          {t('compare.officeConsultation', 'Takim në Zyrë')}
-                          {item.provider.location ? `: ${item.provider.location}` : ''}
+                          {item.provider.location
+                            ? t('compareUi.table.officeAt', { location: item.provider.location })
+                            : t('compare.officeConsultation')}
                         </span>
                       </div>
 
@@ -1722,9 +1716,7 @@ export default function CompareLawyersPage() {
                     <Check size={16} className="text-primary" aria-hidden />
                     <span>{t('compare.chooseLawyer', 'Zgjidh avokatin')}</span>
                   </div>
-                  <span className="kk-compare-cell-sub">
-                    Rezervoni ose dërgoni kërkesë të menjëhershme
-                  </span>
+                  <span className="kk-compare-cell-sub">{t('compareUi.table.chooseSub')}</span>
                 </div>
 
                 {items.map((item) => (
@@ -1733,13 +1725,13 @@ export default function CompareLawyersPage() {
                       providerUid={item.uid}
                       providerName={item.provider.name}
                       intake={{
-                        need: item.provider.headline || `Konsulencë me ${item.provider.name}`,
+                        need: item.provider.headline || t('compareUi.intakeNeed', { name: item.provider.name }),
                         location: item.provider.location || 'Online',
                         language: 'Albanian',
                         urgency: 'flexible',
                         contact: 'chat',
                       }}
-                      ctaLabel={`Zgjidh ${item.provider.name.split(' ')[0]}`}
+                      ctaLabel={t('compareUi.chooseNamed', { name: item.provider.name.split(' ')[0] })}
                     />
                   </div>
                 ))}
@@ -1756,7 +1748,7 @@ export default function CompareLawyersPage() {
                 <h3 id="suggested-heading">
                   {t('compare.suggestedLawyers', 'Avokatë të sugjeruar për krahasim')}
                 </h3>
-                <span>Zgjidhni nga avokatët e rekomanduar për të filluar krahasimin krah për krah</span>
+                <span>{t('compareUi.suggestedSub')}</span>
               </div>
 
               <div className="kk-compare-suggested-grid">
@@ -1774,7 +1766,7 @@ export default function CompareLawyersPage() {
                         <div className="kk-suggested-card-info">
                           <div className="kk-suggested-card-name">{lawyer.name}</div>
                           <div className="kk-suggested-card-title">
-                            {lawyer.title || specialties[0] || 'Avokat'}
+                            {lawyer.title || specialties[0] || t('compareUi.lawyerFallback')}
                           </div>
                           {lawyer.location ? (
                             <div className="kk-suggested-card-location">

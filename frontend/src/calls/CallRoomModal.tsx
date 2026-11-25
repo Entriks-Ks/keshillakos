@@ -23,6 +23,7 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { fetchLivekitToken } from '../api/calls'
 import { useCall } from './CallContext'
@@ -30,11 +31,13 @@ import './Call.css'
 
 export default function CallRoomModal() {
   const { activeCall, endCall, peerDisconnected } = useCall()
+  const { t } = useTranslation()
 
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.Connecting,
   )
-  const [error, setError] = useState<string | null>(null)
+  // Either a raw error message from the call server or a translation key for the fallback.
+  const [error, setError] = useState<{ message?: string; key?: string } | null>(null)
   const [permissionError, setPermissionError] = useState<string | null>(null)
   const [durationSeconds, setDurationSeconds] = useState(0)
 
@@ -200,7 +203,7 @@ export default function CallRoomModal() {
           await room.localParticipant.setMicrophoneEnabled(true)
         } catch (micErr: unknown) {
           console.warn('Microphone permission warning:', micErr)
-          setPermissionError('Qasja në mikrofon u refuzua. Ju lutem lejoni mikrofonin në cilësime.')
+          setPermissionError('calls.room.errors.micDenied')
         }
 
         // Publish local camera if video call
@@ -221,19 +224,17 @@ export default function CallRoomModal() {
               camErr?.message?.includes('in use')
 
             if (isLocked) {
-              setPermissionError(
-                'Kamera po përdoret nga një dritare ose aplikacion tjetër. Thirrja po vazhdon me mikrofon (zë).',
-              )
+              setPermissionError('calls.room.errors.cameraInUse')
             } else if (
               camErr?.name === 'NotAllowedError' ||
               camErr?.name === 'PermissionDeniedError' ||
               camErr?.message?.includes('denied')
             ) {
-              setPermissionError('Qasja në kamerë u refuzua në cilësimet e shfletuesit.')
+              setPermissionError('calls.room.errors.cameraDenied')
             } else if (camErr?.name === 'NotFoundError') {
-              setPermissionError('Nuk u gjet asnjë kamerë e lidhur.')
+              setPermissionError('calls.room.errors.cameraNotFound')
             } else {
-              setPermissionError('Kamera nuk mund të aktivizohet. Thirrja po vazhdon me zë.')
+              setPermissionError('calls.room.errors.cameraFailed')
             }
           }
         } else {
@@ -243,9 +244,9 @@ export default function CallRoomModal() {
         if (!isDisposed) {
           console.error('LiveKit connection error:', err)
           setError(
-            err instanceof Error
-              ? err.message
-              : 'Dështoi lidhja me serverin e thirrjeve (LiveKit)',
+            err instanceof Error && err.message
+              ? { message: err.message }
+              : { key: 'calls.room.errors.connectFailed' },
           )
         }
       }
@@ -351,7 +352,7 @@ export default function CallRoomModal() {
       className={`call-room-modal${isFullscreen ? ' is-fullscreen' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Thirrje aktive"
+      aria-label={t('calls.room.label')}
     >
       {/* Hidden remote audio element */}
       <audio ref={remoteAudioRef} autoPlay playsInline />
@@ -374,11 +375,11 @@ export default function CallRoomModal() {
                 </span>
               ) : isReconnecting ? (
                 <span className="call-indicator is-reconnecting">
-                  <Radio size={13} className="animate-spin" /> Duke u rilidhur...
+                  <Radio size={13} className="animate-spin" /> {t('calls.reconnecting')}
                 </span>
               ) : (
                 <span className="call-indicator is-connecting">
-                  <Radio size={13} className="animate-spin" /> Duke u lidhur...
+                  <Radio size={13} className="animate-spin" /> {t('calls.connecting')}
                 </span>
               )}
             </div>
@@ -390,8 +391,8 @@ export default function CallRoomModal() {
             type="button"
             className="call-icon-btn"
             onClick={toggleFullscreen}
-            aria-label={isFullscreen ? 'Dil nga ekrani i plotë' : 'Ekran i plotë'}
-            title={isFullscreen ? 'Dil nga ekrani i plotë' : 'Ekran i plotë'}
+            aria-label={isFullscreen ? t('calls.room.exitFullscreen') : t('calls.room.fullscreen')}
+            title={isFullscreen ? t('calls.room.exitFullscreen') : t('calls.room.fullscreen')}
           >
             {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
           </button>
@@ -402,21 +403,20 @@ export default function CallRoomModal() {
       {permissionError && (
         <div className="call-banner is-warning" role="alert">
           <AlertTriangle size={18} />
-          <span>{permissionError}</span>
+          <span>{t(permissionError)}</span>
         </div>
       )}
 
       {error && (
         <div className="call-banner is-danger" role="alert">
           <WifiOff size={18} />
-          <span>{error}</span>
+          <span>{error.key ? t(error.key) : error.message}</span>
           <button
             type="button"
             className="call-banner-btn"
             onClick={endCall}
-            aria-label="Mbyll"
           >
-            Mbyll
+            {t('feedback.close')}
           </button>
         </div>
       )}
@@ -424,7 +424,7 @@ export default function CallRoomModal() {
       {peerDisconnected && (
         <div className="call-banner is-warning" role="alert">
           <Radio size={18} className="animate-spin" />
-          <span>Pjesëmarrësi tjetër u shkëput përkohësisht. Duke pritur...</span>
+          <span>{t('calls.room.peerDisconnected')}</span>
         </div>
       )}
 
@@ -451,14 +451,14 @@ export default function CallRoomModal() {
               />
             </div>
             <p className="call-voice-label">
-              {isVoiceOnly ? 'Modaliteti vetëm zë' : `${activeCall.peer.name} (Kamera është e fikur)`}
+              {isVoiceOnly ? t('calls.room.voiceOnlyMode') : t('calls.room.peerCameraOff', { name: activeCall.peer.name })}
             </p>
           </div>
         )}
 
         {/* Local Participant Preview (Picture-in-Picture) */}
         {!isVoiceOnly && (
-          <div className="call-local-pip" aria-label="Pamja jote">
+          <div className="call-local-pip" aria-label={t('calls.room.selfView')}>
             <video
               ref={localVideoRef}
               className={`call-local-video${isCameraOff ? ' is-hidden' : ''}`}
@@ -469,7 +469,7 @@ export default function CallRoomModal() {
             {isCameraOff && (
               <div className="call-local-placeholder">
                 <VideoOff size={24} />
-                <span>Kamera jote është e fikur</span>
+                <span>{t('calls.room.selfCameraOff')}</span>
               </div>
             )}
             {videoDevices.length > 1 && !isCameraOff && (
@@ -477,8 +477,8 @@ export default function CallRoomModal() {
                 type="button"
                 className="call-flip-camera-btn"
                 onClick={switchCamera}
-                title="Ndërro kamerën (Përpara / Prapa)"
-                aria-label="Ndërro kamerën"
+                title={t('calls.room.switchCameraHint')}
+                aria-label={t('calls.room.switchCamera')}
               >
                 <SwitchCamera size={16} />
               </button>
@@ -488,17 +488,17 @@ export default function CallRoomModal() {
       </main>
 
       {/* Bottom Control Dock */}
-      <footer className="call-controls-dock" role="toolbar" aria-label="Kontrollet e thirrjes">
+      <footer className="call-controls-dock" role="toolbar" aria-label={t('calls.room.controls')}>
         {/* Mic Toggle */}
         <button
           type="button"
           className={`call-ctrl-btn${isMuted ? ' is-off' : ''}`}
           onClick={toggleMic}
-          aria-label={isMuted ? 'Aktivizo mikrofonin' : 'Çaktivizo mikrofonin'}
-          title={isMuted ? 'Aktivizo mikrofonin' : 'Çaktivizo mikrofonin'}
+          aria-label={isMuted ? t('calls.room.micOn') : t('calls.room.micOffAction')}
+          title={isMuted ? t('calls.room.micOn') : t('calls.room.micOffAction')}
         >
           {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
-          <span>{isMuted ? 'Mikrofoni jo' : 'Mikrofoni'}</span>
+          <span>{isMuted ? t('calls.room.micOff') : t('calls.room.mic')}</span>
         </button>
 
         {/* Camera Toggle */}
@@ -506,11 +506,11 @@ export default function CallRoomModal() {
           type="button"
           className={`call-ctrl-btn${isCameraOff ? ' is-off' : ''}`}
           onClick={toggleCamera}
-          aria-label={isCameraOff ? 'Aktivizo kamerën' : 'Fik kamerën'}
-          title={isCameraOff ? 'Aktivizo kamerën' : 'Fik kamerën'}
+          aria-label={isCameraOff ? t('calls.room.cameraOn') : t('calls.room.cameraOffAction')}
+          title={isCameraOff ? t('calls.room.cameraOn') : t('calls.room.cameraOffAction')}
         >
           {isCameraOff ? <VideoOff size={22} /> : <VideoIcon size={22} />}
-          <span>{isCameraOff ? 'Kamera jo' : 'Kamera'}</span>
+          <span>{isCameraOff ? t('calls.room.cameraOff') : t('calls.room.camera')}</span>
         </button>
 
         {/* Voice-Only Toggle */}
@@ -518,11 +518,11 @@ export default function CallRoomModal() {
           type="button"
           className={`call-ctrl-btn${isVoiceOnly ? ' is-active-mode' : ''}`}
           onClick={toggleVoiceOnly}
-          aria-label={isVoiceOnly ? 'Aktivizo videon' : 'Kalo vetëm në zë'}
-          title={isVoiceOnly ? 'Aktivizo videon' : 'Kalo vetëm në zë'}
+          aria-label={isVoiceOnly ? t('calls.room.videoOn') : t('calls.room.voiceOnlyAction')}
+          title={isVoiceOnly ? t('calls.room.videoOn') : t('calls.room.voiceOnlyAction')}
         >
           <Volume2 size={22} />
-          <span>{isVoiceOnly ? 'Vetëm zë' : 'Video/Zë'}</span>
+          <span>{isVoiceOnly ? t('calls.room.voiceOnly') : t('calls.room.videoVoice')}</span>
         </button>
 
         {/* Mobile camera flip (if 2+ cameras available) */}
@@ -531,11 +531,11 @@ export default function CallRoomModal() {
             type="button"
             className="call-ctrl-btn"
             onClick={switchCamera}
-            aria-label="Ndërro kamerën"
-            title="Ndërro kamerën"
+            aria-label={t('calls.room.switchCamera')}
+            title={t('calls.room.switchCamera')}
           >
             <SwitchCamera size={22} />
-            <span>Kamera</span>
+            <span>{t('calls.room.camera')}</span>
           </button>
         )}
 
@@ -544,11 +544,11 @@ export default function CallRoomModal() {
           type="button"
           className="call-ctrl-btn call-ctrl-btn-end"
           onClick={endCall}
-          aria-label="Mbyll thirrjen"
-          title="Mbyll thirrjen"
+          aria-label={t('calls.endCall')}
+          title={t('calls.endCall')}
         >
           <PhoneOff size={24} />
-          <span>Mbyll</span>
+          <span>{t('calls.end')}</span>
         </button>
       </footer>
     </div>

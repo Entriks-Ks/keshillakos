@@ -1,15 +1,17 @@
 import { Navigate, Outlet } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { UserRole } from '../api/auth'
 import { useAuth } from './AuthContext'
 import { getDashboardPath, resolveActiveContext } from '../utils/dashboardPath'
 
 export function ProtectedRoute() {
   const { user, loading } = useAuth()
+  const { t } = useTranslation()
 
   if (loading) {
     return (
       <div className="page-center">
-        <p className="muted">Duke u ngarkuar...</p>
+        <p className="muted">{t('notifications.loading')}</p>
       </div>
     )
   }
@@ -20,11 +22,12 @@ export function ProtectedRoute() {
 
 export function RoleRoute({ roles }: { roles: UserRole[] }) {
   const { user, loading } = useAuth()
+  const { t } = useTranslation()
 
   if (loading) {
     return (
       <div className="page-center">
-        <p className="muted">Duke u ngarkuar...</p>
+        <p className="muted">{t('notifications.loading')}</p>
       </div>
     )
   }
@@ -39,11 +42,12 @@ export function RoleRoute({ roles }: { roles: UserRole[] }) {
 
 export function PublicOnlyRoute() {
   const { user, loading } = useAuth()
+  const { t } = useTranslation()
 
   if (loading) {
     return (
       <div className="page-center">
-        <p className="muted">Duke u ngarkuar...</p>
+        <p className="muted">{t('notifications.loading')}</p>
       </div>
     )
   }

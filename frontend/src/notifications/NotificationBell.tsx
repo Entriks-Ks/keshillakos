@@ -8,6 +8,41 @@ import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useNotifications } from './NotificationProvider'
 import './Notifications.css'
+
+/** Backend notification titles are stored in Albanian; map the known ones to translation keys. */
+const TITLE_KEYS: Record<string, string> = {
+  'Administratori përditësoi llogarinë tuaj': 'accountChanged',
+  'Rezervimi u anulua': 'appointmentCancelled',
+  'Ftesë nga kompania': 'companyInvitation',
+  'Ftesa u pranua': 'invitationAccepted',
+  'Ftesa u anulua': 'invitationCancelled',
+  'Ftesa u refuzua': 'invitationRejected',
+  'Anëtarësia në kompani përfundoi': 'memberRemoved',
+  'Kompani për rishqyrtim': 'companyPending',
+  'Statusi i kompanisë ndryshoi': 'companyReview',
+  'Feedback i ri': 'feedbackNew',
+  'Profil për shqyrtim': 'profilePending',
+  'Profili juaj u shqyrtua': 'profileReview',
+  'Raportim i ri përdoruesi': 'reportNew',
+  'Kërkesë e re': 'requestNew',
+  'Përgjigje për kërkesën tuaj': 'requestReply',
+  'Statusi i kërkesës ndryshoi': 'requestStatus',
+  'Kërkesa u tërhoq': 'requestWithdrawn',
+  'Vlerësimi juaj u shqyrtua': 'reviewModerated',
+  'Vlerësim i ri': 'reviewNew',
+  'Vlerësim për shqyrtim': 'reviewPending',
+  'Përgjigje për vlerësimin tuaj': 'reviewResponse',
+  'Kërkesë e re për rol': 'roleRequested',
+  'Kërkesa për rol u pranua': 'roleAccepted',
+  'Kërkesa për rol u refuzua': 'roleRejected',
+  'Shërbimi juaj u shqyrtua': 'serviceReview',
+}
+/** Status/decision enums the backend sends as the notification body. */
+const BODY_KEYS: Record<string, string> = {
+  approved: 'notificationText.values.approved',
+  published: 'notificationText.values.published',
+  ...Object.fromEntries(['open', 'pending', 'read', 'accepted', 'completed', 'rejected', 'withdrawn', 'cancelled', 'active', 'suspended', 'closed', 'draft'].map(status => [status, `status.${status}`])),
+}
 export default function NotificationBell() {
   const { notifications, unreadCount, loading, loaded, reading, error, hasMore, markRead, clearNotifications, deleteNotification, loadMore, reload } = useNotifications()
   const { t, i18n } = useTranslation()
@@ -18,6 +53,8 @@ export default function NotificationBell() {
   const navigate = useNavigate()
   const { user, switchContext } = useAuth()
   const busy = loading || !!reading
+  const titleOf = (notification: AppNotification) => Object.hasOwn(TITLE_KEYS, notification.title) ? t(`notificationText.titles.${TITLE_KEYS[notification.title]}`) : notification.title
+  const bodyOf = (notification: AppNotification) => notification.body && Object.hasOwn(BODY_KEYS, notification.body) ? t(BODY_KEYS[notification.body]) : notification.body
   async function open(notification: AppNotification) {
     if (!user || busy) return
     const target = notificationTarget(notification, user)
@@ -61,11 +98,11 @@ export default function NotificationBell() {
           {(!loading || loaded) && !error && notifications.length === 0 && <div className="kk-notifications-empty"><Bell size={40} aria-hidden /><strong>{t('notifications.emptyTitle')}</strong><p className="muted">{t('notifications.emptySubtitle')}</p></div>}
           {notifications.map(notification => <div key={notification.id} className={`kk-notification-item${notification.readAt ? '' : ' is-unread'}`}>
             <button type="button" className="kk-notification-link" disabled={busy} onClick={() => void open(notification)}>
-              <strong>{notification.title}</strong>{notification.body && <span>{notification.body}</span>}
+              <strong>{titleOf(notification)}</strong>{notification.body && <span>{bodyOf(notification)}</span>}
               <time dateTime={notification.createdAt}>{new Date(notification.createdAt).toLocaleString(i18n.language)}</time>
             </button>
             {!notification.readAt && <Button size="sm" variant="ghost" isDisabled={busy} onPress={() => { setFeedback(''); void markRead(notification.id) }}>{t('notifications.markRead')}</Button>}
-            <Button size="sm" variant="ghost" className="kk-notification-delete" isDisabled={busy} aria-label={t('notifications.delete.accessibility', { title: notification.title })} onPress={() => { setFeedback(''); setOpen(false); setDeleteTarget(notification) }}>{t('notifications.delete.action')}</Button>
+            <Button size="sm" variant="ghost" className="kk-notification-delete" isDisabled={busy} aria-label={t('notifications.delete.accessibility', { title: titleOf(notification) })} onPress={() => { setFeedback(''); setOpen(false); setDeleteTarget(notification) }}>{t('notifications.delete.action')}</Button>
           </div>)}
           {loading && <p className="muted">{t('notifications.loading')}</p>}
           {hasMore && <Button size="sm" variant="ghost" isDisabled={busy} onPress={loadMore}>{t('notifications.more')}</Button>}

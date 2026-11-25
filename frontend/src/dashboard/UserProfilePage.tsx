@@ -33,6 +33,7 @@ import ProfileAvatar from '../components/ProfileAvatar'
 import SocialIcon from '../components/SocialIcon'
 import { useCatalogOptions, type CatalogOptionChoice } from '../hooks/useCatalogOptions'
 import { getErrorMessage } from '../utils/errors'
+import { catalogLanguage } from '../i18n'
 import { ROLE_LABELS } from './nav'
 import './UserOverview.css'
 import './UserProfile.css'
@@ -108,7 +109,7 @@ export function EmptyNote({ text, action, onAction }: { text: string; action: st
 }
 
 export function UserProfile({ completion, onSaved }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, switchContext } = useAuth()
   const navigate = useNavigate()
   const route = useLocation()
@@ -136,7 +137,7 @@ export function UserProfile({ completion, onSaved }: Props) {
   const locationKey = savedLocationKey(user)
   const cityLoading = Boolean(locationKey) && resolved.key !== locationKey
   const city = locationKey && resolved.key === locationKey ? resolved.value : null
-  const locationText = city ? locationLabel(city, 'sq') : locationKey ? '' : user.location || ''
+  const locationText = city ? locationLabel(city, catalogLanguage(i18n.language)) : locationKey ? '' : user.location || ''
   const roles = user.roles ?? [user.role]
 
   function startEdit() {
@@ -200,12 +201,12 @@ export function UserProfile({ completion, onSaved }: Props) {
   const skills = user.skills ?? []
 
   const personalRows: Array<{ label: string; value: ReactNode }> = [
-    { label: 'Emri', value: user.firstName },
-    { label: 'Mbiemri', value: user.lastName },
-    { label: 'Email', value: user.email },
-    { label: 'Telefoni', value: user.phone },
+    { label: t('profile.user.firstName'), value: user.firstName },
+    { label: t('profile.user.lastName'), value: user.lastName },
+    { label: t('req.email'), value: user.email },
+    { label: t('req.phone'), value: user.phone },
     {
-      label: 'Qyteti',
+      label: t('profile.city'),
       value: cityLoading ? <Skeleton className="up-skel-line" /> : locationText,
     },
   ]
@@ -220,7 +221,7 @@ export function UserProfile({ completion, onSaved }: Props) {
               <h1>{user.name}</h1>
               {percent === 100 ? (
                 <Chip size="sm" variant="soft" color="success">
-                  <Chip.Label>Profili i plotë</Chip.Label>
+                  <Chip.Label>{t('profile.complete')}</Chip.Label>
                 </Chip>
               ) : null}
             </div>
@@ -237,20 +238,20 @@ export function UserProfile({ completion, onSaved }: Props) {
         </div>
         <Button variant="primary" className="up-hero-action" onPress={startEdit} isDisabled={cityLoading}>
           <Pencil size={16} aria-hidden />
-          Ndrysho profilin
+          {t('profile.editProfile')}
         </Button>
       </Card>
 
       <div className="uo-grid up-grid">
         <div className="up-col">
           <Card className="uo-card">
-            <SectionHead title="Të dhënat personale" />
+            <SectionHead title={t('profile.user.personal')} />
             <Card.Content className="uo-card-body">
               <dl className="up-facts">
                 {personalRows.map((row) => (
                   <div key={row.label} className="up-fact">
                     <dt>{row.label}</dt>
-                    <dd>{row.value || <span className="up-missing">Nuk është shtuar</span>}</dd>
+                    <dd>{row.value || <span className="up-missing">{t('profile.notAdded')}</span>}</dd>
                   </div>
                 ))}
               </dl>
@@ -259,7 +260,7 @@ export function UserProfile({ completion, onSaved }: Props) {
 
           <Card className="uo-card">
             <SectionHead
-              title="Gjuhët"
+              title={t('profile.languages')}
               meta={userLanguages.length ? <span className="uo-card-meta">{userLanguages.length}</span> : null}
             />
             <Card.Content className="uo-card-body">
@@ -272,14 +273,14 @@ export function UserProfile({ completion, onSaved }: Props) {
                   ))}
                 </div>
               ) : (
-                <EmptyNote text="Nuk ke shtuar gjuhët që flet." action="Shto gjuhët" onAction={startEdit} />
+                <EmptyNote text={t('profile.user.languagesEmpty')} action={t('profile.user.languagesAdd')} onAction={startEdit} />
               )}
             </Card.Content>
           </Card>
 
           {skills.length ? (
             <Card className="uo-card">
-              <SectionHead title="Aftësitë" meta={<span className="uo-card-meta">{skills.length}</span>} />
+              <SectionHead title={t('profile.user.skills')} meta={<span className="uo-card-meta">{skills.length}</span>} />
               <Card.Content className="uo-card-body">
                 <div className="up-chips">
                   {skills.map((skill) => (
@@ -294,14 +295,14 @@ export function UserProfile({ completion, onSaved }: Props) {
 
           <Card className="uo-card">
             <SectionHead
-              title="Rrjetet sociale"
+              title={t('footer.social')}
               meta={socialEntries.length ? <span className="uo-card-meta">{socialEntries.length}</span> : null}
             />
             <Card.Content className="uo-card-body">
               {socialEntries.length ? (
                 <SocialLinksList entries={socialEntries} />
               ) : (
-                <EmptyNote text="Nuk ke shtuar asnjë rrjet social." action="Shto rrjete sociale" onAction={startEdit} />
+                <EmptyNote text={t('profile.socialEmpty')} action={t('profile.socialAddFull')} onAction={startEdit} />
               )}
             </Card.Content>
           </Card>
@@ -310,16 +311,16 @@ export function UserProfile({ completion, onSaved }: Props) {
         <aside className="up-col">
           {percent !== null && percent < 100 ? (
             <Card className="uo-card">
-              <SectionHead title="Plotëso profilin" meta={<span className="uo-card-meta is-strong">{percent}%</span>} />
+              <SectionHead title={t('profile.completeTitle')} meta={<span className="uo-card-meta is-strong">{percent}%</span>} />
               <Card.Content className="uo-card-body uo-setup">
-                <ProgressBar aria-label={`Kompletimi i profilit ${percent}%`} value={percent} className="uo-progress">
+                <ProgressBar aria-label={t('profile.completionAria', { percent })} value={percent} className="uo-progress">
                   <ProgressBar.Track>
                     <ProgressBar.Fill />
                   </ProgressBar.Track>
                 </ProgressBar>
                 {missing.length ? (
                   <div className="uo-missing">
-                    <span>Mungojnë:</span>
+                    <span>{t('profile.missing')}</span>
                     {missing.map((field) => (
                       <Chip key={field.key} size="sm" variant="soft">
                         <Chip.Label>{field.label}</Chip.Label>
@@ -329,34 +330,34 @@ export function UserProfile({ completion, onSaved }: Props) {
                 ) : null}
                 <Separator />
                 <Button size="sm" variant="ghost" className="uo-link-btn up-setup-action" onPress={startEdit}>
-                  Plotëso tani
+                  {t('profile.completeNow')}
                 </Button>
               </Card.Content>
             </Card>
           ) : null}
 
           <Card className="uo-card">
-            <SectionHead title="Profilet profesionale" />
+            <SectionHead title={t('profile.user.professionalProfiles')} />
             <Card.Content className="uo-card-body">
               <ul className="uo-rows">
                 <li className="uo-row">
                   <span className="uo-row-icon"><BriefcaseBusiness size={18} aria-hidden /></span>
                   <span className="uo-row-copy">
-                    <strong>Ekspert</strong>
-                    <span>{roles.includes('provider') ? 'Profili yt si ekspert' : 'Ofro shërbimet e tua'}</span>
+                    <strong>{t('role.expert')}</strong>
+                    <span>{roles.includes('provider') ? t('profile.user.expertOwn') : t('profile.user.expertOffer')}</span>
                   </span>
                   <Button size="sm" variant="outline" onPress={() => void openExpertContext()}>
-                    {roles.includes('provider') ? 'Hap profilin' : 'Bëhu ekspert'}
+                    {roles.includes('provider') ? t('profile.user.openProfile') : t('profile.user.becomeExpert')}
                   </Button>
                 </li>
                 <li className="uo-row">
                   <span className="uo-row-icon"><Building2 size={18} aria-hidden /></span>
                   <span className="uo-row-copy">
-                    <strong>Kompani</strong>
-                    <span>{roles.includes('company') ? 'Profili i kompanisë tënde' : 'Regjistro biznesin tënd'}</span>
+                    <strong>{t('role.company')}</strong>
+                    <span>{roles.includes('company') ? t('profile.user.companyOwn') : t('profile.user.companyRegister')}</span>
                   </span>
                   <Button size="sm" variant="outline" onPress={() => void openCompanyContext()}>
-                    {roles.includes('company') ? 'Hap profilin' : 'Krijo kompaninë'}
+                    {roles.includes('company') ? t('profile.user.openProfile') : t('profile.createCompany')}
                   </Button>
                 </li>
               </ul>
@@ -383,6 +384,7 @@ function ProfileEditor({
   onCancel: () => void
   onDone: (city: LocationSelection | null) => void
 }) {
+  const { t } = useTranslation()
   const { updateProfile, uploadProfilePhoto } = useAuth()
   const fileInput = useRef<HTMLInputElement>(null)
   const [firstName, setFirstName] = useState(user.firstName || '')
@@ -419,7 +421,7 @@ function ProfileEditor({
           : null,
       })
       await onSaved()
-      toast.success('Profili privat u ruajt.')
+      toast.success(t('profile.user.saved'))
       onDone(city)
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -444,7 +446,7 @@ function ProfileEditor({
       const next = await uploadProfilePhoto(file)
       setPreview(mediaUrl(next.profilePhoto))
       await onSaved()
-      toast.success('Fotoja e profilit u ngarkua.')
+      toast.success(t('profile.photoUploaded'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
       setPreview(mediaUrl(user.profilePhoto))
@@ -458,14 +460,14 @@ function ProfileEditor({
     <section className="uo up">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>Ndrysho profilin</h1>
-          <p>Emri dhe mbiemri janë të detyrueshëm. Të gjitha fushat e tjera janë opsionale.</p>
+          <h1>{t('profile.editProfile')}</h1>
+          <p>{t('profile.user.editLead')}</p>
         </div>
       </header>
 
       <form className="up-form" onSubmit={onSubmit}>
         <Card className="uo-card">
-          <SectionHead title="Fotoja e profilit" />
+          <SectionHead title={t('profile.photo')} />
           <Card.Content className="uo-card-body">
             <div className="up-photo">
               <ProfileAvatar src={preview} seed={user.uid} alt={user.name} size="fill" className="up-photo-avatar" />
@@ -478,9 +480,9 @@ function ProfileEditor({
                   onPress={() => fileInput.current?.click()}
                 >
                   <Camera size={16} aria-hidden />
-                  {uploading ? 'Duke ngarkuar...' : user.profilePhoto ? 'Ndrysho foton' : 'Ngarko foto'}
+                  {uploading ? t('profile.uploading') : user.profilePhoto ? t('profile.changePhoto') : t('profile.uploadPhoto')}
                 </Button>
-                <p className="up-hint">{IMAGE_ACCEPT_HINT}. Fotoja ruhet menjëherë pas ngarkimit.</p>
+                <p className="up-hint">{t('profile.photoHint', { formats: IMAGE_ACCEPT_HINT })}</p>
                 {photoError ? <p className="up-error" role="alert">{photoError}</p> : null}
               </div>
               <input
@@ -499,29 +501,29 @@ function ProfileEditor({
         </Card>
 
         <Card className="uo-card">
-          <SectionHead title="Të dhënat personale" />
+          <SectionHead title={t('profile.user.personal')} />
           <Card.Content className="uo-card-body">
             <div className="up-fields">
               <TextField isRequired fullWidth value={firstName} onChange={setFirstName} isDisabled={saving}>
-                <Label>Emri</Label>
+                <Label>{t('profile.user.firstName')}</Label>
                 <Input maxLength={80} autoComplete="given-name" />
               </TextField>
               <TextField isRequired fullWidth value={lastName} onChange={setLastName} isDisabled={saving}>
-                <Label>Mbiemri</Label>
+                <Label>{t('profile.user.lastName')}</Label>
                 <Input maxLength={80} autoComplete="family-name" />
               </TextField>
               <TextField fullWidth value={phone} onChange={setPhone} isDisabled={saving}>
-                <Label>Telefoni</Label>
+                <Label>{t('req.phone')}</Label>
                 <Input placeholder="+38344123456" inputMode="tel" autoComplete="tel" maxLength={32} />
-                <Description>Me prefiksin e shtetit, p.sh. +383.</Description>
+                <Description>{t('profile.user.phoneHint')}</Description>
               </TextField>
               <TextField fullWidth value={user.email} isDisabled>
-                <Label>Email</Label>
+                <Label>{t('req.email')}</Label>
                 <Input />
-                <Description>Email-i nuk mund të ndryshohet.</Description>
+                <Description>{t('profile.user.emailLocked')}</Description>
               </TextField>
               <div className="up-field-full">
-                <span className="up-label">Qyteti</span>
+                <span className="up-label">{t('profile.city')}</span>
                 <LocationSelector value={city} onChange={setCity} disabled={saving} className="up-location" />
               </div>
             </div>
@@ -529,10 +531,10 @@ function ProfileEditor({
         </Card>
 
         <Card className="uo-card">
-          <SectionHead title="Gjuhët" meta={languages.length ? <span className="uo-card-meta">{languages.length} të zgjedhura</span> : null} />
+          <SectionHead title={t('profile.languages')} meta={languages.length ? <span className="uo-card-meta">{t('profile.user.languagesSelected', { count: languages.length })}</span> : null} />
           <Card.Content className="uo-card-body">
             {languageOptions.length ? (
-              <div className="up-langs" role="group" aria-label="Gjuhët">
+              <div className="up-langs" role="group" aria-label={t('profile.languages')}>
                 {languageOptions.map((lang) => (
                   <label key={lang.id} className="up-lang">
                     <input
@@ -554,7 +556,7 @@ function ProfileEditor({
         </Card>
 
         <Card className="uo-card">
-          <SectionHead title="Rrjetet sociale" />
+          <SectionHead title={t('footer.social')} />
           <Card.Content className="uo-card-body">
             <div className="up-fields">
               {SOCIAL_LINK_KEYS.map((key) => (
@@ -572,10 +574,10 @@ function ProfileEditor({
 
         <div className="up-actions">
           <Button variant="outline" onPress={onCancel} isDisabled={saving || uploading}>
-            Anulo
+            {t('notifications.cancel')}
           </Button>
           <Button type="submit" variant="primary" isPending={saving} isDisabled={uploading}>
-            {saving ? 'Duke ruajtur...' : 'Ruaj ndryshimet'}
+            {saving ? t('req.saving') : t('profile.saveChanges')}
           </Button>
         </div>
       </form>

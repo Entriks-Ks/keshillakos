@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Phone, PhoneOff, Video } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { useCall } from './CallContext'
 import './Call.css'
@@ -7,13 +8,14 @@ import './Call.css'
 export default function IncomingCallDialog() {
   const { incomingCall, acceptCall, rejectCall } = useCall()
   const [isAccepting, setIsAccepting] = useState(false)
+  const { t } = useTranslation()
 
   if (!incomingCall) return null
 
   const isVideo = incomingCall.callType === 'video'
 
   return (
-    <div className="call-overlay" role="dialog" aria-modal="true" aria-label="Thirrje hyrëse">
+    <div className="call-overlay" role="dialog" aria-modal="true" aria-label={t('calls.incoming')}>
       <div className="call-card call-incoming-card">
         <div className="call-avatar-pulse-wrap">
           <div className="call-avatar-ring" />
@@ -29,7 +31,7 @@ export default function IncomingCallDialog() {
           <h2 className="call-caller-name">{incomingCall.caller.name}</h2>
           <div className="call-type-badge">
             {isVideo ? <Video size={16} /> : <Phone size={16} />}
-            <span>{isVideo ? 'Video thirrje hyrëse' : 'Thirrje zanore hyrëse'}</span>
+            <span>{isVideo ? t('calls.incomingVideo') : t('calls.incomingVoice')}</span>
           </div>
         </div>
 
@@ -39,10 +41,10 @@ export default function IncomingCallDialog() {
             className="call-btn call-btn-reject"
             disabled={isAccepting}
             onClick={() => rejectCall()}
-            aria-label="Refuzo thirrjen"
+            aria-label={t('calls.declineCall')}
           >
             <PhoneOff size={24} />
-            <span>Refuzo</span>
+            <span>{t('calls.decline')}</span>
           </button>
 
           <button
@@ -57,10 +59,10 @@ export default function IncomingCallDialog() {
                 setIsAccepting(false)
               }
             }}
-            aria-label="Prano thirrjen"
+            aria-label={t('calls.acceptCall')}
           >
             {isVideo ? <Video size={24} /> : <Phone size={24} />}
-            <span>{isAccepting ? 'Duke u lidhur...' : 'Prano'}</span>
+            <span>{isAccepting ? t('calls.connecting') : t('calls.accept')}</span>
           </button>
         </div>
       </div>

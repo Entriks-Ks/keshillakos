@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { uiText } from '../i18n'
+import { dateLocale, uiText } from '../i18n'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import './LegalPage.css'
@@ -9,7 +9,8 @@ type LegalKind = 'terms' | 'privacy' | 'cookies'
 
 type Section = { title: string; paragraphs: string[] }
 
-const UPDATED = '23 shtator 2026'
+/** Last revision of the legal texts (formatted per active language at render). */
+const UPDATED = new Date(2026, 8, 23)
 
 const DOCUMENTS: Record<LegalKind, { kicker: string; title: string; lead: string; sections: Section[] }> = {
   terms: {
@@ -138,9 +139,9 @@ const COPY: Record<string, [string, string]> = {
   'Profili, ofertat dhe vlerësimet publike shfaqen te përdoruesit që kërkojnë atë shërbim.': ['The profile, offers, and public ratings are shown to people looking for that service.', 'Profil, Angebote und öffentliche Bewertungen sehen Personen, die diesen Dienst suchen.'],
   'Si lejohet përdorimi': ['Allowed use', 'Zulässige Nutzung'],
   'Mos dërgo spam, mashtrim, përmbajtje të paligjshme ose kërkesa që nuk kanë lidhje me një shërbim real.': ['Do not send spam, fraud, illegal content, or requests unrelated to a real service.', 'Sende keinen Spam, Betrug, illegale Inhalte oder Anfragen ohne Bezug zu einem echten Dienst.'],
-  'Mund ta pezullojmë llogarinë kur përdorimi thyen këto kushte ose rrezikon përdoruesit e tjerë.': ['We may suspend the account when use breaks these terms or puts other users at risk.', 'Wir können das Konto sperren, wenn die Nutzung diese Bedingungen bricht oder andere Nutzer gefährdet.'],
+  'Mund ta pezullojmë llogarinë kur përdorimi thyen këto kushte ose rrezikon përdoruesit e tjerë.': ['We may suspend the account when use breaks these terms or puts other users at risk.', 'Wir können das Konto sperren, wenn die Nutzung gegen diese Bedingungen verstößt oder andere Nutzer gefährdet.'],
   'Përgjegjësia': ['Liability', 'Haftung'],
-  'Platforma ofrohet siç është. Nuk garantojmë që një ofrues i caktuar është i lirë, i licencuar ose i përshtatshëm për rastin tënd.': ['The platform is provided as is. We do not guarantee that a given provider is available, licensed, or right for your case.', 'Die Plattform wird bereitgestellt, wie sie ist. Wir garantieren nicht, dass ein Anbieter frei, lizenziert oder passend für deinen Fall ist.'],
+  'Platforma ofrohet siç është. Nuk garantojmë që një ofrues i caktuar është i lirë, i licencuar ose i përshtatshëm për rastin tënd.': ['The platform is provided as is. We do not guarantee that a given provider is available, licensed, or right for your case.', 'Die Plattform wird bereitgestellt, wie sie ist. Wir garantieren nicht, dass ein bestimmter Anbieter verfügbar, lizenziert oder für deinen Fall geeignet ist.'],
   'Para se të nisësh një punë, kontrollo vetë detajet me ofruesin.': ['Before you start work, check the details yourself with the provider.', 'Prüfe die Details selbst mit dem Anbieter, bevor du eine Arbeit beginnst.'],
   'Çfarë mbledhim': ['What we collect', 'Was wir erheben'],
   'Kur krijon llogari: emrin, email-in dhe fjalëkalimin. Mund të shtosh telefon, foto, përshkrim dhe qytet.': ['When you create an account: name, email, and password. You can add a phone, photo, description, and city.', 'Beim Konto: Name, E-Mail und Passwort. Du kannst Telefon, Foto, Beschreibung und Stadt ergänzen.'],
@@ -178,21 +179,22 @@ function legalSections(kind: LegalKind): Section[] {
   }))
 }
 
-function linkLabel(kind: string) {
+function linkLabel(kind: string, cookies: string) {
   if (kind === 'privacy') return uiText('Privatësia', 'Privacy', 'Datenschutz')
-  if (kind === 'cookies') return 'Cookies'
+  if (kind === 'cookies') return cookies
   return uiText('Kushtet e përdorimit', 'Terms of use', 'Nutzungsbedingungen')
 }
 
 export default function LegalPage({ kind }: { kind: LegalKind }) {
-  const { i18n } = useTranslation()
-  void i18n.language
-  const title = linkLabel(kind)
-  const kicker = kind === 'privacy' ? uiText('Privatësia', 'Privacy', 'Datenschutz') : kind === 'cookies' ? 'Cookies' : uiText('Kushtet', 'Terms', 'Bedingungen')
+  const { t } = useTranslation()
+  const cookies = t('legal.cookies')
+  const title = linkLabel(kind, cookies)
+  const kicker = kind === 'privacy' ? uiText('Privatësia', 'Privacy', 'Datenschutz') : kind === 'cookies' ? cookies : uiText('Kushtet', 'Terms', 'Bedingungen')
+  const updated = UPDATED.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
   const lead = kind === 'privacy'
     ? uiText('Këtu shpjegohet çfarë të dhënash mbledh Këshillohu, pse i përdor dhe kujt ia tregon.', 'This explains what data Keshillohu collects, why it is used, and who sees it.', 'Hier steht, welche Daten Keshillohu erhebt, warum sie genutzt werden und wer sie sieht.')
     : kind === 'cookies'
-      ? uiText('Këshillohu nuk përdor cookies marketingu. Ruajmë vetëm çfarë duhet që hyrja dhe qyteti të mbahen mend.', 'Keshillohu does not use marketing cookies. We only store what is needed to remember sign-in and city.', 'Keshillohu nutzt keine Marketing-Cookies. Wir speichern nur, was Anmeldung und Stadt merkt.')
+      ? uiText('Këshillohu nuk përdor cookies marketingu. Ruajmë vetëm çfarë duhet që hyrja dhe qyteti të mbahen mend.', 'Keshillohu does not use marketing cookies. We only store what is needed to remember sign-in and city.', 'Keshillohu nutzt keine Marketing-Cookies. Wir speichern nur, was nötig ist, damit Anmeldung und Stadt gemerkt werden.')
       : uiText('Këto kushte vlejnë kur përdor Këshillohu për të gjetur një ofrues ose për të publikuar një shërbim.', 'These terms apply when you use Keshillohu to find a provider or publish a service.', 'Diese Bedingungen gelten, wenn du Keshillohu nutzt, um einen Anbieter zu finden oder einen Dienst zu veröffentlichen.')
 
   return (
@@ -208,7 +210,7 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
                   to={item.to}
                   className={({ isActive }) => `tt-legal-tab${isActive ? ' is-active' : ''}`}
                 >
-                  {linkLabel(item.label)}
+                  {linkLabel(item.label, cookies)}
                 </NavLink>
               ))}
             </nav>
@@ -216,7 +218,7 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
               <p className="tt-legal-kicker">{kicker}</p>
               <h1 id="legal-heading">{title}</h1>
               <p>{lead}</p>
-              <p className="tt-legal-updated">{uiText('Përditësuar më', 'Updated', 'Aktualisiert am')} {UPDATED}</p>
+              <p className="tt-legal-updated">{t('legal.updated', { date: updated })}</p>
             </header>
             <ol className="tt-legal-list">
               {legalSections(kind).map((section, index) => (

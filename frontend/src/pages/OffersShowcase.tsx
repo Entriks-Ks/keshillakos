@@ -188,7 +188,7 @@ function DeckCard({
           {item.online ? (
             <span>
               <Video size={13} aria-hidden />
-              Online
+              {t('site.online')}
             </span>
           ) : null}
         </span>

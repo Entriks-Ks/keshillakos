@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Card, Chip, Skeleton } from '@heroui/react'
 import { BadgeCheck, Star } from 'lucide-react'
 import { useProviderCardLink } from './providerCardUtils'
@@ -69,13 +70,14 @@ export function CardMeta({ children }: { children: ReactNode }) {
 }
 
 export function RatingMeta({ average, count, href }: { average: number; count: number; href: string }) {
-  if (count <= 0) return <li className="pc-rating is-empty">Ende pa vlerësime</li>
+  const { t } = useTranslation()
+  if (count <= 0) return <li className="pc-rating is-empty">{t('offers.noRatings')}</li>
   return (
     <li className="pc-rating">
       <Star size={14} aria-hidden />
       <strong>{average.toFixed(1)}</strong>
       <Link to={`${href}#vleresimet`} onClick={(e) => e.stopPropagation()}>
-        ({count} {count === 1 ? 'vlerësim' : 'vlerësime'})
+        ({t('cards.reviewCount', { count })})
       </Link>
     </li>
   )
@@ -90,6 +92,7 @@ export function ProviderDescription({
   expanded: boolean
   onToggle: () => void
 }) {
+  const { t } = useTranslation()
   const long = text.length > 180
   return (
     <div className="pc-desc-wrap">
@@ -103,7 +106,7 @@ export function ProviderDescription({
             onToggle()
           }}
         >
-          {expanded ? 'Shiko më pak' : 'Lexo më shumë'}
+          {expanded ? t('cards.readLess') : t('cards.readMore')}
         </button>
       ) : null}
     </div>
@@ -111,11 +114,12 @@ export function ProviderDescription({
 }
 
 export function ProviderTags({ items, max }: { items: string[]; max: number }) {
+  const { t } = useTranslation()
   if (!items.length) return null
   const shown = items.slice(0, max)
   const rest = items.length - shown.length
   return (
-    <ul className="pc-tags" aria-label="Specializimet">
+    <ul className="pc-tags" aria-label={t('cards.specializations')}>
       {shown.map((item) => (
         <li key={item}>
           <Chip size="sm" variant="soft">

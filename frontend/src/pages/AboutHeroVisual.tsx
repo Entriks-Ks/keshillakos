@@ -52,7 +52,7 @@ export default function AboutHeroVisual() {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       role="img"
-      aria-label="Vizual 3D interaktiv që përfaqëson këshillimin ligjor, kontabilitetin dhe asistentin inteligjent Këshilla AI"
+      aria-label={t('landing.about.visualLabel')}
     >
       {/* Ambient background glows */}
       <div className="ab-visual-ambient" aria-hidden />

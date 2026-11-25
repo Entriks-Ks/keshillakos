@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { Button, FieldError, Input, Label, TextField, toast } from '@heroui/react'
 import { ArrowRight, Building2, Eye, EyeOff, Scale, UserRound } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -11,18 +11,19 @@ import { LogoMark, LogoWordmark } from '../components/Logo'
 import { getErrorMessage } from '../utils/errors'
 import './LoginPage.css'
 
+/** Messages are i18n keys, translated where they are displayed. */
 const accountSchema = z.object({
-  firstName: z.string().trim().min(1, 'Emri është i detyrueshëm').max(80, 'Emri është shumë i gjatë'),
-  lastName: z.string().trim().min(1, 'Mbiemri është i detyrueshëm').max(80, 'Mbiemri është shumë i gjatë'),
-  email: z.string().trim().min(1, 'Email është i detyrueshëm').email('Email i pavlefshëm'),
+  firstName: z.string().trim().min(1, 'register.firstNameRequired').max(80, 'register.firstNameTooLong'),
+  lastName: z.string().trim().min(1, 'register.lastNameRequired').max(80, 'register.lastNameTooLong'),
+  email: z.string().trim().min(1, 'auth.emailRequired').email('auth.emailInvalid'),
 })
 
 const registerSchema = accountSchema.extend({
-  password: z.string().min(6, 'Fjalëkalimi duhet të ketë të paktën 6 karaktere'),
-  confirmPassword: z.string().min(1, 'Konfirmo fjalëkalimin'),
+  password: z.string().min(6, 'auth.passwordShort'),
+  confirmPassword: z.string().min(1, 'register.confirmRequired'),
 }).refine((values) => values.password === values.confirmPassword, {
   path: ['confirmPassword'],
-  message: 'Fjalëkalimi dhe konfirmimi nuk përputhen',
+  message: 'register.passwordMismatch',
 })
 
 type RegisterField = keyof z.infer<typeof registerSchema>
@@ -76,7 +77,7 @@ export default function RegisterPage() {
     e.preventDefault()
     const result = registerSchema.safeParse({ firstName, lastName, email, password, confirmPassword })
     const next: RegisterErrors = result.success ? {} : collectErrors(result.error)
-    if (!acceptedTerms) next.terms = 'Prano kushtet për të vazhduar'
+    if (!acceptedTerms) next.terms = 'register.termsRequired'
     if (!result.success || next.terms) {
       setFieldErrors(next)
       return
@@ -85,7 +86,7 @@ export default function RegisterPage() {
     setSubmitting(true)
     try {
       await register(result.data.firstName, result.data.lastName, result.data.email, result.data.password)
-      toast.success('Llogaria u krijua. Mirë se erdhe!')
+      toast.success(t('register.success'))
       navigate('/dashboard', { replace: true })
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -99,7 +100,7 @@ export default function RegisterPage() {
       <div className="login-split">
         <AuthShowcase />
         <div className="auth-panel">
-        <Link to="/" className="brand brand-link" aria-label="keshillohu">
+        <Link to="/" className="brand brand-link" aria-label={t('nav.home')}>
           <LogoMark size={36} />
           <LogoWordmark height={23} />
         </Link>
@@ -120,47 +121,47 @@ export default function RegisterPage() {
           <form onSubmit={onContinue} className="auth-form register-form" noValidate>
             <div className="register-names">
               <TextField isInvalid={Boolean(fieldErrors.firstName)} validationBehavior="aria" fullWidth>
-                <Label>Emri</Label>
+                <Label>{t('register.firstName')}</Label>
                 <Input
                   type="text"
                   autoComplete="given-name"
-                  placeholder="Emri"
+                  placeholder={t('register.firstName')}
                   value={firstName}
                   onChange={(e) => {
                     setFirstName(e.target.value)
                     setFieldErrors((current) => ({ ...current, firstName: undefined }))
                   }}
                 />
-                <FieldError>{fieldErrors.firstName}</FieldError>
+                <FieldError>{fieldErrors.firstName ? t(fieldErrors.firstName) : null}</FieldError>
               </TextField>
               <TextField isInvalid={Boolean(fieldErrors.lastName)} validationBehavior="aria" fullWidth>
-                <Label>Mbiemri</Label>
+                <Label>{t('register.lastName')}</Label>
                 <Input
                   type="text"
                   autoComplete="family-name"
-                  placeholder="Mbiemri"
+                  placeholder={t('register.lastName')}
                   value={lastName}
                   onChange={(e) => {
                     setLastName(e.target.value)
                     setFieldErrors((current) => ({ ...current, lastName: undefined }))
                   }}
                 />
-                <FieldError>{fieldErrors.lastName}</FieldError>
+                <FieldError>{fieldErrors.lastName ? t(fieldErrors.lastName) : null}</FieldError>
               </TextField>
             </div>
             <TextField isInvalid={Boolean(fieldErrors.email)} validationBehavior="aria" fullWidth>
-              <Label>Email</Label>
+              <Label>{t('req.email')}</Label>
               <Input
                 type="email"
                 autoComplete="email"
-                placeholder="ti@shembull.com"
+                placeholder={t('register.emailPlaceholder')}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value)
                   setFieldErrors((current) => ({ ...current, email: undefined }))
                 }}
               />
-              <FieldError>{fieldErrors.email}</FieldError>
+              <FieldError>{fieldErrors.email ? t(fieldErrors.email) : null}</FieldError>
             </TextField>
 
             <div className="register-roles">
@@ -179,18 +180,18 @@ export default function RegisterPage() {
             </div>
 
             <Button type="submit" size="md" className="auth-submit" fullWidth>
-              Vazhdo <ArrowRight size={16} />
+              {t('home.next')} <ArrowRight size={16} />
             </Button>
           </form>
         ) : (
           <form onSubmit={onSubmit} className="auth-form register-form" noValidate>
             <TextField isInvalid={Boolean(fieldErrors.password)} validationBehavior="aria" fullWidth>
-              <Label>Fjalëkalimi</Label>
+              <Label>{t('auth.password')}</Label>
               <span className="password-control">
                 <Input
                   type={passwordVisible ? 'text' : 'password'}
                   autoComplete="new-password"
-                  placeholder="Krijo një fjalëkalim"
+                  placeholder={t('register.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)
@@ -198,20 +199,20 @@ export default function RegisterPage() {
                   }}
                 />
                 <Button type="button" variant="ghost" size="sm" isIconOnly className="password-toggle"
-                  aria-label={passwordVisible ? 'Fshih fjalëkalimin' : 'Shfaq fjalëkalimin'}
+                  aria-label={passwordVisible ? t('auth.hide') : t('auth.show')}
                   aria-pressed={passwordVisible} onPress={() => setPasswordVisible((visible) => !visible)}>
                   {passwordVisible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
                 </Button>
               </span>
-              <FieldError>{fieldErrors.password}</FieldError>
+              <FieldError>{fieldErrors.password ? t(fieldErrors.password) : null}</FieldError>
             </TextField>
             <TextField isInvalid={Boolean(fieldErrors.confirmPassword)} validationBehavior="aria" fullWidth>
-              <Label>Konfirmo fjalëkalimin</Label>
+              <Label>{t('register.confirmPassword')}</Label>
               <span className="password-control">
                 <Input
                   type={confirmPasswordVisible ? 'text' : 'password'}
                   autoComplete="new-password"
-                  placeholder="Përsërit fjalëkalimin"
+                  placeholder={t('register.confirmPlaceholder')}
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value)
@@ -219,12 +220,12 @@ export default function RegisterPage() {
                   }}
                 />
                 <Button type="button" variant="ghost" size="sm" isIconOnly className="password-toggle"
-                  aria-label={confirmPasswordVisible ? 'Fshih fjalëkalimin' : 'Shfaq fjalëkalimin'}
+                  aria-label={confirmPasswordVisible ? t('auth.hide') : t('auth.show')}
                   aria-pressed={confirmPasswordVisible} onPress={() => setConfirmPasswordVisible((visible) => !visible)}>
                   {confirmPasswordVisible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
                 </Button>
               </span>
-              <FieldError>{fieldErrors.confirmPassword}</FieldError>
+              <FieldError>{fieldErrors.confirmPassword ? t(fieldErrors.confirmPassword) : null}</FieldError>
             </TextField>
 
             <label className="register-terms">
@@ -237,15 +238,18 @@ export default function RegisterPage() {
                 }}
               />
               <span>
-                Pranoj <Link to="/kushtet">Kushtet e përdorimit</Link> dhe <Link to="/privatesia">Privatësinë</Link>.
+                <Trans
+                  i18nKey="register.terms"
+                  components={{ terms: <Link to="/kushtet" />, privacy: <Link to="/privatesia" /> }}
+                />
               </span>
             </label>
-            {fieldErrors.terms ? <p className="error">{fieldErrors.terms}</p> : null}
+            {fieldErrors.terms ? <p className="error">{t(fieldErrors.terms)}</p> : null}
 
             <div className="register-actions">
-              <button type="button" className="register-back" onClick={() => setStep(1)}>Kthehu</button>
+              <button type="button" className="register-back" onClick={() => setStep(1)}>{t('home.back')}</button>
               <Button type="submit" size="md" className="auth-submit" isDisabled={submitting}>
-                {submitting ? 'Duke u regjistruar...' : 'Krijo llogari'} <ArrowRight size={16} />
+                {submitting ? t('register.submitting') : t('register.submit')} <ArrowRight size={16} />
               </Button>
             </div>
           </form>
@@ -254,7 +258,7 @@ export default function RegisterPage() {
         {step === 1 ? <GoogleAuthButton disabled={submitting} /> : null}
 
         <p className="switch">
-          Ke tashmë llogari? <Link to="/login">Hyr</Link>
+          {t('register.haveAccount')} <Link to="/login">{t('nav.login')}</Link>
         </p>
         </div>
       </div>

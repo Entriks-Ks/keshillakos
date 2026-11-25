@@ -1,52 +1,31 @@
 import type { ExtensionField } from '../api/catalog'
 import { catalogOptionLabel, type CatalogOption } from '../api/catalog'
+import { useTranslation } from 'react-i18next'
+import i18n from '../i18n'
 
-const FIELD_LABELS: Record<string, { sq: string; en: string }> = {
-  licenseNumber: { sq: 'Numri i licencës / verifikimit', en: 'License / verification number' },
-  serviceTypeDetail: { sq: 'Lloji i detajuar i shërbimit', en: 'Detailed service type' },
-  documentsNote: { sq: 'Dokumentet që nevojiten', en: 'Documents needed' },
-  deadlineNote: { sq: 'Afatet tipike', en: 'Typical deadlines' },
-  audience: { sq: 'Për kë është shërbimi', en: 'Who the service is for' },
-  offerType: { sq: 'Lloji i ofertës', en: 'Offer type' },
-  regulatoryNotice: { sq: 'Njoftim rregullator', en: 'Regulatory notice' },
-  coachingDisclaimer: { sq: 'Kufizimi i coaching', en: 'Coaching boundary' },
-  coachingDisclaimerAccepted: { sq: 'Pranoj kufizimin e coaching', en: 'Accept coaching boundary' },
-}
+/** Category fields with translated copy (services.fields.<key>.label / .hint). */
+const LABELLED_FIELDS = new Set([
+  'licenseNumber',
+  'serviceTypeDetail',
+  'documentsNote',
+  'deadlineNote',
+  'audience',
+  'offerType',
+  'regulatoryNotice',
+  'coachingDisclaimer',
+  'coachingDisclaimerAccepted',
+])
 
-const FIELD_HINTS: Record<string, { sq: string; en: string }> = {
-  licenseNumber: {
-    sq: 'Vendos numrin e licencës ose referencën e verifikimit nëse e ke.',
-    en: 'Enter your license number or verification reference if you have one.',
-  },
-  serviceTypeDetail: {
-    sq: 'Specifiko nëntipin, p.sh. konsultim, përfaqësim, audit.',
-    en: 'Specify the subtype, e.g. consultation, representation, audit.',
-  },
-  documentsNote: {
-    sq: 'Çfarë duhet të sjellë klienti (ID, kontrata, fatura, etj.).',
-    en: 'What the client should bring (ID, contracts, invoices, etc.).',
-  },
-  deadlineNote: {
-    sq: 'Sa kohë zgjat zakonisht puna dhe kur pret përgjigje.',
-    en: 'How long the work usually takes and when to expect a reply.',
-  },
-  audience: {
-    sq: 'Individë, kompani, ose të dyja.',
-    en: 'Individuals, companies, or both.',
-  },
-  offerType: {
-    sq: 'Paketë, projekt, ose shërbim i thjeshtë.',
-    en: 'Package, project, or simple service.',
-  },
-  regulatoryNotice: {
-    sq: 'Nëse ka kufizime ligjore që klienti duhet t’i dijë.',
-    en: 'Any legal limits the client should know about.',
-  },
-  coachingDisclaimerAccepted: {
-    sq: 'Duhet të pranohet përpara publikimit të shërbimit të coaching.',
-    en: 'Must be accepted before publishing a coaching service.',
-  },
-}
+const HINTED_FIELDS = new Set([
+  'licenseNumber',
+  'serviceTypeDetail',
+  'documentsNote',
+  'deadlineNote',
+  'audience',
+  'offerType',
+  'regulatoryNotice',
+  'coachingDisclaimerAccepted',
+])
 
 /** Universal form owns these; do not render them as category extras. */
 export const UNIVERSAL_EXTENSION_KEYS = new Set([
@@ -64,15 +43,14 @@ export const UNIVERSAL_EXTENSION_KEYS = new Set([
   'certifiedTranslation',
 ])
 
-export function fieldLabel(field: ExtensionField, language: 'sq' | 'en') {
-  const mapped = FIELD_LABELS[field.key]
-  if (mapped) return mapped[language] || mapped.sq
+/** Translated label for a category field; resolved at call time in the active UI language. */
+export function fieldLabel(field: ExtensionField) {
+  if (LABELLED_FIELDS.has(field.key)) return i18n.t(`services.fields.${field.key}.label`)
   return field.key.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase())
 }
 
-function fieldHint(field: ExtensionField, language: 'sq' | 'en') {
-  const mapped = FIELD_HINTS[field.key]
-  return mapped ? mapped[language] || mapped.sq : undefined
+function fieldHint(field: ExtensionField) {
+  return HINTED_FIELDS.has(field.key) ? i18n.t(`services.fields.${field.key}.hint`) : undefined
 }
 
 export function optionLabel(value: string, options: CatalogOption[], language: 'sq' | 'en') {
@@ -84,23 +62,18 @@ export function categorySpecificFields(fields: ExtensionField[] = []) {
   return fields.filter((field) => !UNIVERSAL_EXTENSION_KEYS.has(field.key))
 }
 
-function RequirementBadge({
-  required,
-  language,
-}: {
-  required?: boolean
-  language: 'sq' | 'en'
-}) {
+function RequirementBadge({ required }: { required?: boolean }) {
+  const { t } = useTranslation()
   if (required) {
     return (
       <span className="service-field-badge is-required">
-        {language === 'en' ? 'Required' : 'E detyrueshme'}
+        {t('services.required')}
       </span>
     )
   }
   return (
     <span className="service-field-badge is-optional">
-      {language === 'en' ? 'Optional' : 'Opsionale'}
+      {t('services.optional')}
     </span>
   )
 }
@@ -118,14 +91,15 @@ export default function ExtensionFieldsForm({
   language?: 'sq' | 'en'
   catalogOptions?: CatalogOption[]
 }) {
+  const { t } = useTranslation()
   const visible = categorySpecificFields(fields)
   if (!visible.length) return null
 
   return (
     <>
       {visible.map((field) => {
-        const label = fieldLabel(field, language)
-        const hint = fieldHint(field, language)
+        const label = fieldLabel(field)
+        const hint = fieldHint(field)
         const value = values[field.key]
         const allowed = field.allowedValues ?? []
         const isRequired = Boolean(field.required || field.mustBeTrue)
@@ -141,7 +115,7 @@ export default function ExtensionFieldsForm({
               />
               <span className="service-field-label">
                 <span>{label}</span>
-                <RequirementBadge required={isRequired} language={language} />
+                <RequirementBadge required={isRequired} />
               </span>
             </label>
           )
@@ -154,7 +128,7 @@ export default function ExtensionFieldsForm({
               <legend>
                 <span className="service-field-label">
                   <span>{label}</span>
-                  <RequirementBadge required={isRequired} language={language} />
+                  <RequirementBadge required={isRequired} />
                 </span>
               </legend>
               {hint ? <p className="service-field-hint">{hint}</p> : null}
@@ -184,7 +158,7 @@ export default function ExtensionFieldsForm({
             <label key={field.key}>
               <span className="service-field-label">
                 <span>{label}</span>
-                <RequirementBadge required={isRequired} language={language} />
+                <RequirementBadge required={isRequired} />
               </span>
               <select
                 value={typeof value === 'string' ? value : ''}
@@ -192,7 +166,7 @@ export default function ExtensionFieldsForm({
                 onChange={(e) => onChange(field.key, e.target.value)}
               >
                 {!isRequired ? (
-                  <option value="">{language === 'en' ? 'Choose…' : 'Zgjidh…'}</option>
+                  <option value="">{t('services.choose')}</option>
                 ) : null}
                 {allowed.map((option) => (
                   <option key={option} value={option}>
@@ -210,7 +184,7 @@ export default function ExtensionFieldsForm({
             <label key={field.key}>
               <span className="service-field-label">
                 <span>{label}</span>
-                <RequirementBadge required={isRequired} language={language} />
+                <RequirementBadge required={isRequired} />
               </span>
               <input
                 type="number"
@@ -235,7 +209,7 @@ export default function ExtensionFieldsForm({
           <label key={field.key} className={multiline ? 'full' : undefined}>
             <span className="service-field-label">
               <span>{label}</span>
-              <RequirementBadge required={isRequired} language={language} />
+              <RequirementBadge required={isRequired} />
             </span>
             {multiline ? (
               <textarea

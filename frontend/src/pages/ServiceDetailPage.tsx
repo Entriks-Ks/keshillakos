@@ -250,7 +250,7 @@ function DetailSkeleton() {
 }
 
 export default function ServiceDetailPage() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   void i18n.language
   const { id: param } = useParams<{ id: string }>()
   const id = idFromPublicParam(param)
@@ -517,7 +517,7 @@ export default function ServiceDetailPage() {
                         serviceId={service.id}
                         serviceTitle={service.title}
                         hideGuestHint
-                        label="Live Chat"
+                        label={t('cards.liveChat')}
                         className="sd-chat"
                       />
                     </div>

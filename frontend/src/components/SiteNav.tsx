@@ -122,12 +122,12 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     <Dropdown>
       <Dropdown.Trigger
         className="kk-nav-account"
-        aria-label={displayName ? `Llogaria: ${displayName}` : 'Llogaria ime'}
+        aria-label={displayName ? t('site.nav.account', { name: displayName }) : t('site.nav.myAccount')}
       >
         <ProfileAvatar
           src={user.profilePhoto}
           seed={user.uid}
-          alt={displayName || 'Profili i përdoruesit'}
+          alt={displayName || t('site.nav.avatarAlt')}
           size="sm"
           className="kk-nav-avatar"
         />
@@ -143,7 +143,7 @@ function AccountMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             <span className="kk-nav-role">{roleLabel(user)}</span>
           </div>
         </div>
-        <Dropdown.Menu aria-label="Menuja e llogarisë" className="kk-nav-menu">
+        <Dropdown.Menu aria-label={t('site.nav.accountMenu')} className="kk-nav-menu">
           {items.map((item) => {
             const Icon = ACCOUNT_ICONS[item.id]
             return (
@@ -218,7 +218,7 @@ export default function SiteNav() {
                 className="kk-nav-link"
                 aria-current={location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet' ? 'page' : undefined}
               >
-                <span>{t('nav.compare', 'Krahaso Avokatët')}</span>
+                <span>{t('nav.compare')}</span>
                 {compareCount > 0 ? <span className="kk-compare-nav-count">{compareCount}</span> : null}
               </Link>
             </li>
@@ -228,7 +228,7 @@ export default function SiteNav() {
                 className="kk-nav-link"
                 aria-current={location.pathname === '/komuniteti' ? 'page' : undefined}
               >
-                {t('nav.community', 'Komuniteti')}
+                {t('nav.community')}
               </Link>
             </li>
             <li>
@@ -345,7 +345,7 @@ export default function SiteNav() {
                             aria-current={location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
-                            <span>{t('nav.compare', 'Krahaso Avokatët')}</span>
+                            <span>{t('nav.compare')}</span>
                             {compareCount > 0 ? <span className="kk-compare-nav-count">{compareCount}</span> : null}
                           </Link>
                         </li>
@@ -356,7 +356,7 @@ export default function SiteNav() {
                             aria-current={location.pathname === '/komuniteti' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
-                            {t('nav.community', 'Komuniteti')}
+                            {t('nav.community')}
                           </Link>
                         </li>
                         <li>

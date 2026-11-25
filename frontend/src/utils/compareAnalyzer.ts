@@ -4,9 +4,35 @@ import { humanLabels } from './displayLabels.ts'
 
 export type LawyerBadgeTone = 'gold' | 'emerald' | 'cyan' | 'purple' | 'blue'
 
+/**
+ * Translatable text produced by the analyzer. This module stays free of i18n imports (it is
+ * imported by node tests), so it returns translation keys + interpolation params and the UI
+ * translates them at render time. A param may itself be a nested key (e.g. a fallback label).
+ */
+export type I18nParam = string | number | I18nText
+export type I18nText = { key: string; params?: Record<string, I18nParam> }
+
+const K = 'compareUi.analysis'
+
+function text(key: string, params?: Record<string, I18nParam>): I18nText {
+  return params ? { key: `${K}.${key}`, params } : { key: `${K}.${key}` }
+}
+
+/** Resolves an analyzer text (and nested key params) with the caller's translator. */
+export function translateText(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  value: I18nText,
+): string {
+  const params: Record<string, string | number> = {}
+  for (const [name, param] of Object.entries(value.params ?? {})) {
+    params[name] = typeof param === 'object' ? translateText(t, param) : param
+  }
+  return t(value.key, params)
+}
+
 export type LawyerBadge = {
   iconName: 'award' | 'coins' | 'clock' | 'globe' | 'star' | 'scale'
-  label: string
+  label: I18nText
   tone: LawyerBadgeTone
 }
 
@@ -14,9 +40,9 @@ export type LawyerVerdict = {
   uid: string
   name: string
   badge: LawyerBadge
-  bestForSummary: string
-  scenarioDescription: string
-  keyStrengths: string[]
+  bestForSummary: I18nText
+  scenarioDescription: I18nText
+  keyStrengths: I18nText[]
   isBudgetWinner?: boolean
   isUrgencyWinner?: boolean
   isExperienceWinner?: boolean
@@ -133,7 +159,7 @@ export function analyzeLawyers(items: ProviderComparisonItem[]): ComparisonAnaly
       [...(item.profile?.specializations || []), ...(item.profile?.categoryLabels || [])],
       item.profile?.categories || [],
     )
-    const primarySpec = specialties[0] || 'Çështje Ligjore'
+    const primarySpec: I18nParam = specialties[0] || { key: `${K}.generalSpec` }
     const years = item.profile?.yearsOfExperience
     const prices = item.services
       .map((s) => s.priceFrom)
@@ -143,97 +169,92 @@ export function analyzeLawyers(items: ProviderComparisonItem[]): ComparisonAnaly
     const hasOnline =
       item.profile?.modes?.includes('online') ||
       item.services.some((s) => s.details?.deliveryModes?.includes('online'))
-    const langs = item.profile?.languages?.length ? item.profile.languages : (item.provider.languages || ['Shqip'])
+    // Languages come from profile data; the fallback only feeds the count (never rendered here).
+    const langs = item.profile?.languages?.length ? item.profile.languages : (item.provider.languages || ['sq'])
+    const langList = langs.join(', ')
 
     // Determine primary badge & "best for"
     let badge: LawyerBadge = {
       iconName: 'scale',
-      label: `Specialist në ${primarySpec}`,
+      label: text('badge.specialist', { spec: primarySpec }),
       tone: 'blue',
     }
-    let bestForSummary = `Zgjedhje e sprovuar për ${primarySpec}`
-    let scenarioDescription = `Ekspert me njohuri të thella në ${primarySpec} dhe gatishmëri të lartë profesionale.`
+    let bestForSummary = text('bestFor.specialist', { spec: primarySpec })
+    let scenarioDescription = text('scenario.specialist', { spec: primarySpec })
 
     if (isExp && (years || 0) >= 8) {
-      badge = {
-        iconName: 'award',
-        label: 'Përvoja më e Gjatë',
-        tone: 'gold',
-      }
-      bestForSummary = `Çështje komplekse dhe përfaqësim me përvojë të thellë`
-      scenarioDescription = `Rekomandohet nëse keni një rast të ndërlikuar gjyqësor, kontratë me peshë të madhe apo nevojë për përvojë ${years}-vjeçare.`
+      badge = { iconName: 'award', label: text('badge.experience'), tone: 'gold' }
+      bestForSummary = text('bestFor.experience')
+      scenarioDescription = text('scenario.experience', { count: years || 0 })
     } else if (isBudget && itemMinPrice != null) {
-      badge = {
-        iconName: 'coins',
-        label: 'Çmimi më Ekonomik',
-        tone: 'emerald',
-      }
-      bestForSummary = `Buxhet të favorshëm dhe transparencë tarifash`
-      scenarioDescription = `Rekomandohet nëse dëshironi konsulencë cilësore me koston më të përballueshme (duke filluar nga vetëm €${itemMinPrice}).`
+      badge = { iconName: 'coins', label: text('badge.budget'), tone: 'emerald' }
+      bestForSummary = text('bestFor.budget')
+      scenarioDescription = text('scenario.budget', { price: itemMinPrice })
     } else if (isUrgency && openSlotsCount > 0) {
-      badge = {
-        iconName: 'clock',
-        label: 'Takimi më i Shpejtë',
-        tone: 'cyan',
-      }
-      bestForSummary = `Urgjencë dhe takim të menjëhershëm`
-      scenarioDescription = `Rekomandohet nëse keni afate të ngutshme dhe ju duhet takim sa më i shpejtë pa pritje.`
+      badge = { iconName: 'clock', label: text('badge.urgency'), tone: 'cyan' }
+      bestForSummary = text('bestFor.urgency')
+      scenarioDescription = text('scenario.urgency')
     } else if (isDiaspora && langs.length >= 2) {
-      badge = {
-        iconName: 'globe',
-        label: 'Top për Diasporë',
-        tone: 'purple',
-      }
-      bestForSummary = `Diasporë dhe konsultim online me video`
-      scenarioDescription = `Rekomandohet nëse jetoni jashtë Kosovës dhe kërkoni konsulencë me video në gjuhët: ${langs.join(', ')}.`
+      badge = { iconName: 'globe', label: text('badge.diaspora'), tone: 'purple' }
+      bestForSummary = text('bestFor.diaspora')
+      scenarioDescription = text('scenario.diaspora', { languages: langList })
     } else if (isRep && (item.provider.ratingAverage || 0) >= 4.5) {
-      badge = {
-        iconName: 'star',
-        label: 'Reputacioni më i Lartë',
-        tone: 'gold',
-      }
-      bestForSummary = `Kënaqësi maksimale nga klientët e mëparshëm`
-      scenarioDescription = `Rekomandohet për ata që vendosin besimin te rekomandimet më të larta (${item.provider.ratingAverage?.toFixed(1)} yje).`
+      badge = { iconName: 'star', label: text('badge.reputation'), tone: 'gold' }
+      bestForSummary = text('bestFor.reputation')
+      scenarioDescription = text('scenario.reputation', {
+        rating: (item.provider.ratingAverage || 0).toFixed(1),
+      })
     }
 
-    // Generate list of concrete strengths for this lawyer (prioritizing winning characteristics)
-    const keyStrengths: string[] = []
+    // Generate list of concrete strengths for this lawyer (prioritizing winning characteristics).
+    // `added` tracks which topics are already covered so generic strengths don't repeat them.
+    const keyStrengths: I18nText[] = []
+    const added = new Set<'languages' | 'fee' | 'experience' | 'slots'>()
 
     if (isDiaspora && langs.length > 1) {
-      keyStrengths.push(`Konsultim në ${langs.length} gjuhë: ${langs.join(', ')}`)
+      keyStrengths.push(text('strength.languages', { count: langs.length, languages: langList }))
+      added.add('languages')
     }
     if (isBudget && itemMinPrice != null) {
-      keyStrengths.push(`Tarifa fillestare më e ulët nga vetëm €${itemMinPrice}`)
+      keyStrengths.push(text('strength.lowestFee', { price: itemMinPrice }))
+      added.add('fee')
     }
     if (isExp && years != null && years > 0) {
-      keyStrengths.push(`Përvoja më e gjatë në krahasim me ${years} vite përvojë`)
+      keyStrengths.push(text('strength.longestExperience', { count: years }))
+      added.add('experience')
     }
     if (isUrgency && openSlotsCount > 0) {
-      keyStrengths.push(`Termini më i hershëm i lirë (${openSlotsCount} orare të hapura)`)
+      keyStrengths.push(text('strength.earliestSlot', { count: openSlotsCount }))
+      added.add('slots')
     }
 
-    if (years != null && years > 0 && !keyStrengths.some((s) => s.includes('përvojë'))) {
-      keyStrengths.push(`${years} vite përvojë profesionale në fushën ligjore`)
+    if (years != null && years > 0 && !added.has('experience')) {
+      keyStrengths.push(text('strength.yearsExperience', { count: years }))
     }
-    if (itemMinPrice != null && !keyStrengths.some((s) => s.includes('Tarifa'))) {
-      keyStrengths.push(`Tarifa fillestare e qartë nga €${itemMinPrice}`)
-    } else if (item.services.length > 0 && !keyStrengths.some((s) => s.includes('Shërbimi'))) {
+    if (itemMinPrice != null && !added.has('fee')) {
+      keyStrengths.push(text('strength.clearFee', { price: itemMinPrice }))
+    } else if (item.services.length > 0) {
       const formatted = formatServicePrice(item.services[0])
-      if (formatted) keyStrengths.push(`Shërbimi kryesor: ${formatted}`)
+      if (formatted) keyStrengths.push(text('strength.mainService', { price: formatted }))
     }
-    if (openSlotsCount > 0 && !keyStrengths.some((s) => s.includes('orare'))) {
-      keyStrengths.push(`${openSlotsCount} orare të lira të hapura për rezervim`)
-    } else if (!keyStrengths.some((s) => s.includes('fleksibil') || s.includes('orare'))) {
-      keyStrengths.push('Orar fleksibil sipas marrëveshjes së drejtpërdrejtë')
+    if (openSlotsCount > 0 && !added.has('slots')) {
+      keyStrengths.push(text('strength.openSlots', { count: openSlotsCount }))
+    } else if (!added.has('slots')) {
+      keyStrengths.push(text('strength.flexibleSchedule'))
     }
-    if (hasOnline && !keyStrengths.some((s) => s.includes('online'))) {
-      keyStrengths.push('Mbështet konsultimin e plotë online me video-thirrje')
+    if (hasOnline) {
+      keyStrengths.push(text('strength.online'))
     }
-    if (langs.length > 1 && !keyStrengths.some((s) => s.includes('gjuhë'))) {
-      keyStrengths.push(`Konsultim në ${langs.length} gjuhë: ${langs.join(', ')}`)
+    if (langs.length > 1 && !added.has('languages')) {
+      keyStrengths.push(text('strength.languages', { count: langs.length, languages: langList }))
     }
     if (item.provider.ratingCount > 0) {
-      keyStrengths.push(`Vlerësuar me ★ ${item.provider.ratingAverage?.toFixed(1)} nga ${item.provider.ratingCount} klientë`)
+      keyStrengths.push(
+        text('strength.rated', {
+          rating: (item.provider.ratingAverage || 0).toFixed(1),
+          count: item.provider.ratingCount,
+        }),
+      )
     }
 
     verdicts[item.uid] = {

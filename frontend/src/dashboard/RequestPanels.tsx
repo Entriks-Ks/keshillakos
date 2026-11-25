@@ -2,7 +2,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import i18n from '../i18n'
+import { dateLocale } from '../i18n'
 import { Alert, Card, Chip } from '@heroui/react'
 import { fetchAllRequests, type RequestStatus, type ServiceRequestItem } from '../api/requests'
 import { getErrorMessage } from '../utils/errors'
@@ -24,15 +24,10 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
 }
 
 const CONTACT_LABELS = {
-  chat: 'Chat',
-  phone: 'Telefon',
-  email: 'Email',
+  chat: 'req.chat',
+  phone: 'req.phone',
+  email: 'req.email',
 } as const
-
-function dateLocale() {
-  const language = (i18n.language || 'sq').slice(0, 2)
-  return language === 'de' ? 'de-DE' : language === 'en' ? 'en-GB' : 'sq-AL'
-}
 
 function formatDate(value: string) {
   try {
@@ -97,11 +92,11 @@ export function AdminRequestsPanel() {
 
   return (
     <section className="uo ds ad">
-      <header className="uo-head"><div className="uo-head-copy"><h1>Të gjitha kërkesat</h1><p>Mbikëqyrja e kërkesave në platformë.</p></div></header>
-      {error ? <Alert status="danger" className="uo-alert"><Alert.Indicator /><Alert.Content><Alert.Title>Kërkesat nuk u ngarkuan</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content></Alert> : null}
+      <header className="uo-head"><div className="uo-head-copy"><h1>{t('dash.allRequests')}</h1><p>{t('admin.requests.lead')}</p></div></header>
+      {error ? <Alert status="danger" className="uo-alert"><Alert.Indicator /><Alert.Content><Alert.Title>{t('req.loadError')}</Alert.Title><Alert.Description>{error}</Alert.Description></Alert.Content></Alert> : null}
       <Card className="uo-card">
         <SectionHead
-          title="Kërkesat"
+          title={t('dash.requests')}
           meta={!loading ? <span className="uo-card-meta">{pagination.total || requests.length}</span> : null}
           action={
             <label className="ad-page-size">
@@ -140,7 +135,7 @@ export function AdminRequestsPanel() {
                   ) : null}
                   <ul className="ad-request-meta">
                     <li>
-                      {CONTACT_LABELS[r.contactMethod]}
+                      {CONTACT_LABELS[r.contactMethod] ? t(CONTACT_LABELS[r.contactMethod]) : r.contactMethod}
                       {r.contactPhone ? ` · ${r.contactPhone}` : ''}
                       {r.contactMethod === 'email' && (r.contactEmail || r.seekerEmail)
                         ? ` · ${r.contactEmail || r.seekerEmail}`

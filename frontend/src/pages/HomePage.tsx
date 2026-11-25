@@ -61,6 +61,12 @@ const CATEGORY_LEADS: Record<string, string> = {
 }
 
 const TOTAL_STEPS = 7
+
+const MATCH_LANGUAGE_KEYS: Record<MatchIntake['language'], string> = {
+  Albanian: 'home.albanian',
+  German: 'home.german',
+  English: 'home.english',
+}
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'home-and-property': House,
   'gardening-and-outdoor': Trees,
@@ -710,9 +716,9 @@ export default function HomePage() {
                             <div className="hm-choice-cards-grid is-3col">
                               {(
                                 [
-                                  ['chat', 'Chat', t('home.contactChatDesc'), MessageCircle],
+                                  ['chat', t('dash.chat'), t('home.contactChatDesc'), MessageCircle],
                                   ['phone', t('home.phone'), t('home.contactPhoneDesc'), Phone],
-                                  ['email', 'Email', t('home.contactEmailDesc'), Mail],
+                                  ['email', t('req.email'), t('home.contactEmailDesc'), Mail],
                                 ] as const
                               ).map(([value, label, sub, Icon]) => (
                                 <button
@@ -795,7 +801,9 @@ export default function HomePage() {
                                 <ul className="match-meta">
                                   <li>{m.location}</li>
                                   <li>
-                                    {m.languages.length > 0 ? m.languages.join(', ') : intake.language}
+                                    {m.languages.length > 0
+                                      ? m.languages.join(', ')
+                                      : intake.language ? t(MATCH_LANGUAGE_KEYS[intake.language]) : ''}
                                   </li>
                                   {m.verified && <li className="match-verified">{t('home.verified')}</li>}
                                   <li>{m.respondsWithin}</li>
@@ -860,7 +868,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Trust Badges under Hero */}
-                <div className="hm-hero-pills" aria-label="Karakteristikat e platformës">
+                <div className="hm-hero-pills" aria-label={t('landing.heroPillsLabel')}>
                   <div className="hm-hero-pill">
                     <BadgeCheck size={16} className="hm-pill-icon" aria-hidden />
                     <span>{t('home.trustBadge1')}</span>
@@ -929,7 +937,7 @@ export default function HomePage() {
                             <Icon size={26} strokeWidth={1.8} />
                           </div>
                           <div className="hm-category-body">
-                            <span className="hm-category-tag">Kategori Kryesore</span>
+                            <span className="hm-category-tag">{t('landing.mainCategory')}</span>
                             <h3 className="hm-category-title">{name}</h3>
                             <p className="hm-category-lead">
                               {t(CATEGORY_LEADS[category.slug] || 'home.leadFallback')}

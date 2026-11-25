@@ -18,10 +18,10 @@ import './UserOverview.css'
 type SectionId = 'account' | 'security' | 'privacy' | 'delete'
 
 const SECTIONS: Array<{ id: SectionId; label: string; hint: string; danger?: boolean }> = [
-  { id: 'account', label: 'Llogaria', hint: 'Fotoja, emri, email-i dhe telefoni' },
-  { id: 'security', label: 'Siguria', hint: 'Fjalëkalimi dhe hyrja me Google' },
-  { id: 'privacy', label: 'Privatësia', hint: 'Pëlqimet dhe të dhënat personale' },
-  { id: 'delete', label: 'Fshirja e llogarisë', hint: 'Veprime të përhershme', danger: true },
+  { id: 'account', label: 'auth.account', hint: 'settings.accountHint' },
+  { id: 'security', label: 'auth.security', hint: 'settings.securityHint' },
+  { id: 'privacy', label: 'footer.privacy', hint: 'settings.privacyHint' },
+  { id: 'delete', label: 'settings.deleteTitle', hint: 'settings.deleteHint', danger: true },
 ]
 
 const editLink = buttonVariants({ variant: 'outline', size: 'sm' })
@@ -31,6 +31,7 @@ function isSectionId(value: string | null): value is SectionId {
 }
 
 function SettingsNav({ active }: { active: SectionId }) {
+  const { t } = useTranslation()
   const regular = SECTIONS.filter((section) => !section.danger)
   const danger = SECTIONS.filter((section) => section.danger)
 
@@ -44,8 +45,8 @@ function SettingsNav({ active }: { active: SectionId }) {
           aria-current={isActive ? 'page' : undefined}
         >
           <span className="st-nav-copy">
-            <span className="st-nav-label">{section.label}</span>
-            <span className="st-nav-hint">{section.hint}</span>
+            <span className="st-nav-label">{t(section.label)}</span>
+            <span className="st-nav-hint">{t(section.hint)}</span>
           </span>
           <ChevronRight size={18} aria-hidden className="st-nav-chevron" />
         </Link>
@@ -55,7 +56,7 @@ function SettingsNav({ active }: { active: SectionId }) {
 
   return (
     <Card className="st-nav">
-      <nav aria-label="Seksionet e cilësimeve">
+      <nav aria-label={t('settings.navLabel')}>
         <ul className="st-nav-list">{regular.map(renderItem)}</ul>
         <Separator className="st-nav-sep" />
         <ul className="st-nav-list">{danger.map(renderItem)}</ul>
@@ -91,7 +92,7 @@ export function SettingsPage() {
     setPendingConsent(next)
     try {
       await updateProfile({ marketingConsent: next })
-      toast.success(next ? 'Do të marrësh lajme dhe oferta nga Këshillohu.' : 'Nuk do të marrësh më komunikime promovuese.')
+      toast.success(next ? t('settings.marketingOn') : t('settings.marketingOff'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -103,8 +104,8 @@ export function SettingsPage() {
     <div className="st">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>Cilësimet</h1>
-          <p>Menaxho llogarinë, sigurinë, privatësinë dhe preferencat e tua.</p>
+          <h1>{t('dash.settings')}</h1>
+          <p>{t('settings.lead')}</p>
         </div>
       </header>
 
@@ -114,50 +115,50 @@ export function SettingsPage() {
         <div className="st-content">
           <Link to={{ search: '' }} className="st-back">
             <ChevronLeft size={18} aria-hidden />
-            Të gjitha cilësimet
+            {t('settings.back')}
           </Link>
 
           {active === 'account' ? (
             <SettingsSection
               id="llogaria"
-              title="Llogaria"
-              description="Të dhënat bazë të llogarisë. Emri, fotoja dhe telefoni ndryshohen te Profili."
+              title={t('auth.account')}
+              description={t('settings.accountDesc')}
             >
               <SettingsRow
                 leading={<ProfileAvatar src={user.profilePhoto} seed={user.uid} size={44} alt="" />}
-                label="Fotoja e profilit"
-                value={user.profilePhoto ? 'E ngarkuar' : <span className="st-muted">Nuk është shtuar</span>}
+                label={t('settings.photo')}
+                value={user.profilePhoto ? t('settings.uploaded') : <span className="st-muted">{t('settings.notAdded')}</span>}
                 action={
                   <Link to={profileTo} className={editLink}>
-                    {user.profilePhoto ? 'Ndrysho' : 'Shto'}
+                    {user.profilePhoto ? t('settings.change') : t('settings.add')}
                   </Link>
                 }
               />
               <SettingsRow
-                label="Emri dhe mbiemri"
+                label={t('settings.fullName')}
                 value={displayName}
                 action={
                   <Link to={profileTo} className={editLink}>
-                    Ndrysho
+                    {t('settings.change')}
                   </Link>
                 }
               />
               <SettingsRow
-                label="Email"
+                label={t('req.email')}
                 value={user.email}
-                description="Përdoret për hyrjen në llogari dhe nuk mund të ndryshohet këtu."
+                description={t('settings.emailDesc')}
               />
               <SettingsRow
-                label="Numri i telefonit"
-                value={user.phone || <span className="st-muted">Nuk është shtuar</span>}
+                label={t('settings.phone')}
+                value={user.phone || <span className="st-muted">{t('settings.notAdded')}</span>}
                 action={
                   <Link to={profileTo} className={editLink}>
-                    {user.phone ? 'Ndrysho' : 'Shto'}
+                    {user.phone ? t('settings.change') : t('settings.add')}
                   </Link>
                 }
               />
               <SettingsRow
-                label="Profilet e llogarisë"
+                label={t('settings.profiles')}
                 value={
                   <span className="st-chips">
                     {roles.map((role) => (
@@ -172,37 +173,37 @@ export function SettingsPage() {
           ) : null}
 
           {active === 'security' ? (
-            <SettingsSection id="siguria" title="Siguria" description="Si hyn në Këshillohu dhe si mbrohet llogaria jote.">
+            <SettingsSection id="siguria" title={t('auth.security')} description={t('settings.securityDesc')}>
               <SettingsRow
-                label="Fjalëkalimi"
+                label={t('auth.password')}
                 value={signedInWithGoogle ? undefined : '••••••••'}
                 description={
                   signedInWithGoogle
-                    ? 'Ke hyrë me Google, prandaj fjalëkalimin e menaxhon te llogaria jote Google.'
-                    : 'Përdor një fjalëkalim të fortë që nuk e përdor në faqe të tjera.'
+                    ? t('settings.passwordGoogle')
+                    : t('settings.passwordHint')
                 }
                 action={
                   signedInWithGoogle ? null : (
                     <Button variant="outline" size="sm" onPress={() => setPasswordOpen(true)}>
-                      Ndrysho fjalëkalimin
+                      {t('settings.changePassword')}
                     </Button>
                   )
                 }
               />
               {session ? (
                 <SettingsRow
-                  label="Hyrja me Google"
+                  label={t('settings.google')}
                   value={
                     <Chip size="sm" variant="soft" color={googleLinked ? 'success' : 'default'}>
-                      <Chip.Label>{googleLinked ? 'E lidhur' : 'Nuk është lidhur'}</Chip.Label>
+                      <Chip.Label>{googleLinked ? t('settings.linked') : t('settings.notLinked')}</Chip.Label>
                     </Chip>
                   }
                   description={
                     googleLinked
                       ? signedInWithGoogle
-                        ? 'Je kyçur me Google në këtë sesion.'
-                        : 'Mund të hysh edhe me llogarinë Google.'
-                      : 'Llogaria jote hyn me email dhe fjalëkalim.'
+                        ? t('settings.googleSession')
+                        : t('settings.googleAvailable')
+                      : t('settings.emailOnly')
                   }
                 />
               ) : null}
@@ -212,12 +213,12 @@ export function SettingsPage() {
           {active === 'privacy' ? (
             <SettingsSection
               id="privatesia"
-              title="Privatësia"
-              description="Pëlqimet dhe të drejtat e tua për të dhënat personale."
+              title={t('footer.privacy')}
+              description={t('settings.privacyDesc')}
             >
               <SettingsRow
-                label="Komunikime promovuese"
-                description="Lejo Këshillohu të të dërgojë lajme dhe oferta me email. Mund ta ndryshosh kurdo."
+                label={t('settings.marketing')}
+                description={t('settings.marketingDesc')}
                 action={
                   <Switch
                     isSelected={consent}
@@ -228,26 +229,26 @@ export function SettingsPage() {
                       <Switch.Control>
                         <Switch.Thumb />
                       </Switch.Control>
-                      <Label className="st-sr-only">Komunikime promovuese</Label>
+                      <Label className="st-sr-only">{t('settings.marketing')}</Label>
                     </Switch.Content>
                   </Switch>
                 }
               />
               <SettingsRow
-                label="Kopja e të dhënave"
-                description="Kërko një kopje të të dhënave personale që ruajmë për llogarinë tënde."
+                label={t('settings.dataCopy')}
+                description={t('settings.dataCopyDesc')}
                 action={
                   <Button variant="outline" size="sm" onPress={() => setAccountRequest('export')}>
-                    Kërko kopjen
+                    {t('settings.requestCopy')}
                   </Button>
                 }
               />
               <SettingsRow
-                label="Politika e privatësisë"
-                description="Si i mbledhim, i përdorim dhe i mbrojmë të dhënat."
+                label={t('settings.policy')}
+                description={t('settings.policyDesc')}
                 action={
                   <Link to="/privatesia" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
-                    Lexo politikën
+                    {t('settings.readPolicy')}
                   </Link>
                 }
               />
@@ -257,16 +258,16 @@ export function SettingsPage() {
           {active === 'delete' ? (
             <SettingsSection
               id="fshirja"
-              title="Fshirja e llogarisë"
-              description="Veprime të përhershme për llogarinë tënde."
+              title={t('settings.deleteTitle')}
+              description={t('settings.deleteDesc')}
               tone="danger"
             >
               <SettingsRow
-                label="Fshi llogarinë"
-                description="Llogaria mbyllet dhe të dhënat fshihen përgjithmonë pasi ekipi ta verifikojë kërkesën. Ky veprim nuk mund të kthehet."
+                label={t('settings.deleteAccount')}
+                description={t('settings.deleteAccountDesc')}
                 action={
                   <Button variant="danger-soft" size="sm" onPress={() => setAccountRequest('deletion')}>
-                    Kërko fshirjen
+                    {t('settings.requestDeletion')}
                   </Button>
                 }
               />

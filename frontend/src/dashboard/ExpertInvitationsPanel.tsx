@@ -1,6 +1,8 @@
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { dateLocale } from '../i18n'
 import { Button, Card, toast } from '@heroui/react'
 import { Building2 } from 'lucide-react'
 import {
@@ -17,13 +19,14 @@ import './ExpertProfile.css'
 function formatInviteDate(value: string | null) {
   if (!value) return ''
   try {
-    return new Date(value).toLocaleString('sq-AL', { dateStyle: 'medium', timeStyle: 'short' })
+    return new Date(value).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })
   } catch {
     return value
   }
 }
 
 export default function ExpertInvitationsPanel() {
+  const { t } = useTranslation()
   const { page, setPage, pagination, receivePagination } = usePagination()
   const [revision, setRevision] = useState(0)
   const [invitations, setInvitations] = useState<MyBusinessInvitation[]>([])
@@ -44,7 +47,7 @@ export default function ExpertInvitationsPanel() {
     try {
       await acceptInvitation(id)
       setRevision((value) => value + 1)
-      toast.success('Ftesa u pranua. Tani je pjesë e kompanisë.')
+      toast.success(t('overview.invitations.accepted'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -57,7 +60,7 @@ export default function ExpertInvitationsPanel() {
     try {
       await rejectInvitation(id)
       setRevision((value) => value + 1)
-      toast.info('Ftesa u refuzua.')
+      toast.info(t('overview.invitations.rejected'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -70,11 +73,11 @@ export default function ExpertInvitationsPanel() {
   return (
     <Card className="uo-card">
       <SectionHead
-        title="Ftesa nga kompania"
+        title={t('overview.invitations.title')}
         meta={invitations.length ? <span className="uo-card-meta">{invitations.length}</span> : null}
       />
       <Card.Content className="uo-card-body ep-stack">
-        <p className="ds-hint">Pranoje për t’u bashkuar me ekipin, ose refuzoje nëse nuk të përket.</p>
+        <p className="ds-hint">{t('overview.invitations.hint')}</p>
         {error ? <p className="ds-error">{error}</p> : null}
         {invitations.length ? (
           <ul className="uo-rows">
@@ -84,7 +87,7 @@ export default function ExpertInvitationsPanel() {
                 <span className="uo-row-copy">
                   <strong>{invite.publicName}</strong>
                   <span>
-                    {invite.invitedAt ? formatInviteDate(invite.invitedAt) : 'Ftesë në pritje'} · Në pritje
+                    {invite.invitedAt ? formatInviteDate(invite.invitedAt) : t('overview.invitations.pendingInvite')} · {t('status.pending')}
                   </span>
                 </span>
                 <span className="ep-invite-actions">
@@ -95,10 +98,10 @@ export default function ExpertInvitationsPanel() {
                     isDisabled={busyId === invite.id}
                     onPress={() => void reject(invite.id)}
                   >
-                    Refuzo
+                    {t('req.decline')}
                   </Button>
                   <Button size="sm" variant="primary" isPending={busyId === invite.id} onPress={() => void accept(invite.id)}>
-                    {busyId === invite.id ? 'Duke pranuar…' : 'Prano'}
+                    {busyId === invite.id ? t('overview.invitations.accepting') : t('req.accept')}
                   </Button>
                 </span>
               </li>

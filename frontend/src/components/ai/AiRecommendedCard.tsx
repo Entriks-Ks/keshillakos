@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowUpRight, Star, Briefcase, UserCheck, LayoutGrid } from 'lucide-react'
 import type { RecommendedEntity } from '../../api/aiChat'
 
@@ -9,6 +10,7 @@ interface AiRecommendedCardProps {
 }
 
 export const AiRecommendedCard = memo(function AiRecommendedCard({ item, onNavigate }: AiRecommendedCardProps) {
+  const { t } = useTranslation()
   const Icon = item.type === 'service' ? Briefcase : item.type === 'expert' ? UserCheck : LayoutGrid
 
   return (
@@ -16,7 +18,7 @@ export const AiRecommendedCard = memo(function AiRecommendedCard({ item, onNavig
       to={item.url}
       onClick={onNavigate}
       className="kk-ai-card"
-      aria-label={`Shiko ${item.title}`}
+      aria-label={t('ai.card.viewAria', { title: item.title })}
     >
       <div className="kk-ai-card-icon-box">
         <Icon size={18} className="kk-ai-card-icon" />
@@ -24,7 +26,7 @@ export const AiRecommendedCard = memo(function AiRecommendedCard({ item, onNavig
 
       <div className="kk-ai-card-body">
         <div className="kk-ai-card-top">
-          <span className="kk-ai-card-category">{item.category || (item.type === 'expert' ? 'Ekspert' : 'Shërbim')}</span>
+          <span className="kk-ai-card-category">{item.category || (item.type === 'expert' ? t('offers.kindExperts') : t('offers.kindServices'))}</span>
           {typeof item.rating === 'number' && item.rating > 0 && (
             <span className="kk-ai-card-rating">
               <Star size={12} className="kk-ai-star-icon" fill="currentColor" />
@@ -44,9 +46,9 @@ export const AiRecommendedCard = memo(function AiRecommendedCard({ item, onNavig
 
         <div className="kk-ai-card-footer">
           {typeof item.price === 'number' ? (
-            <span className="kk-ai-card-price">nga €{item.price}</span>
+            <span className="kk-ai-card-price">{t('ai.card.fromPrice', { price: item.price })}</span>
           ) : (
-            <span className="kk-ai-card-action-text">Shiko detajet</span>
+            <span className="kk-ai-card-action-text">{t('home.details')}</span>
           )}
           <ArrowUpRight size={14} className="kk-ai-card-arrow" />
         </div>

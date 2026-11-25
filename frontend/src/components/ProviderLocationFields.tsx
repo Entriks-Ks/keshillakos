@@ -27,7 +27,7 @@ export default function ProviderLocationFields({ location, serviceAreas, onLocat
       {serviceAreas.length ? <div className="provider-service-area-chips">
         {serviceAreas.map((area) => <Chip key={area.city._id} variant="soft" color="accent">
           {locationLabel(area, locale)}
-          <CloseButton aria-label={`${t('location.remove')} ${locationLabel(area, locale)}`} isDisabled={disabled} onPress={() => onServiceAreasChange(serviceAreas.filter((item) => item.city._id !== area.city._id))} />
+          <CloseButton aria-label={t('site.removeLocation', { location: locationLabel(area, locale) })} isDisabled={disabled} onPress={() => onServiceAreasChange(serviceAreas.filter((item) => item.city._id !== area.city._id))} />
         </Chip>)}
       </div> : null}
     </div>

@@ -20,6 +20,8 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { toast } from '@heroui/react'
+import { useTranslation, Trans } from 'react-i18next'
+import { dateLocale } from '../../i18n'
 import {
   sendAiChatMessage,
   type AiChatMessage,
@@ -34,7 +36,12 @@ interface ChatMessageItem {
   id: string
   role: 'user' | 'assistant'
   content: string
+  /** Legacy preformatted time (older sessions); new messages use createdAt. */
   timestamp?: string
+  createdAt?: number
+  /** Client-side error bubbles are rendered from these keys so they follow the language. */
+  errorKey?: string
+  suggestedActionKeys?: string[]
   suggestedActions?: string[]
   recommendedEntities?: RecommendedEntity[]
 }
@@ -43,72 +50,44 @@ interface StarterTopic {
   id: string
   category: 'business' | 'law' | 'taxes' | 'platform'
   icon: typeof Briefcase
-  badge: string
-  title: string
-  prompt: string
 }
 
+/** `label` is a translation key, except the platform tab which shows the brand name. */
 const STARTER_CATEGORIES = [
-  { id: 'all', label: 'Të gjitha' },
-  { id: 'business', label: '🏢 Biznes' },
-  { id: 'law', label: '⚖️ Ligj' },
-  { id: 'taxes', label: '💰 Taksa' },
-  { id: 'platform', label: '⭐ KeshillaKos' },
+  { id: 'all', emoji: '', label: 'ai.widget.cats.all' },
+  { id: 'business', emoji: '🏢', label: 'ai.widget.cats.business' },
+  { id: 'law', emoji: '⚖️', label: 'ai.widget.cats.law' },
+  { id: 'taxes', emoji: '💰', label: 'ai.widget.cats.taxes' },
+  { id: 'platform', emoji: '⭐', label: null },
 ] as const
 
 const STARTER_TOPICS: StarterTopic[] = [
-  {
-    id: 'arbk',
-    category: 'business',
-    icon: Briefcase,
-    badge: 'ARBK',
-    title: 'Hapja e Biznesit (Sh.p.k.)',
-    prompt: 'Si të regjistroj një biznes në Kosovë (Sh.p.k.) dhe cilat janë dokumentet në ARBK?',
-  },
-  {
-    id: 'contract',
-    category: 'law',
-    icon: Scale,
-    badge: 'Ligj',
-    title: 'Avokat për Kontratë Pune',
-    prompt: 'Më duhet një avokat në Prishtinë për kontratë pune sipas Ligjit të Punës në Kosovë.',
-  },
-  {
-    id: 'atk',
-    category: 'taxes',
-    icon: Calculator,
-    badge: 'ATK',
-    title: 'Pragu i TVSH-së & Taksat',
-    prompt: 'Cilat janë normat kryesore të taksave dhe kur regjistrohet TVSH (30,000€) në ATK?',
-  },
-  {
-    id: 'property',
-    category: 'law',
-    icon: Building2,
-    badge: 'Prona',
-    title: 'Blerja e Pronës & Noteri',
-    prompt: 'Cilat janë hapat dhe tarifat e noterit për verifikimin dhe blerjen e një prone në Kosovë?',
-  },
-  {
-    id: 'plans',
-    category: 'platform',
-    icon: CreditCard,
-    badge: 'Platforma',
-    title: 'Planet & 0% Komision',
-    prompt: 'Si funksionon platforma KeshillaKos dhe çfarë përfitimesh ka Plani Pro për ofruesit?',
-  },
+  { id: 'arbk', category: 'business', icon: Briefcase },
+  { id: 'contract', category: 'law', icon: Scale },
+  { id: 'atk', category: 'taxes', icon: Calculator },
+  { id: 'property', category: 'law', icon: Building2 },
+  { id: 'plans', category: 'platform', icon: CreditCard },
 ]
 
 const STORAGE_KEY = 'kk_ai_chat_session'
 
-function formatMessageTime(): string {
+const ERROR_ACTION_KEYS = ['notifications.retry', 'home.seeOffers', 'ai.chat.homePage']
+
+/** Unique id plus creation time; the time is formatted at render in the active language. */
+function stampMessage(prefix: string): { id: string; createdAt: number } {
+  const createdAt = Date.now()
+  return { id: `${prefix}-${createdAt}`, createdAt }
+}
+
+function formatMessageTime(msg: ChatMessageItem): string | undefined {
+  if (typeof msg.createdAt !== 'number') return msg.timestamp
   try {
-    return new Date().toLocaleTimeString('sq-AL', {
+    return new Date(msg.createdAt).toLocaleTimeString(dateLocale(), {
       hour: '2-digit',
       minute: '2-digit',
     })
   } catch {
-    return 'Tani'
+    return undefined
   }
 }
 
@@ -137,6 +116,7 @@ function useFooterInView(pathname: string) {
 }
 
 export default function AiChatWidget() {
+  const { t, i18n } = useTranslation()
   const location = useLocation()
   const isDedicatedAiPage = location.pathname === '/ai-asistenti'
   const { count: compareCount } = useCompareLawyers()
@@ -252,10 +232,9 @@ export default function AiChatWidget() {
     }
 
     const userMessage: ChatMessageItem = {
-      id: `user-${Date.now()}`,
+      ...stampMessage('user'),
       role: 'user',
       content: text,
-      timestamp: formatMessageTime(),
     }
 
     const updatedMessages = [...messages, userMessage]
@@ -265,18 +244,18 @@ export default function AiChatWidget() {
     try {
       const payload: AiChatMessage[] = updatedMessages.map((m) => ({
         role: m.role,
-        content: m.content,
+        content: messageText(m),
       }))
 
       const response = await sendAiChatMessage(payload, {
         pathname: location.pathname,
+        language: i18n.resolvedLanguage || i18n.language,
       })
 
       const botMessage: ChatMessageItem = {
-        id: `assistant-${Date.now()}`,
+        ...stampMessage('assistant'),
         role: 'assistant',
         content: response.reply,
-        timestamp: formatMessageTime(),
         suggestedActions: response.suggestedActions,
         recommendedEntities: response.recommendedEntities,
       }
@@ -284,12 +263,11 @@ export default function AiChatWidget() {
       setMessages((prev) => [...prev, botMessage])
     } catch {
       const errorMessage: ChatMessageItem = {
-        id: `err-${Date.now()}`,
+        ...stampMessage('err'),
         role: 'assistant',
-        content:
-          'Më vjen keq, ndodhi një gabim gjatë përpunimit të kërkesës suaj. Mund të provoni përsëri ose të zgjidhni një nga pyetjet e sugjeruara.',
-        timestamp: formatMessageTime(),
-        suggestedActions: ['Provo përsëri', 'Shiko Ofertat', 'Faqja Kryesore'],
+        content: t('ai.widget.error'),
+        errorKey: 'ai.widget.error',
+        suggestedActionKeys: ERROR_ACTION_KEYS,
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
@@ -304,29 +282,40 @@ export default function AiChatWidget() {
     }
   }
 
+  function messageText(msg: ChatMessageItem): string {
+    return msg.errorKey ? t(msg.errorKey) : msg.content
+  }
+
+  function messageActions(msg: ChatMessageItem): string[] | undefined {
+    return msg.suggestedActionKeys ? msg.suggestedActionKeys.map((key) => t(key)) : msg.suggestedActions
+  }
+
   async function handleCopyMessage(id: string, text: string) {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedId(id)
-      toast.success('Përgjigja u kopjua!')
+      toast.success(t('ai.chat.toastReplyCopied'))
       setTimeout(() => setCopiedId(null), 2200)
     } catch {
-      toast.danger('Dështoi kopjimi.')
+      toast.danger(t('ai.chat.toastCopyFailed'))
     }
   }
 
   async function handleCopyFullChat() {
     if (messages.length === 0) return
     const transcript = messages
-      .map((m) => `${m.role === 'user' ? '👤 Ju' : '🤖 Këshilla AI'} (${m.timestamp || ''}):\n${m.content}\n`)
+      .map(
+        (m) =>
+          `${m.role === 'user' ? `👤 ${t('ai.chat.you')}` : '🤖 Këshilla AI'} (${formatMessageTime(m) || ''}):\n${messageText(m)}\n`,
+      )
       .join('\n---\n\n')
     try {
-      await navigator.clipboard.writeText(`Bisedë me Këshilla AI (KeshillaKos):\n\n${transcript}`)
+      await navigator.clipboard.writeText(`${t('ai.chat.transcriptTitle')}\n\n${transcript}`)
       setCopiedFullChat(true)
-      toast.success('E gjithë biseda u kopjua në kujtesë!')
+      toast.success(t('ai.chat.toastChatCopied'))
       setTimeout(() => setCopiedFullChat(false), 2200)
     } catch {
-      toast.danger('Dështoi kopjimi.')
+      toast.danger(t('ai.chat.toastCopyFailed'))
     }
   }
 
@@ -335,7 +324,7 @@ export default function AiChatWidget() {
     setShowResetConfirm(false)
     try {
       sessionStorage.removeItem(STORAGE_KEY)
-      toast.info('Biseda u pastrua.')
+      toast.info(t('ai.chat.toastCleared'))
     } catch {
       // ignore
     }
@@ -348,7 +337,7 @@ export default function AiChatWidget() {
 
   const filteredTopics = activeCategory === 'all'
     ? STARTER_TOPICS
-    : STARTER_TOPICS.filter((t) => t.category === activeCategory)
+    : STARTER_TOPICS.filter((topic) => topic.category === activeCategory)
 
   return (
     <>
@@ -366,7 +355,7 @@ export default function AiChatWidget() {
             }}
           >
             <MessageSquareText size={14} />
-            <span>Keni pyetje? Pyet AI</span>
+            <span>{t('ai.widget.pill')}</span>
           </button>
         )}
 
@@ -378,7 +367,7 @@ export default function AiChatWidget() {
             setHasPromptPill(false)
             setShowResetConfirm(false)
           }}
-          aria-label={isOpen ? 'Mbyll Këshilla AI' : 'Hap asistentin Këshilla AI'}
+          aria-label={isOpen ? t('ai.widget.closeAria') : t('ai.widget.openAria')}
           aria-expanded={isOpen}
         >
           {isOpen ? <X size={24} /> : <MessageSquareText size={24} />}
@@ -411,7 +400,7 @@ export default function AiChatWidget() {
             type="button"
             className="kk-ai-drag-handle-bar"
             onClick={() => setIsOpen(false)}
-            aria-label="Mbyll asistentin"
+            aria-label={t('ai.widget.closeAssistant')}
           >
             <span className="kk-ai-drag-handle" />
           </button>
@@ -428,7 +417,7 @@ export default function AiChatWidget() {
                   <h3 className="kk-ai-header-title">Këshilla AI</h3>
                   <span className="kk-ai-gemini-badge">Gemini</span>
                 </div>
-                <p className="kk-ai-header-subtitle">Asistenti virtual i KeshillaKos</p>
+                <p className="kk-ai-header-subtitle">{t('ai.widget.subtitle')}</p>
               </div>
             </div>
 
@@ -437,8 +426,8 @@ export default function AiChatWidget() {
                 to="/ai-asistenti"
                 onClick={() => setIsOpen(false)}
                 className="kk-ai-header-btn"
-                title="Hap në faqe të plotë"
-                aria-label="Hap në faqe të plotë"
+                title={t('ai.widget.fullPage')}
+                aria-label={t('ai.widget.fullPage')}
               >
                 <Maximize2 size={16} />
               </Link>
@@ -448,8 +437,8 @@ export default function AiChatWidget() {
                     type="button"
                     onClick={handleCopyFullChat}
                     className="kk-ai-header-btn"
-                    title="Kopjo të gjithë bisedën"
-                    aria-label="Kopjo të gjithë bisedën"
+                    title={t('ai.chat.copyChat')}
+                    aria-label={t('ai.chat.copyChat')}
                   >
                     {copiedFullChat ? <Check size={15} className="text-green-500" /> : <Copy size={15} />}
                   </button>
@@ -457,8 +446,8 @@ export default function AiChatWidget() {
                     type="button"
                     onClick={() => setShowResetConfirm((prev) => !prev)}
                     className={`kk-ai-header-btn${showResetConfirm ? ' is-active' : ''}`}
-                    title="Pastro bisedën"
-                    aria-label="Pastro bisedën"
+                    title={t('ai.chat.clearChat')}
+                    aria-label={t('ai.chat.clearChat')}
                   >
                     <RotateCcw size={15} />
                   </button>
@@ -471,8 +460,8 @@ export default function AiChatWidget() {
                   setShowResetConfirm(false)
                 }}
                 className="kk-ai-header-btn kk-ai-close-btn"
-                title="Minimizo"
-                aria-label="Minimizo dritaren"
+                title={t('ai.widget.minimize')}
+                aria-label={t('ai.widget.minimizeAria')}
               >
                 <X size={18} />
               </button>
@@ -482,7 +471,7 @@ export default function AiChatWidget() {
           {/* Reset Confirmation Banner */}
           {showResetConfirm && (
             <div className="kk-ai-reset-confirm-bar" role="alert">
-              <span className="kk-ai-reset-confirm-text">Dëshironi ta pastroni bisedën?</span>
+              <span className="kk-ai-reset-confirm-text">{t('ai.widget.confirmClear')}</span>
               <div className="kk-ai-reset-confirm-actions">
                 <button
                   type="button"
@@ -490,14 +479,14 @@ export default function AiChatWidget() {
                   onClick={handleConfirmReset}
                 >
                   <Trash2 size={12} />
-                  <span>Po, pastro</span>
+                  <span>{t('ai.chat.confirmYes')}</span>
                 </button>
                 <button
                   type="button"
                   className="kk-ai-confirm-no"
                   onClick={() => setShowResetConfirm(false)}
                 >
-                  Anulo
+                  {t('notifications.cancel')}
                 </button>
               </div>
             </div>
@@ -509,15 +498,13 @@ export default function AiChatWidget() {
               <div className="kk-ai-welcome-box">
                 <div className="kk-ai-welcome-badge">
                   <ShieldCheck size={13} />
-                  <span>Asistenti Zyrtar i KeshillaKos</span>
+                  <span>{t('ai.widget.officialBadge')}</span>
                 </div>
-                <h4 className="kk-ai-welcome-title">Si mund t&apos;ju ndihmoj sot?</h4>
-                <p className="kk-ai-welcome-desc">
-                  Jam këtu për t&apos;ju ndihmuar me ligjin në Kosovë, regjistrimin e biznesit, taksat dhe gjetjen e ekspertëve të verifikuar.
-                </p>
+                <h4 className="kk-ai-welcome-title">{t('ai.widget.welcomeTitle')}</h4>
+                <p className="kk-ai-welcome-desc">{t('ai.widget.welcomeDesc')}</p>
 
                 {/* Category filter tabs */}
-                <div className="kk-ai-cat-pill-row" role="tablist" aria-label="Kategoritë e pyetjeve">
+                <div className="kk-ai-cat-pill-row" role="tablist" aria-label={t('ai.widget.catsAria')}>
                   {STARTER_CATEGORIES.map((cat) => (
                     <button
                       key={cat.id}
@@ -527,7 +514,8 @@ export default function AiChatWidget() {
                       className={`kk-ai-cat-pill${activeCategory === cat.id ? ' is-active' : ''}`}
                       onClick={() => setActiveCategory(cat.id)}
                     >
-                      {cat.label}
+                      {cat.emoji ? `${cat.emoji} ` : ''}
+                      {cat.label ? t(cat.label) : 'KeshillaKos'}
                     </button>
                   ))}
                 </div>
@@ -536,20 +524,21 @@ export default function AiChatWidget() {
                 <div className="kk-ai-starters-grid">
                   {filteredTopics.map((topic) => {
                     const Icon = topic.icon
+                    const prompt = t(`ai.widget.topics.${topic.id}.prompt`)
                     return (
                       <button
                         key={topic.id}
                         type="button"
                         className="kk-ai-starter-chip"
-                        onClick={() => handleSendMessage(topic.prompt)}
+                        onClick={() => handleSendMessage(prompt)}
                       >
                         <div className="kk-ai-starter-left">
                           <span className="kk-ai-starter-icon-wrap">
                             <Icon size={14} />
                           </span>
                           <div className="kk-ai-starter-texts">
-                            <span className="kk-ai-starter-title">{topic.title}</span>
-                            <span className="kk-ai-starter-prompt-preview">{topic.prompt}</span>
+                            <span className="kk-ai-starter-title">{t(`ai.widget.topics.${topic.id}.title`)}</span>
+                            <span className="kk-ai-starter-prompt-preview">{prompt}</span>
                           </div>
                         </div>
                         <ArrowRight size={14} className="kk-ai-starter-arrow flex-shrink-0" />
@@ -559,82 +548,85 @@ export default function AiChatWidget() {
                 </div>
               </div>
             ) : (
-              messages.map((msg) => (
-                <div key={msg.id} className="kk-ai-msg-group">
-                  <div
-                    className={`kk-ai-msg ${
-                      msg.role === 'user' ? 'kk-ai-msg-user' : 'kk-ai-msg-assistant'
-                    }`}
-                  >
-                    <div className="kk-ai-msg-avatar" aria-hidden="true">
-                      {msg.role === 'user' ? <User size={15} /> : <MessageSquareText size={16} />}
+              messages.map((msg) => {
+                const actions = messageActions(msg)
+                return (
+                  <div key={msg.id} className="kk-ai-msg-group">
+                    <div
+                      className={`kk-ai-msg ${
+                        msg.role === 'user' ? 'kk-ai-msg-user' : 'kk-ai-msg-assistant'
+                      }`}
+                    >
+                      <div className="kk-ai-msg-avatar" aria-hidden="true">
+                        {msg.role === 'user' ? <User size={15} /> : <MessageSquareText size={16} />}
+                      </div>
+                      <div className="kk-ai-msg-bubble">
+                        <FormattedAiMessage content={messageText(msg)} />
+                      </div>
                     </div>
-                    <div className="kk-ai-msg-bubble">
-                      <FormattedAiMessage content={msg.content} />
-                    </div>
-                  </div>
 
-                  {/* Message Action Bar (Timestamp & Copy) */}
-                  <div
-                    className={`kk-ai-msg-actions ${
-                      msg.role === 'user' ? 'is-user' : 'is-assistant'
-                    }`}
-                  >
-                    <span className="kk-ai-msg-time">{msg.timestamp || 'Tani'}</span>
-                    {msg.role === 'assistant' && (
-                      <button
-                        type="button"
-                        className={`kk-ai-msg-action-btn${copiedId === msg.id ? ' is-copied' : ''}`}
-                        onClick={() => handleCopyMessage(msg.id, msg.content)}
-                        title="Kopjo përgjigjen"
-                        aria-label="Kopjo përgjigjen"
-                      >
-                        {copiedId === msg.id ? (
-                          <>
-                            <Check size={12} className="text-green-500" />
-                            <span>U kopjua</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={12} />
-                            <span>Kopjo</span>
-                          </>
-                        )}
-                      </button>
+                    {/* Message Action Bar (Timestamp & Copy) */}
+                    <div
+                      className={`kk-ai-msg-actions ${
+                        msg.role === 'user' ? 'is-user' : 'is-assistant'
+                      }`}
+                    >
+                      <span className="kk-ai-msg-time">{formatMessageTime(msg) || t('ai.chat.now')}</span>
+                      {msg.role === 'assistant' && (
+                        <button
+                          type="button"
+                          className={`kk-ai-msg-action-btn${copiedId === msg.id ? ' is-copied' : ''}`}
+                          onClick={() => handleCopyMessage(msg.id, messageText(msg))}
+                          title={t('ai.chat.copyReply')}
+                          aria-label={t('ai.chat.copyReply')}
+                        >
+                          {copiedId === msg.id ? (
+                            <>
+                              <Check size={12} className="text-green-500" />
+                              <span>{t('ai.chat.copied')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={12} />
+                              <span>{t('ai.chat.copy')}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Render recommendation cards if available */}
+                    {msg.recommendedEntities && msg.recommendedEntities.length > 0 && (
+                      <div className="kk-ai-cards-container">
+                        {msg.recommendedEntities.map((item) => (
+                          <AiRecommendedCard
+                            key={item.id}
+                            item={item}
+                            onNavigate={() => setIsOpen(false)}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Render action suggestions if available */}
+                    {actions && actions.length > 0 && (
+                      <div className="kk-ai-actions-row">
+                        {actions.map((action, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            className="kk-ai-action-btn"
+                            onClick={() => handleSendMessage(action)}
+                          >
+                            <ArrowUpRight size={11} className="kk-ai-action-sparkle" />
+                            <span>{action}</span>
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
-
-                  {/* Render recommendation cards if available */}
-                  {msg.recommendedEntities && msg.recommendedEntities.length > 0 && (
-                    <div className="kk-ai-cards-container">
-                      {msg.recommendedEntities.map((item) => (
-                        <AiRecommendedCard
-                          key={item.id}
-                          item={item}
-                          onNavigate={() => setIsOpen(false)}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Render action suggestions if available */}
-                  {msg.suggestedActions && msg.suggestedActions.length > 0 && (
-                    <div className="kk-ai-actions-row">
-                      {msg.suggestedActions.map((action, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          className="kk-ai-action-btn"
-                          onClick={() => handleSendMessage(action)}
-                        >
-                          <ArrowUpRight size={11} className="kk-ai-action-sparkle" />
-                          <span>{action}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
+                )
+              })
             )}
 
             {/* Friendly Typing Indicator */}
@@ -649,9 +641,7 @@ export default function AiChatWidget() {
                     <span className="kk-ai-typing-dot" />
                     <span className="kk-ai-typing-dot" />
                   </div>
-                  <span className="kk-ai-typing-text">
-                    Këshilla AI po analizon kërkesën...
-                  </span>
+                  <span className="kk-ai-typing-text">{t('ai.chat.thinking')}</span>
                 </div>
               </div>
             )}
@@ -673,7 +663,7 @@ export default function AiChatWidget() {
                 value={inputValue}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Shkruaj pyetjen tuaj (ligj, taksa, kontrata)..."
+                placeholder={t('ai.widget.placeholder')}
                 rows={1}
                 className="kk-ai-textarea"
                 disabled={loading}
@@ -689,8 +679,8 @@ export default function AiChatWidget() {
                       textareaRef.current.focus()
                     }
                   }}
-                  title="Fshi tekstin"
-                  aria-label="Fshi tekstin e shkruar"
+                  title={t('ai.chat.clearInput')}
+                  aria-label={t('ai.chat.clearInputAria')}
                 >
                   <X size={14} />
                 </button>
@@ -699,19 +689,17 @@ export default function AiChatWidget() {
                 type="submit"
                 className="kk-ai-send-btn"
                 disabled={!inputValue.trim() || loading}
-                title="Dërgo mesazhin (Enter)"
-                aria-label="Dërgo mesazhin"
+                title={t('ai.widget.sendTitle')}
+                aria-label={t('ai.widget.send')}
               >
                 <Send size={15} />
               </button>
             </form>
             <div className="kk-ai-footer-hints">
               <span className="kk-ai-keyboard-hint">
-                Shtyp <strong>Enter</strong> për dërgim
+                <Trans i18nKey="ai.widget.keyHint" components={{ strong: <strong /> }} />
               </span>
-              <p className="kk-ai-disclaimer">
-                Verifikoni këshillat me një ekspert të licencuar në KeshillaKos.
-              </p>
+              <p className="kk-ai-disclaimer">{t('ai.widget.disclaimer')}</p>
             </div>
           </div>
         </div>

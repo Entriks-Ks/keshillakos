@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   BadgeCheck,
   Calendar,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react'
 
 export default function HomeHeroVisual() {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
@@ -53,7 +55,7 @@ export default function HomeHeroVisual() {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       role="img"
-      aria-label="Vizual modern që paraqet shërbimet juridike, kontabilitetin dhe përputhjen me Këshilla AI"
+      aria-label={t('landing.hero.visualLabel')}
     >
       <div className="hm-visual-glow" aria-hidden />
 
@@ -77,18 +79,18 @@ export default function HomeHeroVisual() {
               <Scale size={18} />
             </div>
             <div className="hm-card-info">
-              <strong className="hm-card-title">Këshillim Juridik</strong>
-              <span className="hm-card-sub">E Drejta Civile & Biznes</span>
+              <strong className="hm-card-title">{t('about.heroCardLegal')}</strong>
+              <span className="hm-card-sub">{t('about.heroCardLegalSub')}</span>
             </div>
           </div>
           <div className="hm-card-bottom">
             <span className="hm-badge-verified">
               <BadgeCheck size={13} />
-              I Licencuar
+              {t('landing.hero.licensed')}
             </span>
             <span className="hm-status-online">
               <span className="hm-live-dot" />
-              Prishtinë · Online
+              {t('about.heroCardLegalCity')}
             </span>
           </div>
         </div>
@@ -100,8 +102,8 @@ export default function HomeHeroVisual() {
               <Calculator size={18} />
             </div>
             <div className="hm-card-info">
-              <strong className="hm-card-title">Kontabilitet & Biznes</strong>
-              <span className="hm-card-sub">Regjistrim ARBK & ATK</span>
+              <strong className="hm-card-title">{t('about.heroCardAcc')}</strong>
+              <span className="hm-card-sub">{t('landing.hero.accSub')}</span>
             </div>
           </div>
           <div className="hm-sparkline-row">
@@ -126,7 +128,7 @@ export default function HomeHeroVisual() {
             </svg>
             <span className="hm-trend-label">
               <TrendingUp size={12} />
-              +100% Pajtueshmëri
+              {t('landing.hero.compliance')}
             </span>
           </div>
         </div>
@@ -139,7 +141,7 @@ export default function HomeHeroVisual() {
             </div>
             <div className="hm-card-info">
               <strong className="hm-card-title">Këshilla AI</strong>
-              <span className="hm-card-badge-ai">Matching Inteligjent</span>
+              <span className="hm-card-badge-ai">{t('landing.hero.aiBadge')}</span>
             </div>
           </div>
           <div className="hm-ai-mini-preview">
@@ -150,7 +152,7 @@ export default function HomeHeroVisual() {
               <span />
               <span />
             </div>
-            <p className="hm-ai-query">“Pyetje: Hapje e degës në Kosovë”</p>
+            <p className="hm-ai-query">{t('landing.hero.aiQuery')}</p>
           </div>
         </div>
 
@@ -161,18 +163,18 @@ export default function HomeHeroVisual() {
               <Calendar size={18} />
             </div>
             <div className="hm-card-info">
-              <strong className="hm-card-title">Caktim Takimesh</strong>
-              <span className="hm-card-sub">Orar i Drejtpërdrejtë</span>
+              <strong className="hm-card-title">{t('landing.hero.bookingTitle')}</strong>
+              <span className="hm-card-sub">{t('landing.hero.bookingSub')}</span>
             </div>
           </div>
           <div className="hm-cal-bottom">
             <span className="hm-cal-tag">
               <Clock size={12} />
-              Konsultë 45 min
+              {t('landing.hero.consult45')}
             </span>
             <span className="hm-cal-check">
               <CheckCircle2 size={13} />
-              Konfirmim i shpejtë
+              {t('landing.hero.fastConfirm')}
             </span>
           </div>
         </div>

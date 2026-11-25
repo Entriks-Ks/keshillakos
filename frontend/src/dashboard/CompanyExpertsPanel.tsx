@@ -2,6 +2,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Alert, Button, buttonVariants, Card, Chip, toast } from '@heroui/react'
 import { Building2, ChevronDown, Clock, Eye, Mail, MailPlus, Plus, UserMinus, Users } from 'lucide-react'
 import { fetchDomains } from '../api/domains'
@@ -20,6 +21,7 @@ import ProfileAvatar from '../components/ProfileAvatar'
 import ConfirmActionDialog from '../components/ConfirmActionDialog'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
+import { dateLocale } from '../i18n'
 import { providerPath } from '../utils/publicPaths'
 import { RowsSkeleton, SectionHead } from './OverviewParts'
 import type { ChipColor } from './requestDisplay'
@@ -29,28 +31,29 @@ import './DashboardSections.css'
 
 function formatInviteDate(value: string) {
   try {
-    return new Date(value).toLocaleString('sq-AL', { dateStyle: 'medium', timeStyle: 'short' })
+    return new Date(value).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })
   } catch {
     return value
   }
 }
 
 const LOOKUP_HINT: Record<Exclude<ExpertLookup['status'], 'ready' | 'invalid'>, string> = {
-  missing: 'Ky email nuk është i regjistruar në Këshillohu.',
-  not_expert: 'Ky përdorues nuk ka profil eksperti. Duhet të regjistrohet si ekspert fillimisht.',
-  member: 'Ky ekspert është tashmë në ekip.',
-  invited: 'Ftesa është dërguar. Pret që eksperti ta pranojë.',
-  owner: 'Ky person e menaxhon kompaninë.',
+  missing: 'team.lookup.missing',
+  not_expert: 'team.lookup.not_expert',
+  member: 'team.lookup.member',
+  invited: 'team.lookup.invited',
+  owner: 'team.lookup.owner',
 }
 
 const PROFILE_STATUS: Record<string, { label: string; color: ChipColor }> = {
-  published: { label: 'Profil publik', color: 'success' },
-  pending: { label: 'Profili në shqyrtim', color: 'warning' },
-  draft: { label: 'Profil draft', color: 'default' },
-  suspended: { label: 'Profil i pezulluar', color: 'danger' },
+  published: { label: 'team.profileStatus.published', color: 'success' },
+  pending: { label: 'team.profileStatus.pending', color: 'warning' },
+  draft: { label: 'team.profileStatus.draft', color: 'default' },
+  suspended: { label: 'team.profileStatus.suspended', color: 'danger' },
 }
 
 export default function CompanyExpertsPanel() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([])
   const [selected, setSelected] = useState('')
@@ -162,7 +165,7 @@ export default function CompanyExpertsPanel() {
     try {
       await inviteExpert(selected, email.trim()); setRevision((value) => value + 1)
       setMatch({ ...match, status: 'invited' })
-      toast.success('Ftesa u dërgua. Eksperti e pranon te profili i tij.')
+      toast.success(t('team.invited'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -176,7 +179,7 @@ export default function CompanyExpertsPanel() {
     setBusyId(userId)
     try {
       await removeExpert(selected, userId); setRevision((value) => value + 1)
-      toast.success('Eksperti u hoq nga kompania.')
+      toast.success(t('team.removed'))
       setRemoveTarget(null)
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -191,7 +194,7 @@ export default function CompanyExpertsPanel() {
     try {
       await cancelInvitation(selected, userId); setRevision((value) => value + 1)
       if (match?.person?.id === userId) setMatch({ ...match, status: 'ready' })
-      toast.success('Ftesa u anulua.')
+      toast.success(t('team.cancelled'))
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
@@ -215,17 +218,13 @@ export default function CompanyExpertsPanel() {
     <section className="uo ds">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>Ekspertët</h1>
-          <p>
-            {companyName ? `Ekipi i ${companyName}. ` : ''}
-            Fto ekspertë që janë tashmë në Këshillohu. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë,
-            u shkruajnë dhe caktojnë takim.
-          </p>
+          <h1>{t('dash.experts')}</h1>
+          <p>{companyName ? t('team.leadWithCompany', { company: companyName }) : t('team.lead')}</p>
         </div>
         {!loading && selected && canInviteExperts ? (
           <Button variant="primary" className="uo-primary" onPress={focusInvite}>
             <Plus size={16} aria-hidden />
-            Fto ekspert
+            {t('team.invite')}
           </Button>
         ) : null}
       </header>
@@ -233,7 +232,7 @@ export default function CompanyExpertsPanel() {
       {businesses.length > 1 ? (
         <div className="ds-field ds-company-select">
           <label className="ds-label" htmlFor="company-select">
-            Kompania
+            {t('team.company')}
           </label>
           <span className="ds-select">
             <select id="company-select" value={selected} onChange={(e) => setSelected(e.target.value)}>
@@ -252,7 +251,7 @@ export default function CompanyExpertsPanel() {
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Nuk u ngarkuan ekspertët</Alert.Title>
+            <Alert.Title>{t('team.loadError')}</Alert.Title>
             <Alert.Description>{error}</Alert.Description>
           </Alert.Content>
         </Alert>
@@ -262,8 +261,8 @@ export default function CompanyExpertsPanel() {
         <Alert status="warning" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Ftesat nuk janë të disponueshme</Alert.Title>
-            <Alert.Description>Kompania është pezulluar ose e mbyllur. Ftesat e ekspertëve nuk janë të disponueshme.</Alert.Description>
+            <Alert.Title>{t('team.invitesUnavailable')}</Alert.Title>
+            <Alert.Description>{t('team.invitesUnavailableText')}</Alert.Description>
           </Alert.Content>
         </Alert>
       ) : null}
@@ -273,12 +272,12 @@ export default function CompanyExpertsPanel() {
           <span className="ur-empty-icon" aria-hidden>
             <Building2 size={22} />
           </span>
-          <h2>Nuk ke ende një kompani të menaxhueshme</h2>
-          <p>Krijo kompaninë për të ftuar ekspertë në ekip. Ekspertët e pranuar shfaqen te profili publik i kompanisë.</p>
+          <h2>{t('team.noCompanyTitle')}</h2>
+          <p>{t('team.noCompanyText')}</p>
           <div className="ur-empty-actions">
             <Link to="/dashboard/company/create" className={buttonVariants({ variant: 'primary' })}>
               <Plus size={16} aria-hidden />
-              Krijo kompaninë
+              {t('profile.createCompany')}
             </Link>
           </div>
         </Card>
@@ -289,7 +288,7 @@ export default function CompanyExpertsPanel() {
           <div className="uo-side">
             <Card className="uo-card ur-card">
               <SectionHead
-                title="Ekspertët në ekip"
+                title={t('team.members')}
                 meta={!loading && members.length > 0 ? <span className="uo-card-meta">{membersPaging.pagination.total}</span> : null}
               />
               {loading ? (
@@ -301,17 +300,15 @@ export default function CompanyExpertsPanel() {
                   <span className="ur-empty-icon" aria-hidden>
                     <Users size={22} />
                   </span>
-                  <h2>Ende nuk ka ekspertë në kompani</h2>
+                  <h2>{t('team.emptyTitle')}</h2>
                   <p>
-                    {invitations.length > 0
-                      ? 'Ekspertët e ftuar shfaqen këtu sapo ta pranojnë ftesën te profili i tyre.'
-                      : 'Fto ekspertin e parë me email-in që përdor në Këshillohu. Pasi ta pranojë ftesën, shfaqet këtu dhe te profili i kompanisë.'}
+                    {invitations.length > 0 ? t('team.emptyInvited') : t('team.emptyText')}
                   </p>
                   {canInviteExperts ? (
                     <div className="ur-empty-actions">
                       <Button variant="primary" onPress={focusInvite}>
                         <MailPlus size={16} aria-hidden />
-                        Fto ekspertin e parë
+                        {t('team.inviteFirst')}
                       </Button>
                     </div>
                   ) : null}
@@ -333,12 +330,12 @@ export default function CompanyExpertsPanel() {
                             <div className="ur-chips">
                               {member.role === 'manager' ? (
                                 <Chip size="sm" variant="soft" color="accent">
-                                  <Chip.Label>Menaxher</Chip.Label>
+                                  <Chip.Label>{t('team.manager')}</Chip.Label>
                                 </Chip>
                               ) : null}
                               {status ? (
                                 <Chip size="sm" variant="soft" color={status.color}>
-                                  <Chip.Label>{status.label}</Chip.Label>
+                                  <Chip.Label>{t(status.label)}</Chip.Label>
                                 </Chip>
                               ) : null}
                             </div>
@@ -370,7 +367,7 @@ export default function CompanyExpertsPanel() {
                                 to={providerPath({ uid: member.uid, name: member.name })}
                               >
                                 <Eye size={14} aria-hidden />
-                                Profili
+                                {t('req.profile')}
                               </Link>
                             ) : null}
                             <Button
@@ -382,7 +379,7 @@ export default function CompanyExpertsPanel() {
                               onPress={() => setRemoveTarget({ id: member.id, name: member.name || member.email })}
                             >
                               <UserMinus size={14} aria-hidden />
-                              {busyId === member.id ? 'Duke hequr…' : 'Hiq'}
+                              {busyId === member.id ? t('team.removing') : t('team.remove')}
                             </Button>
                           </div>
                         </div>
@@ -396,7 +393,7 @@ export default function CompanyExpertsPanel() {
 
             {!loading && invitations.length > 0 ? (
               <Card className="uo-card">
-                <SectionHead title="Ftesa në pritje" meta={<span className="uo-card-meta">{invitesPaging.pagination.total}</span>} />
+                <SectionHead title={t('team.pendingTitle')} meta={<span className="uo-card-meta">{invitesPaging.pagination.total}</span>} />
                 <Card.Content className="uo-card-body">
                   <ul className="uo-rows">
                     {invitations.map((invite) => (
@@ -413,7 +410,7 @@ export default function CompanyExpertsPanel() {
                           <span className="ds-invite-end">
                             <Chip size="sm" variant="soft" color="warning">
                               <Clock size={12} aria-hidden />
-                              <Chip.Label>Në pritje</Chip.Label>
+                              <Chip.Label>{t('status.pending')}</Chip.Label>
                             </Chip>
                             <Button
                               size="sm"
@@ -422,7 +419,7 @@ export default function CompanyExpertsPanel() {
                               isDisabled={Boolean(busyId) && busyId !== invite.id}
                               onPress={() => void onCancelInvite(invite.id)}
                             >
-                              {busyId === invite.id ? 'Duke anuluar…' : 'Anulo'}
+                              {busyId === invite.id ? t('team.cancelling') : t('notifications.cancel')}
                             </Button>
                           </span>
                         </div>
@@ -438,16 +435,13 @@ export default function CompanyExpertsPanel() {
           {canInviteExperts ? (
             <div className="uo-side ds-invite-col">
               <Card className="uo-card">
-                <SectionHead title="Fto ekspert" />
+                <SectionHead title={t('team.invite')} />
                 <Card.Content className="uo-card-body">
                   <form className="ds-form ds-invite" onSubmit={onInvite}>
-                    <p className="ds-hint">
-                      Shkruaj email-in me të cilin eksperti është regjistruar në Këshillohu. Eksperti e pranon ftesën te
-                      profili i tij.
-                    </p>
+                    <p className="ds-hint">{t('team.inviteHint')}</p>
                     <div className="ds-field">
                       <label className="ds-label" htmlFor="expert-email">
-                        Email i ekspertit
+                        {t('team.emailLabel')}
                       </label>
                       <div className="ds-invite-input">
                         <input
@@ -457,15 +451,15 @@ export default function CompanyExpertsPanel() {
                           type="email"
                           autoComplete="email"
                           value={email}
-                          placeholder="eksperti@email.com"
+                          placeholder={t('team.emailPlaceholder')}
                           onChange={(e) => setEmail(e.target.value)}
                         />
                         <Button type="submit" variant="primary" isPending={saving} isDisabled={saving || match?.status !== 'ready'}>
-                          {saving ? 'Duke ftuar…' : 'Fto'}
+                          {saving ? t('team.inviting') : t('team.inviteShort')}
                         </Button>
                       </div>
                     </div>
-                    {checking ? <p className="ds-hint">Po kontrollohet…</p> : null}
+                    {checking ? <p className="ds-hint">{t('team.checking')}</p> : null}
                     {!checking && match?.status === 'ready' && match.person ? (
                       <div className="ds-invite-match">
                         <ProfileAvatar src={match.person.photoUrl} seed={match.person.uid} size={40} alt="" />
@@ -476,7 +470,7 @@ export default function CompanyExpertsPanel() {
                       </div>
                     ) : null}
                     {!checking && match && match.status !== 'ready' && match.status !== 'invalid' ? (
-                      <p className="ds-hint">{LOOKUP_HINT[match.status]}</p>
+                      <p className="ds-hint">{t(LOOKUP_HINT[match.status])}</p>
                     ) : null}
                   </form>
                 </Card.Content>
@@ -485,7 +479,7 @@ export default function CompanyExpertsPanel() {
           ) : null}
         </div>
       ) : null}
-      <ConfirmActionDialog isOpen={Boolean(removeTarget)} onClose={() => setRemoveTarget(null)} onConfirm={() => void onRemove()} pending={Boolean(busyId)} title="Hiq ekspertin?" description={`${removeTarget?.name ?? 'Eksperti'} do të hiqet nga ekipi i kompanisë. Ai nuk do të shfaqet më në profilin e kompanisë.`} confirmLabel="Hiq" />
+      <ConfirmActionDialog isOpen={Boolean(removeTarget)} onClose={() => setRemoveTarget(null)} onConfirm={() => void onRemove()} pending={Boolean(busyId)} title={t('team.removeTitle')} description={t('team.removeText', { name: removeTarget?.name || t('team.expertFallback') })} confirmLabel={t('team.remove')} />
     </section>
   )
 }

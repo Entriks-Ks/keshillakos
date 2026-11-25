@@ -37,7 +37,7 @@ function AccountMenu({ user, role, onLogout }: { user: AuthUser; role: UserRole;
     <Dropdown>
       <Dropdown.Trigger
         className="dtb-account"
-        aria-label={displayName ? `Llogaria: ${displayName}` : 'Llogaria ime'}
+        aria-label={displayName ? t('dashUi.accountAria', { name: displayName }) : t('dashUi.myAccount')}
       >
         <ProfileAvatar src={user.profilePhoto} seed={user.uid} alt="" size="sm" />
         {shortName ? <span className="dtb-account-name">{shortName}</span> : null}
@@ -52,16 +52,16 @@ function AccountMenu({ user, role, onLogout }: { user: AuthUser; role: UserRole;
             <span className="dtb-account-role">{t(CONTEXT_LABELS[role])}</span>
           </div>
         </div>
-        <Dropdown.Menu aria-label="Menuja e llogarisë">
+        <Dropdown.Menu aria-label={t('dashUi.accountMenu')}>
           {publicProfile ? (
-            <Dropdown.Item id="public-profile" href={publicProfile} textValue="Shiko profilin publik">
+            <Dropdown.Item id="public-profile" href={publicProfile} textValue={t('dashUi.publicProfile')}>
               <ExternalLink size={16} aria-hidden className="dtb-menu-icon" />
-              <Label>Shiko profilin publik</Label>
+              <Label>{t('dashUi.publicProfile')}</Label>
             </Dropdown.Item>
           ) : null}
-          <Dropdown.Item id="logout" textValue="Dil" variant="danger" onAction={onLogout}>
+          <Dropdown.Item id="logout" textValue={t('nav.logout')} variant="danger" onAction={onLogout}>
             <LogOut size={16} aria-hidden className="dtb-menu-icon" />
-            <Label>Dil</Label>
+            <Label>{t('nav.logout')}</Label>
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
@@ -90,25 +90,25 @@ export default function DashboardTopBar({
             isIconOnly
             variant="ghost"
             className="dtb-menu"
-            aria-label={menuOpen ? 'Mbyll menunë' : 'Hap menunë'}
+            aria-label={menuOpen ? t('nav.close') : t('nav.open')}
             aria-expanded={menuOpen}
           >
             <Menu size={20} aria-hidden />
           </Button>
           <Drawer.Backdrop>
             <Drawer.Content placement="left">
-              <Drawer.Dialog aria-label="Navigimi i dashboard" className="dtb-drawer-dialog">
+              <Drawer.Dialog aria-label={t('dash.nav')} className="dtb-drawer-dialog">
                 <Drawer.Header className="dtb-drawer-head">
                   <Link
                     to="/"
                     className="brand brand-link dsb-brand"
-                    aria-label="Këshillohu, faqja kryesore"
+                    aria-label={t('dash.homeAria')}
                     onClick={() => onMenuOpenChange(false)}
                   >
                     <LogoMark size={28} />
                     <LogoWordmark height={18} />
                   </Link>
-                  <Drawer.CloseTrigger aria-label="Mbyll menunë" />
+                  <Drawer.CloseTrigger aria-label={t('nav.close')} />
                 </Drawer.Header>
                 <Drawer.Body className="dtb-drawer-body">{navigation}</Drawer.Body>
               </Drawer.Dialog>
@@ -132,12 +132,12 @@ export default function DashboardTopBar({
                 isIconOnly
                 variant="ghost"
                 className="dtb-icon"
-                aria-label="Kthehu në faqen kryesore"
+                aria-label={t('dashUi.backHome')}
                 onPress={() => navigate('/')}
               >
                 <Home size={19} aria-hidden />
               </Button>
-              <Tooltip.Content placement="bottom">Kthehu në faqen kryesore</Tooltip.Content>
+              <Tooltip.Content placement="bottom">{t('dashUi.backHome')}</Tooltip.Content>
             </Tooltip>
           ) : null}
           <MessageNavButton />

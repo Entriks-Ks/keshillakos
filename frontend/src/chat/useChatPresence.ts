@@ -38,9 +38,23 @@ export function useChatPresence(socket: PresenceSocket, conversationIds: string[
   return presence
 }
 
-export function presenceLabel(value?: ChatPresence) {
+export type PresenceTranslate = (key: string, options?: { time?: string }) => string
+
+/** Albanian fallback so callers without a translator keep the default-language copy. */
+const albanianPresence: PresenceTranslate = (key, options) => {
+  if (key === 'chat.presence.online') return 'Online'
+  if (key === 'chat.presence.offline') return 'Offline'
+  return `Aktiviteti i fundit: ${options?.time ?? ''}`
+}
+
+/**
+ * Presence copy for a contact. Pass i18next's `t` and the active `dateLocale()` so the label follows
+ * the UI language; this module stays free of i18n imports so node tests can load it.
+ */
+export function presenceLabel(value?: ChatPresence, t: PresenceTranslate = albanianPresence, locale = 'sq-AL') {
   if (!value) return ''
-  if (value.online) return 'Online'
-  if (!value.lastSeen) return 'Offline'
-  return `Aktiviteti i fundit: ${new Date(value.lastSeen).toLocaleString('sq-AL', { dateStyle: 'short', timeStyle: 'short' })}`
+  if (value.online) return t('chat.presence.online')
+  if (!value.lastSeen) return t('chat.presence.offline')
+  const time = new Date(value.lastSeen).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })
+  return t('chat.presence.lastSeen', { time })
 }

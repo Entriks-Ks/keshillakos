@@ -3,6 +3,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Alert, Button, Card, Chip, Input, Label, TextField, toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { CalendarPlus, ChevronDown, Trash2 } from 'lucide-react'
 import {
   createAvailabilitySlot,
@@ -24,13 +25,13 @@ const HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => {
 })
 
 const WEEKDAYS = [
-  { id: 1, label: 'E hënë', short: 'Hën' },
-  { id: 2, label: 'E martë', short: 'Mar' },
-  { id: 3, label: 'E mërkurë', short: 'Mër' },
-  { id: 4, label: 'E enjte', short: 'Enj' },
-  { id: 5, label: 'E premte', short: 'Pre' },
-  { id: 6, label: 'E shtunë', short: 'Sht' },
-  { id: 0, label: 'E diel', short: 'Die' },
+  { id: 1, key: 'mon' },
+  { id: 2, key: 'tue' },
+  { id: 3, key: 'wed' },
+  { id: 4, key: 'thu' },
+  { id: 5, key: 'fri' },
+  { id: 6, key: 'sat' },
+  { id: 0, key: 'sun' },
 ] as const
 
 type ErrorSource = 'load' | 'weekly' | 'extra'
@@ -82,6 +83,7 @@ function weeklySlots(days: number[], from: string, to: string, weeks: number) {
 }
 
 export default function AvailabilityPanel() {
+  const { t } = useTranslation()
   const { page, setPage, pagination, receivePagination } = usePagination()
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
@@ -155,16 +157,16 @@ export default function AvailabilityPanel() {
     e.preventDefault()
     setError('')
     if (days.length === 0) {
-      fail('weekly', 'Zgjidh të paktën një ditë.')
+      fail('weekly', t('availability.pickDay'))
       return
     }
     const generated = weeklySlots(days, fromHour, toHour, weeks)
     if (generated.length > 400) {
-      fail('weekly', 'Intervali është shumë i madh. Zgjidh më pak javë ose orë.')
+      fail('weekly', t('availability.rangeTooLarge'))
       return
     }
     if (!generated.length) {
-      fail('weekly', 'Nuk ka orë të vlefshme në këtë interval. Zgjidh orë në të ardhmen.')
+      fail('weekly', t('availability.noValidHours'))
       return
     }
     setSubmitting(true)
@@ -180,11 +182,11 @@ export default function AvailabilityPanel() {
         )
       }
       if (result.created.length && result.skipped) {
-        toast.success(`U publikuan ${result.created.length} orë të lira. ${result.skipped} ekzistonin tashmë.`)
+        toast.success(t('availability.publishedSkipped', { count: result.created.length, skipped: result.skipped }))
       } else if (result.created.length) {
-        toast.success(`U publikuan ${result.created.length} orë të lira.`)
+        toast.success(t('availability.published', { count: result.created.length }))
       } else {
-        fail('weekly', 'Këto orë ekzistojnë tashmë. Ndrysho ditët ose orët.')
+        fail('weekly', t('availability.alreadyExist'))
       }
     } catch (err) {
       toast.danger(getErrorMessage(err))
@@ -198,7 +200,7 @@ export default function AvailabilityPanel() {
     e.preventDefault()
     setError('')
     if (selectedHours.length === 0) {
-      fail('extra', 'Zgjidh të paktën një orë të lirë')
+      fail('extra', t('availability.pickHour'))
       return
     }
 
@@ -209,7 +211,7 @@ export default function AvailabilityPanel() {
     try {
       for (const hour of selectedHours) {
         if (takenHoursOnDate.has(hour)) {
-          failures.push(`${hour} është tashmë e zënë`)
+          failures.push(t('availability.hourTaken', { hour }))
           continue
         }
         try {
@@ -232,8 +234,8 @@ export default function AvailabilityPanel() {
         setSelectedHours([])
         toast.success(
           created.length === 1
-            ? `U shtua ora ${formatSlotTime(created[0].startAt)} si e lirë.`
-            : `U shtuan ${created.length} orë të lira.`,
+            ? t('availability.addedOne', { time: formatSlotTime(created[0].startAt) })
+            : t('availability.addedMany', { count: created.length }),
         )
       }
       if (failures.length > 0) {
@@ -254,7 +256,7 @@ export default function AvailabilityPanel() {
       await deleteAvailabilitySlot(id)
       setSlots((prev) => prev.filter((s) => s.id !== id))
       setSelectedSlotId('')
-      toast.success('Orari u fshi.')
+      toast.success(t('availability.deleted'))
       setDeleteTarget(null)
       await load()
     } catch (err) {
@@ -274,11 +276,8 @@ export default function AvailabilityPanel() {
     <section className="uo ds">
       <header className="uo-head">
         <div className="uo-head-copy">
-          <h1>Disponueshmëria</h1>
-          <p>
-            Vendos orët kur je i lirë për takime, p.sh. e hënë–e premte 09:00–17:00. Klienti zgjedh një nga këto orë kur
-            dërgon kërkesë.
-          </p>
+          <h1>{t('dash.availability')}</h1>
+          <p>{t('availability.lead')}</p>
         </div>
       </header>
 
@@ -286,22 +285,22 @@ export default function AvailabilityPanel() {
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Orari nuk u ngarkua</Alert.Title>
+            <Alert.Title>{t('availability.loadError')}</Alert.Title>
             <Alert.Description>{loadError}</Alert.Description>
           </Alert.Content>
           <Button size="sm" variant="outline" onPress={() => void load()}>
-            Provo përsëri
+            {t('page.retry')}
           </Button>
         </Alert>
       ) : null}
 
       <div className="ds-av-grid">
         <Card className="uo-card">
-          <SectionHead title="Orari javor" meta={<span className="uo-card-meta">Orë 1-orëshe</span>} />
+          <SectionHead title={t('availability.weeklyTitle')} meta={<span className="uo-card-meta">{t('availability.slotLength')}</span>} />
           <Card.Content className="uo-card-body">
             <form onSubmit={onWeeklySubmit} className="ds-form">
               <fieldset className="ds-field">
-                <legend className="ds-label">Ditët e punës</legend>
+                <legend className="ds-label">{t('availability.workDays')}</legend>
                 <div className="ds-day-grid">
                   {WEEKDAYS.map((day) => {
                     const selected = days.includes(day.id)
@@ -312,9 +311,9 @@ export default function AvailabilityPanel() {
                         className={`ds-day${selected ? ' is-selected' : ''}`}
                         onClick={() => toggleDay(day.id)}
                         aria-pressed={selected}
-                        aria-label={day.label}
+                        aria-label={t(`availability.weekdays.${day.key}`)}
                       >
-                        {day.short}
+                        {t(`availability.weekdaysShort.${day.key}`)}
                       </button>
                     )
                   })}
@@ -323,7 +322,7 @@ export default function AvailabilityPanel() {
 
               <div className="ds-field-row">
                 <label className="ds-field">
-                  <span className="ds-label">Nga ora</span>
+                  <span className="ds-label">{t('availability.fromHour')}</span>
                   <span className="ds-select">
                     <select value={fromHour} onChange={(e) => setFromHour(e.target.value)}>
                       {HOUR_OPTIONS.slice(0, -1).map((hour) => (
@@ -336,7 +335,7 @@ export default function AvailabilityPanel() {
                   </span>
                 </label>
                 <label className="ds-field">
-                  <span className="ds-label">Deri ora</span>
+                  <span className="ds-label">{t('availability.toHour')}</span>
                   <span className="ds-select">
                     <select value={toHour} onChange={(e) => setToHour(e.target.value)}>
                       {HOUR_OPTIONS.slice(1).map((hour) => (
@@ -349,12 +348,12 @@ export default function AvailabilityPanel() {
                   </span>
                 </label>
                 <label className="ds-field">
-                  <span className="ds-label">Sa javë përpara</span>
+                  <span className="ds-label">{t('availability.weeksAhead')}</span>
                   <span className="ds-select">
                     <select value={weeks} onChange={(e) => setWeeks(Number(e.target.value))}>
                       {[1, 2, 3, 4, 6, 8].map((count) => (
                         <option key={count} value={count}>
-                          {count} javë
+                          {t('availability.weeks', { count })}
                         </option>
                       ))}
                     </select>
@@ -364,16 +363,16 @@ export default function AvailabilityPanel() {
               </div>
 
               <TextField fullWidth value={note} onChange={setNote} isDisabled={submitting}>
-                <Label>Shënim (opsionale)</Label>
-                <Input placeholder="p.sh. Online / Zyrë / Telefon" maxLength={200} />
+                <Label>{t('availability.noteLabel')}</Label>
+                <Input placeholder={t('availability.notePlaceholder')} maxLength={200} />
               </TextField>
 
               <p className={`ds-hint${previewCount > 400 ? ' is-danger' : ''}`}>
                 {previewCount > 400
-                  ? 'Intervali është shumë i madh. Zgjidh më pak javë ose orë.'
+                  ? t('availability.rangeTooLarge')
                   : previewCount
-                    ? `Do të publikohen deri ${previewCount} orë të lira (1 orë secila).`
-                    : 'Zgjidh ditët dhe një interval orësh në të ardhmen.'}
+                    ? t('availability.preview', { count: previewCount })
+                    : t('availability.previewEmpty')}
               </p>
               {weeklyError ? <p className="ds-error">{weeklyError}</p> : null}
 
@@ -384,7 +383,7 @@ export default function AvailabilityPanel() {
                   isPending={submitting}
                   isDisabled={previewCount === 0 || previewCount > 400}
                 >
-                  {submitting ? 'Duke publikuar…' : 'Publiko orarin javor'}
+                  {submitting ? t('availability.publishing') : t('availability.publishWeekly')}
                 </Button>
               </div>
             </form>
@@ -393,10 +392,10 @@ export default function AvailabilityPanel() {
 
         <Card className="uo-card">
           <SectionHead
-            title="Orë shtesë për një datë"
+            title={t('availability.extraTitle')}
             action={
               <Button size="sm" variant="ghost" onPress={() => setExtraOpen((open) => !open)} aria-expanded={extraOpen}>
-                {extraOpen ? 'Mbyll' : 'Hap'}
+                {extraOpen ? t('feedback.close') : t('availability.expand')}
                 <ChevronDown size={14} aria-hidden className={`ds-chevron${extraOpen ? ' is-open' : ''}`} />
               </Button>
             }
@@ -405,7 +404,7 @@ export default function AvailabilityPanel() {
             {extraOpen ? (
               <form onSubmit={onExtraSubmit} className="ds-form">
                 <label className="ds-field ds-field-date">
-                  <span className="ds-label">Data</span>
+                  <span className="ds-label">{t('availability.date')}</span>
                   <input
                     type="date"
                     className="ds-input"
@@ -416,7 +415,7 @@ export default function AvailabilityPanel() {
                   />
                 </label>
                 <fieldset className="ds-field">
-                  <legend className="ds-label">Zgjidh orët e lira për këtë ditë</legend>
+                  <legend className="ds-label">{t('availability.pickHoursForDay')}</legend>
                   <div className="ds-hour-grid">
                     {HOUR_OPTIONS.slice(0, -1).map((hour) => {
                       const taken = takenHoursOnDate.has(hour)
@@ -429,10 +428,10 @@ export default function AvailabilityPanel() {
                           disabled={taken}
                           onClick={() => toggleHour(hour)}
                           aria-pressed={selected}
-                          title={taken ? `${hour} ekziston tashmë` : `Shto ${hour}`}
+                          title={taken ? t('availability.hourExists', { hour }) : t('availability.addHour', { hour })}
                         >
                           {hour}
-                          <small>{taken ? 'Ekziston' : selected ? 'Zgjedhur' : 'Shto'}</small>
+                          <small>{taken ? t('availability.exists') : selected ? t('availability.selected') : t('availability.add')}</small>
                         </button>
                       )
                     })}
@@ -442,10 +441,10 @@ export default function AvailabilityPanel() {
                 <div className="ds-actions">
                   <Button type="submit" variant="primary" isPending={submitting} isDisabled={selectedHours.length === 0}>
                     {submitting
-                      ? 'Duke shtuar…'
+                      ? t('availability.adding')
                       : selectedHours.length
-                        ? `Publiko ${selectedHours.length} orë të lira`
-                        : 'Zgjidh orë'}
+                        ? t('availability.publishHours', { count: selectedHours.length })
+                        : t('availability.pickHours')}
                   </Button>
                 </div>
               </form>
@@ -454,9 +453,7 @@ export default function AvailabilityPanel() {
                 <span className="ds-collapsed-icon" aria-hidden>
                   <CalendarPlus size={18} />
                 </span>
-                <p>
-                  Shto orë të veçanta jashtë orarit javor, p.sh. një të shtunë ose një ditë me orar të ndryshëm.
-                </p>
+                <p>{t('availability.extraCollapsed')}</p>
               </div>
             )}
           </Card.Content>
@@ -465,15 +462,15 @@ export default function AvailabilityPanel() {
 
       <Card className="uo-card">
         <SectionHead
-          title="Kalendari"
+          title={t('availability.calendar')}
           meta={
             slots.length > 0 ? (
               <span className="ds-cal-counts">
                 <Chip size="sm" variant="soft" color="success">
-                  {slotSummary.free ?? 0} të lira
+                  {t('availability.freeCount', { count: slotSummary.free ?? 0 })}
                 </Chip>
                 <Chip size="sm" variant="soft" color="danger">
-                  {slotSummary.busy ?? 0} të zëna
+                  {t('availability.busyCount', { count: slotSummary.busy ?? 0 })}
                 </Chip>
               </span>
             ) : null
@@ -484,12 +481,12 @@ export default function AvailabilityPanel() {
             <RowsSkeleton rows={3} />
           ) : slots.length === 0 ? (
             <EmptyBlock
-              title="Ende nuk ke shtuar asnjë orë"
-              text="Publiko orarin javor që klientët të mund të zgjedhin një orë kur dërgojnë kërkesë."
+              title={t('availability.emptyTitle')}
+              text={t('availability.emptyText')}
             />
           ) : (
             <div className="ds-cal">
-              <p className="ds-hint">Zgjidh ditën, pastaj një orë të lirë për ta fshirë. Pikat e gjelbra kanë orë të lira.</p>
+              <p className="ds-hint">{t('availability.calHint')}</p>
               <ScheduleCalendar key={page} slots={slots} selectedId={selectedSlotId} onSelect={setSelectedSlotId} selectable />
               <div className="ds-cal-foot">
                 {selectedSlot && selectedSlot.status === 'open' ? (
@@ -501,12 +498,12 @@ export default function AvailabilityPanel() {
                     onPress={() => setDeleteTarget(selectedSlot)}
                   >
                     <Trash2 size={14} aria-hidden />
-                    {busyId === selectedSlot.id ? 'Duke fshirë…' : `Fshi ${formatSlotTime(selectedSlot.startAt)}`}
+                    {busyId === selectedSlot.id ? t('availability.deleting') : t('availability.deleteSlot', { time: formatSlotTime(selectedSlot.startAt) })}
                   </Button>
                 ) : selectedSlot ? (
-                  <p className="ds-hint">Kjo orë është e zënë dhe nuk mund të fshihet.</p>
+                  <p className="ds-hint">{t('availability.slotBusy')}</p>
                 ) : (
-                  <p className="ds-hint">Zgjidh një orë të gjelbër për ta fshirë.</p>
+                  <p className="ds-hint">{t('availability.pickGreen')}</p>
                 )}
               </div>
             </div>
@@ -514,7 +511,7 @@ export default function AvailabilityPanel() {
         </Card.Content>
       </Card>
       <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading || submitting} />
-      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(busyId)} title="Fshi orën e lirë?" description={`Ora ${deleteTarget ? formatSlotTime(deleteTarget.startAt) : ''} do të hiqet nga disponueshmëria. Ky veprim nuk mund të zhbëhet.`} confirmLabel="Fshi" />
+      <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => void onDelete()} pending={Boolean(busyId)} title={t('availability.deleteTitle')} description={t('availability.deleteDesc', { time: deleteTarget ? formatSlotTime(deleteTarget.startAt) : '' })} confirmLabel={t('availability.deleteConfirm')} />
     </section>
   )
 }

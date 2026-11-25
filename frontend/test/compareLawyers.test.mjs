@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { MAX_COMPARE_LAWYERS } from '../src/hooks/useCompareLawyers.ts'
-import { analyzeLawyers } from '../src/utils/compareAnalyzer.ts'
+import { analyzeLawyers, translateText } from '../src/utils/compareAnalyzer.ts'
 import sqLocale from '../src/i18n/locales/sq.ts'
 import enLocale from '../src/i18n/locales/en.ts'
 import deLocale from '../src/i18n/locales/de.ts'
@@ -270,19 +270,65 @@ test('compare lawyers: analyzeLawyers determines who is best for what (verdict &
   assert.equal(winnerUids.reputation, 'lawyer-diaspora')
 
   // Verdict content verification
+  // The analyzer returns translation keys + params; the UI translates them at render time.
   const seniorVerdict = verdicts['lawyer-senior']
   assert.ok(seniorVerdict)
-  assert.equal(seniorVerdict.badge.label, 'Përvoja më e Gjatë')
-  assert.match(seniorVerdict.bestForSummary, /përvojë/i)
+  assert.equal(seniorVerdict.badge.label.key, 'compareUi.analysis.badge.experience')
+  assert.equal(seniorVerdict.bestForSummary.key, 'compareUi.analysis.bestFor.experience')
+  assert.deepEqual(seniorVerdict.scenarioDescription, {
+    key: 'compareUi.analysis.scenario.experience',
+    params: { count: 18 },
+  })
   assert.ok(seniorVerdict.keyStrengths.length > 0)
+  assert.ok(
+    seniorVerdict.keyStrengths.some(
+      (s) => s.key === 'compareUi.analysis.strength.longestExperience' && s.params.count === 18,
+    ),
+  )
 
   const budgetVerdict = verdicts['lawyer-budget']
   assert.ok(budgetVerdict)
-  assert.equal(budgetVerdict.badge.label, 'Çmimi më Ekonomik')
-  assert.match(budgetVerdict.bestForSummary, /buxhet/i)
-  assert.ok(budgetVerdict.keyStrengths.some((s) => s.includes('€25')))
+  assert.equal(budgetVerdict.badge.label.key, 'compareUi.analysis.badge.budget')
+  assert.equal(budgetVerdict.bestForSummary.key, 'compareUi.analysis.bestFor.budget')
+  assert.ok(
+    budgetVerdict.keyStrengths.some(
+      (s) => s.key === 'compareUi.analysis.strength.lowestFee' && s.params.price === 25,
+    ),
+  )
 
   const diasporaVerdict = verdicts['lawyer-diaspora']
   assert.ok(diasporaVerdict)
-  assert.ok(diasporaVerdict.keyStrengths.some((s) => s.includes('German')))
+  assert.ok(
+    diasporaVerdict.keyStrengths.some(
+      (s) => s.key === 'compareUi.analysis.strength.languages' && String(s.params.languages).includes('German'),
+    ),
+  )
+  for (const verdict of Object.values(verdicts)) {
+    assert.ok(verdict.keyStrengths.length <= 4)
+    for (const s of [verdict.badge.label, verdict.bestForSummary, verdict.scenarioDescription, ...verdict.keyStrengths]) {
+      assert.match(s.key, /^compareUi\.analysis\./)
+    }
+  }
+})
+
+test('compare lawyers: translateText resolves params and nested fallback keys', () => {
+  const t = (key, params = {}) =>
+    `${key}(${Object.entries(params).map(([k, v]) => `${k}=${v}`).join(',')})`
+  const { verdicts } = analyzeLawyers([
+    {
+      uid: 'plain',
+      provider: { name: 'Av. Plain', ratingAverage: 0, ratingCount: 0 },
+      profile: null,
+      services: [],
+      openSlots: [],
+    },
+  ])
+  const badge = verdicts.plain.badge.label
+  assert.equal(badge.key, 'compareUi.analysis.badge.specialist')
+  assert.equal(
+    translateText(t, badge),
+    'compareUi.analysis.badge.specialist(spec=compareUi.analysis.generalSpec())',
+  )
+  // No slots and no online/fees data: only the flexible schedule strength applies.
+  assert.deepEqual(verdicts.plain.keyStrengths, [{ key: 'compareUi.analysis.strength.flexibleSchedule' }])
 })

@@ -1,4 +1,5 @@
 import type { AxiosInstance } from 'axios'
+import i18n from '../i18n'
 
 /** Same base URL used by the API client — kept here so media URLs do not depend on auth. */
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -6,7 +7,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024
 export const MAX_SERVICE_PHOTOS = 8
 export const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif'
-export const IMAGE_ACCEPT_HINT = 'JPG, PNG, WEBP ose GIF · max 2MB'
+/** Language-neutral on purpose: it is a module constant interpolated into translated copy. */
+export const IMAGE_ACCEPT_HINT = 'JPG, PNG, WEBP, GIF · max 2 MB'
 
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg',
@@ -26,10 +28,10 @@ export function mediaUrl(path?: string | null) {
 
 export function validateImageFile(file: File) {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-    throw new Error('Ngarko vetëm foto (JPG, PNG, WEBP, GIF)')
+    throw new Error(i18n.t('system.media.invalidType'))
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    throw new Error('Fotoja duhet të jetë më e vogël se 2MB')
+    throw new Error(i18n.t('system.media.tooLarge'))
   }
 }
 

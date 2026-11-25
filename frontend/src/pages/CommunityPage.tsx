@@ -33,6 +33,9 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { Button, toast } from '@heroui/react'
+import { Trans, useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import { dateLocale } from '../i18n'
 import { useAuth } from '../auth/AuthContext'
 import ProfileAvatar from '../components/ProfileAvatar'
 import SiteNav from '../components/SiteNav'
@@ -56,21 +59,29 @@ import './CommunityPage.css'
 
 type CategoryItem = {
   id: CommunityCategory | 'all'
-  label: string
-  short: string
   icon: LucideIcon
   color: string
 }
 
 const CATEGORY_ITEMS: CategoryItem[] = [
-  { id: 'all', label: 'Të gjitha', short: 'Të gjitha', icon: LayoutGrid, color: '#2563eb' },
-  { id: 'avokat', label: 'Avokatë & Drejtësi', short: 'Avokatë', icon: Scale, color: '#2563eb' },
-  { id: 'kontabilitet', label: 'Kontabilitet & Financa', short: 'Kontabilitet', icon: Calculator, color: '#2563eb' },
-  { id: 'noter', label: 'Noteri & Akte', short: 'Noteri', icon: FileCheck, color: '#2563eb' },
-  { id: 'biznes', label: 'Biznes & Konsulencë', short: 'Biznes', icon: Building2, color: '#2563eb' },
-  { id: 'patundshmeri', label: 'Prona & Patundshmëri', short: 'Prona', icon: Home, color: '#2563eb' },
-  { id: 'tjeter', label: 'Të tjera', short: 'Të tjera', icon: HelpCircle, color: '#64748b' },
+  { id: 'all', icon: LayoutGrid, color: '#2563eb' },
+  { id: 'avokat', icon: Scale, color: '#2563eb' },
+  { id: 'kontabilitet', icon: Calculator, color: '#2563eb' },
+  { id: 'noter', icon: FileCheck, color: '#2563eb' },
+  { id: 'biznes', icon: Building2, color: '#2563eb' },
+  { id: 'patundshmeri', icon: Home, color: '#2563eb' },
+  { id: 'tjeter', icon: HelpCircle, color: '#64748b' },
 ]
+
+/** Full category label in the active language (e.g. "Lawyers & Justice"). */
+function categoryLabel(t: TFunction, id: CategoryItem['id']): string {
+  return t(`community.categories.${id}`)
+}
+
+/** Short category label used on the composer picker. */
+function categoryShort(t: TFunction, id: CategoryItem['id']): string {
+  return t(`community.categoriesShort.${id}`)
+}
 
 const CATEGORY_BY_ID = Object.fromEntries(CATEGORY_ITEMS.map((c) => [c.id, c])) as Record<
   string,
@@ -81,23 +92,27 @@ function categoryOf(id: string): CategoryItem {
   return CATEGORY_BY_ID[id] ?? CATEGORY_BY_ID.tjeter
 }
 
-const SORT_OPTIONS: { id: 'recent' | 'popular' | 'unanswered' | 'resolved'; label: string; icon: LucideIcon }[] = [
-  { id: 'recent', label: 'Më të rejat', icon: Clock3 },
-  { id: 'popular', label: 'Më aktive', icon: TrendingUp },
-  { id: 'unanswered', label: 'Pa përgjigje', icon: HelpCircle },
-  { id: 'resolved', label: 'Të zgjidhura', icon: CheckCircle2 },
+const SORT_OPTIONS: { id: 'recent' | 'popular' | 'unanswered' | 'resolved'; icon: LucideIcon }[] = [
+  { id: 'recent', icon: Clock3 },
+  { id: 'popular', icon: TrendingUp },
+  { id: 'unanswered', icon: HelpCircle },
+  { id: 'resolved', icon: CheckCircle2 },
 ]
 
 /** One-click starters that pre-fill the composer. */
-const QUICK_PROMPTS: { label: string; title: string; category: CommunityCategory }[] = [
-  { label: 'Avokat për kontratë prone', title: 'Kam nevojë për një avokat për kontratë prone', category: 'patundshmeri' },
-  { label: 'Regjistrim biznesi', title: 'Si ta regjistroj biznesin dhe sa kushton?', category: 'biznes' },
-  { label: 'Vërtetim noterial', title: 'Sa kushton vërtetimi i një kontrate te noteri?', category: 'noter' },
-  { label: 'Deklarim tatimor', title: 'Kërkoj kontabilist për deklarimin vjetor tatimor', category: 'kontabilitet' },
+const QUICK_PROMPTS: { labelKey: string; titleKey: string; category: CommunityCategory }[] = [
+  { labelKey: 'community.quick.propertyLabel', titleKey: 'community.quick.propertyTitle', category: 'patundshmeri' },
+  { labelKey: 'community.quick.businessLabel', titleKey: 'community.quick.businessTitle', category: 'biznes' },
+  { labelKey: 'community.quick.notaryLabel', titleKey: 'community.quick.notaryTitle', category: 'noter' },
+  { labelKey: 'community.quick.taxLabel', titleKey: 'community.quick.taxTitle', category: 'kontabilitet' },
 ]
 
+/** City filter value meaning "no city filter" — rendered as "All of Kosovo". */
+const ALL_CITIES = ''
+
+/** City names are sent to the API as-is; only the "all" option is translated. */
 const CITIES = [
-  'Gjithë Kosova',
+  ALL_CITIES,
   'Prishtinë',
   'Prizren',
   'Pejë',
@@ -109,77 +124,79 @@ const CITIES = [
   'Vushtrri',
 ]
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: TFunction): string {
   try {
     const diff = Date.now() - new Date(dateStr).getTime()
     const minutes = Math.floor(diff / 60000)
-    if (minutes < 1) return 'sapo'
-    if (minutes < 60) return `para ${minutes} min`
+    if (minutes < 1) return t('community.time.justNow')
+    if (minutes < 60) return t('community.time.minutesAgo', { count: minutes })
     const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `para ${hours} orësh`
+    if (hours < 24) return t('community.time.hoursAgo', { count: hours })
     const days = Math.floor(hours / 24)
-    if (days === 1) return 'dje'
-    if (days < 7) return `para ${days} ditësh`
-    return new Date(dateStr).toLocaleDateString('sq-AL', {
+    if (days === 1) return t('community.time.yesterday')
+    if (days < 7) return t('community.time.daysAgo', { count: days })
+    return new Date(dateStr).toLocaleDateString(dateLocale(), {
       day: 'numeric',
       month: 'short',
     })
   } catch {
-    return 'së fundmi'
+    return t('community.time.recently')
   }
 }
 
 function RoleBadge({ role }: { role?: string }) {
+  const { t } = useTranslation()
   if (role === 'provider' || role === 'expert') {
     return (
       <span className="kk-role-badge kk-role-badge-expert">
-        <BadgeCheck size={12} aria-hidden /> Ekspert i Verifikuar
+        <BadgeCheck size={12} aria-hidden /> {t('community.badge.verifiedExpert')}
       </span>
     )
   }
   if (role === 'company') {
     return (
       <span className="kk-role-badge kk-role-badge-company">
-        <Building2 size={12} aria-hidden /> Kompani
+        <Building2 size={12} aria-hidden /> {t('role.company')}
       </span>
     )
   }
   if (role === 'admin') {
     return (
       <span className="kk-role-badge kk-role-badge-admin">
-        <ShieldCheck size={12} aria-hidden /> Stafi
+        <ShieldCheck size={12} aria-hidden /> {t('community.badge.staff')}
       </span>
     )
   }
   return (
     <span className="kk-role-badge kk-role-badge-user">
-      <UserRound size={12} aria-hidden /> Qytetar
+      <UserRound size={12} aria-hidden /> {t('community.badge.citizen')}
     </span>
   )
 }
 
 /** Decorative hero illustration: question → expert answer with price → resolved. */
 function HeroConversation() {
+  const { t } = useTranslation()
   return (
     <div className="kk-comm-hero-visual" aria-hidden>
       <div className="kk-comm-hero-orbit" />
-      <span className="kk-comm-hero-caption">Shembull i një bisede</span>
+      <span className="kk-comm-hero-caption">{t('community.demo.caption')}</span>
 
       <div className="kk-comm-bubble kk-comm-bubble--question">
         <div className="kk-comm-bubble-head">
           <span className="kk-comm-bubble-avatar">A</span>
           <div>
-            <strong>Pyetje e re</strong>
-            <span>Prishtinë · sapo</span>
+            <strong>{t('community.demo.newQuestion')}</strong>
+            <span>Prishtinë · {t('community.time.justNow')}</span>
           </div>
           <span className="kk-comm-bubble-chip">
-            <Home size={11} /> Prona
+            <Home size={11} /> {categoryShort(t, 'patundshmeri')}
           </span>
         </div>
-        <p>Kam nevojë për avokat për kontratë shitblerjeje banese. Sa kushton zakonisht?</p>
+        <p>{t('community.demo.question')}</p>
         <div className="kk-comm-bubble-foot">
           <span className="kk-comm-bubble-budget">
-            <Coins size={11} /> Buxheti deri 150 €
+            <Coins size={11} /> {t('community.demo.budget')}
           </span>
         </div>
       </div>
@@ -190,20 +207,20 @@ function HeroConversation() {
             <BadgeCheck size={14} />
           </span>
           <div>
-            <strong>Ekspert i verifikuar</strong>
-            <span>u përgjigj pas 12 min</span>
+            <strong>{t('community.badge.verifiedExpert')}</strong>
+            <span>{t('community.demo.answeredAfter')}</span>
           </div>
         </div>
-        <p>Përpilimi + verifikimi te noteri zakonisht kushton:</p>
+        <p>{t('community.demo.answerIntro')}</p>
         <div className="kk-comm-bubble-price">
-          <span>Tarifa orientuese</span>
+          <span>{t('community.indicativeFee')}</span>
           <strong>80 – 120 €</strong>
         </div>
       </div>
 
       <div className="kk-comm-bubble kk-comm-bubble--resolved">
         <CheckCircle2 size={16} />
-        <span>E zgjidhur · 3 rekomandime</span>
+        <span>{t('community.demo.resolved')}</span>
       </div>
 
       <div className="kk-comm-bubble kk-comm-bubble--likes">
@@ -232,6 +249,7 @@ function PostSkeleton({ index }: { index: number }) {
 }
 
 export default function CommunityPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const composerRef = useRef<HTMLDivElement>(null)
   const feedRef = useRef<HTMLDivElement>(null)
@@ -242,7 +260,7 @@ export default function CommunityPage() {
   const [communityTotal, setCommunityTotal] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [selectedCity, setSelectedCity] = useState<string>('Gjithë Kosova')
+  const [selectedCity, setSelectedCity] = useState<string>(ALL_CITIES)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'unanswered' | 'resolved'>('recent')
 
@@ -265,7 +283,7 @@ export default function CommunityPage() {
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({})
 
   const hasActiveFilters =
-    selectedCategory !== 'all' || selectedCity !== 'Gjithë Kosova' || searchQuery.trim() !== ''
+    selectedCategory !== 'all' || selectedCity !== ALL_CITIES || searchQuery.trim() !== ''
 
   // Fetch posts
   const loadPosts = async () => {
@@ -273,7 +291,7 @@ export default function CommunityPage() {
     try {
       const res = await fetchCommunityPosts({
         category: selectedCategory === 'all' ? undefined : selectedCategory,
-        city: selectedCity === 'Gjithë Kosova' ? undefined : selectedCity,
+        city: selectedCity === ALL_CITIES ? undefined : selectedCity,
         search: searchQuery.trim() || undefined,
         sort: sortBy,
       })
@@ -285,7 +303,7 @@ export default function CommunityPage() {
       }
     } catch (err) {
       console.error(err)
-      toast.danger('Nuk mund të ngarkoheshin pyetjet e komunitetit.')
+      toast.danger(t('community.toast.loadError'))
     } finally {
       setLoading(false)
     }
@@ -312,7 +330,7 @@ export default function CommunityPage() {
 
   const resetFilters = () => {
     setSelectedCategory('all')
-    setSelectedCity('Gjithë Kosova')
+    setSelectedCity(ALL_CITIES)
     setSearchQuery('')
     setSortBy('recent')
   }
@@ -329,7 +347,7 @@ export default function CommunityPage() {
         setCommentsMap((prev) => ({ ...prev, [postId]: comments }))
       } catch (err) {
         console.error(err)
-        toast.danger('Dështoi ngarkimi i komenteve')
+        toast.danger(t('community.toast.commentsError'))
       } finally {
         setLoadingComments((prev) => ({ ...prev, [postId]: false }))
       }
@@ -340,15 +358,15 @@ export default function CommunityPage() {
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) {
-      toast.info('Duhet të kyçeni për të publikuar një pyetje.')
+      toast.info(t('community.toast.loginToPost'))
       return
     }
     if (newTitle.trim().length < 5) {
-      toast.warning('Ju lutem shkruani një titull të qartë (së paku 5 shkronja).')
+      toast.warning(t('community.toast.titleShort'))
       return
     }
     if (newContent.trim().length < 10) {
-      toast.warning('Ju lutem përshkruani pyetjen ose kërkesën tuaj më hollësisht.')
+      toast.warning(t('community.toast.contentShort'))
       return
     }
 
@@ -358,10 +376,10 @@ export default function CommunityPage() {
         title: newTitle.trim(),
         content: newContent.trim(),
         category: newCategory,
-        city: newCity === 'Gjithë Kosova' ? '' : newCity,
+        city: newCity,
         budget: newBudget.trim(),
       })
-      toast.success('Pyetja u publikua me sukses në komunitet!')
+      toast.success(t('community.toast.postCreated'))
       setPosts((prev) => [created, ...prev])
       setTotal((prev) => (prev === null ? prev : prev + 1))
       setCommunityTotal((prev) => (prev === null ? prev : prev + 1))
@@ -370,7 +388,7 @@ export default function CommunityPage() {
       setNewBudget('')
       setIsPublisherExpanded(false)
     } catch (err: any) {
-      toast.danger(err?.response?.data?.message || 'Dështoi publikimi i pyetjes.')
+      toast.danger(err?.response?.data?.message || t('community.toast.postFailed'))
     } finally {
       setSubmittingPost(false)
     }
@@ -379,7 +397,7 @@ export default function CommunityPage() {
   // Handle like post
   const handleLikePost = async (postId: string) => {
     if (!user) {
-      toast.info('Kyçuni për të mbështetur këtë pyetje.')
+      toast.info(t('community.toast.loginToLike'))
       return
     }
     try {
@@ -392,7 +410,7 @@ export default function CommunityPage() {
         ),
       )
     } catch {
-      toast.danger('Dështoi veprimi i pëlqimit.')
+      toast.danger(t('community.toast.likeFailed'))
     }
   }
 
@@ -404,25 +422,25 @@ export default function CommunityPage() {
       setPosts((prev) => prev.map((p) => (p._id === post._id ? updated : p)))
       toast.success(
         nextStatus === 'resolved'
-          ? 'Kërkesa u shënua si e zgjidhur!'
-          : 'Kërkesa u rihap për rekomandime të reja.',
+          ? t('community.toast.markedResolved')
+          : t('community.toast.reopened'),
       )
     } catch (err: any) {
-      toast.danger(err?.response?.data?.message || 'Nuk keni leje për këtë veprim.')
+      toast.danger(err?.response?.data?.message || t('community.toast.noPermission'))
     }
   }
 
   // Handle delete post
   const handleDeletePost = async (postId: string) => {
-    if (!window.confirm('A jeni të sigurt që dëshironi të fshini këtë pyetje?')) return
+    if (!window.confirm(t('community.toast.confirmDeletePost'))) return
     try {
       await deleteCommunityPost(postId)
       setPosts((prev) => prev.filter((p) => p._id !== postId))
       setTotal((prev) => (prev === null ? prev : Math.max(0, prev - 1)))
       setCommunityTotal((prev) => (prev === null ? prev : Math.max(0, prev - 1)))
-      toast.success('Pyetja u fshi nga komuniteti.')
+      toast.success(t('community.toast.postDeleted'))
     } catch (err: any) {
-      toast.danger(err?.response?.data?.message || 'Dështoi fshirja e pyetjes.')
+      toast.danger(err?.response?.data?.message || t('community.toast.postDeleteFailed'))
     }
   }
 
@@ -430,13 +448,13 @@ export default function CommunityPage() {
   const handleAddComment = async (postId: string, e: React.FormEvent) => {
     e.preventDefault()
     if (!user) {
-      toast.info('Duhet të kyçeni për të komentuar.')
+      toast.info(t('community.toast.loginToComment'))
       return
     }
 
     const text = (commentText[postId] || '').trim()
     if (text.length < 2) {
-      toast.warning('Shkruani një koment të vlefshëm.')
+      toast.warning(t('community.toast.commentInvalid'))
       return
     }
 
@@ -458,9 +476,9 @@ export default function CommunityPage() {
       setCommentText((prev) => ({ ...prev, [postId]: '' }))
       setCommentPrice((prev) => ({ ...prev, [postId]: '' }))
       setCommentProvider((prev) => ({ ...prev, [postId]: '' }))
-      toast.success('Komenti dhe rekomandimi u shtuan me sukses!')
+      toast.success(t('community.toast.commentAdded'))
     } catch (err: any) {
-      toast.danger(err?.response?.data?.message || 'Dështoi shtimi i komentit.')
+      toast.danger(err?.response?.data?.message || t('community.toast.commentFailed'))
     } finally {
       setSubmittingComment((prev) => ({ ...prev, [postId]: false }))
     }
@@ -469,7 +487,7 @@ export default function CommunityPage() {
   // Handle like comment
   const handleLikeComment = async (postId: string, commentId: string) => {
     if (!user) {
-      toast.info('Kyçuni për të vlerësuar këtë koment.')
+      toast.info(t('community.toast.loginToRateComment'))
       return
     }
     try {
@@ -481,13 +499,13 @@ export default function CommunityPage() {
         ),
       }))
     } catch {
-      toast.danger('Dështoi vlerësimi i komentit.')
+      toast.danger(t('community.toast.commentLikeFailed'))
     }
   }
 
   // Handle delete comment
   const handleDeleteComment = async (postId: string, commentId: string) => {
-    if (!window.confirm('A jeni të sigurt që dëshironi të fshini këtë koment?')) return
+    if (!window.confirm(t('community.toast.confirmDeleteComment'))) return
     try {
       await deletePostComment(postId, commentId)
       setCommentsMap((prev) => ({
@@ -497,9 +515,9 @@ export default function CommunityPage() {
       setPosts((prev) =>
         prev.map((p) => (p._id === postId ? { ...p, commentsCount: Math.max(0, p.commentsCount - 1) } : p)),
       )
-      toast.success('Komenti u fshi.')
+      toast.success(t('community.toast.commentDeleted'))
     } catch (err: any) {
-      toast.danger(err?.response?.data?.message || 'Dështoi fshirja e komentit.')
+      toast.danger(err?.response?.data?.message || t('community.toast.commentDeleteFailed'))
     }
   }
 
@@ -507,7 +525,7 @@ export default function CommunityPage() {
   const handleSharePost = (postId: string) => {
     const url = `${window.location.origin}/komuniteti#post-${postId}`
     navigator.clipboard?.writeText(url)
-    toast.success('Lidhja e kësaj pyetjeje u kopjua në kujtesë!')
+    toast.success(t('community.toast.linkCopied'))
   }
 
   const firstName = user?.name?.trim().split(/\s+/)[0] || ''
@@ -530,47 +548,46 @@ export default function CommunityPage() {
             <div className="kk-comm-hero-kicker">
               <span className="kk-comm-live-dot" aria-hidden />
               <span>
-                Komuniteti Këshillohu
+                {t('community.hero.kicker')}
                 {communityTotal !== null && communityTotal > 0 && (
-                  <> · {communityTotal} pyetje aktive</>
+                  <> · {t('community.hero.activeQuestions', { count: communityTotal })}</>
                 )}
               </span>
             </div>
 
             <h1 className="kk-comm-hero-title">
-              Pyet komunitetin.{' '}
-              <span className="kk-comm-hero-title-accent">Merr çmime reale.</span>
+              {t('community.hero.title')}{' '}
+              <span className="kk-comm-hero-title-accent">{t('community.hero.titleAccent')}</span>
             </h1>
 
             <p className="kk-comm-hero-subtitle">
-              Kërkon avokat, noter apo kontabilist të besueshëm? Shkruaje kërkesën si status dhe
-              merr këshilla, rekomandime e tarifa orientuese nga qytetarët dhe ekspertët e verifikuar.
+              {t('community.hero.subtitle')}
             </p>
 
             <div className="kk-comm-hero-ctas">
               <button type="button" className="kk-comm-hero-cta" onClick={() => openComposer()}>
                 <PenLine size={17} aria-hidden />
-                Bëj një pyetje
+                {t('community.hero.ask')}
               </button>
               <button
                 type="button"
                 className="kk-comm-hero-cta kk-comm-hero-cta--ghost"
                 onClick={() => feedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
-                Shfleto diskutimet
+                {t('community.hero.browse')}
                 <ArrowRight size={16} aria-hidden />
               </button>
             </div>
 
             <ul className="kk-comm-hero-badges">
               <li>
-                <CheckCircle2 size={15} aria-hidden /> 100% falas
+                <CheckCircle2 size={15} aria-hidden /> {t('community.hero.free')}
               </li>
               <li>
-                <Coins size={15} aria-hidden /> Tarifa orientuese
+                <Coins size={15} aria-hidden /> {t('community.indicativeFee')}
               </li>
               <li>
-                <UserCheck size={15} aria-hidden /> Ekspertë të verifikuar
+                <UserCheck size={15} aria-hidden /> {t('community.hero.verifiedExperts')}
               </li>
             </ul>
           </div>
@@ -582,7 +599,7 @@ export default function CommunityPage() {
       <main className="kk-comm-container">
         <div className="kk-comm-grid">
           {/* ================= Feed column ================= */}
-          <section className="kk-comm-feed-col" aria-label="Pyetjet e komunitetit">
+          <section className="kk-comm-feed-col" aria-label={t('community.feedAria')}>
             {/* Composer */}
             <div
               ref={composerRef}
@@ -599,17 +616,19 @@ export default function CommunityPage() {
                         onClick={() => openComposer()}
                       >
                         <span>
-                          {firstName ? `Çfarë të duhet sot, ${firstName}?` : 'Çfarë të duhet sot?'}{' '}
-                          <em>Shkruaj pyetjen tënde…</em>
+                          {firstName
+                            ? t('community.composer.greetingName', { name: firstName })
+                            : t('community.composer.greeting')}{' '}
+                          <em>{t('community.composer.placeholder')}</em>
                         </span>
                         <span className="kk-comm-fake-input-btn">
-                          <PenLine size={15} aria-hidden /> Pyet
+                          <PenLine size={15} aria-hidden /> {t('community.composer.askShort')}
                         </span>
                       </button>
                     ) : (
                       <div className="kk-comm-composer-title">
-                        <strong>Pyetje e re për komunitetin</strong>
-                        <span>Sa më shumë detaje, aq më të sakta rekomandimet dhe çmimet.</span>
+                        <strong>{t('community.composer.newTitle')}</strong>
+                        <span>{t('community.composer.newHint')}</span>
                       </div>
                     )}
                     {isPublisherExpanded && (
@@ -617,7 +636,7 @@ export default function CommunityPage() {
                         type="button"
                         className="kk-comm-icon-btn"
                         onClick={() => setIsPublisherExpanded(false)}
-                        aria-label="Mbyll"
+                        aria-label={t('community.composer.close')}
                       >
                         <X size={18} />
                       </button>
@@ -626,20 +645,20 @@ export default function CommunityPage() {
 
                   {!isPublisherExpanded ? (
                     <div className="kk-comm-quick-prompts">
-                      <span className="kk-comm-quick-label">Fillo shpejt:</span>
+                      <span className="kk-comm-quick-label">{t('community.composer.quickStart')}</span>
                       {QUICK_PROMPTS.map((p) => {
                         const cat = categoryOf(p.category)
                         const Icon = cat.icon
                         return (
                           <button
-                            key={p.label}
+                            key={p.labelKey}
                             type="button"
                             className="kk-comm-quick-chip"
                             style={{ '--cat': cat.color } as CSSProperties}
-                            onClick={() => openComposer({ title: p.title, category: p.category })}
+                            onClick={() => openComposer({ title: t(p.titleKey), category: p.category })}
                           >
                             <Icon size={13} aria-hidden />
-                            {p.label}
+                            {t(p.labelKey)}
                           </button>
                         )
                       })}
@@ -647,33 +666,33 @@ export default function CommunityPage() {
                   ) : (
                     <form onSubmit={handleCreatePost} className="kk-comm-post-form">
                       <div className="kk-form-group">
-                        <label htmlFor="comm-title">Titulli i pyetjes ose kërkesës *</label>
+                        <label htmlFor="comm-title">{t('community.composer.titleLabel')}</label>
                         <input
                           id="comm-title"
                           type="text"
                           required
                           className="kk-comm-input kk-comm-input--lg"
-                          placeholder="P.sh.: Kam nevojë për një avokat për çështje trashëgimie"
+                          placeholder={t('community.composer.titlePlaceholder')}
                           value={newTitle}
                           onChange={(e) => setNewTitle(e.target.value)}
                         />
                       </div>
 
                       <div className="kk-form-group">
-                        <label htmlFor="comm-content">Përshkruaj situatën tënde *</label>
+                        <label htmlFor="comm-content">{t('community.composer.contentLabel')}</label>
                         <textarea
                           id="comm-content"
                           required
                           rows={4}
                           className="kk-comm-textarea"
-                          placeholder="Trego çfarë lloj shërbimi kërkon, nëse ke dokumentet gati, dhe çfarë këshille apo çmimi të duhet..."
+                          placeholder={t('community.composer.contentPlaceholder')}
                           value={newContent}
                           onChange={(e) => setNewContent(e.target.value)}
                         />
                       </div>
 
                       <fieldset className="kk-form-group kk-comm-cat-picker">
-                        <legend>Kategoria e shërbimit</legend>
+                        <legend>{t('community.composer.category')}</legend>
                         <div className="kk-comm-cat-options">
                           {CATEGORY_ITEMS.filter((c) => c.id !== 'all').map((c) => {
                             const Icon = c.icon
@@ -694,7 +713,7 @@ export default function CommunityPage() {
                                 <span className="kk-comm-cat-option-icon">
                                   <Icon size={16} aria-hidden />
                                 </span>
-                                <span>{c.short}</span>
+                                <span>{categoryShort(t, c.id)}</span>
                               </label>
                             )
                           })}
@@ -703,7 +722,7 @@ export default function CommunityPage() {
 
                       <div className="kk-form-row">
                         <div className="kk-form-col">
-                          <label htmlFor="comm-city">Qyteti</label>
+                          <label htmlFor="comm-city">{t('community.composer.city')}</label>
                           <div className="kk-comm-field-icon">
                             <MapPin size={15} aria-hidden />
                             <select
@@ -714,7 +733,7 @@ export default function CommunityPage() {
                             >
                               {CITIES.map((c) => (
                                 <option key={c} value={c}>
-                                  {c}
+                                  {c || t('community.allKosovo')}
                                 </option>
                               ))}
                             </select>
@@ -722,14 +741,14 @@ export default function CommunityPage() {
                         </div>
 
                         <div className="kk-form-col">
-                          <label htmlFor="comm-budget">Buxheti orientues (opsionale)</label>
+                          <label htmlFor="comm-budget">{t('community.composer.budget')}</label>
                           <div className="kk-comm-field-icon">
                             <Coins size={15} aria-hidden />
                             <input
                               id="comm-budget"
                               type="text"
                               className="kk-comm-input"
-                              placeholder="P.sh. Deri 100€"
+                              placeholder={t('community.composer.budgetPlaceholder')}
                               value={newBudget}
                               onChange={(e) => setNewBudget(e.target.value)}
                             />
@@ -739,7 +758,7 @@ export default function CommunityPage() {
 
                       <div className="kk-comm-form-actions">
                         <span className="kk-comm-form-hint">
-                          <Info size={13} aria-hidden /> Pyetjet janë publike — mos shkruaj të dhëna personale.
+                          <Info size={13} aria-hidden /> {t('community.composer.publicHint')}
                         </span>
                         <Button
                           type="button"
@@ -747,7 +766,7 @@ export default function CommunityPage() {
                           size="sm"
                           onClick={() => setIsPublisherExpanded(false)}
                         >
-                          Anulo
+                          {t('community.composer.cancel')}
                         </Button>
                         <Button
                           type="submit"
@@ -757,7 +776,7 @@ export default function CommunityPage() {
                           className="kk-comm-submit-btn"
                         >
                           <Send size={14} aria-hidden />
-                          {submittingPost ? 'Duke u publikuar...' : 'Publiko pyetjen'}
+                          {submittingPost ? t('community.composer.publishing') : t('community.composer.publish')}
                         </Button>
                       </div>
                     </form>
@@ -769,15 +788,15 @@ export default function CommunityPage() {
                     <MessagesSquare size={24} aria-hidden />
                   </div>
                   <div className="kk-comm-guest-info">
-                    <strong>Ke nevojë për një avokat apo ekspert?</strong>
-                    <p>Kyçu për të bërë pyetje, për të marrë rekomandime dhe tarifa orientuese — falas.</p>
+                    <strong>{t('community.guest.title')}</strong>
+                    <p>{t('community.guest.text')}</p>
                   </div>
                   <div className="kk-comm-guest-actions">
                     <Link to="/login" className="kk-comm-btn-login">
-                      Kyçu
+                      {t('community.guest.login')}
                     </Link>
                     <Link to="/register" className="kk-comm-btn-register">
-                      Regjistrohu falas <ArrowRight size={15} aria-hidden />
+                      {t('community.guest.register')} <ArrowRight size={15} aria-hidden />
                     </Link>
                   </div>
                 </div>
@@ -786,7 +805,7 @@ export default function CommunityPage() {
 
             {/* Toolbar */}
             <div className="kk-comm-toolbar" ref={feedRef}>
-              <div className="kk-comm-category-tabs" role="tablist" aria-label="Kategoritë">
+              <div className="kk-comm-category-tabs" role="tablist" aria-label={t('community.toolbar.categoriesAria')}>
                 {CATEGORY_ITEMS.map((item) => {
                   const Icon = item.icon
                   const isActive = selectedCategory === item.id
@@ -803,7 +822,7 @@ export default function CommunityPage() {
                       <span className="kk-comm-category-tab-icon">
                         <Icon size={14} aria-hidden />
                       </span>
-                      <span>{item.label}</span>
+                      <span>{categoryLabel(t, item.id)}</span>
                     </button>
                   )
                 })}
@@ -814,18 +833,18 @@ export default function CommunityPage() {
                   <Search size={16} className="kk-comm-search-icon" aria-hidden />
                   <input
                     type="search"
-                    placeholder="Kërko pyetje, avokatë, tema..."
+                    placeholder={t('community.toolbar.searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="kk-comm-search-input"
-                    aria-label="Kërko në komunitet"
+                    aria-label={t('community.toolbar.searchAria')}
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       className="kk-comm-clear-btn"
                       onClick={() => setSearchQuery('')}
-                      aria-label="Pastro kërkimin"
+                      aria-label={t('community.toolbar.clearSearch')}
                     >
                       <X size={14} />
                     </button>
@@ -837,11 +856,11 @@ export default function CommunityPage() {
                   <select
                     value={selectedCity}
                     onChange={(e) => setSelectedCity(e.target.value)}
-                    aria-label="Filtro sipas qytetit"
+                    aria-label={t('community.toolbar.cityAria')}
                   >
                     {CITIES.map((c) => (
                       <option key={c} value={c}>
-                        {c}
+                        {c || t('community.allKosovo')}
                       </option>
                     ))}
                   </select>
@@ -851,28 +870,32 @@ export default function CommunityPage() {
               <div className="kk-comm-feed-head">
                 <div className="kk-comm-feed-count">
                   {loading ? (
-                    <span>Duke ngarkuar…</span>
+                    <span>{t('community.toolbar.loading')}</span>
                   ) : (
                     <>
-                      <strong>{total ?? posts.length}</strong> pyetje
+                      <Trans
+                        i18nKey="community.toolbar.questionsCount"
+                        count={total ?? posts.length}
+                        components={{ strong: <strong /> }}
+                      />
                       {selectedCategory !== 'all' && (
                         <span
                           className="kk-comm-feed-count-cat"
                           style={{ '--cat': activeCategory.color } as CSSProperties}
                         >
-                          në {activeCategory.label}
+                          {t('community.toolbar.inCategory', { category: categoryLabel(t, activeCategory.id) })}
                         </span>
                       )}
                       {hasActiveFilters && (
                         <button type="button" className="kk-comm-reset-link" onClick={resetFilters}>
-                          <RotateCcw size={12} aria-hidden /> Pastro
+                          <RotateCcw size={12} aria-hidden /> {t('community.toolbar.clear')}
                         </button>
                       )}
                     </>
                   )}
                 </div>
 
-                <div className="kk-comm-sort" role="radiogroup" aria-label="Renditja">
+                <div className="kk-comm-sort" role="radiogroup" aria-label={t('community.toolbar.sortAria')}>
                   {SORT_OPTIONS.map((opt) => {
                     const Icon = opt.icon
                     const active = sortBy === opt.id
@@ -886,7 +909,7 @@ export default function CommunityPage() {
                         onClick={() => setSortBy(opt.id)}
                       >
                         <Icon size={13} aria-hidden />
-                        <span>{opt.label}</span>
+                        <span>{t(`community.sort.${opt.id}`)}</span>
                       </button>
                     )
                   })}
@@ -905,25 +928,25 @@ export default function CommunityPage() {
                     <span className="kk-comm-empty-dot kk-comm-empty-dot--a" />
                     <span className="kk-comm-empty-dot kk-comm-empty-dot--b" />
                   </div>
-                  <h3>{hasActiveFilters ? 'Asnjë pyetje për këto filtra' : 'Bëhu i pari që pyet'}</h3>
+                  <h3>{hasActiveFilters ? t('community.empty.filteredTitle') : t('community.empty.title')}</h3>
                   <p>
                     {hasActiveFilters
-                      ? 'Provo një kategori tjetër, një qytet tjetër ose pastro kërkimin.'
-                      : 'Komuniteti po pret pyetjen tënde — ekspertët përgjigjen shpejt.'}
+                      ? t('community.empty.filteredText')
+                      : t('community.empty.text')}
                   </p>
                   <div className="kk-comm-empty-actions">
                     {hasActiveFilters && (
                       <Button variant="outline" size="sm" onClick={resetFilters}>
-                        <RotateCcw size={14} aria-hidden /> Pastro filtrat
+                        <RotateCcw size={14} aria-hidden /> {t('community.empty.clearFilters')}
                       </Button>
                     )}
                     {user ? (
                       <Button variant="primary" size="sm" onClick={() => openComposer()}>
-                        <PenLine size={14} aria-hidden /> Bëj një pyetje
+                        <PenLine size={14} aria-hidden /> {t('community.hero.ask')}
                       </Button>
                     ) : (
                       <Link to="/register" className="kk-comm-btn-register">
-                        Regjistrohu dhe pyet <ArrowRight size={15} aria-hidden />
+                        {t('community.empty.registerAndAsk')} <ArrowRight size={15} aria-hidden />
                       </Link>
                     )}
                   </div>
@@ -955,21 +978,21 @@ export default function CommunityPage() {
                           className={`kk-comm-rail-like ${hasLiked ? 'is-liked' : ''}`}
                           onClick={() => handleLikePost(post._id)}
                           aria-pressed={hasLiked}
-                          aria-label={`Mbështet pyetjen (${likeCount})`}
+                          aria-label={t('community.post.supportAria', { count: likeCount })}
                         >
                           <Heart size={18} fill={hasLiked ? 'currentColor' : 'none'} aria-hidden />
                           <strong>{likeCount}</strong>
-                          <span>mbështetje</span>
+                          <span>{t('community.post.supportLabel', { count: likeCount })}</span>
                         </button>
                         <button
                           type="button"
                           className={`kk-comm-rail-answers ${answerCount > 0 ? 'has-answers' : ''} ${isResolved ? 'is-resolved' : ''}`}
                           onClick={() => handleToggleComments(post._id)}
-                          aria-label={`${answerCount} përgjigje`}
+                          aria-label={t('community.post.answersAria', { count: answerCount })}
                         >
                           {isResolved ? <CheckCircle2 size={16} aria-hidden /> : <MessageCircle size={16} aria-hidden />}
                           <strong>{answerCount}</strong>
-                          <span>përgjigje</span>
+                          <span>{t('community.post.answersLabel', { count: answerCount })}</span>
                         </button>
                       </div>
 
@@ -977,7 +1000,7 @@ export default function CommunityPage() {
                         {/* Meta row */}
                         <div className="kk-comm-post-topline">
                           <span className="kk-comm-cat-chip">
-                            <CatIcon size={13} aria-hidden /> {cat.label}
+                            <CatIcon size={13} aria-hidden /> {categoryLabel(t, cat.id)}
                           </span>
                           {post.city && (
                             <span className="kk-comm-topline-meta">
@@ -985,11 +1008,11 @@ export default function CommunityPage() {
                             </span>
                           )}
                           <span className="kk-comm-topline-meta">
-                            <Clock3 size={12} aria-hidden /> {formatRelativeTime(post.createdAt)}
+                            <Clock3 size={12} aria-hidden /> {formatRelativeTime(post.createdAt, t)}
                           </span>
                           {isResolved && (
                             <span className="kk-comm-status-resolved">
-                              <CheckCircle2 size={13} aria-hidden /> E zgjidhur
+                              <CheckCircle2 size={13} aria-hidden /> {t('community.post.resolved')}
                             </span>
                           )}
                         </div>
@@ -1013,7 +1036,7 @@ export default function CommunityPage() {
                           {post.budget && (
                             <span className="kk-comm-budget-ticket">
                               <Coins size={13} aria-hidden />
-                              <span>Buxheti</span>
+                              <span>{t('community.post.budget')}</span>
                               <strong>{post.budget}</strong>
                             </span>
                           )}
@@ -1030,10 +1053,10 @@ export default function CommunityPage() {
                             <MessageCircle size={16} aria-hidden />
                             <span>
                               {areCommentsOpen
-                                ? 'Mbyll diskutimin'
+                                ? t('community.post.closeDiscussion')
                                 : answerCount > 0
-                                  ? `Shiko ${answerCount} përgjigje`
-                                  : 'Përgjigju i pari'}
+                                  ? t('community.post.viewAnswers', { count: answerCount })
+                                  : t('community.post.answerFirst')}
                             </span>
                           </button>
 
@@ -1051,10 +1074,10 @@ export default function CommunityPage() {
                             type="button"
                             className="kk-comm-action-btn"
                             onClick={() => handleSharePost(post._id)}
-                            title="Shpërndaj lidhjen"
+                            title={t('community.post.shareTitle')}
                           >
                             <Share2 size={16} aria-hidden />
-                            <span className="kk-hide-mobile">Shpërndaj</span>
+                            <span className="kk-hide-mobile">{t('community.post.share')}</span>
                           </button>
 
                           {(isAuthor || isAdmin) && (
@@ -1063,17 +1086,17 @@ export default function CommunityPage() {
                                 type="button"
                                 className={`kk-comm-mini-btn ${isResolved ? '' : 'kk-comm-mini-btn--success'}`}
                                 onClick={() => handleToggleStatus(post)}
-                                title={isResolved ? 'Rihap pyetjen' : 'Shëno si të zgjidhur'}
+                                title={isResolved ? t('community.post.reopenTitle') : t('community.post.markResolvedTitle')}
                               >
                                 {isResolved ? <RotateCcw size={14} aria-hidden /> : <CheckCircle2 size={14} aria-hidden />}
-                                <span>{isResolved ? 'Rihap' : 'Shëno të zgjidhur'}</span>
+                                <span>{isResolved ? t('community.post.reopen') : t('community.post.markResolved')}</span>
                               </button>
                               <button
                                 type="button"
                                 className="kk-comm-mini-btn kk-comm-danger-btn"
                                 onClick={() => handleDeletePost(post._id)}
-                                title="Fshij pyetjen"
-                                aria-label="Fshij pyetjen"
+                                title={t('community.post.delete')}
+                                aria-label={t('community.post.delete')}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1086,18 +1109,18 @@ export default function CommunityPage() {
                           <div className="kk-comm-comments-panel">
                             <div className="kk-comm-comments-heading">
                               <MessagesSquare size={15} aria-hidden />
-                              <span>Diskutimi & rekomandimet</span>
+                              <span>{t('community.comments.heading')}</span>
                               <span className="kk-comm-count-pill">{commentsList.length}</span>
                             </div>
 
                             {isLoadingPostComments ? (
                               <div className="kk-comm-comments-loading">
                                 <div className="kk-spinner-sm" />
-                                <span>Duke ngarkuar komentet...</span>
+                                <span>{t('community.comments.loading')}</span>
                               </div>
                             ) : commentsList.length === 0 ? (
                               <p className="kk-comm-no-comments">
-                                Ende pa përgjigje. Sugjero një ekspert, ndaj përvojën tënde ose jep një çmim orientues.
+                                {t('community.comments.empty')}
                               </p>
                             ) : (
                               <ol className="kk-comm-comments-list">
@@ -1122,7 +1145,7 @@ export default function CommunityPage() {
                                       <div className="kk-comm-comment-content-box">
                                         {isExpert && (
                                           <span className="kk-comm-expert-flag">
-                                            <BadgeCheck size={12} aria-hidden /> Përgjigje nga eksperti
+                                            <BadgeCheck size={12} aria-hidden /> {t('community.comments.expertAnswer')}
                                           </span>
                                         )}
                                         <div className="kk-comm-comment-author-bar">
@@ -1130,7 +1153,7 @@ export default function CommunityPage() {
                                             <strong>{comm.authorName}</strong>
                                             <RoleBadge role={comm.authorRole} />
                                             <span className="kk-comm-comment-date">
-                                              {formatRelativeTime(comm.createdAt)}
+                                              {formatRelativeTime(comm.createdAt, t)}
                                             </span>
                                           </div>
 
@@ -1139,8 +1162,8 @@ export default function CommunityPage() {
                                               type="button"
                                               className="kk-comm-delete-comment-btn"
                                               onClick={() => handleDeleteComment(post._id, comm._id)}
-                                              title="Fshij komentin"
-                                              aria-label="Fshij komentin"
+                                              title={t('community.comments.delete')}
+                                              aria-label={t('community.comments.delete')}
                                             >
                                               <Trash2 size={13} />
                                             </button>
@@ -1154,7 +1177,7 @@ export default function CommunityPage() {
                                             {comm.suggestedPrice && (
                                               <div className="kk-comm-price-tag">
                                                 <Coins size={15} aria-hidden />
-                                                <span>Tarifa orientuese</span>
+                                                <span>{t('community.indicativeFee')}</span>
                                                 <strong>{comm.suggestedPrice}</strong>
                                               </div>
                                             )}
@@ -1165,7 +1188,7 @@ export default function CommunityPage() {
                                                   <BadgeCheck size={15} aria-hidden />
                                                 </span>
                                                 <div>
-                                                  <span>Rekomandon</span>
+                                                  <span>{t('community.comments.recommends')}</span>
                                                   <strong>{comm.suggestedProviderName}</strong>
                                                 </div>
                                                 {comm.suggestedProviderUid && (
@@ -1173,7 +1196,7 @@ export default function CommunityPage() {
                                                     to={`/providers/${comm.suggestedProviderUid}`}
                                                     className="kk-comm-view-profile-link"
                                                   >
-                                                    Profili <ArrowRight size={13} aria-hidden />
+                                                    {t('req.profile')} <ArrowRight size={13} aria-hidden />
                                                   </Link>
                                                 )}
                                               </div>
@@ -1189,7 +1212,7 @@ export default function CommunityPage() {
                                             aria-pressed={commLiked}
                                           >
                                             <Heart size={13} fill={commLiked ? 'currentColor' : 'none'} aria-hidden />
-                                            <span>{comm.likes?.length ? comm.likes.length : 'E dobishme'}</span>
+                                            <span>{comm.likes?.length ? comm.likes.length : t('community.comments.helpful')}</span>
                                           </button>
 
                                           {isExpert && comm.authorUid && (
@@ -1197,7 +1220,7 @@ export default function CommunityPage() {
                                               to={`/providers/${comm.authorUid}`}
                                               className="kk-comm-contact-expert-link"
                                             >
-                                              Kontakto ekspertin <ArrowRight size={13} aria-hidden />
+                                              {t('community.comments.contactExpert')} <ArrowRight size={13} aria-hidden />
                                             </Link>
                                           )}
                                         </div>
@@ -1224,8 +1247,8 @@ export default function CommunityPage() {
                                     rows={2}
                                     required
                                     className="kk-comm-comment-textarea"
-                                    placeholder="Shkruaj një këshillë, përvojë ose sugjero një zyrë..."
-                                    aria-label="Komenti yt"
+                                    placeholder={t('community.comments.placeholder')}
+                                    aria-label={t('community.comments.aria')}
                                     value={commentText[post._id] || ''}
                                     onChange={(e) =>
                                       setCommentText((prev) => ({ ...prev, [post._id]: e.target.value }))
@@ -1237,7 +1260,7 @@ export default function CommunityPage() {
                                       <Coins size={14} aria-hidden />
                                       <input
                                         type="text"
-                                        placeholder="Çmimi orientues (p.sh. 30–100 €)"
+                                        placeholder={t('community.comments.pricePlaceholder')}
                                         value={commentPrice[post._id] || ''}
                                         onChange={(e) =>
                                           setCommentPrice((prev) => ({ ...prev, [post._id]: e.target.value }))
@@ -1250,7 +1273,7 @@ export default function CommunityPage() {
                                       <BadgeCheck size={14} aria-hidden />
                                       <input
                                         type="text"
-                                        placeholder="Rekomando një ekspert (opsionale)"
+                                        placeholder={t('community.comments.providerPlaceholder')}
                                         value={commentProvider[post._id] || ''}
                                         onChange={(e) =>
                                           setCommentProvider((prev) => ({
@@ -1270,16 +1293,16 @@ export default function CommunityPage() {
                                       className="kk-comm-comment-send-btn"
                                     >
                                       <Send size={14} aria-hidden />
-                                      <span>{submittingComment[post._id] ? 'Duke dërguar...' : 'Dërgo'}</span>
+                                      <span>{submittingComment[post._id] ? t('community.comments.sending') : t('community.comments.send')}</span>
                                     </Button>
                                   </div>
                                 </div>
                               </form>
                             ) : (
                               <div className="kk-comm-login-to-comment">
-                                <span>Për të komentuar ose për të sugjeruar çmime,</span>
+                                <span>{t('community.comments.loginPrompt')}</span>
                                 <Link to="/login" className="kk-comm-login-link">
-                                  kyçu këtu <ArrowRight size={13} aria-hidden />
+                                  {t('community.comments.loginLink')} <ArrowRight size={13} aria-hidden />
                                 </Link>
                               </div>
                             )}
@@ -1298,28 +1321,28 @@ export default function CommunityPage() {
             <div className="kk-comm-side-card kk-comm-guide-widget">
               <div className="kk-comm-widget-title">
                 <Info size={17} aria-hidden />
-                <h3>Si funksionon?</h3>
+                <h3>{t('community.sidebar.howTitle')}</h3>
               </div>
               <ol className="kk-comm-steps">
                 <li>
                   <span className="kk-comm-step-num">1</span>
                   <div>
-                    <strong>Pyet si status</strong>
-                    <p>Shkruaj problemin ligjor, noterial apo financiar me pak fjalë.</p>
+                    <strong>{t('community.sidebar.step1Title')}</strong>
+                    <p>{t('community.sidebar.step1Text')}</p>
                   </div>
                 </li>
                 <li>
                   <span className="kk-comm-step-num">2</span>
                   <div>
-                    <strong>Merr këshilla & çmime</strong>
-                    <p>Anëtarët dhe ekspertët ndajnë tarifa orientuese dhe rekomandime.</p>
+                    <strong>{t('community.sidebar.step2Title')}</strong>
+                    <p>{t('community.sidebar.step2Text')}</p>
                   </div>
                 </li>
                 <li>
                   <span className="kk-comm-step-num">3</span>
                   <div>
-                    <strong>Lidhu direkt</strong>
-                    <p>Hap profilin e ekspertit të sugjeruar për takim ose bisedë.</p>
+                    <strong>{t('community.sidebar.step3Title')}</strong>
+                    <p>{t('community.sidebar.step3Text')}</p>
                   </div>
                 </li>
               </ol>
@@ -1329,10 +1352,10 @@ export default function CommunityPage() {
               <span className="kk-comm-feature-icon">
                 <Scale size={22} aria-hidden />
               </span>
-              <h4>Krahaso avokatët krah për krah</h4>
-              <p>Deri në 3 avokatë — përvojë, tarifa dhe orare të lira në një pamje.</p>
+              <h4>{t('community.sidebar.compareTitle')}</h4>
+              <p>{t('community.sidebar.compareText')}</p>
               <span className="kk-comm-sidebar-action-btn">
-                Hap krahasimin <ArrowRight size={15} aria-hidden />
+                {t('community.sidebar.compareCta')} <ArrowRight size={15} aria-hidden />
               </span>
             </Link>
 
@@ -1340,10 +1363,10 @@ export default function CommunityPage() {
               <span className="kk-comm-ai-badge">
                 <MessageSquareText size={13} aria-hidden /> Këshilla AI · 24/7
               </span>
-              <h4>S'do të presësh? Pyet AI-në.</h4>
-              <p>Sqarime të menjëhershme për hapat ligjorë, dokumentet dhe afatet.</p>
+              <h4>{t('community.sidebar.aiTitle')}</h4>
+              <p>{t('community.sidebar.aiText')}</p>
               <span className="kk-comm-ai-btn">
-                Bisedo tani <ArrowRight size={15} aria-hidden />
+                {t('community.sidebar.aiCta')} <ArrowRight size={15} aria-hidden />
               </span>
             </Link>
           </aside>

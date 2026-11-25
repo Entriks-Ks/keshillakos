@@ -21,6 +21,7 @@ test('Socket.IO call lifecycle: initiate -> incoming -> accept -> accepted -> en
   const originalCallFindOne = Call.findOne
   const originalCallFindMany = Call.find
   const originalCallCreate = Call.create
+  const originalCallFindOneAndUpdate = Call.findOneAndUpdate
   const originalBlockFindOne = ChatBlock.findOne
   const originalBlockFind = ChatBlock.find
 
@@ -85,6 +86,13 @@ test('Socket.IO call lifecycle: initiate -> incoming -> accept -> accepted -> en
   Call.create = (async () => mockCall) as any
   Call.findById = (async (id: any) => {
     if (id.toString() === fakeCallId) return mockCall
+    return null
+  }) as any
+  Call.findOneAndUpdate = (async (filter: any, update: any) => {
+    if (String(filter._id) === String(fakeCallId) && mockCall.status === filter.status) {
+      Object.assign(mockCall, update.$set)
+      return mockCall
+    }
     return null
   }) as any
 
@@ -187,5 +195,6 @@ test('Socket.IO call lifecycle: initiate -> incoming -> accept -> accepted -> en
     Call.find = originalCallFindMany
     Call.findOne = originalCallFindOne
     Call.create = originalCallCreate
+    Call.findOneAndUpdate = originalCallFindOneAndUpdate
   }
 })

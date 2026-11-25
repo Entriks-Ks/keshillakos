@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, memo } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation, Trans } from 'react-i18next'
 import {
   RotateCw,
   TrendingUp,
@@ -47,6 +48,7 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
   className = '',
   compact = false,
 }: AiTrustRecommendationsCardProps) {
+  const { t } = useTranslation()
   const [data, setData] = useState<ProviderTrustRecommendationsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -64,7 +66,7 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
       setData(response)
     } catch (err) {
       console.warn('Could not load AI trust recommendations:', err)
-      setError('Nuk arritëm të ngarkojmë analizën nga AI.')
+      setError('ai.recs.loadError')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -105,10 +107,8 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
                 <CheckCircle2 size={22} />
               </div>
               <div>
-                <h3 className="kk-ai-recs-title">Siguri Maksimale e Profilit ({data.currentScore}%)</h3>
-                <p className="kk-ai-recs-desc">
-                  Urime! Profili juaj përmbush të gjitha standardet e larta të besueshmërisë në KëshillaKos.
-                </p>
+                <h3 className="kk-ai-recs-title">{t('ai.recs.maxTitle', { score: data.currentScore })}</h3>
+                <p className="kk-ai-recs-desc">{t('ai.recs.maxDesc')}</p>
               </div>
             </div>
           </div>
@@ -116,6 +116,14 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
       )
     }
     return null
+  }
+
+  const companyView = isCompany || data.isCompany
+  // Backend recommendation copy is Albanian only; translate known ids and fall back to its text.
+  const recText = (rec: TrustRecommendation, field: 'title' | 'description' | 'action') => {
+    const fallback = field === 'action' ? rec.actionLabel : rec[field]
+    const variant = rec.id === 'verify_license' && data.isCompany && field !== 'action' ? `${field}Company` : field
+    return t(`ai.recs.items.${rec.id}.${variant}`, { defaultValue: fallback })
   }
 
   return (
@@ -129,14 +137,17 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
           <div className="kk-ai-recs-title-box">
             <div className="kk-ai-recs-eyebrow">
               <BadgeCheck size={11} />
-              <span>Optimizim nga AI • Besueshmëria & Siguria</span>
+              <span>{t('ai.recs.eyebrow')}</span>
             </div>
             <h3 className="kk-ai-recs-title">
-              {isCompany || data.isCompany ? 'Këshilla AI për Kompaninë' : 'Këshilla AI për Ofruesin'}
+              {companyView ? t('ai.recs.titleCompany') : t('ai.recs.titleProvider')}
             </h3>
             <p className="kk-ai-recs-desc">
-              Hapa konkretë për ta bërë profilin më të sigurt për klientët dhe për të rritur vlerësimin në{' '}
-              <strong className="text-emerald-500 font-bold">{data.potentialScore}%</strong>.
+              <Trans
+                i18nKey="ai.recs.desc"
+                values={{ score: data.potentialScore }}
+                components={{ strong: <strong className="text-emerald-500 font-bold" /> }}
+              />
             </p>
           </div>
         </div>
@@ -146,11 +157,11 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
           onClick={() => void loadData(true)}
           disabled={refreshing}
           className="kk-ai-recs-refresh-btn"
-          title="Rifresko analizën me Gemini AI"
-          aria-label="Rifresko analizën me AI"
+          title={t('ai.recs.refreshTitle')}
+          aria-label={t('ai.recs.refreshAria')}
         >
           <RotateCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          <span>{refreshing ? 'Duke analizuar...' : 'Rifresko me AI'}</span>
+          <span>{refreshing ? t('ai.recs.analyzing') : t('ai.recs.refresh')}</span>
         </button>
       </div>
 
@@ -158,7 +169,7 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
       <div className="kk-ai-recs-banner">
         <div className="kk-ai-recs-score-group">
           <div className="kk-ai-recs-score-pill current">
-            <span className="kk-ai-recs-pill-label">Pikët Aktuale</span>
+            <span className="kk-ai-recs-pill-label">{t('ai.recs.current')}</span>
             <span className="kk-ai-recs-pill-val">{data.currentScore}%</span>
           </div>
 
@@ -167,14 +178,14 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
           </div>
 
           <div className="kk-ai-recs-score-pill potential">
-            <span className="kk-ai-recs-pill-label">Potenciali me AI</span>
+            <span className="kk-ai-recs-pill-label">{t('ai.recs.potential')}</span>
             <span className="kk-ai-recs-pill-val">{data.potentialScore}%</span>
           </div>
 
           {data.potentialGain > 0 && (
             <div className="kk-ai-recs-gain-badge">
               <TrendingUp size={14} />
-              <span>+{data.potentialGain}% rritje e sigurisë</span>
+              <span>{t('ai.recs.gain', { gain: data.potentialGain })}</span>
             </div>
           )}
         </div>
@@ -184,12 +195,12 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
           <div
             className="kk-ai-recs-progress-current"
             style={{ width: `${data.currentScore}%` }}
-            title={`Pikët aktuale: ${data.currentScore}%`}
+            title={t('ai.recs.currentTitle', { score: data.currentScore })}
           />
           <div
             className="kk-ai-recs-progress-gain"
             style={{ width: `${data.potentialGain}%` }}
-            title={`Rritje e mundshme: +${data.potentialGain}%`}
+            title={t('ai.recs.gainTitle', { gain: data.potentialGain })}
           />
         </div>
       </div>
@@ -224,26 +235,30 @@ export const AiTrustRecommendationsCard = memo(function AiTrustRecommendationsCa
                       {isCritical ? (
                         <>
                           <AlertTriangle size={11} />
-                          <span>Kritike</span>
+                          <span>{t('ai.recs.priority.critical')}</span>
                         </>
                       ) : isRecommended ? (
-                        <span>E Rekomanduar</span>
+                        <span>{t('ai.recs.priority.recommended')}</span>
                       ) : (
-                        <span>Përmirësim</span>
+                        <span>{t('ai.recs.priority.optional')}</span>
                       )}
                     </span>
 
-                    <span className="kk-ai-rec-impact-pill">{rec.impact}</span>
+                    <span className="kk-ai-rec-impact-pill">
+                      {typeof rec.impactPoints === 'number'
+                        ? t('ai.recs.impact', { count: rec.impactPoints })
+                        : rec.impact}
+                    </span>
                   </div>
 
-                  <h4 className="kk-ai-rec-title">{rec.title}</h4>
-                  <p className="kk-ai-rec-desc">{rec.description}</p>
+                  <h4 className="kk-ai-rec-title">{recText(rec, 'title')}</h4>
+                  <p className="kk-ai-rec-desc">{recText(rec, 'description')}</p>
                 </div>
               </div>
 
               <div className="kk-ai-rec-action-area">
                 <Link to={rec.actionPath} className="kk-ai-rec-action-btn">
-                  <span>{rec.actionLabel}</span>
+                  <span>{recText(rec, 'action')}</span>
                   <ArrowRight size={14} />
                 </Link>
               </div>

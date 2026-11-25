@@ -1,5 +1,6 @@
 import { type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Clock, MapPin } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import type { ServiceItem } from '../api/services'
@@ -9,18 +10,20 @@ import { formatServicePrice } from '../utils/serviceDiscovery'
 import ProfileAvatar from './ProfileAvatar'
 import ServiceMediaPlaceholder from './ServiceMediaPlaceholder'
 
-const DELIVERY_LABELS: Record<string, string> = {
-  online: 'Online',
-  physical: 'Fizikisht',
-  group: 'Grup',
+/** Translation keys for delivery modes; translated at render. */
+const DELIVERY_LABEL_KEYS: Record<string, string> = {
+  online: 'cards.online',
+  physical: 'offers.inPerson',
+  group: 'cards.group',
 }
 
-function ratingWord(average: number, count: number) {
-  if (count <= 0) return 'Ende pa vlerësime'
-  if (average >= 4.8) return 'Shkëlqyeshëm'
-  if (average >= 4) return 'Shumë mirë'
-  if (average >= 3) return 'Mirë'
-  return 'Në përmirësim'
+/** Returns the translation key for the rating summary word. */
+function ratingWordKey(average: number, count: number) {
+  if (count <= 0) return 'offers.noRatings'
+  if (average >= 4.8) return 'cards.ratingWord.excellent'
+  if (average >= 4) return 'cards.ratingWord.veryGood'
+  if (average >= 3) return 'cards.ratingWord.good'
+  return 'cards.ratingWord.improving'
 }
 
 function isCompanyOwned(service: ServiceItem) {
@@ -34,6 +37,7 @@ type Props = {
 
 export default function ServiceCard({ service, mode = 'list' }: Props) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const isCompact = mode === 'compact'
   const details = service.details || {}
   const provider = service.provider
@@ -74,7 +78,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
       onKeyDown={onCardKeyDown}
       role="link"
       tabIndex={0}
-      aria-label={`Shiko shërbimin ${service.title}`}
+      aria-label={t('cards.viewServiceNamed', { title: service.title })}
     >
       <div className={`tt-result-avatar${companyOwned ? ' is-company' : ''}`} aria-hidden>
         <ProfileAvatar src={provider?.profilePhoto} seed={providerUid} size="fill" fit={companyOwned ? 'contain' : 'cover'} />
@@ -106,7 +110,7 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
         ) : null}
 
         <p className="tt-pro-rating">
-          <strong>{ratingWord(rating, ratingCount)}</strong>
+          <strong>{t(ratingWordKey(rating, ratingCount))}</strong>
           {ratingCount > 0 ? (
             <>
               <span className="tt-pro-rating-score">{rating.toFixed(1)}</span>
@@ -127,7 +131,13 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
           ) : null}
           {price ? <span>{price}</span> : null}
           {categoryLine ? <span>{categoryLine}</span> : null}
-          {details.deliveryModes?.[0] ? <span>{DELIVERY_LABELS[details.deliveryModes[0]] || details.deliveryModes[0]}</span> : null}
+          {details.deliveryModes?.[0] ? (
+            <span>
+              {DELIVERY_LABEL_KEYS[details.deliveryModes[0]]
+                ? t(DELIVERY_LABEL_KEYS[details.deliveryModes[0]])
+                : details.deliveryModes[0]}
+            </span>
+          ) : null}
         </p>
         {service.description ? <p className="service-card-desc">{service.description}</p> : null}
         <div className="tt-result-media" aria-hidden>
@@ -137,11 +147,11 @@ export default function ServiceCard({ service, mode = 'list' }: Props) {
 
       <div className="tt-result-cta">
         <Link to={servicePath(service)} className="primary-btn tt-result-profile-btn">
-          Shiko shërbimin
+          {t('cards.viewService')}
         </Link>
         <span className="tt-result-responds">
           <Clock size={14} aria-hidden />
-          Zakonisht përgjigjet shpejt
+          {t('cards.respondsFast')}
         </span>
       </div>
     </article>

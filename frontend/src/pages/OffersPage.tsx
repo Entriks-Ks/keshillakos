@@ -70,16 +70,16 @@ function trackSpotlight(event: PointerEvent<HTMLElement>) {
 }
 
 const SORT_OPTIONS: Array<{ id: MarketplaceSort; label: string }> = [
-  { id: 'relevance', label: 'Relevanca' },
-  { id: 'newest', label: 'Më të rejat' },
-  { id: 'rating', label: 'Vlerësimi më i lartë' },
-  { id: 'reviews', label: 'Më të vlerësuarat' },
+  { id: 'relevance', label: 'offers.relevance' },
+  { id: 'newest', label: 'offers.newest' },
+  { id: 'rating', label: 'offers.rating' },
+  { id: 'reviews', label: 'offers.reviews' },
 ]
 
 const RATING_FILTERS = [
-  { id: '', label: 'Të gjitha' },
-  { id: '4', label: '4+ yje' },
-  { id: '4.5', label: '4.5+ yje' },
+  { id: '', label: 'offers.all' },
+  { id: '4', label: 'offers.stars4' },
+  { id: '4.5', label: 'offers.stars45' },
 ]
 
 const VISIBLE_CATEGORY_COUNT = 8
@@ -469,7 +469,7 @@ export default function OffersPage() {
   if (minRating && ratingLabel) activeChips.push({ key: 'rating', label: ratingLabel, clear: () => setMinRating('') })
   if (selectedLocation && cityName) activeChips.push({ key: 'city', label: cityName, clear: () => { void changeLocation(null) } })
   if (delivery !== 'all') {
-    activeChips.push({ key: 'delivery', label: delivery === 'online' ? 'Online' : t('offers.inPerson'), clear: () => setDelivery('all') })
+    activeChips.push({ key: 'delivery', label: delivery === 'online' ? t('site.online') : t('offers.inPerson'), clear: () => setDelivery('all') })
   }
   if (language !== 'all') activeChips.push({ key: 'language', label: languageLabel, clear: () => setLanguage('all') })
   if (verification === 'verified') {
@@ -568,7 +568,7 @@ export default function OffersPage() {
               onChange={() => setMinRating(item.id)}
             >
               {item.id ? <Star size={13} aria-hidden className="of-chip-star" /> : null}
-              {item.id === '4' ? t('offers.stars4') : item.id === '4.5' ? t('offers.stars45') : t('offers.all')}
+              {t(item.label)}
             </ToggleButton>
           ))}
         </div>
@@ -581,7 +581,7 @@ export default function OffersPage() {
             isSelected={delivery === 'online'}
             onChange={(selected) => setDelivery(selected ? 'online' : 'all')}
           >
-            Online
+            {t('site.online')}
           </ToggleButton>
           <ToggleButton
             className="of-chip"
@@ -688,7 +688,7 @@ export default function OffersPage() {
         aria-label={t('offers.sort')}
       >
         {SORT_OPTIONS.map((item) => (
-          <option key={item.id} value={item.id}>{t(`offers.${item.id}`)}</option>
+          <option key={item.id} value={item.id}>{t(item.label)}</option>
         ))}
       </select>
       <ChevronDown size={15} aria-hidden className="of-sort-caret" />
@@ -823,7 +823,7 @@ export default function OffersPage() {
 
               <div className="of-results" onPointerMove={trackSpotlight}>
                 {searchParams.get('approx') === '1' ? (
-                  <p className="of-approx" role="status">{t('offers.approx')}</p>
+                  <p className="of-approx" role="status">{t('site.offers.approx')}</p>
                 ) : null}
                 <div className="of-results-head">
                   <p className="of-count" aria-live="polite">
@@ -845,7 +845,7 @@ export default function OffersPage() {
                         type="button"
                         className="of-active-chip"
                         onClick={chip.clear}
-                        aria-label={`Hiq filtrin ${chip.label}`}
+                        aria-label={t('site.offers.removeFilter', { label: chip.label })}
                       >
                         {chip.label}
                         <X size={13} aria-hidden />
@@ -896,7 +896,7 @@ export default function OffersPage() {
                   </Button>
                 ) : <span />}
                 <Button className="tt-offers-drawer-apply" onPress={() => setFiltersOpen(false)}>
-                  Shiko {resultCount} {resultLabel}
+                  {t('site.offers.showResults', { count: resultCount, label: resultLabel })}
                 </Button>
               </div>
             </Drawer.Content>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Trans, useTranslation } from 'react-i18next'
 import { BadgeCheck, Building2, Images, MapPin, Tag, Users, Video } from 'lucide-react'
 import { mediaUrl } from '../api/media'
 import type { MarketplaceProvider } from '../api/providerProfiles'
@@ -39,6 +40,7 @@ function fallbackProvider(service: ServiceItem, companyOwned: boolean): Marketpl
 
 export default function ServiceOfferCard({ service, provider }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const { t } = useTranslation()
   const servicePath = publicServicePath(service)
   const owner = service.provider
   const companyOwned = owner?.providerType === 'business' || owner?.role === 'company'
@@ -67,7 +69,7 @@ export default function ServiceOfferCard({ service, provider }: Props) {
   return (
     <CardShell
       href={servicePath}
-      label={`Shiko shërbimin ${service.title}`}
+      label={t('cards.viewServiceNamed', { title: service.title })}
       mediaKind="photo"
       media={photos.length > 0 ? (
         <>
@@ -101,19 +103,19 @@ export default function ServiceOfferCard({ service, provider }: Props) {
         {deliveryModes.includes('online') ? (
           <li>
             <Video size={14} aria-hidden />
-            Online
+            {t('cards.online')}
           </li>
         ) : null}
         {deliveryModes.includes('physical') ? (
           <li>
             <Building2 size={14} aria-hidden />
-            Fizikisht
+            {t('offers.inPerson')}
           </li>
         ) : null}
         {deliveryModes.includes('group') ? (
           <li>
             <Users size={14} aria-hidden />
-            Grup
+            {t('cards.group')}
           </li>
         ) : null}
       </CardMeta>
@@ -123,22 +125,27 @@ export default function ServiceOfferCard({ service, provider }: Props) {
       ) : null}
 
       <div className="pc-sub">
-        <span className="pc-sub-label">{companyOwned ? 'Kompania' : 'Eksperti'}</span>
+        <span className="pc-sub-label">{companyOwned ? t('cards.companyLabel') : t('cards.expertLabel')}</span>
         <Link to={profilePath} className="pc-sub-person" onClick={(e) => e.stopPropagation()}>
           <span className={`pc-sub-photo${companyOwned ? ' is-company' : ''}`} aria-hidden>
             <ProfileAvatar src={photo} seed={contact.uid} size="fill" fit={companyOwned ? 'contain' : 'cover'} />
           </span>
           <strong>{contact.name}</strong>
-          {verified ? <BadgeCheck size={14} className="pc-sub-verified" aria-label="I verifikuar" /> : null}
+          {verified ? <BadgeCheck size={14} className="pc-sub-verified" aria-label={t('compare.verified')} /> : null}
         </Link>
         {responsibleExpert?.name ? (
           <span className="pc-sub-muted">
-            me{' '}
-            {responsibleExpert.uid ? (
-              <Link to={providerPath(responsibleExpert)} onClick={(e) => e.stopPropagation()}>
-                {responsibleExpert.name}
-              </Link>
-            ) : responsibleExpert.name}
+            <Trans
+              i18nKey="cards.withExpert"
+              values={{ name: responsibleExpert.name }}
+              components={{
+                expert: responsibleExpert.uid ? (
+                  <Link to={providerPath(responsibleExpert)} onClick={(e) => e.stopPropagation()} />
+                ) : (
+                  <span />
+                ),
+              }}
+            />
           </span>
         ) : null}
         <ul className="pc-sub-rating">

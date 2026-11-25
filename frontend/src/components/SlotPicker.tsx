@@ -1,6 +1,7 @@
 import KeshillaPagination from './KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Spinner } from '@heroui/react'
 import { fetchProviderSchedule, type AvailabilitySlot } from '../api/availability'
 import ScheduleCalendar from './ScheduleCalendar'
@@ -22,11 +23,12 @@ export default function SlotPicker({
   required = false,
   onLoaded,
 }: Props) {
+  const { t } = useTranslation()
   const { page, setPage, pagination, receivePagination } = usePagination(providerUid)
   const selectionScope = useRef(`${providerUid}:${refreshKey}`)
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -35,7 +37,7 @@ export default function SlotPicker({
     selectionScope.current = scope
     if (scopeChanged && selectedId) onSelect('')
     setLoading(true)
-    setError('')
+    setError(false)
     fetchProviderSchedule(providerUid, { page, limit: 50 })
       .then((data) => {
         if (cancelled) return
@@ -50,7 +52,7 @@ export default function SlotPicker({
         if (!cancelled) {
           setSlots([])
           onLoaded?.({ freeCount: 0 })
-          setError('Nuk u ngarkuan oraret')
+          setError(true)
         }
       })
       .finally(() => {
@@ -66,21 +68,21 @@ export default function SlotPicker({
     return (
       <p className="muted schedule-cal-loading">
         <Spinner size="sm" />
-        Duke ngarkuar oraret...
+        {t('availability.picker.loading')}
       </p>
     )
   }
 
   if (error) {
-    return <p className="error">{error}</p>
+    return <p className="error">{t('availability.picker.loadError')}</p>
   }
 
   if (slots.length === 0) {
     return (
       <p className="muted">
         {required
-          ? 'Ofruesi nuk ka publikuar orare të lira. Nuk mund të dërgosh kërkesë pa zgjedhur një orë.'
-          : 'Ofruesi nuk ka publikuar orare ende.'}
+          ? t('availability.picker.noneRequired')
+          : t('availability.picker.none')}
       </p>
     )
   }

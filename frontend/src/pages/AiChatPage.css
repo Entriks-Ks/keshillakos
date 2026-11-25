@@ -785,6 +785,16 @@
   text-overflow: ellipsis;
 }
 
+.kk-aipage-chat-identity > div:last-child {
+  min-width: 0;
+}
+
+.kk-aipage-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .kk-aipage-status-dot {
   flex: none;
   width: 6px;

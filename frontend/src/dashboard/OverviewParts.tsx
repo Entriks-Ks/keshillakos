@@ -93,7 +93,7 @@ export function conversationEntries(conversations: ConversationItem[], messagesP
     .map((item) => ({
       id: `c-${item.id}`,
       title: item.peer.name,
-      detail: item.lastMessagePreview || item.serviceTitle || 'Bisedë',
+      detail: item.lastMessagePreview || item.serviceTitle || i18n.t('overview.conversation'),
       at: item.lastMessageAt as string,
       to: `${messagesPath}?c=${item.id}`,
       peer: item.peer,
@@ -183,6 +183,7 @@ export function ActivityRows({ entries }: { entries: ActivityEntry[] }) {
 
 /** Active services first, then newest. */
 export function ServiceRows({ services, limit = 3 }: { services: ServiceItem[]; limit?: number }) {
+  const { t } = useTranslation()
   const recent = [...services]
     .sort((a, b) => Number(b.active) - Number(a.active) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, limit)
@@ -198,7 +199,7 @@ export function ServiceRows({ services, limit = 3 }: { services: ServiceItem[]; 
                 <span>{[service.categoryLabel || service.category, price].filter(Boolean).join(' · ')}</span>
               </span>
               <Chip size="sm" variant="soft" color={service.active ? 'success' : 'default'}>
-                <Chip.Label>{service.active ? 'Aktiv' : 'Joaktiv'}</Chip.Label>
+                <Chip.Label>{service.active ? t('overview.serviceActive') : t('dash.inactive')}</Chip.Label>
               </Chip>
             </div>
           </li>
@@ -209,9 +210,10 @@ export function ServiceRows({ services, limit = 3 }: { services: ServiceItem[]; 
 }
 
 export function StatsStrip({ stats, loading }: { stats: OverviewStat[]; loading: boolean }) {
+  const { t } = useTranslation()
   return (
     <Card className="uo-card uo-stats">
-      <ul className="uo-stats-list" aria-label="Statistika">
+      <ul className="uo-stats-list" aria-label={t('overview.statsAria')}>
         {stats.map((stat) => (
           <li key={stat.label}>
             <Link to={stat.to} className="uo-stat">
@@ -234,19 +236,20 @@ export function ProfileSetupCard({ completion, to }: { completion: ProfileComple
   const percent = Math.max(0, Math.min(100, Math.round(completion.overallPercent ?? 0)))
   const missing = completion.section.missingRequired
   const shown = missing.slice(0, 4)
+  const { t } = useTranslation()
 
   return (
     <Card className="uo-card">
-      <SectionHead title="Plotëso profilin" meta={<span className="uo-card-meta is-strong">{percent}%</span>} />
+      <SectionHead title={t('overview.setup.title')} meta={<span className="uo-card-meta is-strong">{percent}%</span>} />
       <Card.Content className="uo-card-body uo-setup">
-        <ProgressBar aria-label="Plotësimi i profilit" value={percent} className="uo-progress">
+        <ProgressBar aria-label={t('overview.setup.progressAria')} value={percent} className="uo-progress">
           <ProgressBar.Track>
             <ProgressBar.Fill />
           </ProgressBar.Track>
         </ProgressBar>
         {shown.length > 0 ? (
           <div className="uo-missing">
-            <span>Mungojnë:</span>
+            <span>{t('overview.setup.missing')}</span>
             {shown.map((field) => (
               <Chip key={field.key} size="sm" variant="soft">
                 <Chip.Label>{field.label}</Chip.Label>
@@ -256,7 +259,7 @@ export function ProfileSetupCard({ completion, to }: { completion: ProfileComple
           </div>
         ) : null}
         <Separator />
-        <TextLink to={to}>Përditëso profilin</TextLink>
+        <TextLink to={to}>{t('overview.setup.update')}</TextLink>
       </Card.Content>
     </Card>
   )

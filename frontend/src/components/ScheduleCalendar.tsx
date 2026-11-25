@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Calendar, Chip } from '@heroui/react'
+import { Button, Calendar, Chip, I18nProvider } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date'
 import {
   formatSlotDay,
   formatSlotTime,
   type AvailabilitySlot,
 } from '../api/availability'
+import { dateLocale } from '../i18n'
 
 type Props = {
   slots: AvailabilitySlot[]
@@ -48,7 +50,7 @@ function isBusy(slot: AvailabilitySlot) {
 }
 
 function dayLabel(date: CalendarDate) {
-  return date.toDate(getLocalTimeZone()).toLocaleDateString('sq-AL', {
+  return date.toDate(getLocalTimeZone()).toLocaleDateString(dateLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -62,6 +64,7 @@ export default function ScheduleCalendar({
   selectable = false,
   required = false,
 }: Props) {
+  const { t, i18n } = useTranslation()
   const tz = getLocalTimeZone()
   const now = today(tz)
 
@@ -155,61 +158,63 @@ export default function ScheduleCalendar({
     <div className="schedule-cal">
       <div className="schedule-cal-legend">
         <Chip size="sm" variant="soft" color="success">
-          <Chip.Label>I lirë ({freeCount})</Chip.Label>
+          <Chip.Label>{t('availability.cal.free', { count: freeCount })}</Chip.Label>
         </Chip>
         <Chip size="sm" variant="soft" color="danger">
-          <Chip.Label>I zënë ({busyCount})</Chip.Label>
+          <Chip.Label>{t('availability.cal.busy', { count: busyCount })}</Chip.Label>
         </Chip>
       </div>
 
-      <Calendar
-        aria-label="Kalendari i termineve"
-        className="schedule-cal-month"
-        firstDayOfWeek="mon"
-        weeksInMonth={6}
-        minValue={minValue}
-        maxValue={maxValue}
-        value={pickedDate}
-        focusedValue={focusedDate}
-        onFocusChange={setFocusedDate}
-        onChange={onDateChange}
-        isDateUnavailable={(date) => !byDay.has(fromParts(date.year, date.month, date.day))}
-      >
-        <Calendar.Header>
-          <Calendar.Heading />
-          <Calendar.NavButton slot="previous" />
-          <Calendar.NavButton slot="next" />
-        </Calendar.Header>
-        <Calendar.Grid weekdayStyle="short">
-          <Calendar.GridHeader>{(day) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}</Calendar.GridHeader>
-          <Calendar.GridBody>
-            {(date) => {
-              const key = fromParts(date.year, date.month, date.day)
-              const hasFree = freeDays.has(key)
-              const hasBusy = busyDays.has(key)
-              return (
-                <Calendar.Cell date={date}>
-                  {({ formattedDate, isUnavailable }) => (
-                    <>
-                      {formattedDate}
-                      {!isUnavailable && (hasFree || hasBusy) ? (
-                        <Calendar.CellIndicator className={hasFree ? 'bg-success' : 'bg-danger'} />
-                      ) : null}
-                    </>
-                  )}
-                </Calendar.Cell>
-              )
-            }}
-          </Calendar.GridBody>
-        </Calendar.Grid>
-      </Calendar>
+      <I18nProvider locale={dateLocale(i18n.language)}>
+        <Calendar
+          aria-label={t('availability.cal.aria')}
+          className="schedule-cal-month"
+          firstDayOfWeek="mon"
+          weeksInMonth={6}
+          minValue={minValue}
+          maxValue={maxValue}
+          value={pickedDate}
+          focusedValue={focusedDate}
+          onFocusChange={setFocusedDate}
+          onChange={onDateChange}
+          isDateUnavailable={(date) => !byDay.has(fromParts(date.year, date.month, date.day))}
+        >
+          <Calendar.Header>
+            <Calendar.Heading />
+            <Calendar.NavButton slot="previous" />
+            <Calendar.NavButton slot="next" />
+          </Calendar.Header>
+          <Calendar.Grid weekdayStyle="short">
+            <Calendar.GridHeader>{(day) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}</Calendar.GridHeader>
+            <Calendar.GridBody>
+              {(date) => {
+                const key = fromParts(date.year, date.month, date.day)
+                const hasFree = freeDays.has(key)
+                const hasBusy = busyDays.has(key)
+                return (
+                  <Calendar.Cell date={date}>
+                    {({ formattedDate, isUnavailable }) => (
+                      <>
+                        {formattedDate}
+                        {!isUnavailable && (hasFree || hasBusy) ? (
+                          <Calendar.CellIndicator className={hasFree ? 'bg-success' : 'bg-danger'} />
+                        ) : null}
+                      </>
+                    )}
+                  </Calendar.Cell>
+                )
+              }}
+            </Calendar.GridBody>
+          </Calendar.Grid>
+        </Calendar>
+      </I18nProvider>
 
       <div className="schedule-cal-times">
         <p className="schedule-cal-times-label">
-          {pickedDate ? `Orët · ${dayLabel(pickedDate)}` : 'Zgjidh një ditë'}
+          {pickedDate ? t('availability.cal.timesFor', { day: dayLabel(pickedDate) }) : t('availability.cal.pickDay')}
         </p>
         {daySlots.length === 0 ? (
-          <p className="muted">Nuk ka termine këtë ditë.</p>
+          <p className="muted">{t('availability.cal.noSlots')}</p>
         ) : (
           <div className="schedule-cal-slot-grid">
             {daySlots.map((slot) => {
@@ -230,7 +235,7 @@ export default function ScheduleCalendar({
                   onPress={() => pick(slot)}
                 >
                   <span>{formatSlotTime(slot.startAt)}</span>
-                  <small>{busy ? 'Zënë' : free ? 'Lirë' : 'Kaluar'}</small>
+                  <small>{busy ? t('availability.cal.statusBusy') : free ? t('availability.cal.statusFree') : t('availability.cal.statusPast')}</small>
                 </Button>
               )
             })}
@@ -239,11 +244,11 @@ export default function ScheduleCalendar({
       </div>
 
       {selectable && required && freeCount > 0 && !selectedId ? (
-        <p className="muted slot-hint">Zgjidh ditën, pastaj një orë të lirë.</p>
+        <p className="muted slot-hint">{t('availability.cal.hint')}</p>
       ) : null}
       {selected ? (
         <p className="success slot-hint">
-          Termini i zgjedhur: {formatSlotDay(selected.startAt)} · {formatSlotTime(selected.startAt)}
+          {t('availability.cal.selected', { day: formatSlotDay(selected.startAt), time: formatSlotTime(selected.startAt) })}
         </p>
       ) : null}
     </div>

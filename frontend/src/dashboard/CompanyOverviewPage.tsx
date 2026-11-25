@@ -14,7 +14,7 @@ import { fetchMyServices, type ServiceItem } from '../api/services'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
-import i18n, { uiText } from '../i18n'
+import i18n, { catalogLanguage, uiText } from '../i18n'
 import { CONTEXT_LABELS, ROLE_HINTS } from './nav'
 import {
   ActivityRows,
@@ -104,7 +104,8 @@ function contextSentence(data: OverviewData) {
 }
 
 function CompanyIdentity({ business, team }: { business: BusinessProfile; team: BusinessTeam | null }) {
-  const { t } = useTranslation()
+  const { t, i18n: i18next } = useTranslation()
+  const language = catalogLanguage(i18next.language)
   const [location, setLocation] = useState('')
   const status = business.status ? BUSINESS_STATUS[business.status] : null
   const verification = business.verification?.status
@@ -115,13 +116,13 @@ function CompanyIdentity({ business, team }: { business: BusinessProfile; team: 
     const controller = new AbortController()
     resolveSavedLocation(business.location, controller.signal)
       .then((value) => {
-        if (!controller.signal.aborted) setLocation(value ? locationLabel(value, 'sq') : '')
+        if (!controller.signal.aborted) setLocation(value ? locationLabel(value, language) : '')
       })
       .catch(() => {
         if (!controller.signal.aborted) setLocation('')
       })
     return () => controller.abort()
-  }, [business.location])
+  }, [business.location, language])
 
   return (
     <Card className="uo-card up-hero ds-company-hero">
@@ -144,11 +145,11 @@ function CompanyIdentity({ business, team }: { business: BusinessProfile; team: 
             ) : null}
             {verification === 'verified' ? (
               <Chip size="sm" variant="soft" color="accent">
-                <Chip.Label>E verifikuar</Chip.Label>
+                <Chip.Label>{t('overview.company.verified')}</Chip.Label>
               </Chip>
             ) : verification === 'pending' ? (
               <Chip size="sm" variant="soft" color="warning">
-                <Chip.Label>Verifikimi në shqyrtim</Chip.Label>
+                <Chip.Label>{t('overview.company.verificationPending')}</Chip.Label>
               </Chip>
             ) : null}
           </div>
@@ -162,7 +163,7 @@ function CompanyIdentity({ business, team }: { business: BusinessProfile; team: 
             {team ? (
               <li>
                 <Users size={14} aria-hidden />
-                {members} {plural(members, 'ekspert', 'ekspertë')} në ekip
+                {t('overview.company.teamMembers', { count: members })}
               </li>
             ) : null}
             {business.website ? (
@@ -175,13 +176,14 @@ function CompanyIdentity({ business, team }: { business: BusinessProfile; team: 
         </div>
       </div>
       <Link to={PROFILE_PATH} className={`${buttonVariants({ variant: 'outline' })} up-hero-action`}>
-        Profili i kompanisë
+        {t('menu.companyProfile')}
       </Link>
     </Card>
   )
 }
 
 function StatsSection({ data, loading }: { data: OverviewData | null; loading: boolean }) {
+  const { t } = useTranslation()
   const services = data?.services ?? []
   const conversations = data?.conversations ?? []
   const members = data?.team?.pagination?.total ?? data?.team?.members.length ?? 0
@@ -190,28 +192,28 @@ function StatsSection({ data, loading }: { data: OverviewData | null; loading: b
   const pending = data?.pendingCount ?? 0
   const stats: OverviewStat[] = [
     {
-      label: 'Kërkesa në pritje',
+      label: t('overview.stats.pendingRequests'),
       value: pending,
-      hint: `${collectionTotal(data?.requests)} të marra gjithsej`,
+      hint: t('overview.stats.receivedTotal', { count: collectionTotal(data?.requests) }),
       to: INBOX_PATH,
       highlight: pending > 0,
     },
     {
-      label: 'Ekspertë në ekip',
+      label: t('overview.stats.teamExperts'),
       value: members,
-      hint: invitations > 0 ? `${invitations} ${plural(invitations, 'ftesë', 'ftesa')} në pritje` : 'Asnjë ftesë në pritje',
+      hint: invitations > 0 ? t('overview.stats.pendingInvites', { count: invitations }) : t('overview.stats.noPendingInvites'),
       to: EXPERTS_PATH,
     },
     {
-      label: 'Shërbime aktive',
+      label: t('overview.stats.activeServices'),
       value: collectionSummary(services).active ?? 0,
-      hint: services.length > 0 ? `${collectionTotal(services)} gjithsej` : 'Asnjë e publikuar',
+      hint: services.length > 0 ? t('overview.stats.total', { count: collectionTotal(services) }) : t('overview.stats.nonePublished'),
       to: SERVICES_PATH,
     },
     {
-      label: 'Mesazhe të palexuara',
+      label: t('overview.stats.unreadMessages'),
       value: unread,
-      hint: `${collectionTotal(conversations)} biseda`,
+      hint: t('overview.stats.conversations', { count: collectionTotal(conversations) }),
       to: MESSAGES_PATH,
       highlight: unread > 0,
     },
@@ -221,27 +223,24 @@ function StatsSection({ data, loading }: { data: OverviewData | null; loading: b
 }
 
 function ActivityCard({ data, loading }: { data: OverviewData | null; loading: boolean }) {
+  const { t } = useTranslation()
   const entries = data ? inboxActivity(data.requests, data.conversations, INBOX_PATH, MESSAGES_PATH) : []
   const hasServices = (data?.services.length ?? 0) > 0
 
   return (
     <Card className="uo-card uo-activity">
-      <SectionHead title="Aktiviteti i fundit" action={entries.length > 0 ? <TextLink to={INBOX_PATH}>Kërkesat</TextLink> : null} />
+      <SectionHead title={t('overview.recentActivity')} action={entries.length > 0 ? <TextLink to={INBOX_PATH}>{t('dash.requests')}</TextLink> : null} />
       <Card.Content className="uo-card-body">
         {loading ? (
           <RowsSkeleton rows={4} />
         ) : entries.length === 0 ? (
           <EmptyBlock
-            title="Ende s'ka aktivitet"
-            text={
-              hasServices
-                ? 'Kërkesat për kompaninë dhe bisedat me klientët do të shfaqen këtu sapo të vijnë.'
-                : 'Kërkesat nga klientët vijnë pasi kompania të publikojë një shërbim në ofertat e Këshillohu.'
-            }
+            title={t('overview.noActivity')}
+            text={hasServices ? t('overview.company.activityTextServices') : t('overview.company.activityTextNoServices')}
             action={
               hasServices ? null : (
                 <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                  Shto shërbim
+                  {t('overview.addService')}
                 </Link>
               )
             }
@@ -255,26 +254,27 @@ function ActivityCard({ data, loading }: { data: OverviewData | null; loading: b
 }
 
 function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boolean }) {
+  const { t } = useTranslation()
   const members = team?.members ?? []
   const invitations = team?.invitations ?? []
 
   return (
     <Card className="uo-card">
       <SectionHead
-        title="Ekipi"
+        title={t('dash.team')}
         meta={members.length > 0 ? <span className="uo-card-meta">{team?.pagination?.total ?? members.length}</span> : null}
-        action={members.length > 0 || invitations.length > 0 ? <TextLink to={EXPERTS_PATH}>Menaxho</TextLink> : null}
+        action={members.length > 0 || invitations.length > 0 ? <TextLink to={EXPERTS_PATH}>{t('overview.company.manage')}</TextLink> : null}
       />
       <Card.Content className="uo-card-body">
         {loading ? (
           <RowsSkeleton rows={3} />
         ) : members.length === 0 && invitations.length === 0 ? (
           <EmptyBlock
-            title="Ende nuk ka ekspertë në ekip"
-            text="Fto ekspertë që janë në Këshillohu me email-in e tyre. Pasi e pranojnë ftesën, klientët i shohin te profili i kompanisë."
+            title={t('overview.company.noTeamTitle')}
+            text={t('overview.company.noTeamText')}
             action={
               <Link to={EXPERTS_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                Fto ekspert
+                {t('overview.company.inviteExpert')}
               </Link>
             }
           />
@@ -290,7 +290,7 @@ function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boole
                   </span>
                   {member.role === 'manager' ? (
                     <Chip size="sm" variant="soft" color="accent">
-                      <Chip.Label>Menaxher</Chip.Label>
+                      <Chip.Label>{t('overview.company.manager')}</Chip.Label>
                     </Chip>
                   ) : null}
                 </Link>
@@ -304,9 +304,9 @@ function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boole
                   </span>
                   <span className="uo-row-copy">
                     <strong>
-                      {team?.invitationsPagination?.total ?? invitations.length} {plural(team?.invitationsPagination?.total ?? invitations.length, 'ftesë në pritje', 'ftesa në pritje')}
+                      {t('overview.stats.pendingInvites', { count: team?.invitationsPagination?.total ?? invitations.length })}
                     </strong>
-                    <span>Ekspertët i shohin ftesat te profili i tyre.</span>
+                    <span>{t('overview.company.invitesHint')}</span>
                   </span>
                 </Link>
               </li>
@@ -319,23 +319,24 @@ function TeamCard({ team, loading }: { team: BusinessTeam | null; loading: boole
 }
 
 function ServicesCard({ services, loading }: { services: ServiceItem[]; loading: boolean }) {
+  const { t } = useTranslation()
   return (
     <Card className="uo-card">
       <SectionHead
-        title="Shërbimet e kompanisë"
+        title={t('overview.company.services')}
         meta={services.length > 0 ? <span className="uo-card-meta">{services.length}</span> : null}
-        action={services.length > 0 ? <TextLink to={SERVICES_PATH}>Shiko të gjitha</TextLink> : null}
+        action={services.length > 0 ? <TextLink to={SERVICES_PATH}>{t('overview.viewAll')}</TextLink> : null}
       />
       <Card.Content className="uo-card-body">
         {loading ? (
           <RowsSkeleton rows={2} />
         ) : services.length === 0 ? (
           <EmptyBlock
-            title="Kompania nuk ka publikuar shërbime"
-            text="Shërbimet aktive shfaqen në ofertat e Këshillohu dhe klientët i dërgojnë kërkesa kompanisë."
+            title={t('overview.company.noServicesTitle')}
+            text={t('overview.company.noServicesText')}
             action={
               <Link to={SERVICES_PATH} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                Shto shërbim
+                {t('overview.addService')}
               </Link>
             }
           />
@@ -427,7 +428,7 @@ export function CompanyOverviewPage() {
         {noCompany ? null : (
           <Link to={EXPERTS_PATH} className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
             <Plus size={16} aria-hidden />
-            Shto ekspert
+            {t('overview.company.addExpert')}
           </Link>
         )}
       </header>
@@ -436,11 +437,11 @@ export function CompanyOverviewPage() {
         <Alert status="danger" className="uo-alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Nuk u ngarkuan të dhënat</Alert.Title>
+            <Alert.Title>{t('overview.loadError')}</Alert.Title>
             <Alert.Description>{error}</Alert.Description>
           </Alert.Content>
           <Button size="sm" variant="outline" onPress={reload}>
-            Provo përsëri
+            {t('page.retry')}
           </Button>
         </Alert>
       ) : noCompany ? (
@@ -448,15 +449,12 @@ export function CompanyOverviewPage() {
           <span className="ur-empty-icon" aria-hidden>
             <Building2 size={22} />
           </span>
-          <h2>Ende nuk ke një kompani</h2>
-          <p>
-            Krijo profilin e kompanisë për të ftuar ekspertë, për të publikuar shërbime dhe për të marrë kërkesa nga
-            klientët.
-          </p>
+          <h2>{t('overview.company.noCompanyTitle')}</h2>
+          <p>{t('overview.company.noCompanyText')}</p>
           <div className="ur-empty-actions">
             <Link to={CREATE_PATH} className={buttonVariants({ variant: 'primary' })}>
               <Plus size={16} aria-hidden />
-              Krijo kompaninë
+              {t('overview.company.create')}
             </Link>
           </div>
         </Card>

@@ -5,18 +5,19 @@ export type MarketplaceLinkId = 'services' | 'experts' | 'companies'
 
 export type MarketplaceLink = {
   id: MarketplaceLinkId
+  /** i18n key — translate at render time. */
   label: string
   to: string
 }
 
 export const MARKETPLACE_LINKS: MarketplaceLink[] = [
-  { id: 'services', label: 'Shërbimet', to: '/ofertat' },
-  { id: 'experts', label: 'Ekspertët', to: '/ofertat?tab=experts' },
-  { id: 'companies', label: 'Kompanitë', to: '/ofertat?tab=companies' },
+  { id: 'services', label: 'offers.services', to: '/ofertat' },
+  { id: 'experts', label: 'offers.experts', to: '/ofertat?tab=experts' },
+  { id: 'companies', label: 'offers.companies', to: '/ofertat?tab=companies' },
 ]
 
 export function marketplaceLink(id: MarketplaceLinkId): MarketplaceLink {
-  return MARKETPLACE_LINKS.find((link) => link.id === id) ?? { id, label: 'Shërbimet', to: '/ofertat' }
+  return MARKETPLACE_LINKS.find((link) => link.id === id) ?? { id, label: 'offers.services', to: '/ofertat' }
 }
 
 export function activeMarketplaceLink(pathname: string, search: string): MarketplaceLinkId | null {

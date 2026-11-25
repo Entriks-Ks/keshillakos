@@ -47,7 +47,7 @@ export function useCatalogOptions() {
       .catch((err: unknown) => {
         if (!cancelled) {
           setOptions([])
-          setError(err instanceof Error ? err.message : 'Nuk u ngarkuan opsionet')
+          setError(err instanceof Error ? err.message : i18next.t('system.catalogOptionsFailed'))
         }
       })
       .finally(() => {

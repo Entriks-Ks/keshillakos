@@ -1,5 +1,6 @@
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app'
 import { GoogleAuthProvider, getAuth, type Auth } from 'firebase/auth'
+import i18n from './i18n'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
@@ -19,7 +20,7 @@ function firebaseApp(): FirebaseApp {
   const existing = getApps()[0]
   if (existing) return existing
   if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
-    throw new Error('Firebase nuk është i konfiguruar')
+    throw new Error(i18n.t('system.google.firebaseNotConfigured'))
   }
   return initializeApp({
     apiKey: firebaseConfig.apiKey,
@@ -44,16 +45,16 @@ export function mapFirebaseClientError(code: string) {
     case 'auth/cancelled-popup-request':
       return ''
     case 'auth/popup-blocked':
-      return 'Lejo dritaren popup për Google dhe provo sërish'
+      return i18n.t('system.google.popupBlocked')
     case 'auth/unauthorized-domain':
-      return 'Ky domain nuk është i autorizuar në Firebase. Shto localhost te Authorized domains.'
+      return i18n.t('system.google.unauthorizedDomain')
     case 'auth/account-exists-with-different-credential':
-      return 'Ky email është i regjistruar me fjalëkalim. Hyr me email.'
+      return i18n.t('system.google.accountExists')
     case 'auth/operation-not-allowed':
-      return 'Hyrja me Google nuk është e aktivizuar në Firebase'
+      return i18n.t('system.google.notEnabled')
     case 'auth/network-request-failed':
-      return 'Nuk u lidh me Google. Kontrollo internetin.'
+      return i18n.t('system.google.network')
     default:
-      return 'Hyrja me Google dështoi'
+      return i18n.t('system.google.failed')
   }
 }

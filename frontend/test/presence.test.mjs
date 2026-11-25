@@ -17,3 +17,12 @@ test('presence labels never infer online from missing data and show last seen on
   assert.equal(presenceLabel({ uid: 'internal', online: true, lastSeen: new Date().toISOString() }), 'Online')
   assert.match(presenceLabel({ uid: 'internal', online: false, lastSeen: '2026-10-06T10:00:00Z' }), /^Aktiviteti i fundit:/)
 })
+test('presence labels use the provided translator and locale', () => {
+  const calls = []
+  const t = (key, options) => { calls.push([key, options]); return options?.time ? `${key}|${options.time}` : key }
+  assert.equal(presenceLabel({ uid: 'internal', online: true }, t, 'en-GB'), 'chat.presence.online')
+  assert.equal(presenceLabel({ uid: 'internal', online: false }, t, 'en-GB'), 'chat.presence.offline')
+  const lastSeen = '2026-10-06T10:00:00Z'
+  const expected = new Date(lastSeen).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+  assert.equal(presenceLabel({ uid: 'internal', online: false, lastSeen }, t, 'de-DE'), `chat.presence.lastSeen|${expected}`)
+})
