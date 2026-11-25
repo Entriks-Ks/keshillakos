@@ -2,23 +2,24 @@ import { mergeMessages, replaceMessage, updateConversationPreview, mergeConversa
 import { useNotifications } from '../notifications/NotificationProvider'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { dateLocale } from '../i18n'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, MessageCircle, Pencil, Phone, PhoneMissed, Send, Trash2, Video } from 'lucide-react'
+import { ArrowDown, ArrowLeft, Check, MessageCircle, Phone, ShieldAlert, Trash2, Video } from 'lucide-react'
 import { useCall } from '../calls/CallContext'
 import {
   Alert,
   Button,
   buttonVariants,
   Card,
-  Input,
   SearchField,
   Separator,
   Skeleton,
+  Spinner,
   toast,
+  Tooltip,
 } from '@heroui/react'
 import {
   fetchConversations,
@@ -43,19 +44,14 @@ import { useChatPresence, presenceLabel } from '../chat/useChatPresence'
 import type { ChatDetails } from '../api/chat'
 import { REQUEST_STATUS } from './requestDisplay'
 import { getDashboardPath } from '../utils/dashboardPath'
+import MessageBubble from '../chat/MessageBubble'
+import MessageComposer from '../chat/MessageComposer'
 
 /** Backend placeholder stored as the conversation preview after the latest message is deleted. */
 const DELETED_MESSAGE_PREVIEW = 'Mesazhi u fshi'
 
 function sameDate(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
-
-function formatClock(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
 }
 
 function dayKey(iso: string) {
@@ -92,6 +88,15 @@ function formatListTime(iso: string | undefined, t: TFunction) {
   return d.toLocaleDateString(dateLocale(), { day: '2-digit', month: 'short' })
 }
 
+/** Messages from the same sender within this window are visually grouped. */
+const GROUP_WINDOW_MS = 5 * 60 * 1000
+
+type OutboxItem = { tempId: string; conversationId: string; body: string; createdAt: string; status: 'sending' | 'failed' }
+
+function isCallMessage(message: ChatMessage) {
+  return !message.deleted && (message.body.startsWith('📹') || message.body.startsWith('📞') || message.body.toLowerCase().includes('thirrj'))
+}
+
 /** Call summaries are stored by the backend in Albanian; map the known shapes to the UI language. */
 function callTitle(body: string, mine: boolean, t: TFunction) {
   if (body.includes('humbur')) return mine ? t('inbox.missedOutgoing') : t('inbox.missedIncoming')
@@ -100,6 +105,17 @@ function callTitle(body: string, mine: boolean, t: TFunction) {
   if (body.includes('refuzuar')) return t('inbox.callDeclined')
   if (body.includes('zënë')) return t('inbox.callBusy')
   return body.replace(/^[📹📞]\s*/u, '')
+}
+
+function HeadAction({ label, isDisabled, onPress, children }: { label: string; isDisabled?: boolean; onPress: () => void; children: ReactNode }) {
+  return (
+    <Tooltip delay={400} closeDelay={0}>
+      <Button isIconOnly variant="ghost" className="msg-head-btn" aria-label={label} isDisabled={isDisabled} onPress={onPress}>
+        {children}
+      </Button>
+      <Tooltip.Content placement="bottom">{label}</Tooltip.Content>
+    </Tooltip>
+  )
 }
 
 export default function MessagesPage() {
@@ -132,6 +148,10 @@ export default function MessagesPage() {
   const [deleteChatTarget, setDeleteChatTarget] = useState<ConversationItem | null>(null)
   const [deletingChat, setDeletingChat] = useState(false)
   const [chatDetails, setChatDetails] = useState<(ChatDetails & { conversationId: string }) | null>(null)
+  const [outbox, setOutbox] = useState<OutboxItem[]>([])
+  const [away, setAway] = useState<{ conversationId: string; anchorId: string | null } | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const renderedRef = useRef<{ conversationId: string; lastId: string | null }>({ conversationId: '', lastId: null })
   const historyRef = useRef<HTMLDivElement | null>(null)
   const followBottomRef = useRef(true)
   const smoothFollowRef = useRef(false)
@@ -147,7 +167,7 @@ export default function MessagesPage() {
   const previouslyConnectedRef = useRef(false)
   const listScopeRef = useRef({ page, listQuery })
   listScopeRef.current = { page, listQuery }
-  const inputRef = useRef<HTMLInputElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const typingTimeout = useRef<number | null>(null)
   const didAutoSelect = useRef(false)
 
@@ -494,35 +514,125 @@ export default function MessagesPage() {
       smoothFollowRef.current = true
       history.scrollTo({ top: history.scrollHeight, behavior: 'smooth' })
     }
-  }, [activeId, messages, peerTyping, loadingThread])
+    // Messages that arrive while the thread is open get a short entrance; history loads do not.
+    const lastId = messages[messages.length - 1]?.id ?? null
+    const seen = renderedRef.current
+    if (seen.conversationId === activeId && seen.lastId && lastId && lastId !== seen.lastId) {
+      const from = messages.findIndex(message => message.id === seen.lastId)
+      if (from >= 0) {
+        for (const message of messages.slice(from + 1)) {
+          if (message.senderUid !== user?.uid) history.querySelector(`[data-mid="${CSS.escape(message.id)}"]`)?.classList.add('is-new')
+        }
+      }
+    }
+    renderedRef.current = { conversationId: activeId, lastId }
+  }, [activeId, messages, peerTyping, loadingThread, outbox, user?.uid])
 
+  // Focus the composer on thread open, but don't pop the on-screen keyboard on touch devices.
   useEffect(() => {
-    if (activeId) inputRef.current?.focus()
+    if (activeId && window.matchMedia('(pointer: fine)').matches) inputRef.current?.focus()
   }, [activeId])
+
+  // Mobile browsers shrink the visual viewport for the keyboard; size the page to it so the composer stays visible.
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const root = document.documentElement
+    const sync = () => root.style.setProperty('--msg-viewport-h', `${Math.round(viewport.height)}px`)
+    sync()
+    viewport.addEventListener('resize', sync)
+    return () => {
+      viewport.removeEventListener('resize', sync)
+      root.style.removeProperty('--msg-viewport-h')
+    }
+  }, [])
 
   function selectConversation(id: string) {
     setSearchParams(id ? { c: id } : {})
   }
 
-  async function onSend(e: FormEvent) {
-    e.preventDefault()
-    if (!activeId || !draft.trim() || sending || messagingDisabled) return
-    const body = draft.trim()
+  async function deliver(item: OutboxItem) {
     setSending(true)
-    setError('')
-    setDraft('')
-    socket.emitTyping(activeId, false)
-
-    const result = await socket.sendMessage(activeId, body)
+    socket.emitTyping(item.conversationId, false)
+    const result = await socket.sendMessage(item.conversationId, item.body)
     if (!result.ok || !result.message) {
-      setDraft(body)
-      toast.danger(result.error || t('inbox.sendError'))
+      setOutbox(items => items.map(entry => entry.tempId === item.tempId ? { ...entry, status: 'failed' } : entry))
+      toast.danger(result.error ? getErrorMessage(new Error(result.error)) : t('inbox.sendError'))
     } else {
-      saveMessages(result.message.conversationId, [result.message])
-      applyUpdate({ conversationId: result.message.conversationId, senderUid: result.message.senderUid, lastMessageAt: result.message.createdAt, lastMessagePreview: result.message.body.slice(0, 140) })
+      const sent = result.message
+      saveMessages(sent.conversationId, [sent])
+      setOutbox(items => items.filter(entry => entry.tempId !== item.tempId))
+      applyUpdate({ conversationId: sent.conversationId, senderUid: sent.senderUid, lastMessageAt: sent.createdAt, lastMessagePreview: sent.body.slice(0, 140) })
     }
     setSending(false)
-    inputRef.current?.focus()
+  }
+
+  /** Sends optimistically: the bubble shows at once and resolves to sent or failed. */
+  function onSend() {
+    if (!activeId || !draft.trim() || sending || messagingDisabled) return
+    const item: OutboxItem = {
+      tempId: `pending-${crypto.randomUUID()}`,
+      conversationId: activeId,
+      body: draft.trim(),
+      createdAt: new Date().toISOString(),
+      status: 'sending',
+    }
+    setError('')
+    setDraft('')
+    setAway(null)
+    followBottomRef.current = true
+    setOutbox(items => [...items, item])
+    void deliver(item)
+  }
+
+  function retrySend(item: OutboxItem) {
+    if (sending || messagingDisabled) return
+    followBottomRef.current = true
+    setOutbox(items => items.map(entry => entry.tempId === item.tempId ? { ...entry, status: 'sending' } : entry))
+    void deliver({ ...item, status: 'sending' })
+  }
+
+  function discardSend(item: OutboxItem) {
+    setOutbox(items => items.filter(entry => entry.tempId !== item.tempId))
+  }
+
+  function loadOlder() {
+    if (loadingHistory || !activeId || messages.length === 0) return
+    setLoadingHistory(true)
+    const conversationId = activeId
+    fetchMessages(conversationId, { before: messages[0].createdAt, limit: 50 }).then((older) => {
+      if (activeIdRef.current !== conversationId) return
+      setHasOlderMessages(older.pagination.total > older.length)
+      const history = historyRef.current
+      if (history) prependAnchorRef.current = { top: history.scrollTop, height: history.scrollHeight }
+      const cached = threadsRef.current.get(conversationId)
+      if (cached) cached.hasOlder = older.pagination.total > older.length
+      saveMessages(conversationId, older)
+    }).catch((error: unknown) => setError(getErrorMessage(error))).finally(() => setLoadingHistory(false))
+  }
+
+  /** ArrowUp in an empty composer edits your latest message. */
+  function editLastMessage() {
+    if (messagingDisabled) return false
+    const last = [...messages].reverse().find(message => message.senderUid === user?.uid && !message.deleted && !isCallMessage(message))
+    if (!last) return false
+    startEdit(last)
+    return true
+  }
+
+  function copyMessage(body: string) {
+    void navigator.clipboard.writeText(body)
+      .then(() => toast.success(t('inbox.copied')))
+      .catch(() => toast.danger(t('inbox.copyError')))
+  }
+
+  function jumpToLatest() {
+    const history = historyRef.current
+    if (!history) return
+    followBottomRef.current = true
+    smoothFollowRef.current = true
+    setAway(null)
+    history.scrollTo({ top: history.scrollHeight, behavior: 'smooth' })
   }
 
   function onDraftChange(value: string) {
@@ -533,6 +643,25 @@ export default function MessagesPage() {
     typingTimeout.current = window.setTimeout(() => {
       socket.emitTyping(activeId, false)
     }, 1200)
+  }
+
+  const myUid = user?.uid
+  const activeOutbox = outbox.filter(item => item.conversationId === activeId && !(item.status === 'sending' && messages.slice(-20).some(message =>
+    message.senderUid === myUid && message.body === item.body && Date.parse(message.createdAt) >= Date.parse(item.createdAt) - 30_000)))
+  const isAway = away?.conversationId === activeId
+  const anchorIndex = isAway && away?.anchorId ? messages.findIndex(message => message.id === away.anchorId) : -1
+  const unseenCount = anchorIndex >= 0 ? messages.slice(anchorIndex + 1).filter(message => message.senderUid !== myUid).length : 0
+  const peerOnline = Boolean(active?.peer.uid && socket.connected && presence.get(active.peer.uid)?.online)
+  const peerAvatar = <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} alt="" size={28} />
+  const callsDisabled = messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid
+  const lastMessage = messages[messages.length - 1]
+  const outboxJoinsLast = Boolean(lastMessage && lastMessage.senderUid === myUid && !isCallMessage(lastMessage) && activeOutbox[0]
+    && dayKey(lastMessage.createdAt) === dayKey(activeOutbox[0].createdAt)
+    && Date.parse(activeOutbox[0].createdAt) - Date.parse(lastMessage.createdAt) < GROUP_WINDOW_MS)
+
+  function startCall(callType: 'video' | 'audio') {
+    if (!active?.peer.uid || !activeId) return
+    void initiateCall({ conversationId: activeId, receiverUid: active.peer.uid, peerName: active.peer.name, peerPhoto: active.peer.profilePhoto, callType })
   }
 
   const listSummary = totalUnread > 0
@@ -689,269 +818,268 @@ export default function MessagesPage() {
                   >
                     <ArrowLeft size={20} />
                   </Button>
-                  <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} alt="" size={40} />
+                  <span className="msg-head-avatar">
+                    <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} alt="" size={42} />
+                    {peerOnline ? <span className="msg-presence-dot" aria-hidden /> : null}
+                  </span>
                   <div className="msg-thread-meta">
-                    <strong>{active?.peer.uid && active.peer.roleLabel !== 'Admin' ? <Link to={providerPath(active.peer)}>{active.peer.name}</Link> : active?.peer.name || t('inbox.conversation')}</strong>
-                    <span className={peerTyping ? 'is-typing' : undefined}>
-                      {peerTyping && !messagingDisabled
-                        ? t('inbox.typing')
-                        : (active?.peer.uid && socket.connected ? presenceLabel(presence.get(active.peer.uid), t, dateLocale()) : '') || (active?.serviceTitle
+                    <strong className="msg-thread-name">
+                      {active?.peer.uid && active.peer.roleLabel !== 'Admin' ? <Link to={providerPath(active.peer)}>{active.peer.name}</Link> : active?.peer.name || t('inbox.conversation')}
+                    </strong>
+                    {peerTyping && !messagingDisabled ? (
+                      <span className="msg-thread-status is-typing">
+                        {t('inbox.typing')}
+                        <span className="msg-typing-dots" aria-hidden><i /><i /><i /></span>
+                      </span>
+                    ) : (
+                      <span className={`msg-thread-status${peerOnline ? ' is-online' : ''}`}>
+                        {(active?.peer.uid && socket.connected ? presenceLabel(presence.get(active.peer.uid), t, dateLocale()) : '') || (active?.serviceTitle
                           ? t('inbox.regarding', { title: active.serviceTitle })
                           : active?.peer.roleLabel || t('dash.chat'))}
-                    </span>
+                      </span>
+                    )}
                   </div>
-                  <div className="msg-call-actions" role="toolbar" aria-label={t('inbox.calls')}>
-                    <Button
-                      isIconOnly
-                      variant="ghost"
-                      className="msg-call-btn"
-                      aria-label={t('inbox.startVideo')}
-                      isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
-                      onPress={() => {
-                        if (active?.peer.uid && activeId) {
-                          void initiateCall({
-                            conversationId: activeId,
-                            receiverUid: active.peer.uid,
-                            peerName: active.peer.name,
-                            peerPhoto: active.peer.profilePhoto,
-                            callType: 'video',
-                          })
-                        }
+                  <div className="msg-head-actions" role="toolbar" aria-label={t('inbox.calls')}>
+                    <HeadAction label={t('inbox.startVideo')} isDisabled={callsDisabled} onPress={() => startCall('video')}>
+                      <Video size={19} aria-hidden />
+                    </HeadAction>
+                    <HeadAction label={t('inbox.startAudio')} isDisabled={callsDisabled} onPress={() => startCall('audio')}>
+                      <Phone size={18} aria-hidden />
+                    </HeadAction>
+                    <span className="msg-head-divider" aria-hidden />
+                    <ConversationActions
+                      conversationId={activeId}
+                      onAvailability={socket.onAvailability}
+                      onDetails={setChatDetails}
+                      onDeleteConversation={() => {
+                        if (active) setDeleteChatTarget(active)
                       }}
-                    >
-                      <Video size={19} />
-                    </Button>
-                    <Button
-                      isIconOnly
-                      variant="ghost"
-                      className="msg-call-btn"
-                      aria-label={t('inbox.startAudio')}
-                      isDisabled={messagingDisabled || callStage !== 'idle' || !active?.peer.uid || active.peer.uid === user?.uid}
-                      onPress={() => {
-                        if (active?.peer.uid && activeId) {
-                          void initiateCall({
-                            conversationId: activeId,
-                            receiverUid: active.peer.uid,
-                            peerName: active.peer.name,
-                            peerPhoto: active.peer.profilePhoto,
-                            callType: 'audio',
-                          })
-                        }
-                      }}
-                    >
-                      <Phone size={18} />
-                    </Button>
+                    />
                   </div>
-                  <ConversationActions
-                    conversationId={activeId}
-                    onAvailability={socket.onAvailability}
-                    onDetails={setChatDetails}
-                    onDeleteConversation={() => {
-                      if (active) setDeleteChatTarget(active)
-                    }}
-                  />
                 </header>
                 {currentDetails?.requestContext && <div className="msg-request-context">
                   <div><span>{t('req.serviceRequest')}</span><strong>{currentDetails.requestContext.title}</strong><span>{t('req.statusLine')}: {t(REQUEST_STATUS[currentDetails.requestContext.status as keyof typeof REQUEST_STATUS]?.label || (currentDetails.requestContext.status === 'cancelled' ? 'status.cancelled' : currentDetails.requestContext.status))}</span></div>
                   <Link to={`${getDashboardPath(user?.role || 'user')}/${user?.role === 'provider' || user?.role === 'company' ? active?.seekerUid === user?.uid ? 'my-requests' : 'inbox' : 'requests'}`} className="uo-link">{t('inbox.viewRequest')}</Link>
                 </div>}
-                {currentDetails?.messagingBlocked && <p className="msg-blocked-note" role="status">{currentDetails.blockedByMe ? t('inbox.blockedByMe') : t('inbox.blocked')}</p>}
               </div>
 
-              <div className="msg-history" ref={historyRef}
-                onWheel={() => { smoothFollowRef.current = false }}
-                onTouchStart={() => { smoothFollowRef.current = false }}
-                onPointerDown={() => { smoothFollowRef.current = false }}
-                onKeyDown={() => { smoothFollowRef.current = false }}
-                onScroll={event => {
-                  const history = event.currentTarget
-                  const nearBottom = nearHistoryBottom(history.scrollTop, history.scrollHeight, history.clientHeight)
-                  followBottomRef.current = smoothFollowRef.current || nearBottom
-                  if (nearBottom) smoothFollowRef.current = false
-                  const cached = threadsRef.current.get(activeId)
-                  if (cached) cached.scrollTop = history.scrollTop
-                }}>
-                {!loadingThread && messages.length > 0 && hasOlderMessages ? <Button size="sm" variant="outline" isPending={loadingHistory} onPress={() => {
-                  setLoadingHistory(true)
-                  const conversationId = activeId
-                  fetchMessages(conversationId, { before: messages[0].createdAt, limit: 50 }).then((older) => {
-                    if (activeIdRef.current !== conversationId) return
-                    setHasOlderMessages(older.pagination.total > older.length)
-                    const history = historyRef.current
-                    if (history) prependAnchorRef.current = { top: history.scrollTop, height: history.scrollHeight }
-                    const cached = threadsRef.current.get(conversationId)
-                    if (cached) cached.hasOlder = older.pagination.total > older.length
-                    saveMessages(conversationId, older)
-                  }).catch((error: unknown) => setError(getErrorMessage(error))).finally(() => setLoadingHistory(false))
-                }}>{t('inbox.loadOlder')}</Button> : null}
-                {loadingThread ? (
-                  <div className="msg-history-loading" aria-label={t('inbox.loadingMessages')}>
-                    <Skeleton className="msg-skel-bubble" />
-                    <Skeleton className="msg-skel-bubble is-mine" />
-                    <Skeleton className="msg-skel-bubble is-short" />
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="msg-history-empty">
-                    <span className="msg-empty-icon" aria-hidden>
-                      <MessageCircle size={20} />
-                    </span>
-                    <p>
-                      <Trans i18nKey="inbox.startWith" values={{ name: active?.peer.name ?? '' }} components={{ strong: <strong /> }} />
-                    </p>
-                  </div>
-                ) : (
-                  messages.map((m, index) => {
-                    const mine = m.senderUid === user?.uid
-                    const editing = editingId === m.id && !m.deleted
-                    const isCall = !m.deleted && (m.body.startsWith('📹') || m.body.startsWith('📞') || m.body.toLowerCase().includes('thirrj'))
-                    const canEdit = mine && !m.deleted && !messagingDisabled && !isCall
-                    const canDelete = mine && !m.deleted
-                    const day = dayKey(m.createdAt)
-                    const showDay = index === 0 || day !== dayKey(messages[index - 1].createdAt)
-                    return (
-                      <Fragment key={m.id}>
-                        {showDay && day ? (
-                          <div className="msg-day" role="separator">
-                            <span>{formatDay(m.createdAt, t)}</span>
-                          </div>
-                        ) : null}
-                        <div className={`msg-bubble-row${mine ? ' is-mine' : ''}`}>
-                          {(canEdit || canDelete) && !editing ? (
-                            <div className="msg-bubble-actions" role="toolbar" aria-label={t('inbox.messageActions')}>
-                              {canEdit ? (
-                                <button
-                                  type="button"
-                                  className="msg-action"
-                                  aria-label={t('inbox.editMessage')}
-                                  title={t('inbox.editMessage')}
-                                  onClick={() => startEdit(m)}
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                              ) : null}
-                              <button
-                                type="button"
-                                className="msg-action is-danger"
-                                aria-label={t('inbox.deleteMessage')}
-                                title={t('inbox.deleteMessage')}
-                                onClick={() => setDeleteTarget(m)}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          ) : null}
-                          <div className={`msg-bubble${mine ? ' is-mine' : ''}${m.deleted ? ' is-deleted' : ''}${editing ? ' is-editing' : ''}`}>
-                            {m.deleted ? (
-                              <div className="msg-deleted-content">
-                                <Trash2 size={13} className="msg-deleted-icon" />
-                                <p className="msg-deleted-text">{mine ? t('inbox.deletedMine') : t('inbox.deletedPeer')}</p>
-                              </div>
-                            ) : editing ? (
-                              <form
-                                className="msg-edit"
-                                onSubmit={(event) => { event.preventDefault(); void saveEdit(m) }}
-                              >
-                                <div className="msg-edit-header">
-                                  <Pencil size={13} className="msg-edit-icon" />
-                                  <span>{t('inbox.editMessage')}</span>
-                                </div>
-                                <textarea
-                                  className="msg-edit-input"
-                                  value={editDraft}
-                                  placeholder={t('inbox.editPlaceholder')}
-                                  onChange={(event) => setEditDraft(event.target.value)}
-                                  onKeyDown={(event) => {
-                                    if (event.key === 'Escape') { event.preventDefault(); cancelEdit() }
-                                    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void saveEdit(m) }
+              <div className="msg-history-wrap">
+                <div className="msg-history" ref={historyRef}
+                  onWheel={() => { smoothFollowRef.current = false }}
+                  onTouchStart={() => { smoothFollowRef.current = false }}
+                  onPointerDown={() => { smoothFollowRef.current = false }}
+                  onKeyDown={() => { smoothFollowRef.current = false }}
+                  onScroll={event => {
+                    const history = event.currentTarget
+                    const nearBottom = nearHistoryBottom(history.scrollTop, history.scrollHeight, history.clientHeight)
+                    followBottomRef.current = smoothFollowRef.current || nearBottom
+                    if (nearBottom) smoothFollowRef.current = false
+                    const cached = threadsRef.current.get(activeId)
+                    if (cached) cached.scrollTop = history.scrollTop
+                    const nowAway = !nearBottom && !smoothFollowRef.current
+                    if (nowAway !== isAway) setAway(nowAway ? { conversationId: activeId, anchorId: messages[messages.length - 1]?.id ?? null } : null)
+                    if (history.scrollTop < 200 && hasOlderMessages && !loadingHistory && !loadingThread && history.scrollHeight > history.clientHeight) loadOlder()
+                  }}>
+                  <div className="msg-stream">
+                    {!loadingThread && messages.length > 0 && hasOlderMessages ? (
+                      <div className="msg-older">
+                        {loadingHistory ? (
+                          <span className="msg-older-loading" role="status"><Spinner size="sm" color="current" />{t('inbox.loadingOlder')}</span>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="msg-older-btn" onPress={loadOlder}>{t('inbox.loadOlder')}</Button>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {!loadingThread && messages.length > 0 && !hasOlderMessages ? (
+                      <div className="msg-intro">
+                        <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} alt="" size={56} />
+                        <strong>{active?.peer.name}</strong>
+                        {active?.serviceTitle ? <span>{t('inbox.regarding', { title: active.serviceTitle })}</span> : active?.peer.roleLabel ? <span>{active.peer.roleLabel}</span> : null}
+                        <small>{t('inbox.conversationStart')}</small>
+                      </div>
+                    ) : null}
+
+                    {loadingThread ? (
+                      <div className="msg-history-loading" role="status" aria-label={t('inbox.loadingMessages')}>
+                        <Skeleton className="msg-skel-bubble" />
+                        <Skeleton className="msg-skel-bubble is-tall" />
+                        <Skeleton className="msg-skel-bubble is-mine" />
+                        <Skeleton className="msg-skel-bubble is-mine is-short" />
+                        <Skeleton className="msg-skel-bubble is-short" />
+                      </div>
+                    ) : messages.length === 0 && activeOutbox.length === 0 ? (
+                      <div className="msg-empty">
+                        <span className="msg-head-avatar is-lg">
+                          <ProfileAvatar src={active?.peer.profilePhoto} seed={active?.peer.uid} alt="" size={72} />
+                          {peerOnline ? <span className="msg-presence-dot" aria-hidden /> : null}
+                        </span>
+                        <h3>
+                          <Trans i18nKey="inbox.startWith" values={{ name: active?.peer.name ?? '' }} components={{ strong: <strong /> }} />
+                        </h3>
+                        {!messagingDisabled ? (
+                          <>
+                            <p>{t('inbox.emptyHint')}</p>
+                            <div className="msg-starters">
+                              {(['greeting', 'thanks', 'time'] as const).map(key => (
+                                <Button
+                                  key={key}
+                                  size="sm"
+                                  variant="outline"
+                                  className="msg-starter"
+                                  onPress={() => {
+                                    setDraft(t(`inbox.starters.${key}`))
+                                    inputRef.current?.focus()
                                   }}
-                                  maxLength={4000}
-                                  rows={Math.min(8, Math.max(2, editDraft.split('\n').length))}
-                                  aria-label={t('inbox.editMessage')}
-                                  disabled={savingEdit}
-                                  autoFocus
-                                  onFocus={(event) => { const end = event.currentTarget.value.length; event.currentTarget.setSelectionRange(end, end) }}
-                                />
-                                <div className="msg-edit-actions">
-                                  <span className="msg-edit-hint">{t('inbox.editHint')}</span>
-                                  <div className="msg-edit-buttons">
-                                    <Button size="sm" variant="outline" isDisabled={savingEdit} onPress={cancelEdit}>
-                                      {t('notifications.cancel')}
-                                    </Button>
-                                    <Button size="sm" variant="primary" type="submit" isPending={savingEdit} isDisabled={savingEdit || !editDraft.trim()}>
-                                      <Check size={14} />
-                                      {t('inbox.save')}
-                                    </Button>
-                                  </div>
-                                </div>
-                              </form>
-                            ) : isCall ? (
-                              <div className={`msg-call-badge${m.body.includes('humbur') ? ' is-missed' : ''}`}>
-                                <div className="msg-call-icon-wrap">
-                                  {m.body.includes('humbur') ? (
-                                    <PhoneMissed size={16} className="msg-call-icon-missed" />
-                                  ) : m.body.startsWith('📹') || m.body.toLowerCase().includes('video') ? (
-                                    <Video size={16} className="msg-call-icon-success" />
-                                  ) : (
-                                    <Phone size={16} className="msg-call-icon-success" />
-                                  )}
-                                </div>
-                                <div className="msg-call-info">
-                                  <span className="msg-call-title">
-                                    {callTitle(m.body, mine, t)}
-                                  </span>
-                                  <span className="msg-call-subtitle">
-                                    {m.body.startsWith('📹') || m.body.toLowerCase().includes('video')
-                                      ? t('inbox.videoCall')
-                                      : t('inbox.voiceCall')}
-                                  </span>
-                                </div>
+                                >
+                                  {t(`inbox.starters.${key}`)}
+                                </Button>
+                              ))}
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : (
+                      messages.map((m, index) => {
+                        const mine = m.senderUid === myUid
+                        const previous = messages[index - 1]
+                        const next = messages[index + 1]
+                        const day = dayKey(m.createdAt)
+                        const showDay = index === 0 || day !== dayKey(previous.createdAt)
+                        const isCall = isCallMessage(m)
+                        const joins = (a?: ChatMessage, b?: ChatMessage) => Boolean(a && b && a.senderUid === b.senderUid
+                          && dayKey(a.createdAt) === dayKey(b.createdAt) && !isCallMessage(a) && !isCallMessage(b)
+                          && Math.abs(Date.parse(b.createdAt) - Date.parse(a.createdAt)) < GROUP_WINDOW_MS)
+                        const editing = editingId === m.id && !m.deleted
+                        return (
+                          <Fragment key={m.id}>
+                            {showDay && day ? (
+                              <div className="msg-day" role="separator">
+                                <span>{formatDay(m.createdAt, t)}</span>
                               </div>
-                            ) : (
-                              <p>{m.body}</p>
-                            )}
-                            <span className="msg-meta">
-                              {m.editedAt && !m.deleted && !editing ? <span className="msg-edited">{t('inbox.edited')}</span> : null}
-                              <time dateTime={m.createdAt}>{formatClock(m.createdAt)}</time>
-                            </span>
-                          </div>
-                        </div>
-                      </Fragment>
-                    )
-                  })
-                )}
-                {peerTyping ? (
-                  <div className="msg-typing" aria-live="polite" aria-label={t('inbox.typing')}>
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                ) : null}
+                            ) : null}
+                            <MessageBubble
+                              id={m.id}
+                              body={m.body}
+                              createdAt={m.createdAt}
+                              mine={mine}
+                              deleted={m.deleted}
+                              edited={Boolean(m.editedAt)}
+                              groupStart={showDay || !joins(previous, m)}
+                              groupEnd={next ? !joins(m, next) : !(mine && outboxJoinsLast)}
+                              avatar={peerAvatar}
+                              call={isCall ? {
+                                title: callTitle(m.body, mine, t),
+                                missed: m.body.includes('humbur'),
+                                video: m.body.startsWith('📹') || m.body.toLowerCase().includes('video'),
+                              } : null}
+                              selected={selectedId === m.id}
+                              onSelect={() => setSelectedId(current => current === m.id ? null : m.id)}
+                              onCopy={!m.deleted && !isCall ? () => copyMessage(m.body) : undefined}
+                              canEdit={mine && !m.deleted && !messagingDisabled && !isCall}
+                              canDelete={mine && !m.deleted}
+                              onEdit={() => startEdit(m)}
+                              onDelete={() => setDeleteTarget(m)}
+                              editor={editing ? (
+                                <form
+                                  className="msg-edit"
+                                  onSubmit={(event) => { event.preventDefault(); void saveEdit(m) }}
+                                >
+                                  <span className="msg-edit-header">{t('inbox.editMessage')}</span>
+                                  <textarea
+                                    className="msg-edit-input"
+                                    value={editDraft}
+                                    placeholder={t('inbox.editPlaceholder')}
+                                    onChange={(event) => setEditDraft(event.target.value)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Escape') { event.preventDefault(); cancelEdit() }
+                                      if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void saveEdit(m) }
+                                    }}
+                                    maxLength={4000}
+                                    rows={Math.min(8, Math.max(2, editDraft.split('\n').length))}
+                                    aria-label={t('inbox.editMessage')}
+                                    disabled={savingEdit}
+                                    autoFocus
+                                    onFocus={(event) => { const end = event.currentTarget.value.length; event.currentTarget.setSelectionRange(end, end) }}
+                                  />
+                                  <div className="msg-edit-actions">
+                                    <span className="msg-edit-hint">{t('inbox.editHint')}</span>
+                                    <div className="msg-edit-buttons">
+                                      <Button size="sm" variant="ghost" isDisabled={savingEdit} onPress={cancelEdit}>
+                                        {t('notifications.cancel')}
+                                      </Button>
+                                      <Button size="sm" variant="primary" type="submit" isPending={savingEdit} isDisabled={savingEdit || !editDraft.trim()}>
+                                        <Check size={14} aria-hidden />
+                                        {t('inbox.save')}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </form>
+                              ) : undefined}
+                            />
+                          </Fragment>
+                        )
+                      })
+                    )}
 
+                    {!loadingThread ? activeOutbox.map((item, index) => (
+                      <MessageBubble
+                        key={item.tempId}
+                        id={item.tempId}
+                        body={item.body}
+                        createdAt={item.createdAt}
+                        mine
+                        groupStart={index === 0 ? !outboxJoinsLast : false}
+                        groupEnd={index === activeOutbox.length - 1}
+                        delivery={item.status}
+                        onRetry={item.status === 'failed' && !sending ? () => retrySend(item) : undefined}
+                        onDiscard={item.status === 'failed' ? () => discardSend(item) : undefined}
+                      />
+                    )) : null}
+
+                    {peerTyping && !messagingDisabled ? (
+                      <div className="msg-row is-peer is-group-start is-group-end msg-typing-row" aria-live="polite">
+                        <div className="msg-row-avatar" aria-hidden>{peerAvatar}</div>
+                        <div className="msg-typing" role="status" aria-label={t('inbox.typing')}>
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {isAway && !loadingThread ? (
+                  <Button
+                    variant="secondary"
+                    className={`msg-jump${unseenCount > 0 ? ' has-unseen' : ''}`}
+                    aria-label={unseenCount > 0 ? t('inbox.newMessages', { count: unseenCount }) : t('inbox.jumpToLatest')}
+                    onPress={jumpToLatest}
+                  >
+                    {unseenCount > 0 ? <span className="msg-jump-count">{t('inbox.newMessages', { count: unseenCount })}</span> : null}
+                    <ArrowDown size={18} aria-hidden />
+                  </Button>
+                ) : null}
               </div>
 
-              <form className="msg-composer" onSubmit={onSend}>
-                <Input
-                  ref={inputRef}
+              {messagingDisabled ? (
+                <div className="msg-composer-blocked" role="status">
+                  <ShieldAlert size={16} aria-hidden />
+                  <span>{currentDetails?.blockedByMe ? t('inbox.blockedByMe') : t('inbox.blocked')}</span>
+                </div>
+              ) : (
+                <MessageComposer
                   value={draft}
-                  onChange={(e) => onDraftChange(e.target.value)}
+                  onChange={onDraftChange}
+                  onSubmit={onSend}
+                  onEditLast={editLastMessage}
+                  sending={sending}
+                  disabled={messagingDisabled}
                   placeholder={active?.peer.name ? t('inbox.composerPlaceholder', { name: active.peer.name }) : t('inbox.composerPlaceholderAnon')}
-                  aria-label={t('feedback.message')}
-                  maxLength={4000}
-                  disabled={sending || messagingDisabled}
-                  fullWidth
-                  className="msg-input"
+                  inputRef={inputRef}
                 />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  isIconOnly
-                  className="msg-send"
-                  isDisabled={sending || messagingDisabled || !draft.trim()}
-                  aria-label={t('feedback.send')}
-                >
-                  <Send size={18} />
-                </Button>
-              </form>
+              )}
             </>
           )}
         </section>
