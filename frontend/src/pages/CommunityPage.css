@@ -214,12 +214,11 @@
   font-weight: 750;
   cursor: pointer;
   box-shadow: 0 10px 30px -8px rgb(59 91 255 / 65%), 0 0 0 1px rgb(255 255 255 / 60%) inset;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-comm-hero-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 36px -10px rgb(59 91 255 / 80%), 0 0 0 1px rgb(255 255 255 / 60%) inset;
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
 }
 
 .kk-comm-hero-cta--ghost {
@@ -236,10 +235,6 @@
 
 .kk-comm-hero-cta--ghost svg {
   transition: transform 0.2s ease;
-}
-
-.kk-comm-hero-cta--ghost:hover svg {
-  transform: translateX(3px);
 }
 
 .kk-comm-hero-badges {
@@ -597,10 +592,6 @@
   transition: transform 0.2s ease;
 }
 
-.kk-comm-fake-input:hover .kk-comm-fake-input-btn {
-  transform: scale(1.04);
-}
-
 .kk-comm-composer-title {
   flex: 1;
   display: flex;
@@ -666,7 +657,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-comm-quick-chip svg {
@@ -677,7 +668,6 @@
   border-color: color-mix(in srgb, var(--cat) 45%, transparent);
   background: var(--cat-soft);
   color: var(--cat-ink);
-  transform: translateY(-1px);
 }
 
 /* Composer form */
@@ -770,7 +760,7 @@
   color: var(--comm-soft);
   text-align: center;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-comm-cat-option input {
@@ -792,7 +782,6 @@
 
 .kk-comm-cat-option:hover {
   border-color: color-mix(in srgb, var(--cat) 40%, transparent);
-  transform: translateY(-1px);
 }
 
 .kk-comm-cat-option.is-checked {
@@ -923,7 +912,7 @@
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
-  transition: all 0.18s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-comm-btn-login {
@@ -943,7 +932,6 @@
 
 .kk-comm-btn-register:hover {
   background: var(--accent-hover);
-  transform: translateY(-1px);
 }
 
 [data-theme='dark'] .kk-comm-btn-register,
@@ -991,7 +979,7 @@
   font-weight: 650;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-comm-category-tab-icon {
@@ -1008,7 +996,6 @@
 .kk-comm-category-tab:hover {
   border-color: color-mix(in srgb, var(--cat) 45%, transparent);
   color: var(--cat-ink);
-  transform: translateY(-1px);
 }
 
 .kk-comm-category-tab.is-active {
@@ -2518,11 +2505,6 @@ a.kk-comm-side-card:hover {
 .kk-comm-sidebar-action-btn svg,
 .kk-comm-ai-btn svg {
   transition: transform 0.2s ease;
-}
-
-a.kk-comm-side-card:hover .kk-comm-sidebar-action-btn svg,
-a.kk-comm-side-card:hover .kk-comm-ai-btn svg {
-  transform: translateX(3px);
 }
 
 /* AI card with animated gradient border */

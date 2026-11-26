@@ -592,12 +592,7 @@
   font-size: 0.84rem !important;
   font-weight: 650 !important;
   box-shadow: 0 4px 10px -8px rgb(5 10 68 / 35%) !important;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease !important;
+  transition: var(--kk-btn-transition) !important;
 }
 
 [data-theme="dark"] .pc-card .tt-dir-action,
@@ -646,10 +641,6 @@
 .pc-card .pc-actions > a.tt-dir-action.is-primary:hover {
   background: linear-gradient(135deg, #2563eb, var(--accent)) !important;
   filter: brightness(1.08) !important;
-  transform: translateY(-1px) !important;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 22%),
-    0 14px 26px -10px rgb(37 99 235 / 75%) !important;
 }
 
 .pc-card .tt-dir-action.is-icon:hover,
@@ -661,8 +652,6 @@
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border)) !important;
   background: color-mix(in srgb, var(--accent) 8%, var(--surface)) !important;
   color: var(--foreground) !important;
-  box-shadow: 0 8px 16px -10px rgb(37 99 235 / 60%) !important;
-  transform: translateY(-1px) !important;
 }
 
 .pc-actions .tt-dir-action.is-icon[aria-disabled='true'] {

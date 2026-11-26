@@ -239,13 +239,12 @@
   font-weight: 750;
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
   box-shadow: 0 4px 14px rgb(10 33 192 / 35%);
 }
 
 .hm-search-submit:hover {
   background: #061587;
-  transform: translateY(-1px);
 }
 
 .hm-search-submit:focus-visible {
@@ -1079,13 +1078,12 @@
   font-size: 0.92rem;
   font-weight: 750;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .hm-featured-btn:hover {
   background: color-mix(in srgb, var(--accent) 85%, #000);
-  transform: translateY(-2px);
 }
 
 /* Secondary Guides Stack */
@@ -1283,13 +1281,12 @@
   text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .hm-ai-bar-cta:hover {
   background: color-mix(in srgb, var(--accent) 85%, #000);
-  transform: translateY(-2px);
 }
 
 /* --------------------------------------------------------------------------
@@ -1405,12 +1402,11 @@
   color: var(--heading);
   cursor: pointer;
   text-align: left;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .hm-choice-card:hover {
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  transform: translateY(-2px);
 }
 
 .hm-choice-card.is-selected {
@@ -1752,7 +1748,6 @@
 .tt-cta-button[data-variant="primary"]:hover,
 .tt-cta-button.is-primary:hover {
   background: #f1f5f9;
-  transform: translateY(-2px);
 }
 
 .tt-cta-button.tt-cta-register,
@@ -1765,7 +1760,6 @@
 .tt-cta-button.tt-cta-register:hover,
 .tt-cta-button[data-variant="outline"]:hover {
   background: rgb(255 255 255 / 20%);
-  transform: translateY(-2px);
 }
 
 /* --------------------------------------------------------------------------

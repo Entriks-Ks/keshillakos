@@ -352,14 +352,13 @@
   color: var(--foreground);
   font: inherit;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .dtb-account:hover,
 .dtb-account[aria-expanded='true'] {
   background: var(--surface);
   border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
-  box-shadow: 0 6px 16px rgb(5 10 68 / 6%);
 }
 
 .dtb-account:focus-visible {

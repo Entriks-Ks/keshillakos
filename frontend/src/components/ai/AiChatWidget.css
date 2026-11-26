@@ -56,17 +56,16 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 10px 25px -5px rgba(10, 33, 192, 0.4), 0 8px 10px -6px rgba(10, 33, 192, 0.2);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: var(--kk-btn-transition);
   position: relative;
 }
 
 .kk-ai-trigger-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 14px 28px -5px rgba(10, 33, 192, 0.5), 0 10px 10px -5px rgba(10, 33, 192, 0.3);
+  filter: brightness(1.08);
 }
 
 .kk-ai-trigger-btn:active {
-  transform: translateY(0) scale(0.97);
+  filter: brightness(0.95);
 }
 
 .kk-ai-trigger-badge {
@@ -94,13 +93,12 @@
   align-items: center;
   gap: 0.4rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
   user-select: none;
 }
 
 .kk-ai-trigger-pill:hover {
   background: var(--surface-muted);
-  transform: translateX(-2px);
 }
 
 @keyframes kk-ai-pulse {
@@ -441,7 +439,7 @@
   border-radius: 0.75rem;
   color: var(--foreground);
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: var(--kk-btn-transition);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -451,8 +449,6 @@
 .kk-ai-starter-chip:hover {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   border-color: var(--accent);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .kk-ai-starter-left {
@@ -504,7 +500,6 @@
 }
 
 .kk-ai-starter-chip:hover .kk-ai-starter-arrow {
-  transform: translateX(2px);
   color: var(--accent);
 }
 
@@ -703,7 +698,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: var(--kk-btn-transition);
   user-select: none;
 }
 
@@ -711,7 +706,6 @@
   background: var(--accent);
   color: #ffffff;
   border-color: var(--accent);
-  transform: translateY(-1px);
 }
 
 .kk-ai-action-sparkle {
@@ -963,14 +957,13 @@
   background: var(--accent);
   color: #ffffff;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: var(--kk-btn-transition);
   flex-shrink: 0;
   margin-bottom: 1px;
 }
 
 .kk-ai-send-btn:hover:not(:disabled) {
   background: var(--accent-hover);
-  transform: scale(1.05);
 }
 
 .kk-ai-send-btn:disabled {

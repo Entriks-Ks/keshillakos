@@ -15,7 +15,7 @@
   font-size: 0.825rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: var(--kk-btn-transition);
   user-select: none;
 }
 
@@ -26,8 +26,6 @@
 }
 
 .kk-ai-trust-compact:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.22);
   background: color-mix(in srgb, #16a34a 20%, var(--surface));
 }
 
@@ -696,13 +694,12 @@
   font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: var(--kk-btn-transition);
   flex-shrink: 0;
 }
 
 .kk-ai-modal-confirm-btn:hover {
   background: var(--accent-hover);
-  transform: translateY(-1px);
 }
 
 /* Phones: the score details open in the shared bottom sheet (components/BottomSheet), where the body

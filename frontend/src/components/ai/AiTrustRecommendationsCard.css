@@ -106,15 +106,13 @@
   font-size: 0.8rem;
   font-weight: 650;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
   flex-shrink: 0;
 }
 
 .kk-ai-recs-refresh-btn:hover:not(:disabled) {
   border-color: #16a34a;
   color: #15803d;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .kk-ai-recs-refresh-btn:disabled {
@@ -415,7 +413,7 @@
   font-weight: 750;
   text-decoration: none;
   border: 1px solid color-mix(in srgb, #16a34a 30%, transparent);
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
   white-space: nowrap;
 }
 
@@ -427,8 +425,6 @@
 .kk-ai-rec-action-btn:hover {
   background: #16a34a;
   color: #ffffff;
-  transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
 }
 
 /* Skeletons */

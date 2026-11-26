@@ -306,14 +306,11 @@
   box-shadow: 0 4px 14px -6px rgb(37 99 235 / 50%);
   font-weight: 650;
   animation: kk-ai-spin 5s linear infinite;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-nav-link-ai:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 8px 24px -8px rgb(56 189 248 / 70%),
-    0 0 0 4px rgb(56 189 248 / 12%);
+  filter: brightness(1.06);
 }
 
 .kk-nav-ai-label {
@@ -494,7 +491,7 @@
   background: color-mix(in srgb, var(--foreground) 3.5%, transparent);
   color: var(--ink-secondary);
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-nav .kk-theme-toggle:hover,
@@ -503,7 +500,6 @@
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 [data-theme="dark"] .kk-nav .kk-theme-toggle:hover,
@@ -515,10 +511,6 @@
 
 .kk-nav .kk-theme-toggle svg {
   transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.4);
-}
-
-.kk-nav .kk-theme-toggle:hover svg {
-  transform: rotate(-25deg) scale(1.08);
 }
 
 /* Guest Buttons */
@@ -567,7 +559,7 @@
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 25%),
     0 6px 18px -6px rgb(10 33 192 / 60%);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: var(--kk-btn-transition);
 }
 
 [data-theme="dark"] .kk-nav-cta {
@@ -585,18 +577,11 @@
   width: 50%;
   background: linear-gradient(100deg, transparent, rgb(255 255 255 / 45%), transparent);
   transform: skewX(-20deg);
-  transition: transform 0.75s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-nav-cta:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 25%),
-    0 10px 26px -8px rgb(37 99 235 / 75%);
-}
-
-.kk-nav-cta:hover::before {
-  transform: skewX(-20deg) translateX(420%);
+  filter: brightness(1.06);
 }
 
 .kk-nav-cta:not(:hover)::before {
@@ -605,10 +590,6 @@
 
 .kk-nav-cta-arrow {
   transition: transform 0.25s ease;
-}
-
-.kk-nav-cta:hover .kk-nav-cta-arrow {
-  transform: translateX(3px);
 }
 
 /* Pending Skeleton */
@@ -649,14 +630,13 @@
   color: var(--foreground);
   font: inherit;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-nav-account:hover,
 .kk-nav-account[aria-expanded='true'] {
   background: var(--surface);
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 .kk-nav-account[data-focus-visible] {

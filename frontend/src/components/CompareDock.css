@@ -196,7 +196,7 @@ body.has-compare-dock:not(:has(.tt-footer)) #root {
   padding: 0;
   opacity: 0.92;
   transform: scale(0.95);
-  transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.12s ease;
+  transition: var(--kk-btn-transition);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
   z-index: 5;
 }
@@ -217,7 +217,6 @@ body.has-compare-dock:not(:has(.tt-footer)) #root {
 .kk-dock-remove:hover {
   opacity: 1;
   background: #dc2626;
-  transform: scale(1.15);
 }
 
 @media (hover: none) {
@@ -300,31 +299,20 @@ body.has-compare-dock:not(:has(.tt-footer)) #root {
   box-shadow:
     0 4px 12px -2px rgba(37, 99, 235, 0.35),
     0 2px 4px -1px rgba(37, 99, 235, 0.2);
-  transition:
-    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.15s ease;
+  transition: var(--kk-btn-transition);
   white-space: nowrap;
 }
 
 .kk-dock-cta-btn:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 6px 16px -2px rgba(37, 99, 235, 0.45),
-    0 2px 6px -1px rgba(37, 99, 235, 0.25);
   filter: brightness(1.05);
 }
 
 .kk-dock-cta-btn:active {
-  transform: translateY(0);
+  filter: brightness(0.95);
 }
 
 .kk-dock-cta-arrow {
   transition: transform 0.18s ease;
-}
-
-.kk-dock-cta-btn:hover .kk-dock-cta-arrow {
-  transform: translateX(2px);
 }
 
 .kk-dock-cta-btn.is-complete {
@@ -332,12 +320,6 @@ body.has-compare-dock:not(:has(.tt-footer)) #root {
   box-shadow:
     0 4px 14px -2px rgba(22, 163, 74, 0.4),
     0 2px 4px -1px rgba(22, 163, 74, 0.2);
-}
-
-.kk-dock-cta-btn.is-complete:hover {
-  box-shadow:
-    0 6px 18px -2px rgba(22, 163, 74, 0.5),
-    0 2px 6px -1px rgba(22, 163, 74, 0.25);
 }
 
 /* --------------------------------------------------------------------------

@@ -193,15 +193,11 @@
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .pl-box a svg {
   transition: transform 0.2s ease;
-}
-
-.pl-box a:hover svg {
-  transform: translateX(3px);
 }
 
 .pl-box.is-featured button,
@@ -420,8 +416,6 @@
 
 .pl .pl-box:not(.is-featured) a:hover {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  box-shadow: 0 10px 22px -12px rgb(10 33 192 / 50%);
-  transform: translateY(-1px);
 }
 
 /* Featured Pro: dark card with a slowly rotating gradient border */
@@ -476,8 +470,7 @@
 }
 
 .pl .pl-box.is-featured a:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 36px -12px rgb(37 99 235 / 95%);
+  filter: brightness(1.06);
 }
 
 .pl-login {

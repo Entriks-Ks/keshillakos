@@ -493,7 +493,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.9, 0.25, 1), box-shadow 0.2s ease;
+  transition: var(--kk-btn-transition);
   animation: kk-ai-rise 0.45s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
   animation-delay: calc(var(--i, 0) * 50ms + 150ms);
 }
@@ -501,8 +501,6 @@
 .kk-aipage-topic-btn:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--topic) 35%, transparent);
   background: color-mix(in srgb, var(--topic) 7%, var(--surface));
-  box-shadow: 0 10px 22px -14px color-mix(in srgb, var(--topic) 70%, transparent);
-  transform: translateX(3px);
 }
 
 .kk-aipage-topic-btn:disabled {
@@ -535,7 +533,6 @@
 .kk-aipage-topic-btn:hover:not(:disabled) .kk-aipage-topic-icon-wrap {
   background: var(--topic);
   color: #ffffff;
-  transform: rotate(-6deg) scale(1.05);
 }
 
 .kk-aipage-topic-body {
@@ -583,7 +580,6 @@
 
 .kk-aipage-topic-btn:hover:not(:disabled) .kk-aipage-topic-arrow {
   color: var(--topic);
-  transform: translateX(3px);
 }
 
 /* "Pse Këshilla AI?" – dark card */
@@ -662,19 +658,15 @@
   font-size: 0.84rem;
   font-weight: 750;
   text-decoration: none;
-  transition: transform 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-aipage-info-cta:hover {
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
 }
 
 .kk-aipage-info-cta svg {
   transition: transform 0.2s ease;
-}
-
-.kk-aipage-info-cta:hover svg {
-  transform: translateX(3px);
 }
 
 /* ==========================================================================
@@ -1012,7 +1004,7 @@
   text-align: left;
   cursor: pointer;
   box-shadow: 0 6px 16px -12px rgb(15 23 42 / 30%);
-  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.25, 1), border-color 0.2s ease, box-shadow 0.25s ease;
+  transition: var(--kk-btn-transition);
   animation: kk-ai-rise 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
   animation-delay: calc(var(--i, 0) * 80ms + 250ms);
 }
@@ -1032,8 +1024,6 @@
 
 .kk-aipage-quick-card:hover {
   border-color: color-mix(in srgb, var(--topic) 40%, transparent);
-  box-shadow: 0 18px 34px -18px color-mix(in srgb, var(--topic) 65%, transparent);
-  transform: translateY(-3px);
 }
 
 .kk-aipage-quick-card:hover::before {
@@ -1057,10 +1047,6 @@
   color: #ffffff;
   box-shadow: 0 8px 16px -8px var(--topic);
   transition: transform 0.25s ease;
-}
-
-.kk-aipage-quick-card:hover .kk-aipage-quick-icon {
-  transform: rotate(-8deg) scale(1.06);
 }
 
 .kk-aipage-quick-badge {
@@ -1301,7 +1287,7 @@
   font-size: 0.8rem;
   font-weight: 650;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: var(--kk-btn-transition);
 }
 
 [data-theme='dark'] .kk-aipage-root .kk-ai-action-btn {
@@ -1312,8 +1298,6 @@
   border-color: transparent;
   background: var(--ai-grad);
   color: #ffffff;
-  box-shadow: 0 8px 18px -8px rgb(29 78 216 / 70%);
-  transform: translateY(-1px);
 }
 
 .kk-aipage-root .kk-ai-action-sparkle {
@@ -1490,16 +1474,15 @@
   color: #ffffff;
   cursor: pointer;
   box-shadow: 0 10px 22px -10px rgb(29 78 216 / 80%);
-  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.25, 1.3), box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: var(--kk-btn-transition);
 }
 
 .kk-aipage-send-btn:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 14px 26px -10px rgb(29 78 216 / 90%);
+  filter: brightness(1.06);
 }
 
 .kk-aipage-send-btn:active:not(:disabled) {
-  transform: scale(0.95);
+  filter: brightness(0.95);
 }
 
 .kk-aipage-send-btn:disabled {
@@ -1706,7 +1689,6 @@
     width: auto;
     margin-inline: 16px;
   }
-
 
   .kk-aipage-root .kk-ai-cards-container,
   .kk-aipage-root .kk-ai-actions-row,
