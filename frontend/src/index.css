@@ -107,6 +107,39 @@
   transform: none;
 }
 
+/*
+  Touch press feedback (phones, tablets). While a finger is down an interactive element dims at once; on release it
+  returns. No scale, no ripple. Desktop keeps its hover styles (hover rules only apply on devices that can hover,
+  see vite.config.ts), so nothing stays "hovered" after a tap.
+  - Controls (buttons, links, nav items, tabs, chips) dim to 75%, clickable cards to 90% so large surfaces don't flash.
+  - HeroUI controls use React Aria's data-pressed (set on touch at once); many have app backgrounds that hide
+    HeroUI's own pressed colour, so they get the same dim. Menus and list options keep HeroUI's own feedback.
+  - Pressing a control inside a card only marks the control, not the card around it.
+*/
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: none) {
+  /* Each selector is one compound: line breaks only inside parentheses (a space between them would mean "descendant"). */
+  :is(button, a[href], summary, select, [role='button'], [role='link'], [role='tab'], [role='switch'],
+    [role='checkbox'], [role='radio']):not(:disabled, [aria-disabled='true'], [data-disabled='true'], .button,
+    .close-button, .toggle-button, .pagination__link, .dropdown__trigger, .menu-item, .list-box-item, .is-clickable,
+    [class*='card']):not(:has(:is(button, a[href], [role='button'], [role='link']):active, [data-pressed='true'])):active,
+  :is(.button, .close-button, .toggle-button, .pagination__link,
+    .dropdown__trigger:not(:has(.button)))[data-pressed='true']:not(:disabled, [data-disabled='true']) {
+    opacity: 0.75;
+    transition-duration: 0s;
+  }
+
+  :is(.is-clickable, .moderation-row, a[href][class*='card'], button[class*='card'], [role='link'][class*='card'],
+    [role='button'][class*='card']):not(:disabled, [aria-disabled='true']):not(:has(:is(button, a[href],
+    [role='button'], [role='link']):active, [data-pressed='true'])):active {
+    opacity: 0.9;
+    transition-duration: 0s;
+  }
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
 
