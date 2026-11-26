@@ -28,6 +28,7 @@ import {
   fetchMyProviderProfiles,
   updateMyProviderProfile,
   uploadProviderCover,
+  removeProviderCover,
   uploadProviderPhoto,
   type CertificationEntry,
   type EducationEntry,
@@ -45,6 +46,7 @@ import {
 } from '../api/socialLinks'
 import { useAuth } from '../auth/AuthContext'
 import ProfileAvatar from '../components/ProfileAvatar'
+import ProfileCover from '../components/ProfileCover'
 import ProviderLocationFields from '../components/ProviderLocationFields'
 import SocialIcon from '../components/SocialIcon'
 import type { DomainDefinition } from '../data/domains'
@@ -199,6 +201,8 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
   const [profile, setProfile] = useState<ManagedProviderProfile | null>(null)
   const [photoPreview, setPhotoPreview] = useState('')
   const [coverPreview, setCoverPreview] = useState('')
+  const [removingCover, setRemovingCover] = useState(false)
+  const [confirmRemoveCover, setConfirmRemoveCover] = useState(false)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   const [subcategoryId, setSubcategoryId] = useState('')
@@ -327,6 +331,25 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
     } finally {
       setUploading(null)
       URL.revokeObjectURL(local)
+    }
+  }
+
+  async function onRemoveCover() {
+    if (!profile) return
+    setConfirmRemoveCover(false)
+    setRemovingCover(true)
+    setUploading('cover')
+    try {
+      const next = await removeProviderCover(profile._id)
+      setProfile(next)
+      setCoverPreview('')
+      await onSaved()
+      toast.success(t('profile.coverRemoved'))
+    } catch (err) {
+      toast.danger(getErrorMessage(err))
+    } finally {
+      setRemovingCover(false)
+      setUploading(null)
     }
   }
 
@@ -1117,9 +1140,7 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
           <Card className="uo-card">
             <SectionHead title={t('profile.cover')} />
             <Card.Content className="uo-card-body ep-stack">
-              <div className="ep-cover">
-                <img src={coverPreview || '/images/login-advice.png'} alt="" />
-              </div>
+              <ProfileCover src={coverPreview} seed={user?.uid || ''} className="ep-cover" />
               <p className="ds-hint">
                 {coverPreview ? '' : `${t('profile.coverDefault')} `}
                 {IMAGE_ACCEPT_HINT}.
@@ -1132,8 +1153,21 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
                 onPress={() => coverInput.current?.click()}
               >
                 <ImageIcon size={15} aria-hidden />
-                {uploading === 'cover' ? t('profile.uploading') : t('profile.changeCover')}
+                {uploading === 'cover' && !removingCover ? t('profile.uploading') : t('profile.changeCover')}
               </Button>
+              {profile?.publicProfile.coverUrl ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ep-cover-btn"
+                  isPending={removingCover}
+                  isDisabled={uploading === 'cover'}
+                  onPress={() => setConfirmRemoveCover(true)}
+                >
+                  <Trash2 size={15} aria-hidden />
+                  {removingCover ? t('profile.removingCover') : t('profile.removeCover')}
+                </Button>
+              ) : null}
               <input
                 ref={coverInput}
                 type="file"
@@ -1151,6 +1185,15 @@ export default function ExpertProfilePage({ onSaved, completion }: { onSaved: ()
       </div>
 
 
+      <ConfirmActionDialog
+        isOpen={confirmRemoveCover}
+        onClose={() => setConfirmRemoveCover(false)}
+        onConfirm={() => void onRemoveCover()}
+        title={t('profile.removeCoverTitle')}
+        description={t('profile.removeCoverText')}
+        confirmLabel={t('profile.removeCover')}
+        pending={removingCover}
+      />
       <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { cancelEdit(); setConfirmCancel(false) }} title={t('profile.discardTitle')} description={t('profile.expert.discardText')} confirmLabel={t('profile.discardConfirm')} />
     </section>
   )

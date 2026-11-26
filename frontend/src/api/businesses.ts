@@ -63,6 +63,12 @@ export async function uploadBusinessLogo(id: string, file: File) {
   return data.business
 }
 
+/** Removes the company's custom cover; its default cover shows again. */
+export async function removeBusinessCover(id: string) {
+  const { data } = await api.delete<{ business: BusinessProfile }>(`/api/businesses/${encodeURIComponent(id)}/cover`)
+  return data.business
+}
+
 export async function uploadBusinessCover(id: string, file: File) {
   const data = await postPhotoUpload<{ business: BusinessProfile }>(
     api,

@@ -189,19 +189,11 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Editor preview of the cover; the image and the default design come from ProfileCover. */
 .ep-cover {
-  overflow: hidden;
   aspect-ratio: 16 / 5;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface-muted);
-}
-
-.ep-cover img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .ep-cover-btn {

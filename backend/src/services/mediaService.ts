@@ -53,6 +53,29 @@ export function mediaKeyFromPath(value: unknown): string | null {
   return match ? match[1] : null
 }
 
+/** Folder that `storeUploadedFile` uses for an owner id: `<kind>/<owner>`. */
+export function uploadFolder(kind: UploadKind, ownerId: string) {
+  return `${kind}/${safeToken(ownerId, 'unknown')}`
+}
+
+/** Thrown when a client points an image field at a file that is not one of the account's own uploads. */
+export const NOT_OWN_UPLOAD_MESSAGE = 'Mund të përdorësh vetëm foto të ngarkuara nga llogaria jote'
+
+/**
+ * An image path a client may set on an account: empty (remove), the value already stored (forms that send it back,
+ * including legacy paths), or one of the account's own uploads (`/media/<folder>/…` inside `ownFolders`).
+ * Another account's upload, an unknown path or an outside URL is refused.
+ */
+export function ownUploadPath(value: string | null | undefined, ownFolders: string[], current?: string | null) {
+  if (value === undefined || value === null) return value
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (current && trimmed === current) return trimmed
+  const key = mediaKeyFromPath(trimmed)
+  if (key && ownFolders.some((folder) => key.startsWith(`${folder}/`))) return trimmed
+  throw new Error(NOT_OWN_UPLOAD_MESSAGE)
+}
+
 /** Accept only managed `/media/{key}` paths (plus legacy `/uploads/...` records). */
 export function normalizeUploadPath(value: unknown): string | null {
   if (typeof value !== 'string') return null

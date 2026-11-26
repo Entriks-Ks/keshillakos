@@ -219,6 +219,7 @@ export const API_ERROR_KEYS: Readonly<Record<string, string>> = {
   'Pro lejon deri në 5 referenca.': 'apiErrors.proMaxReferences',
   'Fotoja e profilit është pjesë e planit Pro.': 'apiErrors.proProfilePhoto',
   'Fotot e profilit janë pjesë e planit Pro.': 'apiErrors.proProfilePhotos',
+  'Mund të përdorësh vetëm foto të ngarkuara nga llogaria jote': 'apiErrors.notOwnUpload',
   'Logoja dhe fotoja e kopertinës janë pjesë e planit Pro.': 'apiErrors.proLogoCover',
   'Rrjetet sociale janë pjesë e planit Pro.': 'apiErrors.proSocialLinks',
   'Website është pjesë e planit Pro.': 'apiErrors.proWebsite',

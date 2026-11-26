@@ -157,6 +157,17 @@ router.post('/:id/cover', requireAuth, requireRole('company', 'admin'), withImag
   }
 })
 
+router.delete('/:id/cover', requireAuth, requireRole('company', 'admin'), async (req, res) => {
+  try {
+    // Back to the default cover; updateBusiness checks ownership and deletes the unused file.
+    const business = await updateBusiness(req.user!.uid, String(req.params.id), { coverUrl: null })
+    return res.json({ business: toPublicBusiness(business) })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Heqja e sfondit dështoi'
+    return res.status(message.includes('leje') ? 403 : message.includes('nuk u gjet') ? 404 : 400).json({ message })
+  }
+})
+
 router.patch('/:id/review', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { status, verification } = req.body as { status?: 'active' | 'suspended'; verification?: 'unverified' | 'verified' | 'rejected' }

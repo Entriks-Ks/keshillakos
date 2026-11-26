@@ -12,6 +12,8 @@ import {
   imageUpload,
   storeUploadedFile,
   withImageUpload,
+  ownUploadPath,
+  uploadFolder,
 } from '../services/mediaService'
 import {
   createProviderProfile,
@@ -20,6 +22,7 @@ import {
   moderateProviderProfile,
   toPublicProvider,
   updateProviderCover,
+  removeProviderCover,
   updateProviderPhoto,
   updateProviderProfile,
 } from '../services/providerProfileService'
@@ -84,6 +87,13 @@ router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async
       return res.status(400).json({ message: 'Lloji, emri dhe kategoritë janë të detyrueshme' })
     }
     const locationFields = z.object({ location: locationInput.optional(), serviceAreaCityIds: areaInput.optional() }).parse(body)
+    // Only known text fields; a photo must be one of this account's own uploads, and covers only arrive through
+    // the cover upload. (Copying the whole object let a caller set any photo or cover URL.)
+    const sent = body.publicProfile
+    const photoUrl = ownUploadPath(sent.photoUrl, [
+      uploadFolder('profiles', req.user!.uid),
+      ...(body.businessId ? [uploadFolder('companies', body.businessId)] : []),
+    ])
     const provider = await createProviderProfile({
       ownerUid: req.user!.uid,
       providerType: body.providerType!,
@@ -94,7 +104,15 @@ router.post('/', requireAuth, requireRole('provider', 'company', 'admin'), async
       serviceAreas: body.serviceAreas,
       ...locationFields,
       modes: body.modes,
-      publicProfile: { ...body.publicProfile, displayName: body.publicProfile.displayName },
+      publicProfile: {
+        displayName: sent.displayName ?? '', // checked non-empty above
+        title: sent.title,
+        shortDescription: sent.shortDescription,
+        description: sent.description,
+        publicEmail: sent.publicEmail,
+        publicPhone: sent.publicPhone,
+        photoUrl: photoUrl || undefined,
+      },
     })
     return res.status(201).json({ provider: toPublicProvider(provider) })
   } catch (err) { return res.status(400).json({ message: err instanceof Error ? err.message : 'Profili nuk u krijua' }) }
@@ -195,6 +213,16 @@ router.post(
     }
   },
 )
+
+router.delete('/:id/cover', requireAuth, requireRole('provider', 'company', 'admin'), async (req, res) => {
+  try {
+    const provider = await removeProviderCover(req.user!.uid, String(req.params.id))
+    return res.json({ provider: toPublicProvider(provider) })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Heqja e sfondit dështoi'
+    return res.status(message.includes('leje') ? 403 : message.includes('nuk u gjet') ? 404 : 400).json({ message })
+  }
+})
 
 router.post(
   '/:id/cover',

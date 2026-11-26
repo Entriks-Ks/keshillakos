@@ -43,6 +43,7 @@ import type { MatchIntake } from '../api/match'
 import { SOCIAL_LINK_KEYS, SOCIAL_LINK_LABELS } from '../api/socialLinks'
 import BackButton from '../components/BackButton'
 import ProfileAvatar from '../components/ProfileAvatar'
+import ProfileCover from '../components/ProfileCover'
 import ProviderReviews from '../components/ProviderReviews'
 import SendRequestButton from '../components/SendRequestButton'
 import ServiceMediaPlaceholder from '../components/ServiceMediaPlaceholder'
@@ -407,12 +408,9 @@ export default function ProviderProfilePage() {
           {!loading && provider ? (
             <article className="pp-layout">
               <Card className="pp-card pp-hero">
-                {cover ? (
-                  <div className="pp-cover">
-                    <img src={cover} alt="" />
-                  </div>
-                ) : null}
-                <div className={`pp-hero-body${cover ? ' has-cover' : ''}`}>
+                {/* The account's own cover, or its own default design: never a shared image. */}
+                <ProfileCover src={cover} seed={provider.uid} className="pp-cover" />
+                <div className="pp-hero-body has-cover">
                   <ProfileAvatar
                     src={photo}
                     seed={provider.uid}

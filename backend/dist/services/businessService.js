@@ -129,7 +129,8 @@ async function createBusiness(input) {
     return Business_1.Business.create({
         publicName,
         legalName: input.legalName?.trim() || undefined,
-        logoUrl: (0, mediaService_1.normalizeUploadPath)(input.logoUrl) || undefined,
+        // A new company has no upload folder yet; its logo can only be the owner's own upload.
+        logoUrl: (0, mediaService_1.ownUploadPath)(input.logoUrl, [(0, mediaService_1.uploadFolder)('profiles', input.ownerUid)]) || undefined,
         description,
         website,
         contactEmail,
@@ -402,7 +403,8 @@ async function updateBusiness(uid, businessId, changes) {
             business.logoUrl = undefined;
         }
         else {
-            const path = (0, mediaService_1.normalizeUploadPath)(changes.logoUrl);
+            // Only this company's own uploads (or the logo it already has).
+            const path = (0, mediaService_1.ownUploadPath)(changes.logoUrl, [(0, mediaService_1.uploadFolder)('companies', String(business._id))], business.logoUrl);
             if (!path)
                 throw new Error('Logoja nuk është e vlefshme');
             business.logoUrl = path;
@@ -413,7 +415,7 @@ async function updateBusiness(uid, businessId, changes) {
             business.coverUrl = undefined;
         }
         else {
-            const path = (0, mediaService_1.normalizeUploadPath)(changes.coverUrl);
+            const path = (0, mediaService_1.ownUploadPath)(changes.coverUrl, [(0, mediaService_1.uploadFolder)('companies', String(business._id))], business.coverUrl);
             if (!path)
                 throw new Error('Fotoja e sfondit nuk është e vlefshme');
             business.coverUrl = path;

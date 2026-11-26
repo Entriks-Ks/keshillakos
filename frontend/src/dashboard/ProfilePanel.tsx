@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button, Card, Chip, buttonVariants, toast } from '@heroui/react'
 import ConfirmActionDialog from '../components/ConfirmActionDialog'
-import { Camera, ExternalLink, Globe, ImageIcon, MapPin, Pencil } from 'lucide-react'
+import { Camera, ExternalLink, Globe, ImageIcon, MapPin, Pencil, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { fetchMyBusinesses, updateBusinessProfile, uploadBusinessCover, uploadBusinessLogo, type BusinessProfile } from '../api/businesses'
+import { fetchMyBusinesses, removeBusinessCover, updateBusinessProfile, uploadBusinessCover, uploadBusinessLogo, type BusinessProfile } from '../api/businesses'
 import { fetchCategories, type CatalogCategory } from '../api/catalog'
 import { IMAGE_ACCEPT, mediaUrl, validateImageFile } from '../api/media'
 import { locationLabel, resolveSavedLocation, type LocationSelection } from '../api/locations'
@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import LocationSelector from '../components/LocationSelector'
 import ProfileAvatar from '../components/ProfileAvatar'
+import ProfileCover from '../components/ProfileCover'
 import { getErrorMessage } from '../utils/errors'
 import { catalogLanguage } from '../i18n'
 import ExpertProfilePage from './ExpertProfilePage'
@@ -137,6 +138,8 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [removingCover, setRemovingCover] = useState(false)
+  const [confirmRemoveCover, setConfirmRemoveCover] = useState(false)
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null)
   const [error, setError] = useState('')
   const logoInput = useRef<HTMLInputElement>(null)
@@ -206,6 +209,25 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
     } finally {
       setUploading(null)
       URL.revokeObjectURL(local)
+    }
+  }
+
+  async function onRemoveCover() {
+    if (!business) return
+    setConfirmRemoveCover(false)
+    setRemovingCover(true)
+    setUploading('cover')
+    try {
+      const next = await removeBusinessCover(business._id)
+      setBusiness(next)
+      setCoverPreview('')
+      await onSaved()
+      toast.success(t('profile.coverRemoved'))
+    } catch (err) {
+      toast.danger(getErrorMessage(err))
+    } finally {
+      setRemovingCover(false)
+      setUploading(null)
     }
   }
 
@@ -357,6 +379,15 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
           {error ? <p className="up-error" role="alert">{error}</p> : null}
           <div className="up-actions"><Button variant="outline" onPress={() => setConfirmCancel(true)} isDisabled={saving || uploading !== null}>{t('notifications.cancel')}</Button><Button type="submit" variant="primary" isPending={saving} isDisabled={uploading !== null || !categories.length}>{saving ? t('req.saving') : t('profile.saveChanges')}</Button></div>
         </form>
+        <ConfirmActionDialog
+          isOpen={confirmRemoveCover}
+          onClose={() => setConfirmRemoveCover(false)}
+          onConfirm={() => void onRemoveCover()}
+          title={t('profile.removeCoverTitle')}
+          description={t('profile.removeCoverText')}
+          confirmLabel={t('profile.removeCover')}
+          pending={removingCover}
+        />
         <ConfirmActionDialog isOpen={confirmCancel} onClose={() => setConfirmCancel(false)} onConfirm={() => { setConfirmCancel(false); navigate('/dashboard/company/profile') }} title={t('profile.discardTitle')} description={t('profile.company.discardText')} confirmLabel={t('profile.discardConfirm')} />
       </section>
     )
@@ -442,8 +473,15 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
           <Card className="uo-card">
             <SectionHead title={t('profile.cover')} />
             <Card.Content className="uo-card-body ep-stack">
-              <div className="ep-cover"><img src={coverPreview || '/images/login-advice.png'} alt="" /></div>
-              <Button size="sm" variant="outline" className="ep-cover-btn" isPending={uploading === 'cover'} onPress={() => coverInput.current?.click()}><ImageIcon size={15} aria-hidden />{uploading === 'cover' ? t('profile.uploading') : t('profile.changeCover')}</Button>
+              <ProfileCover src={coverPreview} seed={user?.uid || ''} className="ep-cover" />
+              {coverPreview ? null : <p className="ds-hint">{t('profile.coverDefault')}</p>}
+              <Button size="sm" variant="outline" className="ep-cover-btn" isPending={uploading === 'cover' && !removingCover} isDisabled={removingCover} onPress={() => coverInput.current?.click()}><ImageIcon size={15} aria-hidden />{uploading === 'cover' && !removingCover ? t('profile.uploading') : t('profile.changeCover')}</Button>
+              {business?.coverUrl ? (
+                <Button size="sm" variant="ghost" className="ep-cover-btn" isPending={removingCover} isDisabled={uploading === 'cover'} onPress={() => setConfirmRemoveCover(true)}>
+                  <Trash2 size={15} aria-hidden />
+                  {removingCover ? t('profile.removingCover') : t('profile.removeCover')}
+                </Button>
+              ) : null}
               <input ref={coverInput} type="file" accept={IMAGE_ACCEPT} hidden disabled={uploading === 'cover'} onChange={(e) => { void onCoverChange(e.target.files?.[0]); e.target.value = '' }} />
             </Card.Content>
           </Card>

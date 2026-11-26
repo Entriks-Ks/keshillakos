@@ -13,6 +13,7 @@ exports.getMarketplaceProviderByUid = getMarketplaceProviderByUid;
 exports.updateProviderProfile = updateProviderProfile;
 exports.updateProviderPhoto = updateProviderPhoto;
 exports.updateProviderCover = updateProviderCover;
+exports.removeProviderCover = removeProviderCover;
 exports.moderateProviderProfile = moderateProviderProfile;
 exports.providerProfilesToLegacyExperts = providerProfilesToLegacyExperts;
 const profileDetails_1 = require("../models/profileDetails");
@@ -514,6 +515,17 @@ async function serializeMarketplaceProviders(profiles, marketplaceRatings) {
 }
 async function updateProviderProfile(uid, id, changes) {
     const profile = await loadManagedProvider(uid, id);
+    if (changes.publicProfile) {
+        // Photos and covers must be this profile's own uploads (or stay as they are). The owner may also use their
+        // account photo, and a company profile its company's uploads; nobody can point at another account's file.
+        const ownFolders = [(0, mediaService_1.uploadFolder)('providers', String(profile._id))];
+        if (profile.ownerUser.equals(await (0, businessService_1.userIdForUid)(uid)))
+            ownFolders.push((0, mediaService_1.uploadFolder)('profiles', uid));
+        if (profile.business)
+            ownFolders.push((0, mediaService_1.uploadFolder)('companies', String(profile.business)));
+        changes.publicProfile.photoUrl = (0, mediaService_1.ownUploadPath)(changes.publicProfile.photoUrl, ownFolders, profile.publicProfile?.photoUrl) ?? undefined;
+        changes.publicProfile.coverUrl = (0, mediaService_1.ownUploadPath)(changes.publicProfile.coverUrl, [(0, mediaService_1.uploadFolder)('providers', String(profile._id))], profile.publicProfile?.coverUrl) ?? undefined;
+    }
     const pro = await (0, planService_1.isPro)(uid, profile.providerType === 'business' ? 'company' : 'provider');
     if (!pro) {
         if (changes.languageSkills !== undefined || changes.workExperience !== undefined)
@@ -642,6 +654,10 @@ async function updateProviderCover(uid, id, coverUrl) {
     if (!path)
         throw new Error('Rruga e fotos nuk është e vlefshme');
     return updateProviderProfile(uid, id, { publicProfile: { coverUrl: path } });
+}
+/** Back to the default cover. Same ownership check and file clean-up as any profile edit. */
+async function removeProviderCover(uid, id) {
+    return updateProviderProfile(uid, id, { publicProfile: { coverUrl: '' } });
 }
 async function moderateProviderProfile(id, reviewerUid, decision, reason) {
     if (!mongoose_1.Types.ObjectId.isValid(id))

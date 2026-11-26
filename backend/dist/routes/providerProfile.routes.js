@@ -64,6 +64,13 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'compan
             return res.status(400).json({ message: 'Lloji, emri dhe kategoritë janë të detyrueshme' });
         }
         const locationFields = zod_1.z.object({ location: locationInput.optional(), serviceAreaCityIds: areaInput.optional() }).parse(body);
+        // Only known text fields; a photo must be one of this account's own uploads, and covers only arrive through
+        // the cover upload. (Copying the whole object let a caller set any photo or cover URL.)
+        const sent = body.publicProfile;
+        const photoUrl = (0, mediaService_1.ownUploadPath)(sent.photoUrl, [
+            (0, mediaService_1.uploadFolder)('profiles', req.user.uid),
+            ...(body.businessId ? [(0, mediaService_1.uploadFolder)('companies', body.businessId)] : []),
+        ]);
         const provider = await (0, providerProfileService_1.createProviderProfile)({
             ownerUid: req.user.uid,
             providerType: body.providerType,
@@ -74,7 +81,15 @@ router.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'compan
             serviceAreas: body.serviceAreas,
             ...locationFields,
             modes: body.modes,
-            publicProfile: { ...body.publicProfile, displayName: body.publicProfile.displayName },
+            publicProfile: {
+                displayName: sent.displayName ?? '', // checked non-empty above
+                title: sent.title,
+                shortDescription: sent.shortDescription,
+                description: sent.description,
+                publicEmail: sent.publicEmail,
+                publicPhone: sent.publicPhone,
+                photoUrl: photoUrl || undefined,
+            },
         });
         return res.status(201).json({ provider: (0, providerProfileService_1.toPublicProvider)(provider) });
     }
@@ -168,6 +183,16 @@ router.post('/:id/photo', auth_1.requireAuth, (0, auth_1.requireRole)('provider'
     catch (err) {
         await (0, mediaService_1.deleteUpload)(photoUrl);
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i fotos dështoi' });
+    }
+});
+router.delete('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), async (req, res) => {
+    try {
+        const provider = await (0, providerProfileService_1.removeProviderCover)(req.user.uid, String(req.params.id));
+        return res.json({ provider: (0, providerProfileService_1.toPublicProvider)(provider) });
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : 'Heqja e sfondit dështoi';
+        return res.status(message.includes('leje') ? 403 : message.includes('nuk u gjet') ? 404 : 400).json({ message });
     }
 });
 router.post('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('provider', 'company', 'admin'), (0, mediaService_1.withImageUpload)(mediaService_1.imageUpload), async (req, res) => {

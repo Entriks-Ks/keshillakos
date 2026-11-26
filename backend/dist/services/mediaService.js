@@ -3,8 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.certificationDocumentUpload = exports.imageUpload = exports.MAX_SERVICE_PHOTOS = exports.MAX_DOCUMENT_BYTES = exports.MAX_IMAGE_BYTES = void 0;
+exports.certificationDocumentUpload = exports.imageUpload = exports.NOT_OWN_UPLOAD_MESSAGE = exports.MAX_SERVICE_PHOTOS = exports.MAX_DOCUMENT_BYTES = exports.MAX_IMAGE_BYTES = void 0;
 exports.mediaKeyFromPath = mediaKeyFromPath;
+exports.uploadFolder = uploadFolder;
+exports.ownUploadPath = ownUploadPath;
 exports.normalizeUploadPath = normalizeUploadPath;
 exports.sanitizeUploadPaths = sanitizeUploadPaths;
 exports.deleteUploads = deleteUploads;
@@ -62,6 +64,30 @@ function mediaKeyFromPath(value) {
         return null;
     const match = value.trim().match(MEDIA_PATH);
     return match ? match[1] : null;
+}
+/** Folder that `storeUploadedFile` uses for an owner id: `<kind>/<owner>`. */
+function uploadFolder(kind, ownerId) {
+    return `${kind}/${safeToken(ownerId, 'unknown')}`;
+}
+/** Thrown when a client points an image field at a file that is not one of the account's own uploads. */
+exports.NOT_OWN_UPLOAD_MESSAGE = 'Mund të përdorësh vetëm foto të ngarkuara nga llogaria jote';
+/**
+ * An image path a client may set on an account: empty (remove), the value already stored (forms that send it back,
+ * including legacy paths), or one of the account's own uploads (`/media/<folder>/…` inside `ownFolders`).
+ * Another account's upload, an unknown path or an outside URL is refused.
+ */
+function ownUploadPath(value, ownFolders, current) {
+    if (value === undefined || value === null)
+        return value;
+    const trimmed = value.trim();
+    if (!trimmed)
+        return '';
+    if (current && trimmed === current)
+        return trimmed;
+    const key = mediaKeyFromPath(trimmed);
+    if (key && ownFolders.some((folder) => key.startsWith(`${folder}/`)))
+        return trimmed;
+    throw new Error(exports.NOT_OWN_UPLOAD_MESSAGE);
 }
 /** Accept only managed `/media/{key}` paths (plus legacy `/uploads/...` records). */
 function normalizeUploadPath(value) {

@@ -9,7 +9,7 @@ import { ProviderProfile } from '../models/ProviderProfile'
 import type { Location } from '../models/location'
 import { applySocialLinks, normalizeSocialLinks, type SocialLinks } from '../models/socialLinks'
 import { findDomainById } from './domainService'
-import { deleteUploads, normalizeUploadPath } from './mediaService'
+import { deleteUploads, ownUploadPath, uploadFolder } from './mediaService'
 import { effectiveRoles } from './userService'
 import { isPro } from './planService'
 import { PLAN_LIMITS } from '../plans/catalog'
@@ -122,7 +122,8 @@ export async function createBusiness(input: {
   return Business.create({
     publicName,
     legalName: input.legalName?.trim() || undefined,
-    logoUrl: normalizeUploadPath(input.logoUrl) || undefined,
+    // A new company has no upload folder yet; its logo can only be the owner's own upload.
+    logoUrl: ownUploadPath(input.logoUrl, [uploadFolder('profiles', input.ownerUid)]) || undefined,
     description,
     website,
     contactEmail,
@@ -407,7 +408,8 @@ export async function updateBusiness(uid: string, businessId: string, changes: {
     if (changes.logoUrl === null || !changes.logoUrl.trim()) {
       business.logoUrl = undefined
     } else {
-      const path = normalizeUploadPath(changes.logoUrl)
+      // Only this company's own uploads (or the logo it already has).
+      const path = ownUploadPath(changes.logoUrl, [uploadFolder('companies', String(business._id))], business.logoUrl)
       if (!path) throw new Error('Logoja nuk është e vlefshme')
       business.logoUrl = path
     }
@@ -416,7 +418,7 @@ export async function updateBusiness(uid: string, businessId: string, changes: {
     if (changes.coverUrl === null || !changes.coverUrl.trim()) {
       business.coverUrl = undefined
     } else {
-      const path = normalizeUploadPath(changes.coverUrl)
+      const path = ownUploadPath(changes.coverUrl, [uploadFolder('companies', String(business._id))], business.coverUrl)
       if (!path) throw new Error('Fotoja e sfondit nuk është e vlefshme')
       business.coverUrl = path
     }

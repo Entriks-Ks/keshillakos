@@ -160,6 +160,17 @@ router.post('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('company',
         return res.status(400).json({ message: err instanceof Error ? err.message : 'Ngarkimi i sfondit dështoi' });
     }
 });
+router.delete('/:id/cover', auth_1.requireAuth, (0, auth_1.requireRole)('company', 'admin'), async (req, res) => {
+    try {
+        // Back to the default cover; updateBusiness checks ownership and deletes the unused file.
+        const business = await (0, businessService_1.updateBusiness)(req.user.uid, String(req.params.id), { coverUrl: null });
+        return res.json({ business: (0, businessService_1.toPublicBusiness)(business) });
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : 'Heqja e sfondit dështoi';
+        return res.status(message.includes('leje') ? 403 : message.includes('nuk u gjet') ? 404 : 400).json({ message });
+    }
+});
 router.patch('/:id/review', auth_1.requireAuth, (0, auth_1.requireRole)('admin'), async (req, res) => {
     try {
         const { status, verification } = req.body;

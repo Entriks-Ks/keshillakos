@@ -203,6 +203,12 @@ export async function uploadProviderPhoto(id: string, file: File) {
   return data.provider
 }
 
+/** Removes the custom cover; the profile shows its default cover again. */
+export async function removeProviderCover(id: string) {
+  const { data } = await api.delete<{ provider: ManagedProviderProfile }>(`/api/providers/${encodeURIComponent(id)}/cover`)
+  return data.provider
+}
+
 export async function uploadProviderCover(id: string, file: File) {
   const data = await postPhotoUpload<{ provider: ManagedProviderProfile }>(
     api,
