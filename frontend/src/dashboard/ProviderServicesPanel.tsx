@@ -26,6 +26,7 @@ import {
   fetchSubcategories,
   type CatalogCategory,
   type CatalogSubcategory,
+  type ExtensionField,
 } from '../api/catalog'
 import { locationLabel, matchLocationByText, type LocationSelection } from '../api/locations'
 import { IMAGE_ACCEPT, IMAGE_ACCEPT_HINT, MAX_SERVICE_PHOTOS, mediaUrl } from '../api/media'
@@ -55,6 +56,9 @@ import './UserRequests.css'
 import './DashboardSections.css'
 
 type UiLang = 'sq' | 'en' | 'de'
+
+/** Shared empty list: a fresh `[]` each render re-ran the field-defaults effect forever ("Maximum update depth"). */
+const NO_EXTENSION_FIELDS: ExtensionField[] = []
 
 function L(language: UiLang, sq: string, en: string, de: string) {
   if (language === 'de') return de
@@ -326,7 +330,7 @@ export default function ProviderServicesPanel() {
     () => subcategories.find((item) => item._id === subcategoryId) ?? null,
     [subcategories, subcategoryId],
   )
-  const extensionFields = selectedCategory?.extensionFields ?? []
+  const extensionFields = selectedCategory?.extensionFields ?? NO_EXTENSION_FIELDS
   const showCategoryFields = Boolean(subcategoryId && categorySpecificFields(extensionFields).length)
   const needsPhysicalLocation = deliveryModes.includes('physical') || deliveryModes.includes('group')
   const onlineOnly = deliveryModes.length > 0 && deliveryModes.every((mode) => mode === 'online')
@@ -1035,10 +1039,13 @@ export default function ProviderServicesPanel() {
                     </ul>
 
                     <div className="ur-actions is-wrap ds-service-actions">
-                      <Link className={buttonVariants({ variant: 'ghost', size: 'sm' })} to={servicePath(service)}>
-                        <Eye size={14} aria-hidden />
-                        {L(uiLang, 'Shiko', 'View', 'Ansehen')}
-                      </Link>
+                      {/* Only public services have a page to open; an inactive one would answer "not found". */}
+                      {service.active ? (
+                        <Link className={buttonVariants({ variant: 'ghost', size: 'sm' })} to={servicePath(service)}>
+                          <Eye size={14} aria-hidden />
+                          {L(uiLang, 'Shiko', 'View', 'Ansehen')}
+                        </Link>
+                      ) : null}
                       <Button size="sm" variant="outline" onPress={() => startEdit(service)} isDisabled={editing}>
                         <Pencil size={14} aria-hidden />
                         {L(uiLang, 'Ndrysho', 'Edit', 'Bearbeiten')}

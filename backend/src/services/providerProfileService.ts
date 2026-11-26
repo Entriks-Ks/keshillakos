@@ -1,5 +1,5 @@
 import { validatedLanguageSkills, validatedExperience, reconcileLanguageSkills, type LanguageSkill } from '../models/profileDetails'
-import { notifyUsers, notifyAdmins } from './notificationService'
+import { notifyUsers } from './notificationService'
 import { providerDirectoryPipeline } from './marketplaceQuery'
 import { paginationMeta, queryPage, type PaginationInput } from './pagination'
 import { Types } from 'mongoose'
@@ -618,14 +618,14 @@ export async function updateProviderProfile(uid: string, id: string, changes: Pa
       }
     }
   }
-  const newlyPending = profile.moderation.status !== 'pending'
-  profile.status = 'pending'
-  profile.moderation = { status: 'pending' }
+  // Edits keep the profile's current publication state. Sending a published profile back to review hid all of its
+  // services from the public (detail pages returned "not found") while the dashboard still listed them as active,
+  // and no admin screen exists to re-approve. Same marketplace rule as service creation: publish now, admins can
+  // still suspend through moderation. A suspended profile stays suspended.
   await profile.save()
   if (changes.publicProfile?.photoUrl !== undefined || changes.publicProfile?.coverUrl !== undefined) {
     await deleteUploads(previousMedia)
   }
-  if (newlyPending) await notifyAdmins({ type: 'profile:pending', title: 'Profil për shqyrtim', href: '/dashboard/admin', eventKey: `profile:${profile._id}:pending:${profile.updatedAt.toISOString()}`, actorUid: uid })
   return profile
 }
 

@@ -11,7 +11,8 @@
     "seed:categories": "tsx src/scripts/seedCategories.ts",
     "seed:locations": "tsx src/scripts/seedLocations.ts",
     "seed:catalog-options": "tsx src/scripts/seedCatalogOptions.ts",
-    "migrate:uploads-to-s3": "tsx src/scripts/migrateUploadsToS3.ts"
+    "migrate:uploads-to-s3": "tsx src/scripts/migrateUploadsToS3.ts",
+    "repair:edited-profiles": "tsx src/scripts/republishEditedProfiles.ts"
   },
   "keywords": [],
   "author": "",

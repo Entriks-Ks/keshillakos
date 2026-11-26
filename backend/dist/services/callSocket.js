@@ -13,7 +13,11 @@ function registerCallHandlers(io) {
         try {
             const active = await (0, callService_1.getActiveCallForUser)(user.uid);
             if (active && active.status === 'accepted') {
-                void socket.join(`call:${active._id.toString()}`);
+                const activeCallId = active._id.toString();
+                void socket.join(`call:${activeCallId}`);
+                // Clears any "peer disconnected" warning the other participant is showing.
+                const peerUid = active.callerId === user.uid ? active.receiverId : active.callerId;
+                (0, realtime_1.emitToUser)(peerUid, 'call:peer-reconnected', { callId: activeCallId, uid: user.uid });
             }
         }
         catch {
@@ -108,7 +112,13 @@ function registerCallHandlers(io) {
                 const callId = payload?.callId;
                 if (!callId)
                     throw new Error('Mungon ID e thirrjes');
-                const call = await (0, callService_1.rejectCall)(callId, user.uid, payload.reason);
+                const { call, changed } = await (0, callService_1.rejectCall)(callId, user.uid, payload.reason);
+                // A duplicate or late rejection must not announce a new outcome for a finished call.
+                if (!changed) {
+                    if (typeof ack === 'function')
+                        ack({ ok: true });
+                    return;
+                }
                 const rejectPayload = {
                     callId,
                     rejectedBy: user.uid,
@@ -134,7 +144,12 @@ function registerCallHandlers(io) {
                 const callId = payload?.callId;
                 if (!callId)
                     throw new Error('Mungon ID e thirrjes');
-                const { call, duration } = await (0, callService_1.endCall)(callId, user.uid);
+                const { call, duration, changed } = await (0, callService_1.endCall)(callId, user.uid);
+                if (!changed) {
+                    if (typeof ack === 'function')
+                        ack({ ok: true, duration });
+                    return;
+                }
                 const endPayload = {
                     callId,
                     endedBy: user.uid,
@@ -191,12 +206,13 @@ function registerCallHandlers(io) {
                                 }
                                 const currentCall = await (0, callService_1.getActiveCallForUser)(user.uid);
                                 if (currentCall && currentCall._id.toString() === callId && currentCall.status === 'ringing') {
-                                    await (0, callService_1.endCall)(callId, user.uid);
-                                    (0, realtime_1.emitToUser)(peerUid, 'call:ended', {
-                                        callId,
-                                        endedBy: user.uid,
-                                        reason: 'caller_disconnected',
-                                    });
+                                    const { changed } = await (0, callService_1.endCall)(callId, user.uid);
+                                    if (changed)
+                                        (0, realtime_1.emitToUser)(peerUid, 'call:ended', {
+                                            callId,
+                                            endedBy: user.uid,
+                                            reason: 'caller_disconnected',
+                                        });
                                 }
                             }
                             catch (timeoutErr) {
@@ -222,7 +238,9 @@ function registerCallHandlers(io) {
                                 return;
                             const currentCall = await Call_1.Call.findById(callId);
                             if (currentCall && currentCall.status === 'accepted') {
-                                const { duration } = await (0, callService_1.endCall)(callId, user.uid);
+                                const { duration, changed } = await (0, callService_1.endCall)(callId, user.uid);
+                                if (!changed)
+                                    return;
                                 const endPayload = {
                                     callId,
                                     endedBy: user.uid,

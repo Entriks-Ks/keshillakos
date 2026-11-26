@@ -621,15 +621,14 @@ async function updateProviderProfile(uid, id, changes) {
             }
         }
     }
-    const newlyPending = profile.moderation.status !== 'pending';
-    profile.status = 'pending';
-    profile.moderation = { status: 'pending' };
+    // Edits keep the profile's current publication state. Sending a published profile back to review hid all of its
+    // services from the public (detail pages returned "not found") while the dashboard still listed them as active,
+    // and no admin screen exists to re-approve. Same marketplace rule as service creation: publish now, admins can
+    // still suspend through moderation. A suspended profile stays suspended.
     await profile.save();
     if (changes.publicProfile?.photoUrl !== undefined || changes.publicProfile?.coverUrl !== undefined) {
         await (0, mediaService_1.deleteUploads)(previousMedia);
     }
-    if (newlyPending)
-        await (0, notificationService_1.notifyAdmins)({ type: 'profile:pending', title: 'Profil për shqyrtim', href: '/dashboard/admin', eventKey: `profile:${profile._id}:pending:${profile.updatedAt.toISOString()}`, actorUid: uid });
     return profile;
 }
 async function updateProviderPhoto(uid, id, photoUrl) {

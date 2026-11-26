@@ -1,3 +1,4 @@
+import axios from 'axios'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -263,10 +264,14 @@ export default function ServiceDetailPage() {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // Only a 404 (or an unreadable link) means the service is unavailable; anything else is a failed load to retry.
+  const [notFound, setNotFound] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!id) {
       setError(uiText('Shërbimi nuk u gjet', 'Service not found', 'Dienst nicht gefunden'))
+      setNotFound(true)
       setLoading(false)
       return
     }
@@ -274,6 +279,7 @@ export default function ServiceDetailPage() {
     let cancelled = false
     setLoading(true)
     setError('')
+    setNotFound(false)
     setActivePhoto(0)
     setViewerOpen(false)
     fetchService(id, { page: teamPaging.page, limit: 12 })
@@ -283,6 +289,7 @@ export default function ServiceDetailPage() {
       .catch((err) => {
         if (!cancelled) {
           setService(null)
+          setNotFound(axios.isAxiosError(err) && err.response?.status === 404)
           setError(getErrorMessage(err))
         }
       })
@@ -293,7 +300,7 @@ export default function ServiceDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, teamPaging.page])
+  }, [id, teamPaging.page, reloadKey])
 
   useEffect(() => {
     if (!service || service.id !== id) return
@@ -388,11 +395,21 @@ export default function ServiceDetailPage() {
           {!loading && error ? (
             <Card className="sd-card sd-missing">
               <Card.Content className="sd-card-body">
-                <h1>{uiText('Shërbimi nuk u gjet', 'Service not found', 'Dienst nicht gefunden')}</h1>
+                <h1>
+                  {notFound
+                    ? uiText('Shërbimi nuk u gjet', 'Service not found', 'Dienst nicht gefunden')
+                    : uiText('Shërbimi nuk u ngarkua', 'The service could not be loaded', 'Der Dienst konnte nicht geladen werden')}
+                </h1>
                 <p>{error}</p>
-                <Link className={buttonVariants({ variant: 'primary', size: 'md' })} to="/ofertat">
-                  {uiText('Shiko shërbimet', 'View services', 'Dienste ansehen')}
-                </Link>
+                {notFound ? (
+                  <Link className={buttonVariants({ variant: 'primary', size: 'md' })} to="/ofertat">
+                    {uiText('Shiko shërbimet', 'View services', 'Dienste ansehen')}
+                  </Link>
+                ) : (
+                  <Button variant="primary" onPress={() => setReloadKey((key) => key + 1)}>
+                    {t('page.retry')}
+                  </Button>
+                )}
               </Card.Content>
             </Card>
           ) : null}
@@ -437,7 +454,8 @@ export default function ServiceDetailPage() {
                           </span>
                         ) : null}
                       </p>
-                      <p className="sd-byline-meta">
+                      {/* A div, not a <p>: the trust badge renders a <div>/<button>, which a paragraph cannot hold. */}
+                      <div className="sd-byline-meta">
                         <span>{kindLabel}</span>
                         <ProviderRatingLine average={provider?.ratingAverage ?? 0} count={provider?.ratingCount ?? 0} />
                         {providerUid ? (
@@ -445,7 +463,7 @@ export default function ServiceDetailPage() {
                             <AiTrustBadge providerUid={providerUid} providerName={providerName} compact />
                           </span>
                         ) : null}
-                      </p>
+                      </div>
                     </div>
                   </div>
 

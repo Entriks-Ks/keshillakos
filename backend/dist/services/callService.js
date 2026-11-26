@@ -23,6 +23,40 @@ const realtime_1 = require("./realtime");
 const chatUnreadService_1 = require("./chatUnreadService");
 const RING_TIMEOUT_MS = 60000;
 const ringingTimers = new Map();
+/**
+ * Compare-and-set a call's status. The update only applies while the stored status still equals
+ * `expected`, so concurrent or repeated hang-ups, rejections and timeouts can never overwrite an
+ * outcome that another request already recorded. Returns the updated document, or null if lost.
+ */
+async function transitionCall(callId, expected, fields) {
+    return Call_1.Call.findOneAndUpdate({ _id: callId, status: expected }, { $set: fields }, { returnDocument: 'after' });
+}
+function clearRingingTimer(callId) {
+    const timer = ringingTimers.get(callId);
+    if (timer) {
+        clearTimeout(timer);
+        ringingTimers.delete(callId);
+    }
+}
+/** Close a ringing or accepted call with the outcome its current state implies (missed / completed). */
+async function closeActiveCall(call) {
+    const now = new Date();
+    const fields = call.status === 'accepted'
+        ? {
+            status: 'completed',
+            endedAt: now,
+            duration: call.answeredAt
+                ? Math.max(0, Math.round((now.getTime() - call.answeredAt.getTime()) / 1000))
+                : 0,
+        }
+        : { status: 'missed', endedAt: now };
+    const updated = await transitionCall(call._id, call.status, fields);
+    if (updated) {
+        clearRingingTimer(updated._id.toString());
+        void logCallToChat(updated).catch(() => undefined);
+    }
+    return updated;
+}
 async function logCallToChat(call) {
     if (!call || call.hasLoggedChat || !call.conversationId)
         return;
@@ -115,10 +149,7 @@ async function getActiveCallForUser(uid) {
     if (active.status === 'ringing') {
         const ageMs = Date.now() - active.startedAt.getTime();
         if (ageMs > 60000) {
-            active.status = 'missed';
-            active.endedAt = new Date();
-            await active.save();
-            void logCallToChat(active).catch(() => undefined);
+            await closeActiveCall(active);
             return null;
         }
     }
@@ -126,10 +157,7 @@ async function getActiveCallForUser(uid) {
     if (active.status === 'accepted' && active.answeredAt) {
         const ageMs = Date.now() - active.answeredAt.getTime();
         if (ageMs > 2 * 3600 * 1000) {
-            active.status = 'completed';
-            active.endedAt = new Date();
-            await active.save();
-            void logCallToChat(active).catch(() => undefined);
+            await closeActiveCall(active);
             return null;
         }
     }
@@ -157,13 +185,7 @@ async function initiateCall(input) {
         status: { $in: ['ringing', 'accepted'] },
     });
     for (const c of priorCallerCalls) {
-        c.status = c.status === 'accepted' ? 'completed' : 'missed';
-        c.endedAt = new Date();
-        if (c.answeredAt) {
-            c.duration = Math.max(0, Math.round((c.endedAt.getTime() - c.answeredAt.getTime()) / 1000));
-        }
-        await c.save();
-        void logCallToChat(c).catch(() => undefined);
+        await closeActiveCall(c);
     }
     // 4. Check if receiver is already in an active call with another user
     const receiverActiveCall = await getActiveCallForUser(receiverUid);
@@ -172,10 +194,7 @@ async function initiateCall(input) {
         const sameParticipants = (receiverActiveCall.callerId === callerUid && receiverActiveCall.receiverId === receiverUid) ||
             (receiverActiveCall.callerId === receiverUid && receiverActiveCall.receiverId === callerUid);
         if (sameParticipants) {
-            receiverActiveCall.status = receiverActiveCall.status === 'accepted' ? 'completed' : 'missed';
-            receiverActiveCall.endedAt = new Date();
-            await receiverActiveCall.save();
-            void logCallToChat(receiverActiveCall).catch(() => undefined);
+            await closeActiveCall(receiverActiveCall);
         }
         else {
             return {
@@ -216,11 +235,8 @@ async function initiateCall(input) {
     const timeoutTimer = setTimeout(async () => {
         try {
             ringingTimers.delete(callId);
-            const currentCall = await Call_1.Call.findById(callId);
-            if (currentCall && currentCall.status === 'ringing') {
-                currentCall.status = 'missed';
-                currentCall.endedAt = new Date();
-                await currentCall.save();
+            const currentCall = await transitionCall(callId, 'ringing', { status: 'missed', endedAt: new Date() });
+            if (currentCall) {
                 void logCallToChat(currentCall).catch(() => undefined);
                 (0, realtime_1.emitToUser)(callerUid, 'call:timeout', { callId, conversationId });
                 (0, realtime_1.emitToUser)(receiverUid, 'call:missed', {
@@ -244,6 +260,28 @@ async function initiateCall(input) {
         roomName,
     };
 }
+function notAcceptableReason(status) {
+    return status === 'missed'
+        ? 'Koha e thirrjes ka mbaruar ose thirrja u mbyll nga thirrësi'
+        : status === 'rejected'
+            ? 'Thirrja është refuzuar'
+            : status === 'completed'
+                ? 'Thirrja ka përfunduar tashmë'
+                : `Thirrja nuk mund të pranohet (statusi: ${status})`;
+}
+async function loadParticipantCall(callId, uid) {
+    if (!mongoose_1.default.isValidObjectId(callId)) {
+        throw Object.assign(new Error('Thirrje e pavlefshme'), { status: 400 });
+    }
+    const call = await Call_1.Call.findById(callId);
+    if (!call) {
+        throw Object.assign(new Error('Thirrja nuk u gjet'), { status: 404 });
+    }
+    if (call.receiverId !== uid && call.callerId !== uid) {
+        throw Object.assign(new Error('Nuk ke leje për këtë thirrje'), { status: 403 });
+    }
+    return call;
+}
 async function acceptCall(callId, uid) {
     if (!mongoose_1.default.isValidObjectId(callId)) {
         throw Object.assign(new Error('Thirrje e pavlefshme'), { status: 400 });
@@ -256,75 +294,55 @@ async function acceptCall(callId, uid) {
         throw Object.assign(new Error('Vetëm marrësi mund të pranojë thirrjen'), { status: 403 });
     }
     if (call.status !== 'ringing') {
-        const reasonMsg = call.status === 'missed'
-            ? 'Koha e thirrjes ka mbaruar ose thirrja u mbyll nga thirrësi'
-            : call.status === 'rejected'
-                ? 'Thirrja është refuzuar'
-                : call.status === 'completed'
-                    ? 'Thirrja ka përfunduar tashmë'
-                    : `Thirrja nuk mund të pranohet (statusi: ${call.status})`;
-        throw Object.assign(new Error(reasonMsg), { status: 400 });
+        throw Object.assign(new Error(notAcceptableReason(call.status)), { status: 400 });
     }
-    const timer = ringingTimers.get(callId);
-    if (timer) {
-        clearTimeout(timer);
-        ringingTimers.delete(callId);
+    // Only a still-ringing call can be accepted; a concurrent cancel/timeout wins otherwise.
+    const accepted = await transitionCall(call._id, 'ringing', { status: 'accepted', answeredAt: new Date() });
+    if (!accepted) {
+        const latest = await Call_1.Call.findById(callId);
+        throw Object.assign(new Error(notAcceptableReason(latest?.status ?? 'missed')), { status: 400 });
     }
-    call.status = 'accepted';
-    call.answeredAt = new Date();
-    await call.save();
-    return call;
+    clearRingingTimer(callId);
+    return accepted;
 }
+/**
+ * Reject (or report busy for) a ringing call. Idempotent: rejecting a call that already reached
+ * any other state leaves its recorded outcome untouched and returns `changed: false`.
+ */
 async function rejectCall(callId, uid, reason) {
-    if (!mongoose_1.default.isValidObjectId(callId)) {
-        throw Object.assign(new Error('Thirrje e pavlefshme'), { status: 400 });
+    const call = await loadParticipantCall(callId, uid);
+    if (call.status !== 'ringing')
+        return { call, changed: false };
+    const rejected = await transitionCall(call._id, 'ringing', {
+        status: reason === 'busy' ? 'busy' : 'rejected',
+        endedAt: new Date(),
+    });
+    if (!rejected) {
+        return { call: (await Call_1.Call.findById(callId)) ?? call, changed: false };
     }
-    const call = await Call_1.Call.findById(callId);
-    if (!call) {
-        throw Object.assign(new Error('Thirrja nuk u gjet'), { status: 404 });
-    }
-    if (call.receiverId !== uid && call.callerId !== uid) {
-        throw Object.assign(new Error('Nuk ke leje për këtë thirrje'), { status: 403 });
-    }
-    const timer = ringingTimers.get(callId);
-    if (timer) {
-        clearTimeout(timer);
-        ringingTimers.delete(callId);
-    }
-    const newStatus = reason === 'busy' ? 'busy' : 'rejected';
-    call.status = newStatus;
-    call.endedAt = new Date();
-    await call.save();
-    void logCallToChat(call).catch(() => undefined);
-    return call;
+    clearRingingTimer(callId);
+    void logCallToChat(rejected).catch(() => undefined);
+    return { call: rejected, changed: true };
 }
+/**
+ * End a call: accepted -> completed (with duration), ringing -> missed (caller cancelled).
+ * Idempotent: ending an already-finished call preserves its original outcome (`changed: false`).
+ */
 async function endCall(callId, uid) {
-    if (!mongoose_1.default.isValidObjectId(callId)) {
-        throw Object.assign(new Error('Thirrje e pavlefshme'), { status: 400 });
+    let call = await loadParticipantCall(callId, uid);
+    // Two attempts cover the race where the call is accepted between our read and our write.
+    for (let attempt = 0; attempt < 2; attempt++) {
+        if (call.status !== 'ringing' && call.status !== 'accepted')
+            break;
+        const ended = await closeActiveCall(call);
+        if (ended)
+            return { call: ended, duration: ended.duration || 0, changed: true };
+        const latest = await Call_1.Call.findById(callId);
+        if (!latest)
+            break;
+        call = latest;
     }
-    const call = await Call_1.Call.findById(callId);
-    if (!call) {
-        throw Object.assign(new Error('Thirrja nuk u gjet'), { status: 404 });
-    }
-    if (call.receiverId !== uid && call.callerId !== uid) {
-        throw Object.assign(new Error('Nuk ke leje për këtë thirrje'), { status: 403 });
-    }
-    const timer = ringingTimers.get(callId);
-    if (timer) {
-        clearTimeout(timer);
-        ringingTimers.delete(callId);
-    }
-    const now = new Date();
-    let duration = 0;
-    if (call.answeredAt) {
-        duration = Math.max(0, Math.round((now.getTime() - call.answeredAt.getTime()) / 1000));
-    }
-    call.status = call.status === 'accepted' ? 'completed' : 'missed';
-    call.endedAt = now;
-    call.duration = duration;
-    await call.save();
-    void logCallToChat(call).catch(() => undefined);
-    return { call, duration };
+    return { call, duration: call.duration || 0, changed: false };
 }
 async function formatCallDoc(call, currentUid) {
     const isCaller = call.callerId === currentUid;

@@ -41,6 +41,7 @@ exports.updateService = updateService;
 exports.deleteService = deleteService;
 exports.listServicesByProvider = listServicesByProvider;
 exports.listProviderServicePage = listProviderServicePage;
+exports.publiclyVisibleServiceIds = publiclyVisibleServiceIds;
 exports.listActiveServices = listActiveServices;
 exports.listPublicServicePage = listPublicServicePage;
 exports.getActiveServiceById = getActiveServiceById;
@@ -305,14 +306,36 @@ async function listProviderServicePage(providerUid, input, publicOnly = false) {
                     { $project: { _id: 1, source: { $literal: 'legacy' }, createdAt: 1, active: 1 } },
                 ] } },
     ];
-    const totals = (await ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $group: { _id: null, total: { $sum: 1 }, active: { $sum: { $cond: ['$active', 1, 0] } } } }]))[0];
-    const result = await (0, pagination_1.queryPage)(input, () => Promise.resolve(totals?.total ?? 0), (skip, limit) => ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $sort: { createdAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }]));
+    // "Active" means a visitor can open it: the same eligibility as the public detail page (offer, profile, business,
+    // category and owner), not just the offer's own status. Otherwise the dashboard shows Active + View for services
+    // whose public page answers "not found".
+    const allIds = (await ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $project: { _id: 1 } }])).map((row) => row._id);
+    const visible = await publiclyVisibleServiceIds(allIds);
+    const total = allIds.length;
+    const result = await (0, pagination_1.queryPage)(input, () => Promise.resolve(total), (skip, limit) => ServiceOffer_1.ServiceOffer.aggregate([...pipeline, { $sort: { createdAt: -1, _id: -1 } }, { $skip: skip }, { $limit: limit }]));
     const [offers, legacy] = await Promise.all([
         ServiceOffer_1.ServiceOffer.find({ _id: { $in: result.items.filter((row) => row.source === 'offer').map((row) => row._id) } }),
         Service_1.Service.find({ _id: { $in: result.items.filter((row) => row.source === 'legacy').map((row) => row._id) } }),
     ]);
     const byId = new Map([...await (0, serviceOfferService_1.offersToLegacyServices)(offers, publicOnly), ...await withLegacyProviders(legacy)].map((card) => [card.id, card]));
-    return { services: result.items.flatMap((row) => { const card = byId.get(String(row._id)); return card ? [card] : []; }), pagination: result.pagination, summary: { total: totals?.total ?? 0, active: totals?.active ?? 0 } };
+    return {
+        services: result.items.flatMap((row) => {
+            const card = byId.get(String(row._id));
+            return card ? [{ ...card, active: visible.has(card.id) }] : [];
+        }),
+        pagination: result.pagination,
+        summary: { total, active: visible.size },
+    };
+}
+/** Ids from `ids` that the public detail page and marketplace would show. */
+async function publiclyVisibleServiceIds(ids) {
+    if (!ids.length)
+        return new Set();
+    const rows = await ServiceOffer_1.ServiceOffer.aggregate([
+        ...(0, marketplaceQuery_1.publicServicesPipeline)({}, ids),
+        { $project: { _id: 1 } },
+    ]);
+    return new Set(rows.map((row) => String(row._id)));
 }
 async function listActiveServices(filters = {}) {
     let providerIds;

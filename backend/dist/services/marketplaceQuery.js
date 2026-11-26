@@ -111,10 +111,15 @@ function providerDirectoryPipeline(query) {
         ...filterAndSort(query, true),
     ];
 }
-function publicServicesPipeline(query) {
+/**
+ * Public service eligibility (marketplace cards, detail pages, dashboard "Active" badges).
+ * `onlyIds` narrows both the offer and legacy branches up front, for checking a known set of services.
+ */
+function publicServicesPipeline(query, onlyIds) {
     const cityId = typeof query.cityId === 'string' && mongoose_1.Types.ObjectId.isValid(query.cityId) ? new mongoose_1.Types.ObjectId(query.cityId) : undefined;
+    const idMatch = onlyIds ? { _id: { $in: onlyIds } } : {};
     const canonical = [
-        { $match: publishedOffer },
+        { $match: { ...publishedOffer, ...idMatch } },
         { $lookup: { from: ProviderProfile_1.ProviderProfile.collection.name, localField: 'providerProfile', foreignField: '_id', as: '_profile' } },
         { $unwind: '$_profile' },
         { $match: { '_profile.status': 'published', '_profile.moderation.status': 'approved' } },
@@ -129,7 +134,7 @@ function publicServicesPipeline(query) {
             } },
     ];
     const legacy = [
-        { $match: { active: true } },
+        { $match: { active: true, ...idMatch } },
         { $lookup: { from: User_1.User.collection.name, localField: 'providerUid', foreignField: 'uid', as: '_owner' } },
         { $lookup: { from: ProviderProfile_1.ProviderProfile.collection.name, let: { owners: '$_owner._id' }, pipeline: [
                     { $match: { ...publishedProfile, ...(cityId ? { serviceAreaCityIds: cityId } : {}), $expr: { $in: ['$ownerUser', '$$owners'] } } }, { $sort: { updatedAt: -1 } }, { $limit: 1 },
