@@ -123,31 +123,6 @@
   pointer-events: auto;
 }
 
-/* Mobile Sheet Drag Handle */
-.kk-ai-drag-handle-bar {
-  display: none;
-  width: 100%;
-  padding: 8px 0 2px;
-  background: var(--surface);
-  border: none;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-}
-
-.kk-ai-drag-handle {
-  width: 38px;
-  height: 4px;
-  border-radius: 9999px;
-  background: var(--border);
-  transition: background-color 0.15s ease;
-}
-
-.kk-ai-drag-handle-bar:hover .kk-ai-drag-handle,
-.kk-ai-drag-handle-bar:active .kk-ai-drag-handle {
-  background: var(--muted);
-}
-
 /* Chat Popup Window */
 .kk-ai-window {
   position: fixed;
@@ -1033,32 +1008,12 @@
 }
 
 /* Mobile Responsiveness */
+/* Phones: the chat opens in the shared bottom sheet (components/BottomSheet) */
+.kk-ai-sheet {
+  height: 88dvh;
+}
+
 @media (max-width: 640px) {
-  .kk-ai-backdrop {
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    animation: kk-ai-fade-in 0.22s ease-out forwards;
-  }
-
-  .kk-ai-drag-handle-bar {
-    display: flex;
-  }
-
-  .kk-ai-window {
-    bottom: 0;
-    right: 0;
-    left: 0;
-    width: 100vw;
-    max-width: 100vw;
-    height: 88dvh;
-    max-height: 88dvh;
-    border-radius: 1.25rem 1.25rem 0 0;
-    border-bottom: none;
-    box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.22);
-    animation: kk-ai-sheet-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
   .kk-ai-trigger-container {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     right: calc(1rem + env(safe-area-inset-right, 0px));
@@ -1101,28 +1056,10 @@
   }
 
   .kk-ai-footer {
-    padding: 0.65rem 0.85rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.65rem 0.85rem 0.75rem; /* the sheet already pads the home-bar area */
   }
 
   .kk-ai-textarea {
     font-size: 16px; /* Prevents auto-zoom on iOS Safari */
-  }
-}
-
-@keyframes kk-ai-sheet-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes kk-ai-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }

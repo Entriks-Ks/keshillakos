@@ -909,28 +909,50 @@ h1 {
   }
 }
 
-/* Phones: the booking form opens as a bottom sheet (thumb-reachable, full width) */
-@media (max-width: 640px) {
-  .booking-modal-backdrop {
-    place-items: end stretch;
-    padding: 0;
-  }
+/* Phones: the booking form opens in the shared bottom sheet (components/BottomSheet). The sheet body scrolls;
+   the send row is pinned in the sheet footer. */
+.booking-sheet-body {
+  padding: 0;
+}
 
-  .booking-modal {
-    width: 100%;
-    max-height: 92dvh;
-    border-radius: 22px 22px 0 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
+.booking-sheet .booking-modal-body {
+  grid-template-columns: 1fr;
+  overflow: visible;
+}
 
-  .booking-modal-head {
-    padding: 16px 16px 12px;
-  }
+.booking-sheet .booking-modal-cal,
+.booking-sheet .booking-modal-form {
+  padding: 14px 16px 18px;
+}
 
-  .booking-modal-cal,
-  .booking-modal-form {
-    padding: 14px 16px 18px;
-  }
+/* Only the sheet body scrolls; a scrolling calendar inside it would be squeezed to a single week. */
+.booking-sheet .booking-modal-cal {
+  overflow: visible;
+}
+
+.booking-sheet .booking-modal-form {
+  border-left: 0;
+  border-top: 1px solid var(--border);
+}
+
+.booking-sheet-foot {
+  display: grid;
+  gap: 8px;
+}
+
+.booking-sheet-foot .error {
+  margin: 0;
+}
+
+.booking-sheet-foot .send-request-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.booking-sheet-foot .send-request-actions button {
+  min-height: 46px;
 }
 
 .send-request-form {
@@ -6371,77 +6393,6 @@ h1 {
   }
 }
 
-.tt-offers-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  background: color-mix(in srgb, var(--brand-navy) 45%, transparent);
-}
-
-.tt-offers-drawer-content {
-  position: fixed;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 91;
-  display: flex;
-  flex-direction: column;
-  max-height: min(92vh, 720px);
-  border-radius: 18px 18px 0 0;
-  background: var(--surface, var(--surface));
-  outline: none;
-  box-shadow: 0 -12px 40px color-mix(in srgb, var(--brand-navy) 18%, transparent);
-}
-
-.tt-offers-drawer-handle {
-  width: 42px;
-  height: 4px;
-  margin: 10px auto 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ink-secondary) 35%, transparent);
-}
-
-.tt-offers-drawer-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 16px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.tt-offers-drawer-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--heading);
-}
-
-.tt-offers-drawer-close {
-  display: inline-grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--ink-secondary);
-  cursor: pointer;
-}
-
-.tt-offers-drawer-close:hover {
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-  color: var(--accent);
-}
-
-.tt-offers-drawer-body {
-  display: grid;
-  gap: 14px;
-  padding: 16px;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
 .tt-offers-sheet-field {
   display: grid;
   gap: 6px;
@@ -6472,27 +6423,6 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.tt-offers-drawer-footer {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-}
-
-.tt-offers-drawer-apply {
-  width: 100%;
-  min-height: 46px;
-  border-radius: 12px !important;
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: var(--accent-foreground, #fff) !important;
-  font-weight: 700 !important;
-  cursor: pointer;
 }
 
 .tt-offers-filter-panel {

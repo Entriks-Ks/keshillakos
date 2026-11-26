@@ -21,7 +21,7 @@ import {
   type LucideIcon,
   Tag,
 } from 'lucide-react'
-import { Drawer } from 'vaul'
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '../components/BottomSheet'
 import {
   fetchCategories,
   fetchSubcategories,
@@ -870,38 +870,20 @@ export default function OffersPage() {
           </div>
         </Tabs>
 
-        <Drawer.Root open={filtersOpen} onOpenChange={setFiltersOpen} repositionInputs={false}>
-          <Drawer.Portal>
-            <Drawer.Overlay className="tt-offers-drawer-overlay" />
-            <Drawer.Content className="tt-offers-drawer-content of-drawer" aria-describedby={undefined}>
-              <div className="tt-offers-drawer-handle" aria-hidden />
-              <div className="tt-offers-drawer-head">
-                <Drawer.Title className="tt-offers-drawer-title">{t('offers.filters')}</Drawer.Title>
-                <button
-                  type="button"
-                  className="tt-offers-drawer-close"
-                  aria-label={t('offers.close')}
-                  onClick={() => setFiltersOpen(false)}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="tt-offers-drawer-body of-sheet-body">
-                {filterSections}
-              </div>
-              <div className="tt-offers-drawer-footer">
-                {hasActiveFilters ? (
-                  <Button variant="ghost" onPress={clearFilters}>
-                    {t('offers.clear')}
-                  </Button>
-                ) : <span />}
-                <Button className="tt-offers-drawer-apply" onPress={() => setFiltersOpen(false)}>
-                  {t('site.offers.showResults', { count: resultCount, label: resultLabel })}
-                </Button>
-              </div>
-            </Drawer.Content>
-          </Drawer.Portal>
-        </Drawer.Root>
+        <BottomSheet open={filtersOpen} onOpenChange={setFiltersOpen} repositionInputs={false} className="of-drawer">
+          <BottomSheetHeader title={t('offers.filters')} />
+          <BottomSheetBody className="of-sheet-body">{filterSections}</BottomSheetBody>
+          <BottomSheetFooter className="of-sheet-foot">
+            {hasActiveFilters ? (
+              <Button variant="ghost" onPress={clearFilters}>
+                {t('offers.clear')}
+              </Button>
+            ) : null}
+            <Button variant="primary" className="of-sheet-apply" onPress={() => setFiltersOpen(false)}>
+              {t('site.offers.showResults', { count: resultCount, label: resultLabel })}
+            </Button>
+          </BottomSheetFooter>
+        </BottomSheet>
       </main>
 
       <SiteFooter />

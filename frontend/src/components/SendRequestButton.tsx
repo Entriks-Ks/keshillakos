@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,8 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
 import SlotPicker from './SlotPicker'
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from './BottomSheet'
+import { SHEET_QUERY, useMediaQuery } from '../hooks/useMediaQuery'
 
 type Props = {
   providerUid: string
@@ -57,9 +59,12 @@ export default function SendRequestButton({
   const [scheduleKey, setScheduleKey] = useState(0)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const asSheet = useMediaQuery(SHEET_QUERY)
+  const formId = useId()
 
+  // The centred modal handles Escape and page scroll itself; the phone sheet (Vaul) does both on its own.
   useEffect(() => {
-    if (!open) return
+    if (!open || asSheet) return
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     function onKey(event: KeyboardEvent) {
@@ -70,7 +75,7 @@ export default function SendRequestButton({
       document.body.style.overflow = previous
       window.removeEventListener('keydown', onKey)
     }
-  }, [open, submitting])
+  }, [open, submitting, asSheet])
 
   if (!user) {
     if (compact) {
@@ -149,120 +154,156 @@ export default function SendRequestButton({
     }
   }
 
-  const modal = open
-    ? createPortal(
-        <div className="booking-modal-backdrop" onClick={close} role="presentation">
-          <div
-            className="booking-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="booking-modal-title"
-            onClick={(event) => event.stopPropagation()}
+  // On phones the send row lives in the sheet footer (outside the scrolling form) and submits it via form=.
+  const submitRow = (
+    <>
+      {error ? <p className="error">{error}</p> : null}
+      <div className="send-request-actions">
+        <button
+          type="submit"
+          form={formId}
+          className="primary-btn"
+          disabled={submitting || !slotId || !contactPhone.trim()}
+        >
+          {submitting ? t('feedback.sending') : ctaLabel}
+        </button>
+        <button type="button" className="ghost" onClick={close} disabled={submitting}>
+          {t('notifications.cancel')}
+        </button>
+      </div>
+    </>
+  )
+
+  const form = (
+    <form id={formId} onSubmit={onSubmit} className="booking-modal-body">
+      <div className="booking-modal-cal">
+        <SlotPicker
+          providerUid={providerUid}
+          selectedId={slotId}
+          onSelect={setSlotId}
+          refreshKey={scheduleKey}
+          required
+          onLoaded={({ freeCount: next }) => setFreeCount(next)}
+        />
+      </div>
+
+      <div className="booking-modal-form">
+        <label>
+          {t('home.what')}
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={compact ? 3 : 5}
+            placeholder={t('booking.needPlaceholder')}
+            required
+            minLength={8}
+          />
+        </label>
+
+        <label>
+          {t('home.contact')}
+          <select
+            value={contactMethod}
+            onChange={(e) => setContactMethod(e.target.value as ContactMethod)}
           >
-            <header className="booking-modal-head">
-              <div>
-                <p className="booking-modal-kicker">{t('booking.kicker')}</p>
-                <h2 id="booking-modal-title">{t('booking.title', { name: providerName })}</h2>
-                <p className="muted">{t('booking.lead')}</p>
-              </div>
-              <button
-                type="button"
-                className="ghost booking-modal-close"
-                onClick={close}
-                disabled={submitting}
-                aria-label={t('feedback.close')}
-              >
-                <X size={18} />
-              </button>
-            </header>
+            <option value="chat">{t('booking.chatOption')}</option>
+            <option value="phone">{t('req.phone')}</option>
+            <option value="email">{t('req.email')}</option>
+          </select>
+        </label>
 
-            <form onSubmit={onSubmit} className="booking-modal-body">
-              <div className="booking-modal-cal">
-                <SlotPicker
-                  providerUid={providerUid}
-                  selectedId={slotId}
-                  onSelect={setSlotId}
-                  refreshKey={scheduleKey}
-                  required
-                  onLoaded={({ freeCount: next }) => setFreeCount(next)}
-                />
-              </div>
+        <label>
+          {t('booking.phoneLabel')}
+          <input
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            placeholder={t('booking.phonePlaceholder')}
+            required
+          />
+        </label>
 
-              <div className="booking-modal-form">
-                <label>
-                  {t('home.what')}
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    rows={compact ? 3 : 5}
-                    placeholder={t('booking.needPlaceholder')}
-                    required
-                    minLength={8}
-                  />
-                </label>
+        {contactMethod === 'email' ? (
+          <label>
+            {t('req.email')}
+            <input
+              type="email"
+              autoComplete="email"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder={t('booking.emailPlaceholder')}
+              required
+            />
+          </label>
+        ) : null}
 
-                <label>
-                  {t('home.contact')}
-                  <select
-                    value={contactMethod}
-                    onChange={(e) => setContactMethod(e.target.value as ContactMethod)}
-                  >
-                    <option value="chat">{t('booking.chatOption')}</option>
-                    <option value="phone">{t('req.phone')}</option>
-                    <option value="email">{t('req.email')}</option>
-                  </select>
-                </label>
+        {slotId ? (
+          <p className="success booking-modal-picked">{t('booking.picked')}</p>
+        ) : (
+          <p className="muted booking-modal-picked">{t('booking.pickInCalendar')}</p>
+        )}
 
-                <label>
-                  {t('booking.phoneLabel')}
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder={t('booking.phonePlaceholder')}
-                    required
-                  />
-                </label>
+        {asSheet ? null : submitRow}
+      </div>
+    </form>
+  )
 
-                {contactMethod === 'email' ? (
-                  <label>
-                    {t('req.email')}
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder={t('booking.emailPlaceholder')}
-                      required
-                    />
-                  </label>
-                ) : null}
-
-                {slotId ? (
-                  <p className="success booking-modal-picked">{t('booking.picked')}</p>
-                ) : (
-                  <p className="muted booking-modal-picked">{t('booking.pickInCalendar')}</p>
-                )}
-
-                {error ? <p className="error">{error}</p> : null}
-
-                <div className="send-request-actions">
-                  <button type="submit" className="primary-btn" disabled={submitting || !slotId || !contactPhone.trim()}>
-                    {submitting ? t('feedback.sending') : ctaLabel}
-                  </button>
-                  <button type="button" className="ghost" onClick={close} disabled={submitting}>
-                    {t('notifications.cancel')}
-                  </button>
+  const modal =
+    open && !asSheet
+      ? createPortal(
+          <div className="booking-modal-backdrop" onClick={close} role="presentation">
+            <div
+              className="booking-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="booking-modal-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <header className="booking-modal-head">
+                <div>
+                  <p className="booking-modal-kicker">{t('booking.kicker')}</p>
+                  <h2 id="booking-modal-title">{t('booking.title', { name: providerName })}</h2>
+                  <p className="muted">{t('booking.lead')}</p>
                 </div>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body,
-      )
-    : null
+                <button
+                  type="button"
+                  className="ghost booking-modal-close"
+                  onClick={close}
+                  disabled={submitting}
+                  aria-label={t('feedback.close')}
+                >
+                  <X size={18} />
+                </button>
+              </header>
+              {form}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
+
+  const sheet = asSheet ? (
+    <BottomSheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) close()
+      }}
+      dismissible={!submitting}
+      className="booking-sheet"
+    >
+      <BottomSheetHeader
+        kicker={t('booking.kicker')}
+        title={t('booking.title', { name: providerName })}
+        closeDisabled={submitting}
+      >
+        <p>{t('booking.lead')}</p>
+      </BottomSheetHeader>
+      <BottomSheetBody className="booking-sheet-body">{form}</BottomSheetBody>
+      <BottomSheetFooter className="booking-sheet-foot">{submitRow}</BottomSheetFooter>
+    </BottomSheet>
+  ) : null
 
   return (
     <div className={`send-request${compact ? ' is-compact' : ''}`}>
@@ -279,6 +320,7 @@ export default function SendRequestButton({
       </button>
       <p className="muted send-request-hint">{t('booking.hint')}</p>
       {modal}
+      {sheet}
     </div>
   )
 }

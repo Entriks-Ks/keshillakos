@@ -30,6 +30,8 @@ import {
 import { FormattedAiMessage } from './FormattedAiMessage'
 import { AiRecommendedCard } from './AiRecommendedCard'
 import { useCompareLawyers } from '../../hooks/useCompareLawyers'
+import { SHEET_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
+import { BottomSheet, BottomSheetTitle } from '../BottomSheet'
 import './AiChatWidget.css'
 
 interface ChatMessageItem {
@@ -130,6 +132,7 @@ export default function AiChatWidget() {
   const footerInView = useFooterInView(location.pathname)
 
   const [isOpen, setIsOpen] = useState(false)
+  const asSheet = useMediaQuery(SHEET_QUERY)
   const [hasPromptPill, setHasPromptPill] = useState(true)
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
@@ -179,26 +182,15 @@ export default function AiChatWidget() {
     return () => window.removeEventListener('keydown', handleKeyDownGlobal)
   }, [isOpen])
 
-  // Prevent background body scroll on mobile when sheet is open
-  useEffect(() => {
-    if (isOpen && typeof window !== 'undefined' && window.innerWidth <= 640) {
-      const originalOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
-      return () => {
-        document.body.style.overflow = originalOverflow
-      }
-    }
-  }, [isOpen])
-
   useEffect(() => {
     if (isOpen) {
       scrollToBottom(false)
-      // Only autofocus on desktop to prevent iOS keyboard jumping on sheet open
-      if (typeof window !== 'undefined' && window.innerWidth > 640) {
+      // Only autofocus the floating window: on phones the keyboard would cover the sheet as it opens
+      if (!asSheet) {
         textareaRef.current?.focus()
       }
     }
-  }, [isOpen, scrollToBottom])
+  }, [isOpen, scrollToBottom, asSheet])
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -339,6 +331,309 @@ export default function AiChatWidget() {
     ? STARTER_TOPICS
     : STARTER_TOPICS.filter((topic) => topic.category === activeCategory)
 
+  // Header, messages and input: shown in the floating window on larger screens and in the bottom sheet on phones.
+  const chatPanel = (
+    <>
+      {/* Header */}
+      <div className="kk-ai-header">
+        <div className="kk-ai-header-info">
+          <div className="kk-ai-header-avatar">
+            <MessageSquareText size={20} />
+            <span className="kk-ai-avatar-online" />
+          </div>
+          <div className="kk-ai-header-titles">
+            <div className="kk-ai-header-title-row">
+              <h3 className="kk-ai-header-title">Këshilla AI</h3>
+              <span className="kk-ai-gemini-badge">Gemini</span>
+            </div>
+            <p className="kk-ai-header-subtitle">{t('ai.widget.subtitle')}</p>
+          </div>
+        </div>
+
+        <div className="kk-ai-header-actions">
+          <Link
+            to="/ai-asistenti"
+            onClick={() => setIsOpen(false)}
+            className="kk-ai-header-btn"
+            title={t('ai.widget.fullPage')}
+            aria-label={t('ai.widget.fullPage')}
+          >
+            <Maximize2 size={16} />
+          </Link>
+          {messages.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={handleCopyFullChat}
+                className="kk-ai-header-btn"
+                title={t('ai.chat.copyChat')}
+                aria-label={t('ai.chat.copyChat')}
+              >
+                {copiedFullChat ? <Check size={15} className="text-green-500" /> : <Copy size={15} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm((prev) => !prev)}
+                className={`kk-ai-header-btn${showResetConfirm ? ' is-active' : ''}`}
+                title={t('ai.chat.clearChat')}
+                aria-label={t('ai.chat.clearChat')}
+              >
+                <RotateCcw size={15} />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false)
+              setShowResetConfirm(false)
+            }}
+            className="kk-ai-header-btn kk-ai-close-btn"
+            title={t('ai.widget.minimize')}
+            aria-label={t('ai.widget.minimizeAria')}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Reset Confirmation Banner */}
+      {showResetConfirm && (
+        <div className="kk-ai-reset-confirm-bar" role="alert">
+          <span className="kk-ai-reset-confirm-text">{t('ai.widget.confirmClear')}</span>
+          <div className="kk-ai-reset-confirm-actions">
+            <button
+              type="button"
+              className="kk-ai-confirm-yes"
+              onClick={handleConfirmReset}
+            >
+              <Trash2 size={12} />
+              <span>{t('ai.chat.confirmYes')}</span>
+            </button>
+            <button
+              type="button"
+              className="kk-ai-confirm-no"
+              onClick={() => setShowResetConfirm(false)}
+            >
+              {t('notifications.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Body */}
+      <div className="kk-ai-body">
+        {messages.length === 0 ? (
+          <div className="kk-ai-welcome-box">
+            <div className="kk-ai-welcome-badge">
+              <ShieldCheck size={13} />
+              <span>{t('ai.widget.officialBadge')}</span>
+            </div>
+            <h4 className="kk-ai-welcome-title">{t('ai.widget.welcomeTitle')}</h4>
+            <p className="kk-ai-welcome-desc">{t('ai.widget.welcomeDesc')}</p>
+
+            {/* Category filter tabs */}
+            <div className="kk-ai-cat-pill-row" role="tablist" aria-label={t('ai.widget.catsAria')}>
+              {STARTER_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCategory === cat.id}
+                  className={`kk-ai-cat-pill${activeCategory === cat.id ? ' is-active' : ''}`}
+                  onClick={() => setActiveCategory(cat.id)}
+                >
+                  {cat.emoji ? `${cat.emoji} ` : ''}
+                  {cat.label ? t(cat.label) : 'KeshillaKos'}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick starter question chips */}
+            <div className="kk-ai-starters-grid">
+              {filteredTopics.map((topic) => {
+                const Icon = topic.icon
+                const prompt = t(`ai.widget.topics.${topic.id}.prompt`)
+                return (
+                  <button
+                    key={topic.id}
+                    type="button"
+                    className="kk-ai-starter-chip"
+                    onClick={() => handleSendMessage(prompt)}
+                  >
+                    <div className="kk-ai-starter-left">
+                      <span className="kk-ai-starter-icon-wrap">
+                        <Icon size={14} />
+                      </span>
+                      <div className="kk-ai-starter-texts">
+                        <span className="kk-ai-starter-title">{t(`ai.widget.topics.${topic.id}.title`)}</span>
+                        <span className="kk-ai-starter-prompt-preview">{prompt}</span>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="kk-ai-starter-arrow flex-shrink-0" />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : (
+          messages.map((msg) => {
+            const actions = messageActions(msg)
+            return (
+              <div key={msg.id} className="kk-ai-msg-group">
+                <div
+                  className={`kk-ai-msg ${
+                    msg.role === 'user' ? 'kk-ai-msg-user' : 'kk-ai-msg-assistant'
+                  }`}
+                >
+                  <div className="kk-ai-msg-avatar" aria-hidden="true">
+                    {msg.role === 'user' ? <User size={15} /> : <MessageSquareText size={16} />}
+                  </div>
+                  <div className="kk-ai-msg-bubble">
+                    <FormattedAiMessage content={messageText(msg)} />
+                  </div>
+                </div>
+
+                {/* Message Action Bar (Timestamp & Copy) */}
+                <div
+                  className={`kk-ai-msg-actions ${
+                    msg.role === 'user' ? 'is-user' : 'is-assistant'
+                  }`}
+                >
+                  <span className="kk-ai-msg-time">{formatMessageTime(msg) || t('ai.chat.now')}</span>
+                  {msg.role === 'assistant' && (
+                    <button
+                      type="button"
+                      className={`kk-ai-msg-action-btn${copiedId === msg.id ? ' is-copied' : ''}`}
+                      onClick={() => handleCopyMessage(msg.id, messageText(msg))}
+                      title={t('ai.chat.copyReply')}
+                      aria-label={t('ai.chat.copyReply')}
+                    >
+                      {copiedId === msg.id ? (
+                        <>
+                          <Check size={12} className="text-green-500" />
+                          <span>{t('ai.chat.copied')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={12} />
+                          <span>{t('ai.chat.copy')}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Render recommendation cards if available */}
+                {msg.recommendedEntities && msg.recommendedEntities.length > 0 && (
+                  <div className="kk-ai-cards-container">
+                    {msg.recommendedEntities.map((item) => (
+                      <AiRecommendedCard
+                        key={item.id}
+                        item={item}
+                        onNavigate={() => setIsOpen(false)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Render action suggestions if available */}
+                {actions && actions.length > 0 && (
+                  <div className="kk-ai-actions-row">
+                    {actions.map((action, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        className="kk-ai-action-btn"
+                        onClick={() => handleSendMessage(action)}
+                      >
+                        <ArrowUpRight size={11} className="kk-ai-action-sparkle" />
+                        <span>{action}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+
+        {/* Friendly Typing Indicator */}
+        {loading && (
+          <div className="kk-ai-msg kk-ai-msg-assistant kk-ai-msg-loading">
+            <div className="kk-ai-msg-avatar" aria-hidden="true">
+              <MessageSquareText size={16} />
+            </div>
+            <div className="kk-ai-typing-card">
+              <div className="kk-ai-typing-dots">
+                <span className="kk-ai-typing-dot" />
+                <span className="kk-ai-typing-dot" />
+                <span className="kk-ai-typing-dot" />
+              </div>
+              <span className="kk-ai-typing-text">{t('ai.chat.thinking')}</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Footer Input */}
+      <div className="kk-ai-footer">
+        <form
+          className="kk-ai-input-form"
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault()
+            handleSendMessage()
+          }}
+        >
+          <textarea
+            ref={textareaRef}
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={t('ai.widget.placeholder')}
+            rows={1}
+            className="kk-ai-textarea"
+            disabled={loading}
+          />
+          {inputValue && !loading && (
+            <button
+              type="button"
+              className="kk-ai-clear-input-btn"
+              onClick={() => {
+                setInputValue('')
+                if (textareaRef.current) {
+                  textareaRef.current.style.height = 'auto'
+                  textareaRef.current.focus()
+                }
+              }}
+              title={t('ai.chat.clearInput')}
+              aria-label={t('ai.chat.clearInputAria')}
+            >
+              <X size={14} />
+            </button>
+          )}
+          <button
+            type="submit"
+            className="kk-ai-send-btn"
+            disabled={!inputValue.trim() || loading}
+            title={t('ai.widget.sendTitle')}
+            aria-label={t('ai.widget.send')}
+          >
+            <Send size={15} />
+          </button>
+        </form>
+        <div className="kk-ai-footer-hints">
+          <span className="kk-ai-keyboard-hint">
+            <Trans i18nKey="ai.widget.keyHint" components={{ strong: <strong /> }} />
+          </span>
+          <p className="kk-ai-disclaimer">{t('ai.widget.disclaimer')}</p>
+        </div>
+      </div>
+    </>
+  )
+
   return (
     <>
       {/* Floating launcher trigger */}
@@ -375,335 +670,34 @@ export default function AiChatWidget() {
         </button>
       </div>
 
-      {/* Backdrop overlay for closing on outside click */}
-      {isOpen && (
-        <div
-          className="kk-ai-backdrop"
-          onClick={() => {
-            setIsOpen(false)
-            setShowResetConfirm(false)
+      {asSheet ? (
+        <BottomSheet
+          open={isOpen}
+          onOpenChange={(next) => {
+            setIsOpen(next)
+            if (!next) setShowResetConfirm(false)
           }}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Floating chat window */}
-      {isOpen && (
-        <div
-          className="kk-ai-window"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Këshilla AI Chatbot"
+          className="kk-ai-sheet"
         >
-          {/* Mobile Sheet Drag Handle */}
-          <button
-            type="button"
-            className="kk-ai-drag-handle-bar"
-            onClick={() => setIsOpen(false)}
-            aria-label={t('ai.widget.closeAssistant')}
-          >
-            <span className="kk-ai-drag-handle" />
-          </button>
-
-          {/* Header */}
-          <div className="kk-ai-header">
-            <div className="kk-ai-header-info">
-              <div className="kk-ai-header-avatar">
-                <MessageSquareText size={20} />
-                <span className="kk-ai-avatar-online" />
-              </div>
-              <div className="kk-ai-header-titles">
-                <div className="kk-ai-header-title-row">
-                  <h3 className="kk-ai-header-title">Këshilla AI</h3>
-                  <span className="kk-ai-gemini-badge">Gemini</span>
-                </div>
-                <p className="kk-ai-header-subtitle">{t('ai.widget.subtitle')}</p>
-              </div>
-            </div>
-
-            <div className="kk-ai-header-actions">
-              <Link
-                to="/ai-asistenti"
-                onClick={() => setIsOpen(false)}
-                className="kk-ai-header-btn"
-                title={t('ai.widget.fullPage')}
-                aria-label={t('ai.widget.fullPage')}
-              >
-                <Maximize2 size={16} />
-              </Link>
-              {messages.length > 0 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleCopyFullChat}
-                    className="kk-ai-header-btn"
-                    title={t('ai.chat.copyChat')}
-                    aria-label={t('ai.chat.copyChat')}
-                  >
-                    {copiedFullChat ? <Check size={15} className="text-green-500" /> : <Copy size={15} />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowResetConfirm((prev) => !prev)}
-                    className={`kk-ai-header-btn${showResetConfirm ? ' is-active' : ''}`}
-                    title={t('ai.chat.clearChat')}
-                    aria-label={t('ai.chat.clearChat')}
-                  >
-                    <RotateCcw size={15} />
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false)
-                  setShowResetConfirm(false)
-                }}
-                className="kk-ai-header-btn kk-ai-close-btn"
-                title={t('ai.widget.minimize')}
-                aria-label={t('ai.widget.minimizeAria')}
-              >
-                <X size={18} />
-              </button>
-            </div>
+          <BottomSheetTitle className="sr-only">Këshilla AI</BottomSheetTitle>
+          {chatPanel}
+        </BottomSheet>
+      ) : isOpen ? (
+        <>
+          {/* Transparent layer: a click outside the floating window closes it */}
+          <div
+            className="kk-ai-backdrop"
+            onClick={() => {
+              setIsOpen(false)
+              setShowResetConfirm(false)
+            }}
+            aria-hidden="true"
+          />
+          <div className="kk-ai-window" role="dialog" aria-modal="true" aria-label="Këshilla AI Chatbot">
+            {chatPanel}
           </div>
-
-          {/* Reset Confirmation Banner */}
-          {showResetConfirm && (
-            <div className="kk-ai-reset-confirm-bar" role="alert">
-              <span className="kk-ai-reset-confirm-text">{t('ai.widget.confirmClear')}</span>
-              <div className="kk-ai-reset-confirm-actions">
-                <button
-                  type="button"
-                  className="kk-ai-confirm-yes"
-                  onClick={handleConfirmReset}
-                >
-                  <Trash2 size={12} />
-                  <span>{t('ai.chat.confirmYes')}</span>
-                </button>
-                <button
-                  type="button"
-                  className="kk-ai-confirm-no"
-                  onClick={() => setShowResetConfirm(false)}
-                >
-                  {t('notifications.cancel')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Body */}
-          <div className="kk-ai-body">
-            {messages.length === 0 ? (
-              <div className="kk-ai-welcome-box">
-                <div className="kk-ai-welcome-badge">
-                  <ShieldCheck size={13} />
-                  <span>{t('ai.widget.officialBadge')}</span>
-                </div>
-                <h4 className="kk-ai-welcome-title">{t('ai.widget.welcomeTitle')}</h4>
-                <p className="kk-ai-welcome-desc">{t('ai.widget.welcomeDesc')}</p>
-
-                {/* Category filter tabs */}
-                <div className="kk-ai-cat-pill-row" role="tablist" aria-label={t('ai.widget.catsAria')}>
-                  {STARTER_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeCategory === cat.id}
-                      className={`kk-ai-cat-pill${activeCategory === cat.id ? ' is-active' : ''}`}
-                      onClick={() => setActiveCategory(cat.id)}
-                    >
-                      {cat.emoji ? `${cat.emoji} ` : ''}
-                      {cat.label ? t(cat.label) : 'KeshillaKos'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Quick starter question chips */}
-                <div className="kk-ai-starters-grid">
-                  {filteredTopics.map((topic) => {
-                    const Icon = topic.icon
-                    const prompt = t(`ai.widget.topics.${topic.id}.prompt`)
-                    return (
-                      <button
-                        key={topic.id}
-                        type="button"
-                        className="kk-ai-starter-chip"
-                        onClick={() => handleSendMessage(prompt)}
-                      >
-                        <div className="kk-ai-starter-left">
-                          <span className="kk-ai-starter-icon-wrap">
-                            <Icon size={14} />
-                          </span>
-                          <div className="kk-ai-starter-texts">
-                            <span className="kk-ai-starter-title">{t(`ai.widget.topics.${topic.id}.title`)}</span>
-                            <span className="kk-ai-starter-prompt-preview">{prompt}</span>
-                          </div>
-                        </div>
-                        <ArrowRight size={14} className="kk-ai-starter-arrow flex-shrink-0" />
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : (
-              messages.map((msg) => {
-                const actions = messageActions(msg)
-                return (
-                  <div key={msg.id} className="kk-ai-msg-group">
-                    <div
-                      className={`kk-ai-msg ${
-                        msg.role === 'user' ? 'kk-ai-msg-user' : 'kk-ai-msg-assistant'
-                      }`}
-                    >
-                      <div className="kk-ai-msg-avatar" aria-hidden="true">
-                        {msg.role === 'user' ? <User size={15} /> : <MessageSquareText size={16} />}
-                      </div>
-                      <div className="kk-ai-msg-bubble">
-                        <FormattedAiMessage content={messageText(msg)} />
-                      </div>
-                    </div>
-
-                    {/* Message Action Bar (Timestamp & Copy) */}
-                    <div
-                      className={`kk-ai-msg-actions ${
-                        msg.role === 'user' ? 'is-user' : 'is-assistant'
-                      }`}
-                    >
-                      <span className="kk-ai-msg-time">{formatMessageTime(msg) || t('ai.chat.now')}</span>
-                      {msg.role === 'assistant' && (
-                        <button
-                          type="button"
-                          className={`kk-ai-msg-action-btn${copiedId === msg.id ? ' is-copied' : ''}`}
-                          onClick={() => handleCopyMessage(msg.id, messageText(msg))}
-                          title={t('ai.chat.copyReply')}
-                          aria-label={t('ai.chat.copyReply')}
-                        >
-                          {copiedId === msg.id ? (
-                            <>
-                              <Check size={12} className="text-green-500" />
-                              <span>{t('ai.chat.copied')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy size={12} />
-                              <span>{t('ai.chat.copy')}</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Render recommendation cards if available */}
-                    {msg.recommendedEntities && msg.recommendedEntities.length > 0 && (
-                      <div className="kk-ai-cards-container">
-                        {msg.recommendedEntities.map((item) => (
-                          <AiRecommendedCard
-                            key={item.id}
-                            item={item}
-                            onNavigate={() => setIsOpen(false)}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Render action suggestions if available */}
-                    {actions && actions.length > 0 && (
-                      <div className="kk-ai-actions-row">
-                        {actions.map((action, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            className="kk-ai-action-btn"
-                            onClick={() => handleSendMessage(action)}
-                          >
-                            <ArrowUpRight size={11} className="kk-ai-action-sparkle" />
-                            <span>{action}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            )}
-
-            {/* Friendly Typing Indicator */}
-            {loading && (
-              <div className="kk-ai-msg kk-ai-msg-assistant kk-ai-msg-loading">
-                <div className="kk-ai-msg-avatar" aria-hidden="true">
-                  <MessageSquareText size={16} />
-                </div>
-                <div className="kk-ai-typing-card">
-                  <div className="kk-ai-typing-dots">
-                    <span className="kk-ai-typing-dot" />
-                    <span className="kk-ai-typing-dot" />
-                    <span className="kk-ai-typing-dot" />
-                  </div>
-                  <span className="kk-ai-typing-text">{t('ai.chat.thinking')}</span>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Footer Input */}
-          <div className="kk-ai-footer">
-            <form
-              className="kk-ai-input-form"
-              onSubmit={(e: FormEvent) => {
-                e.preventDefault()
-                handleSendMessage()
-              }}
-            >
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder={t('ai.widget.placeholder')}
-                rows={1}
-                className="kk-ai-textarea"
-                disabled={loading}
-              />
-              {inputValue && !loading && (
-                <button
-                  type="button"
-                  className="kk-ai-clear-input-btn"
-                  onClick={() => {
-                    setInputValue('')
-                    if (textareaRef.current) {
-                      textareaRef.current.style.height = 'auto'
-                      textareaRef.current.focus()
-                    }
-                  }}
-                  title={t('ai.chat.clearInput')}
-                  aria-label={t('ai.chat.clearInputAria')}
-                >
-                  <X size={14} />
-                </button>
-              )}
-              <button
-                type="submit"
-                className="kk-ai-send-btn"
-                disabled={!inputValue.trim() || loading}
-                title={t('ai.widget.sendTitle')}
-                aria-label={t('ai.widget.send')}
-              >
-                <Send size={15} />
-              </button>
-            </form>
-            <div className="kk-ai-footer-hints">
-              <span className="kk-ai-keyboard-hint">
-                <Trans i18nKey="ai.widget.keyHint" components={{ strong: <strong /> }} />
-              </span>
-              <p className="kk-ai-disclaimer">{t('ai.widget.disclaimer')}</p>
-            </div>
-          </div>
-        </div>
-      )}
+        </>
+      ) : null}
     </>
   )
 }

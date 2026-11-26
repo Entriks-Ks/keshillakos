@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, memo, type ReactNode } from 'react'
 import { Modal, Button } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,6 +16,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { fetchProviderTrustScore, type ProviderTrustScore } from '../../api/aiChat'
+import { SHEET_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
+import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetTitle } from '../BottomSheet'
 import './AiTrustBadge.css'
 
 interface AiTrustBadgeProps {
@@ -43,6 +45,7 @@ export const AiTrustBadge = memo(function AiTrustBadge({
   const [data, setData] = useState<ProviderTrustScore | null>(null)
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const asSheet = useMediaQuery(SHEET_QUERY)
 
   useEffect(() => {
     if (!providerUid) return
@@ -91,6 +94,142 @@ export const AiTrustBadge = memo(function AiTrustBadge({
   const radius = 36
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (data.overallScore / 100) * circumference
+
+  const title = t('ai.trust.modalTitle', { name })
+  // The score details open in a centred modal on larger screens and in the bottom sheet on phones.
+  const renderHeader = (heading: ReactNode) => (
+    <div className="kk-ai-modal-header-left">
+      <div className="kk-ai-modal-badge-icon">
+        <ShieldCheck size={24} />
+      </div>
+      <div className="kk-ai-modal-title-area">
+        <div className="kk-ai-modal-eyebrow">
+          <ShieldCheck size={12} />
+          <span>{t('ai.trust.eyebrow')}</span>
+        </div>
+        {heading}
+      </div>
+    </div>
+  )
+  const body = (
+    <>
+      {/* Score Hero Box with Radial Gauge */}
+      <div className="kk-ai-hero-score-box">
+        <div className="kk-ai-radial-gauge-container">
+          <svg className="kk-ai-radial-svg" viewBox="0 0 88 88" aria-hidden="true">
+            <circle
+              className="kk-ai-radial-bg"
+              cx="44"
+              cy="44"
+              r={radius}
+              fill="none"
+              strokeWidth="7"
+            />
+            <circle
+              className="kk-ai-radial-meter"
+              cx="44"
+              cy="44"
+              r={radius}
+              fill="none"
+              strokeWidth="7"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+            />
+          </svg>
+          <div className="kk-ai-radial-center">
+            <span className="kk-ai-radial-number">{data.overallScore}</span>
+            <span className="kk-ai-radial-pct">{t('ai.trust.pctSafety')}</span>
+          </div>
+        </div>
+
+        <div className="kk-ai-hero-score-texts">
+          <div className="kk-ai-hero-level-pill">
+            <CheckCircle2 size={14} />
+            <span>{safetyLabel}</span>
+          </div>
+          <p className="kk-ai-hero-summary-quote">{data.aiSummary}</p>
+        </div>
+      </div>
+
+      {/* 5 Factors Breakdown */}
+      <div className="kk-ai-factors-section">
+        <div className="kk-ai-section-header">
+          <h4 className="kk-ai-section-title">{t('ai.trust.breakdown')}</h4>
+          <span className="kk-ai-section-hint">{t('ai.trust.totalWeight')}</span>
+        </div>
+
+        <div className="kk-ai-factors-grid">
+          {data.factors.map((factor) => {
+            const FactorIcon = FACTOR_ICONS[factor.key] || Shield
+            return (
+              <div key={factor.key} className="kk-ai-factor-card">
+                <div className="kk-ai-factor-top">
+                  <div className="kk-ai-factor-title-group">
+                    <div className={`kk-ai-factor-icon-wrap status-${factor.status}`}>
+                      <FactorIcon size={16} />
+                    </div>
+                    <span className="kk-ai-factor-name">
+                      {t(`ai.trust.factors.${factor.key}`, { defaultValue: factor.title })}
+                    </span>
+                  </div>
+
+                  <div className="kk-ai-factor-metrics">
+                    <span className="kk-ai-factor-score-pill">
+                      {t('ai.trust.factorPoints', { score: factor.score, max: factor.maxScore })}
+                    </span>
+                    <span className="kk-ai-factor-pct">{factor.percentage}%</span>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="kk-ai-factor-progress-track">
+                  <div
+                    className={`kk-ai-factor-progress-fill status-${factor.status}`}
+                    style={{ width: `${factor.percentage}%` }}
+                  />
+                </div>
+
+                <p className="kk-ai-factor-detail-text">{factor.detail}</p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Key Guarantees Grid */}
+      {data.highlights && data.highlights.length > 0 && (
+        <div className="kk-ai-guarantees-section">
+          <div className="kk-ai-section-header">
+            <h4 className="kk-ai-section-title">{t('ai.trust.guarantees')}</h4>
+          </div>
+          <div className="kk-ai-guarantees-grid">
+            {data.highlights.map((item, idx) => (
+              <div key={idx} className="kk-ai-guarantee-card">
+                <CheckCircle2 size={16} className="kk-ai-guarantee-icon" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  )
+  const footer = (
+    <>
+      <div className="kk-ai-modal-footer-disclaimer">
+        <Lock size={14} className="flex-shrink-0 text-emerald-500" />
+        <span>{t('ai.trust.disclaimer')}</span>
+      </div>
+
+      <Button
+        variant="primary"
+        className="kk-ai-modal-confirm-btn"
+        onPress={() => setModalOpen(false)}
+      >
+        {t('ai.trust.gotIt')}
+      </Button>
+    </>
+  )
 
   return (
     <>
@@ -151,151 +290,30 @@ export const AiTrustBadge = memo(function AiTrustBadge({
         </div>
       )}
 
-      {/* HeroUI Portaled Modal Dialog */}
-      <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
-        <Modal.Backdrop isDismissable>
-          <Modal.Container size="md" placement="center">
-            <Modal.Dialog
-              className="kk-ai-trust-dialog"
-              aria-label={t('ai.trust.modalTitle', { name })}
-            >
-              <Modal.CloseTrigger />
-              
-              <Modal.Header className="kk-ai-modal-header">
-                <div className="kk-ai-modal-header-left">
-                  <div className="kk-ai-modal-badge-icon">
-                    <ShieldCheck size={24} />
-                  </div>
-                  <div className="kk-ai-modal-title-area">
-                    <div className="kk-ai-modal-eyebrow">
-                      <ShieldCheck size={12} />
-                      <span>{t('ai.trust.eyebrow')}</span>
-                    </div>
-                    <h3 className="kk-ai-modal-main-title">{t('ai.trust.modalTitle', { name })}</h3>
-                  </div>
-                </div>
-              </Modal.Header>
-
-              <Modal.Body className="kk-ai-modal-body">
-                {/* Score Hero Box with Radial Gauge */}
-                <div className="kk-ai-hero-score-box">
-                  <div className="kk-ai-radial-gauge-container">
-                    <svg className="kk-ai-radial-svg" viewBox="0 0 88 88" aria-hidden="true">
-                      <circle
-                        className="kk-ai-radial-bg"
-                        cx="44"
-                        cy="44"
-                        r={radius}
-                        fill="none"
-                        strokeWidth="7"
-                      />
-                      <circle
-                        className="kk-ai-radial-meter"
-                        cx="44"
-                        cy="44"
-                        r={radius}
-                        fill="none"
-                        strokeWidth="7"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={strokeDashoffset}
-                      />
-                    </svg>
-                    <div className="kk-ai-radial-center">
-                      <span className="kk-ai-radial-number">{data.overallScore}</span>
-                      <span className="kk-ai-radial-pct">{t('ai.trust.pctSafety')}</span>
-                    </div>
-                  </div>
-
-                  <div className="kk-ai-hero-score-texts">
-                    <div className="kk-ai-hero-level-pill">
-                      <CheckCircle2 size={14} />
-                      <span>{safetyLabel}</span>
-                    </div>
-                    <p className="kk-ai-hero-summary-quote">{data.aiSummary}</p>
-                  </div>
-                </div>
-
-                {/* 5 Factors Breakdown */}
-                <div className="kk-ai-factors-section">
-                  <div className="kk-ai-section-header">
-                    <h4 className="kk-ai-section-title">{t('ai.trust.breakdown')}</h4>
-                    <span className="kk-ai-section-hint">{t('ai.trust.totalWeight')}</span>
-                  </div>
-
-                  <div className="kk-ai-factors-grid">
-                    {data.factors.map((factor) => {
-                      const FactorIcon = FACTOR_ICONS[factor.key] || Shield
-                      return (
-                        <div key={factor.key} className="kk-ai-factor-card">
-                          <div className="kk-ai-factor-top">
-                            <div className="kk-ai-factor-title-group">
-                              <div className={`kk-ai-factor-icon-wrap status-${factor.status}`}>
-                                <FactorIcon size={16} />
-                              </div>
-                              <span className="kk-ai-factor-name">
-                                {t(`ai.trust.factors.${factor.key}`, { defaultValue: factor.title })}
-                              </span>
-                            </div>
-
-                            <div className="kk-ai-factor-metrics">
-                              <span className="kk-ai-factor-score-pill">
-                                {t('ai.trust.factorPoints', { score: factor.score, max: factor.maxScore })}
-                              </span>
-                              <span className="kk-ai-factor-pct">{factor.percentage}%</span>
-                            </div>
-                          </div>
-
-                          {/* Progress Bar */}
-                          <div className="kk-ai-factor-progress-track">
-                            <div
-                              className={`kk-ai-factor-progress-fill status-${factor.status}`}
-                              style={{ width: `${factor.percentage}%` }}
-                            />
-                          </div>
-
-                          <p className="kk-ai-factor-detail-text">{factor.detail}</p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Key Guarantees Grid */}
-                {data.highlights && data.highlights.length > 0 && (
-                  <div className="kk-ai-guarantees-section">
-                    <div className="kk-ai-section-header">
-                      <h4 className="kk-ai-section-title">{t('ai.trust.guarantees')}</h4>
-                    </div>
-                    <div className="kk-ai-guarantees-grid">
-                      {data.highlights.map((item, idx) => (
-                        <div key={idx} className="kk-ai-guarantee-card">
-                          <CheckCircle2 size={16} className="kk-ai-guarantee-icon" />
-                          <span>{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </Modal.Body>
-
-              <Modal.Footer className="kk-ai-modal-footer">
-                <div className="kk-ai-modal-footer-disclaimer">
-                  <Lock size={14} className="flex-shrink-0 text-emerald-500" />
-                  <span>{t('ai.trust.disclaimer')}</span>
-                </div>
-
-                <Button
-                  variant="primary"
-                  className="kk-ai-modal-confirm-btn"
-                  onPress={() => setModalOpen(false)}
-                >
-                  {t('ai.trust.gotIt')}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      {asSheet ? (
+        <BottomSheet open={modalOpen} onOpenChange={setModalOpen} className="kk-ai-trust-sheet">
+          <div className="kk-ai-modal-header">
+            {renderHeader(<BottomSheetTitle className="kk-ai-modal-main-title">{title}</BottomSheetTitle>)}
+          </div>
+          <BottomSheetBody className="kk-ai-modal-body">{body}</BottomSheetBody>
+          <BottomSheetFooter className="kk-ai-modal-footer">{footer}</BottomSheetFooter>
+        </BottomSheet>
+      ) : (
+        <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
+          <Modal.Backdrop isDismissable>
+            <Modal.Container size="md" placement="center">
+              <Modal.Dialog className="kk-ai-trust-dialog" aria-label={title}>
+                <Modal.CloseTrigger />
+                <Modal.Header className="kk-ai-modal-header">
+                  {renderHeader(<h3 className="kk-ai-modal-main-title">{title}</h3>)}
+                </Modal.Header>
+                <Modal.Body className="kk-ai-modal-body">{body}</Modal.Body>
+                <Modal.Footer className="kk-ai-modal-footer">{footer}</Modal.Footer>
+              </Modal.Dialog>
+            </Modal.Container>
+          </Modal.Backdrop>
+        </Modal>
+      )}
     </>
   )
 })

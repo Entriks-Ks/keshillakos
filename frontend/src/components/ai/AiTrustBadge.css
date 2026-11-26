@@ -705,16 +705,22 @@
   transform: translateY(-1px);
 }
 
-/* Mobile Responsiveness for Modal */
-@media (max-width: 600px) {
-  .kk-ai-trust-dialog {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    max-height: 92vh !important;
-    border-radius: 1.5rem 1.5rem 0 0 !important;
-    border-bottom: none !important;
-  }
+/* Phones: the score details open in the shared bottom sheet (components/BottomSheet), where the body
+   fills the sheet instead of the modal's capped height and there is no corner close button to clear. */
+.kk-ai-trust-sheet .kk-ai-modal-header {
+  padding: 0.5rem 1rem 1rem !important;
+}
 
+.kk-ai-trust-sheet .kk-ai-modal-body {
+  max-height: none !important;
+  padding: 1rem !important;
+}
+
+.kk-ai-trust-sheet .kk-ai-modal-footer {
+  padding: 0.85rem 1rem !important;
+}
+
+@media (max-width: 640px) {
   .kk-ai-hero-score-box {
     flex-direction: column;
     text-align: center;

@@ -1805,12 +1805,15 @@
 
 /* ---------- Mobile filter drawer ---------- */
 
-.of-drawer .tt-offers-drawer-footer {
-  background: var(--surface);
-}
-
 .of-sheet-body {
   gap: 0;
+}
+
+.of-sheet-apply {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 12px;
+  font-weight: 700;
 }
 
 .of-sheet-body .of-filter-section:first-child {
