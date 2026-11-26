@@ -1,6 +1,75 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/ofertat",
+      "has": [
+        {
+          "type": "query",
+          "key": "tab",
+          "value": "experts"
+        }
+      ],
+      "destination": "/eksperte",
+      "permanent": true
+    },
+    {
+      "source": "/ofertat",
+      "has": [
+        {
+          "type": "query",
+          "key": "tab",
+          "value": "companies"
+        }
+      ],
+      "destination": "/kompani",
+      "permanent": true
+    },
+    {
+      "source": "/ofertat",
+      "destination": "/sherbime",
+      "permanent": true
+    },
+    {
+      "source": "/krahaso-avokatet",
+      "destination": "/krahaso",
+      "permanent": true
+    },
+    {
+      "source": "/services/:slug",
+      "destination": "/sherbime/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/providers/:slug",
+      "destination": "/ofrues/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/login",
+      "destination": "/kycu",
+      "permanent": true
+    },
+    {
+      "source": "/register",
+      "destination": "/regjistrohu",
+      "permanent": true
+    },
+    {
+      "source": "/sq",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/sq/:path*",
+      "destination": "/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }

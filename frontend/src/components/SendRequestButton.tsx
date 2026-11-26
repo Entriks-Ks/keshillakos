@@ -14,6 +14,7 @@ import { getErrorMessage } from '../utils/errors'
 import SlotPicker from './SlotPicker'
 import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from './BottomSheet'
 import { SHEET_QUERY, useMediaQuery } from '../hooks/useMediaQuery'
+import { routePath } from '../routes/routeMap'
 
 type Props = {
   providerUid: string
@@ -80,14 +81,14 @@ export default function SendRequestButton({
   if (!user) {
     if (compact) {
       return (
-        <Link to="/login" className="primary-btn send-request-cta" aria-label={ctaLabel}>
+        <Link to={routePath('login')} className="primary-btn send-request-cta" aria-label={ctaLabel}>
           <CtaIcon size={16} aria-hidden />
           <span className="tt-dir-action-text">{ctaLabel}</span>
         </Link>
       )
     }
     return (
-      <Link to="/login" className="primary-btn send-request-login-btn">
+      <Link to={routePath('login')} className="primary-btn send-request-login-btn">
         {guestLabel}
       </Link>
     )

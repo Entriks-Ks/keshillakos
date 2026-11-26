@@ -29,6 +29,7 @@ import {
   type ActivityEntry,
 } from './OverviewParts'
 import { formatAmount, formatWhen, REQUEST_STATUS } from './requestDisplay'
+import { routePath } from '../routes/routeMap'
 
 const REQUESTS_PATH = '/dashboard/user/requests'
 const MESSAGES_PATH = '/dashboard/user/messages'
@@ -130,7 +131,7 @@ function ActivityCard({ data, loading }: { data: OverviewData | null; loading: b
             title={t('overview.noActivity')}
             text={t('overview.user.activityText')}
             action={
-              <Link to="/ofertat" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              <Link to={routePath('services')} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 {t('req.browse')}
               </Link>
             }
@@ -280,7 +281,7 @@ export function UserOverviewPage() {
           </h1>
           <p>{t(ROLE_HINTS.user)}</p>
         </div>
-        <Link to="/" className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
+        <Link to={routePath('home')} className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
           <Plus size={16} aria-hidden />
           {t('dash.findHelp')}
         </Link>

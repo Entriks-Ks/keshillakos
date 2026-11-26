@@ -13,6 +13,7 @@ import AccountRequestModal, { type AccountRequestKind } from './AccountRequestMo
 import ChangePasswordModal from './ChangePasswordModal'
 import { CONTEXT_LABELS } from './nav'
 import { SettingsRow, SettingsSection } from './SettingsSection'
+import { routePath } from '../routes/routeMap'
 import './UserOverview.css'
 
 type SectionId = 'account' | 'security' | 'privacy' | 'delete'
@@ -247,7 +248,7 @@ export function SettingsPage() {
                 label={t('settings.policy')}
                 description={t('settings.policyDesc')}
                 action={
-                  <Link to="/privatesia" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
+                  <Link to={routePath('privacy')} className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
                     {t('settings.readPolicy')}
                   </Link>
                 }

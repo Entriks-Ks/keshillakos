@@ -13,6 +13,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import { providerPath } from '../utils/publicPaths'
 import { userDisplayName } from '../utils/siteNavMenu'
 import { CONTEXT_LABELS } from './nav'
+import { routePath } from '../routes/routeMap'
 
 type DashboardTopBarProps = {
   user: AuthUser
@@ -100,7 +101,7 @@ export default function DashboardTopBar({
               <Drawer.Dialog aria-label={t('dash.nav')} className="dtb-drawer-dialog">
                 <Drawer.Header className="dtb-drawer-head">
                   <Link
-                    to="/"
+                    to={routePath('home')}
                     className="brand brand-link dsb-brand"
                     aria-label={t('dash.homeAria')}
                     onClick={() => onMenuOpenChange(false)}
@@ -133,7 +134,7 @@ export default function DashboardTopBar({
                 variant="ghost"
                 className="dtb-icon"
                 aria-label={t('dashUi.backHome')}
-                onPress={() => navigate('/')}
+                onPress={() => navigate(routePath('home'))}
               >
                 <Home size={19} aria-hidden />
               </Button>

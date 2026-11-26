@@ -17,6 +17,7 @@ import {
   MessageSquareText,
   Search,
 } from 'lucide-react'
+import { routePath } from '../routes/routeMap'
 
 type TabKey = 'legal' | 'accounting' | 'ai'
 
@@ -131,7 +132,7 @@ export default function AboutPlatformPreview() {
                 </div>
 
                 <div className="ab-panel-cta-wrap">
-                  <Link to="/ofertat" className="ab-preview-link">
+                  <Link to={routePath('services')} className="ab-preview-link">
                     <span>{t('about.legalCardAction')}</span>
                     <ArrowRight size={16} aria-hidden />
                   </Link>
@@ -197,7 +198,7 @@ export default function AboutPlatformPreview() {
 
                 <div className="ab-sim-footer">
                   <span className="ab-sim-price">{t('landing.preview.priceFrom', { price: 40 })}</span>
-                  <Link to="/ofertat" className="ab-sim-btn">
+                  <Link to={routePath('services')} className="ab-sim-btn">
                     {t('landing.preview.bookConsultation')}
                   </Link>
                 </div>
@@ -226,7 +227,7 @@ export default function AboutPlatformPreview() {
                 </div>
 
                 <div className="ab-panel-cta-wrap">
-                  <Link to="/ofertat" className="ab-preview-link">
+                  <Link to={routePath('services')} className="ab-preview-link">
                     <span>{t('about.accCardAction')}</span>
                     <ArrowRight size={16} aria-hidden />
                   </Link>
@@ -284,7 +285,7 @@ export default function AboutPlatformPreview() {
 
                 <div className="ab-sim-footer">
                   <span className="ab-sim-price">{t('landing.preview.starterPackage')}</span>
-                  <Link to="/ofertat" className="ab-sim-btn">
+                  <Link to={routePath('services')} className="ab-sim-btn">
                     {t('landing.preview.viewOffer')}
                   </Link>
                 </div>
@@ -322,7 +323,7 @@ export default function AboutPlatformPreview() {
                 </div>
 
                 <div className="ab-panel-cta-wrap">
-                  <Link to="/ai-asistenti" className="ab-preview-link">
+                  <Link to={routePath('aiAssistant')} className="ab-preview-link">
                     <span>{t('about.aiAction')}</span>
                     <ArrowRight size={16} aria-hidden />
                   </Link>
@@ -362,7 +363,7 @@ export default function AboutPlatformPreview() {
                 </div>
 
                 <div className="ab-sim-footer">
-                  <Link to="/ai-asistenti" className="ab-sim-btn is-full">
+                  <Link to={routePath('aiAssistant')} className="ab-sim-btn is-full">
                     <MessageSquareText size={16} />
                     {t('about.aiAction')}
                   </Link>

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Check, Star } from 'lucide-react'
 import type { PlanChoice } from '../api/plans'
+import { routePath } from '../routes/routeMap'
 
 const BASIC = ['profile', 'identity', 'contact', 'bioBasic', 'ratings'] as const
 const PRO = ['allBasic', 'bioPro', 'mediaPro', 'specialtiesPro', 'servicesPro', 'hours', 'social', 'forms', 'extrasPro', 'manage', 'stats', 'badge'] as const
@@ -99,7 +100,7 @@ export default function PlanBoxes({ current, busy, onChoose, hrefFor }: Props) {
                 {label}
               </button>
             ) : (
-              <Link to={hrefFor?.(card.choice) ?? '/login'}>
+              <Link to={hrefFor?.(card.choice) ?? routePath('login')}>
                 {label}
                 <ArrowRight size={16} aria-hidden />
               </Link>

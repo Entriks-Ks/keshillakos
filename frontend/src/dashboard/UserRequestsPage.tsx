@@ -14,6 +14,7 @@ import StartChatButton from '../components/StartChatButton'
 import { getErrorMessage } from '../utils/errors'
 import { providerPath } from '../utils/publicPaths'
 import { formatAmount, formatWhen, REQUEST_STATUS } from './requestDisplay'
+import { routePath } from '../routes/routeMap'
 import './UserOverview.css'
 import './UserRequests.css'
 
@@ -204,7 +205,7 @@ function EmptyState() {
       <h2>{t('req.emptyMine')}</h2>
       <p>{t('req.emptyMineText')}</p>
       <div className="ur-empty-actions">
-        <Link to="/ofertat" className={buttonVariants({ variant: 'primary', size: 'sm' })}>
+        <Link to={routePath('services')} className={buttonVariants({ variant: 'primary', size: 'sm' })}>
           <Search size={16} aria-hidden />
           {t('req.browse')}
         </Link>
@@ -276,7 +277,7 @@ export function UserRequestsPage() {
         <div className="uo-head-copy">
           <h1>{t('dash.myRequests')}</h1>
         </div>
-        <Link to="/ofertat" className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
+        <Link to={routePath('services')} className={`${buttonVariants({ variant: 'primary' })} uo-primary`}>
           <Search size={16} aria-hidden />
           {t('req.browse')}
         </Link>

@@ -73,6 +73,7 @@ import {
   sortedOpenSlots,
   type CompareAdvantages,
 } from './compare/compareShared'
+import { routePath } from '../routes/routeMap'
 import './CompareLawyersPage.css'
 
 /**
@@ -745,14 +746,14 @@ export default function CompareLawyersPage() {
           <div className="kk-compare-container">
             {/* Top navigation & Breadcrumbs */}
             <div className="kk-compare-top-nav">
-              <Link to="/ofertat" className="kk-compare-back-btn">
+              <Link to={routePath('services')} className="kk-compare-back-btn">
                 <ArrowLeft size={16} aria-hidden />
                 <span>{t('compare.backToOffers', 'Kthehu tek Ofertat')}</span>
               </Link>
               <nav className="kk-compare-breadcrumbs" aria-label={t('compareUi.breadcrumbs')}>
-                <Link to="/">{t('compareUi.home')}</Link>
+                <Link to={routePath('home')}>{t('compareUi.home')}</Link>
                 <span className="sep">/</span>
-                <Link to="/ofertat">{t('nav.offers')}</Link>
+                <Link to={routePath('services')}>{t('nav.offers')}</Link>
                 <span className="sep">/</span>
                 <span className="current">{t('compare.title')}</span>
               </nav>
@@ -826,7 +827,7 @@ export default function CompareLawyersPage() {
                               <Plus size={20} aria-hidden />
                             </button>
                           ) : (
-                            <Link to="/ofertat?tab=experts" className="kk-cmp-slot-add" aria-label={addLabel} title={addLabel}>
+                            <Link to={routePath('experts')} className="kk-cmp-slot-add" aria-label={addLabel} title={addLabel}>
                               <Plus size={20} aria-hidden />
                             </Link>
                           )}
@@ -978,7 +979,7 @@ export default function CompareLawyersPage() {
 
               <div className="kk-compare-empty-actions">
                 <Link
-                  to="/ofertat?tab=experts"
+                  to={routePath('experts')}
                   className={`${buttonVariants({ variant: 'primary', size: 'md' })} kk-compare-empty-cta`}
                 >
                   <Search size={16} aria-hidden />

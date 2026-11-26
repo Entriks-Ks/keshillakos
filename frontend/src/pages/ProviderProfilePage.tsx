@@ -55,6 +55,8 @@ import { isProviderVerified } from '../components/providerCardUtils'
 import { humanLabels } from '../utils/displayLabels'
 import { getErrorMessage } from '../utils/errors'
 import { idFromPublicParam, providerPath, servicePath } from '../utils/publicPaths'
+import { localeOfPath, routePath } from '../routes/routeMap'
+import { usePageMeta } from '../routes/pageMeta'
 import { formatServicePrice } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
 import { AiTrustBadge } from '../components/ai/AiTrustBadge'
@@ -205,7 +207,7 @@ export default function ProviderProfilePage() {
   const { user } = useAuth()
   const { t, i18n: ui } = useTranslation()
   void ui.language
-  const { uid: param } = useParams<{ uid: string }>()
+  const { slug: param } = useParams<{ slug: string }>()
   const uid = idFromPublicParam(param)
   const navigate = useNavigate()
   const location = useLocation()
@@ -278,11 +280,13 @@ export default function ProviderProfilePage() {
 
   useEffect(() => {
     if (!provider || provider.uid !== uid) return
-    const canonical = providerPath(provider)
+    const canonical = providerPath(provider, localeOfPath(location.pathname) ?? undefined)
     if (location.pathname !== canonical) {
       navigate({ pathname: canonical, search: location.search, hash: location.hash }, { replace: true })
     }
   }, [provider, uid, location.pathname, location.search, location.hash, navigate])
+
+  usePageMeta(provider && provider.uid === uid ? { title: provider.name, description: provider.headline || provider.bio } : null)
 
   useEffect(() => {
     if (!provider?.uid) {
@@ -346,7 +350,7 @@ export default function ProviderProfilePage() {
 
   const backFallback = provider
     ? marketplaceLink(provider.role === 'company' ? 'companies' : 'experts').to
-    : '/ofertat'
+    : routePath('services')
 
   async function shareProfile() {
     const url = window.location.href
@@ -398,7 +402,7 @@ export default function ProviderProfilePage() {
               <Card.Content className="pp-card-body">
                 <h1>{uiText('Profili nuk u gjet', 'Profile not found', 'Profil nicht gefunden')}</h1>
                 <p>{error}</p>
-                <Link className={buttonVariants({ variant: 'primary' })} to="/ofertat">
+                <Link className={buttonVariants({ variant: 'primary' })} to={routePath('services')}>
                   {uiText('Shiko ofertat', 'View offers', 'Angebote ansehen')}
                 </Link>
               </Card.Content>

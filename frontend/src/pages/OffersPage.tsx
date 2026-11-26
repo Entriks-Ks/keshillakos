@@ -2,7 +2,7 @@ import KeshillaPagination from '../components/KeshillaPagination'
 import { emptyPagination, type PaginationMeta } from '../api/pagination'
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, SearchField, Tabs, ToggleButton } from '@heroui/react'
 import {
   AlertCircle,
@@ -45,6 +45,7 @@ import { humanLabels } from '../utils/displayLabels'
 import { getErrorMessage } from '../utils/errors'
 import { withCategoryLabels } from '../utils/marketplaceProvider'
 import { providerPath, servicePath } from '../utils/publicPaths'
+import { KEEP_SCROLL_STATE, localeOfPath, localizedPath, routePath } from '../routes/routeMap'
 import {
   formatServicePrice,
   isVerified,
@@ -86,11 +87,6 @@ const VISIBLE_CATEGORY_COUNT = 8
 
 function catalogLabel(item: { name: { sq: string; en: string } }, language: 'sq' | 'en') {
   return item.name[language] || item.name.sq
-}
-
-function parseTab(value: string | null): MarketplaceTab {
-  if (value === 'experts' || value === 'companies') return value
-  return 'services'
 }
 
 const TABS: Array<{ id: MarketplaceTab; icon: LucideIcon }> = [
@@ -144,10 +140,13 @@ function ResultsState({
 
 type ActiveChip = { key: string; label: string; clear: () => void }
 
-export default function OffersPage() {
+/** One page behind three localised URLs: services (/sherbime), experts (/eksperte), companies (/kompani). */
+export default function OffersPage({ tab: routeTab }: { tab: MarketplaceTab }) {
   const { t, i18n } = useTranslation()
   const namesLang = catalogLanguage(i18n.language)
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { languages } = useCatalogOptions()
   const [providers, setProviders] = useState<MarketplaceProvider[]>([])
   const [services, setServices] = useState<ServiceItem[]>([])
@@ -158,12 +157,11 @@ export default function OffersPage() {
   const [servicesLoading, setServicesLoading] = useState(true)
   const [servicesError, setServicesError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
-  const tabParam = searchParams.get('tab')
-  const [tab, setTab] = useState<MarketplaceTab>(() => parseTab(tabParam))
-  const [syncedTabParam, setSyncedTabParam] = useState(tabParam)
-  if (tabParam !== syncedTabParam) {
-    setSyncedTabParam(tabParam)
-    setTab(parseTab(tabParam))
+  const [tab, setTab] = useState<MarketplaceTab>(routeTab)
+  const [syncedRouteTab, setSyncedRouteTab] = useState(routeTab)
+  if (routeTab !== syncedRouteTab) {
+    setSyncedRouteTab(routeTab)
+    setTab(routeTab)
   }
   const [sort, setSort] = useState<MarketplaceSort>(() => parseSort(searchParams.get('sort')))
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
@@ -225,7 +223,7 @@ export default function OffersPage() {
   const filtersChanged = previousExtraFilters.current !== extraFiltersKey
     || query.trim() !== (searchParams.get('q') ?? '')
     || sort !== parseSort(searchParams.get('sort'))
-    || tab !== parseTab(searchParams.get('tab'))
+    || tab !== routeTab
     || categoryId !== (searchParams.get('categoryId') || 'all')
     || subcategoryId !== (searchParams.get('subcategoryId') || 'all')
   const page = filtersChanged ? 1 : requestedPage
@@ -349,15 +347,20 @@ export default function OffersPage() {
     const next = new URLSearchParams(searchParams)
     for (const key of ['tab', 'sort', 'q', 'categoryId', 'subcategoryId', 'page']) next.delete(key)
     if (page > 1) next.set('page', String(page))
-    if (tab !== 'services' || searchParams.has('tab')) next.set('tab', tab)
     if (sort !== 'relevance') next.set('sort', sort)
     if (query.trim()) next.set('q', query.trim())
     if (categoryId !== 'all') next.set('categoryId', categoryId)
     if (subcategoryId !== 'all') next.set('subcategoryId', subcategoryId)
     if (query.trim() || categoryId !== 'all' || subcategoryId !== 'all') next.delete('approx')
     const upcoming = next.toString()
+    if (tab !== routeTab) {
+      // The tab is part of the localised path; switching keeps the filters and the scroll position.
+      const pathname = localizedPath(tab, localeOfPath(location.pathname) ?? undefined)
+      navigate({ pathname, search: upcoming ? `?${upcoming}` : '' }, { replace: true, state: KEEP_SCROLL_STATE })
+      return
+    }
     if (searchParams.toString() !== upcoming) setSearchParams(next, { replace: true })
-  }, [tab, sort, query, categoryId, subcategoryId, page, extraFiltersKey, searchParams, setSearchParams])
+  }, [tab, routeTab, sort, query, categoryId, subcategoryId, page, extraFiltersKey, searchParams, setSearchParams, location.pathname, navigate])
 
   const labeledProviders = useMemo(
     () => providers.map((provider) => withCategoryLabels(provider, categories)),
@@ -736,7 +739,7 @@ export default function OffersPage() {
                     </div>
                   ) : null}
                 </div>
-                <Link to="/krahaso" className="of-compare-card">
+                <Link to={routePath('compare')} className="of-compare-card">
                   <span className="of-compare-icon" aria-hidden>
                     <Scale size={18} />
                   </span>

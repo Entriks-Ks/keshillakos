@@ -3027,6 +3027,26 @@ const sq = {
       published: 'Publikuar',
     },
   },
+  seo: {
+    pageTitle: "{{title}} | KeshillaKos",
+    default: { title: "KeshillaKos", description: "Gjej ekspertë dhe kompani profesionale në Kosovë për ligj, kontabilitet, konsulencë dhe më shumë. Krahaso ofertat dhe merr këshillë në një vend." },
+    home: { title: "KeshillaKos — Pyet. Mëso. Gjej zgjidhjen.", description: "Gjej ekspertë dhe kompani profesionale në Kosovë për ligj, kontabilitet, konsulencë dhe më shumë. Krahaso ofertat dhe merr këshillë në një vend." },
+    services: { title: "Shërbime profesionale | KeshillaKos", description: "Shfleto shërbimet e ekspertëve dhe kompanive: ligj, kontabilitet, konsulencë, IT dhe më shumë. Filtro sipas kategorisë, qytetit dhe vlerësimit." },
+    experts: { title: "Ekspertë dhe profesionistë | KeshillaKos", description: "Gjej ekspertë sipas fushës, gjuhës dhe vlerësimeve të klientëve, dhe dërgoju kërkesë drejtpërdrejt." },
+    companies: { title: "Kompani dhe zyra profesionale | KeshillaKos", description: "Shiko kompanitë dhe zyrat profesionale, ekipet e tyre dhe shërbimet që ofrojnë." },
+    serviceDetail: { title: "Shërbim | KeshillaKos", description: "Detajet e shërbimit: çmimi, disponueshmëria dhe ofruesi." },
+    provider: { title: "Profili i ofruesit | KeshillaKos", description: "Profili, shërbimet dhe vlerësimet e ofruesit." },
+    compare: { title: "Krahaso avokatët | KeshillaKos", description: "Vendos avokatët krah për krah: përvoja, fushat, çmimet dhe vlerësimet, që të zgjedhësh me siguri." },
+    community: { title: "Komuniteti | KeshillaKos", description: "Bëj pyetje, lexo përgjigje nga ekspertët dhe ndaj përvojën tënde me komunitetin." },
+    aiAssistant: { title: "Asistenti AI | KeshillaKos", description: "Përshkruaj problemin dhe asistenti AI të drejton te shërbimet dhe ekspertët e duhur." },
+    plans: { title: "Planet Basic dhe Pro | KeshillaKos", description: "Krahaso planet Basic dhe Pro për ekspertë dhe kompani. Basic mbetet falas." },
+    about: { title: "Rreth Nesh | KeshillaKos — Çdo pyetje meriton një përgjigje të mirë", description: "Kush jemi, si funksionon KeshillaKos dhe si i lidh njerëzit me profesionistët e duhur." },
+    terms: { title: "Kushtet e përdorimit | KeshillaKos", description: "Kushtet që vlejnë kur përdor KeshillaKos për të gjetur ose për të publikuar shërbime." },
+    privacy: { title: "Politika e privatësisë | KeshillaKos", description: "Çfarë të dhënash mbledhim, pse i përdorim dhe kush i sheh." },
+    cookies: { title: "Cookies | KeshillaKos", description: "Çfarë ruajmë në shfletues dhe pse nuk përdorim cookies marketingu." },
+    login: { title: "Kyçu | KeshillaKos", description: "Kyçu në llogarinë tënde KeshillaKos." },
+    register: { title: "Regjistrohu | KeshillaKos", description: "Krijo një llogari falas për të dërguar kërkesa ose për të ofruar shërbimet e tua." },
+  },
 }
 
 export default sq

@@ -32,6 +32,7 @@ import { AiRecommendedCard } from './AiRecommendedCard'
 import { useCompareLawyers } from '../../hooks/useCompareLawyers'
 import { SHEET_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
 import { BottomSheet, BottomSheetTitle } from '../BottomSheet'
+import { routeKeyOf, routePath } from '../../routes/routeMap'
 import './AiChatWidget.css'
 
 interface ChatMessageItem {
@@ -120,15 +121,14 @@ function useFooterInView(pathname: string) {
 export default function AiChatWidget() {
   const { t, i18n } = useTranslation()
   const location = useLocation()
-  const isDedicatedAiPage = location.pathname === '/ai-asistenti'
+  const isDedicatedAiPage = routeKeyOf(location.pathname) === 'aiAssistant'
   const { count: compareCount } = useCompareLawyers()
   const hasCompareDock =
     compareCount > 0 &&
-    location.pathname !== '/krahaso' &&
-    location.pathname !== '/krahaso-avokatet'
+    routeKeyOf(location.pathname) !== 'compare'
   const isDashboard = location.pathname.startsWith('/dashboard')
   // The floating assistant is shown only on the home page.
-  const isHomePage = location.pathname === '/'
+  const isHomePage = routeKeyOf(location.pathname) === 'home'
   const footerInView = useFooterInView(location.pathname)
 
   const [isOpen, setIsOpen] = useState(false)
@@ -352,7 +352,7 @@ export default function AiChatWidget() {
 
         <div className="kk-ai-header-actions">
           <Link
-            to="/ai-asistenti"
+            to={routePath('aiAssistant')}
             onClick={() => setIsOpen(false)}
             className="kk-ai-header-btn"
             title={t('ai.widget.fullPage')}

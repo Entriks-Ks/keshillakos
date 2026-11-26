@@ -1,5 +1,6 @@
 import type { AuthUser } from '../api/auth'
 import { getDashboardPath, resolveActiveContext } from './dashboardPath.ts'
+import { routeKeyOf, routePath, type Locale } from '../routes/routeMap.ts'
 
 export type MarketplaceLinkId = 'services' | 'experts' | 'companies'
 
@@ -10,24 +11,23 @@ export type MarketplaceLink = {
   to: string
 }
 
-export const MARKETPLACE_LINKS: MarketplaceLink[] = [
-  { id: 'services', label: 'offers.services', to: '/ofertat' },
-  { id: 'experts', label: 'offers.experts', to: '/ofertat?tab=experts' },
-  { id: 'companies', label: 'offers.companies', to: '/ofertat?tab=companies' },
-]
-
-export function marketplaceLink(id: MarketplaceLinkId): MarketplaceLink {
-  return MARKETPLACE_LINKS.find((link) => link.id === id) ?? { id, label: 'offers.services', to: '/ofertat' }
+const MARKETPLACE_LABELS: Record<MarketplaceLinkId, string> = {
+  services: 'offers.services',
+  experts: 'offers.experts',
+  companies: 'offers.companies',
 }
 
-export function activeMarketplaceLink(pathname: string, search: string): MarketplaceLinkId | null {
-  const path = pathname.replace(/\/+$/, '') || '/'
-  if (path.startsWith('/services/')) return 'services'
-  if (path !== '/ofertat') return null
-  const tab = new URLSearchParams(search).get('tab')
-  if (tab === 'experts') return 'experts'
-  if (tab === 'companies') return 'companies'
-  return 'services'
+/** Marketplace link in the active language: /sherbime · /en/services · /de/dienstleistungen, etc. */
+export function marketplaceLink(id: MarketplaceLinkId, locale?: Locale): MarketplaceLink {
+  return { id, label: MARKETPLACE_LABELS[id] ?? 'offers.services', to: routePath(id, { locale }) }
+}
+
+/** Which marketplace entry is current, for any language. Service detail pages belong to "services". */
+export function activeMarketplaceLink(pathname: string): MarketplaceLinkId | null {
+  const key = routeKeyOf(pathname)
+  if (key === 'services' || key === 'serviceDetail') return 'services'
+  if (key === 'experts' || key === 'companies') return key
+  return null
 }
 
 export type AccountMenuId =

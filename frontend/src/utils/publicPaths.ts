@@ -1,3 +1,5 @@
+import { localizedPath, type Locale } from '../routes/routeMap.ts'
+
 function slugify(value = '') {
   return value
     .normalize('NFD')
@@ -14,12 +16,14 @@ function withSlug(label: string | undefined, id: string) {
   return slug && id ? `${slug}-${id}` : id
 }
 
-export function servicePath(service: { id: string; title?: string }) {
-  return `/services/${withSlug(service.title, service.id)}`
+/** `/sherbime/slug-id`, `/en/services/slug-id`, `/de/dienstleistungen/slug-id` (active language by default). */
+export function servicePath(service: { id: string; title?: string }, locale?: Locale) {
+  return localizedPath('serviceDetail', locale, { slug: withSlug(service.title, service.id) })
 }
 
-export function providerPath(provider: { uid: string; name?: string }) {
-  return `/providers/${withSlug(provider.name, provider.uid)}`
+/** `/ofrues/slug-uid`, `/en/providers/slug-uid`, `/de/anbieter/slug-uid` (active language by default). */
+export function providerPath(provider: { uid: string; name?: string }, locale?: Locale) {
+  return localizedPath('provider', locale, { slug: withSlug(provider.name, provider.uid) })
 }
 
 /** Resolves `slug-id` and legacy bare-id params. Handles MongoDB ObjectIds, Firebase UIDs, and slugs. */

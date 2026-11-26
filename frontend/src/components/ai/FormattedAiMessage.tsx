@@ -1,5 +1,7 @@
 import { memo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { localizeHref } from '../../routes/routeMap'
 
 interface FormattedAiMessageProps {
   content: string
@@ -33,7 +35,7 @@ function renderInlineText(text: string): ReactNode[] {
 
       if (url.startsWith('/')) {
         parts.push(
-          <Link key={match.index} to={url} className="kk-ai-link">
+          <Link key={match.index} to={localizeHref(url)} className="kk-ai-link">
             {label}
           </Link>
         )
@@ -63,6 +65,8 @@ function renderInlineText(text: string): ReactNode[] {
 }
 
 export const FormattedAiMessage = memo(function FormattedAiMessage({ content }: FormattedAiMessageProps) {
+  // Re-render on language change so in-app links (old /services/:id URLs from the AI) follow the active language.
+  useTranslation()
   const lines = content.split('\n')
   const blocks: ReactNode[] = []
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowUpRight, Star, Briefcase, UserCheck, LayoutGrid } from 'lucide-react'
 import type { RecommendedEntity } from '../../api/aiChat'
+import { localizeHref } from '../../routes/routeMap'
 
 interface AiRecommendedCardProps {
   item: RecommendedEntity
@@ -15,7 +16,7 @@ export const AiRecommendedCard = memo(function AiRecommendedCard({ item, onNavig
 
   return (
     <Link
-      to={item.url}
+      to={localizeHref(item.url)}
       onClick={onNavigate}
       className="kk-ai-card"
       aria-label={t('ai.card.viewAria', { title: item.title })}

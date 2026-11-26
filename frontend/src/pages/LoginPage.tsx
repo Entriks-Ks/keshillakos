@@ -9,6 +9,7 @@ import AuthShowcase from '../components/AuthShowcase'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 import { LogoMark, LogoWordmark } from '../components/Logo'
 import { getErrorMessage } from '../utils/errors'
+import { routePath } from '../routes/routeMap'
 import './LoginPage.css'
 
 /** Messages are i18n keys, translated where they are displayed. */
@@ -59,7 +60,7 @@ export default function LoginPage() {
       <div className="login-split">
         <AuthShowcase />
         <div className="auth-panel">
-        <Link to="/" className="brand brand-link" aria-label={t('nav.home')}>
+        <Link to={routePath('home')} className="brand brand-link" aria-label={t('nav.home')}>
           <LogoMark size={36} />
           <LogoWordmark height={23} />
         </Link>
@@ -117,7 +118,7 @@ export default function LoginPage() {
         <GoogleAuthButton disabled={submitting} />
 
         <p className="switch">
-          {t('auth.noAccount')} <Link to="/register">{t('auth.register')}</Link>
+          {t('auth.noAccount')} <Link to={routePath('register')}>{t('auth.register')}</Link>
         </p>
         </div>
       </div>

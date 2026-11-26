@@ -5,6 +5,7 @@ import { LogoMark, LogoWordmark } from './Logo'
 import type { SocialLinkKey } from '../api/socialLinks'
 import FooterFeedback from './FooterFeedback'
 import SocialIcon from './SocialIcon'
+import { routePath } from '../routes/routeMap'
 
 const SOCIAL: Array<{ key: SocialLinkKey; label: string }> = [
   { key: 'instagram', label: 'Instagram' },
@@ -18,31 +19,31 @@ export default function SiteFooter() {
     {
       title: t('footer.clients'),
       links: [
-        { label: t('footer.explore'), to: '/#categories' },
-        { label: t('footer.offers'), to: '/ofertat' },
-        { label: t('footer.how'), to: '/#how' },
+        { label: t('footer.explore'), to: routePath('home', { hash: 'categories' }) },
+        { label: t('footer.offers'), to: routePath('services') },
+        { label: t('footer.how'), to: routePath('home', { hash: 'how' }) },
       ],
     },
     {
       title: t('footer.pros'),
       links: [
-        { label: t('nav.plans'), to: '/planet' },
-        { label: t('footer.become'), to: '/register' },
-        { label: t('footer.login'), to: '/login' },
+        { label: t('nav.plans'), to: routePath('plans') },
+        { label: t('footer.become'), to: routePath('register') },
+        { label: t('footer.login'), to: routePath('login') },
       ],
     },
     {
       title: t('footer.support'),
       links: [
-        { label: t('footer.how'), to: '/#how' },
-        { label: t('footer.create'), to: '/register' },
+        { label: t('footer.how'), to: routePath('home', { hash: 'how' }) },
+        { label: t('footer.create'), to: routePath('register') },
       ],
     },
     {
       title: t('footer.company'),
       links: [
-        { label: t('footer.about'), to: '/rreth-nesh' },
-        { label: t('footer.why'), to: '/#trust' },
+        { label: t('footer.about'), to: routePath('about') },
+        { label: t('footer.why'), to: routePath('home', { hash: 'trust' }) },
       ],
     },
   ]
@@ -52,7 +53,7 @@ export default function SiteFooter() {
       <div className="tt-section-inner tt-footer-inner">
         <div className="tt-footer-main">
           <div className="tt-footer-about">
-            <RouterLink to="/" className="brand brand-link tt-footer-brand" aria-label={t('nav.home')}>
+            <RouterLink to={routePath('home')} className="brand brand-link tt-footer-brand" aria-label={t('nav.home')}>
               <LogoMark size={32} />
               <LogoWordmark height={21} variant="white" />
             </RouterLink>
@@ -88,9 +89,9 @@ export default function SiteFooter() {
         <div className="tt-footer-bottom">
           <small>© {new Date().getFullYear()} Këshillohu. {t('footer.rights')}</small>
           <div className="tt-footer-legal" aria-label={t('footer.legal')}>
-            <RouterLink to="/kushtet" className="tt-footer-link">{t('footer.terms')}</RouterLink>
-            <RouterLink to="/privatesia" className="tt-footer-link">{t('footer.privacy')}</RouterLink>
-            <RouterLink to="/cookies" className="tt-footer-link">{t('footer.cookies')}</RouterLink>
+            <RouterLink to={routePath('terms')} className="tt-footer-link">{t('footer.terms')}</RouterLink>
+            <RouterLink to={routePath('privacy')} className="tt-footer-link">{t('footer.privacy')}</RouterLink>
+            <RouterLink to={routePath('cookies')} className="tt-footer-link">{t('footer.cookies')}</RouterLink>
           </div>
         </div>
       </div>

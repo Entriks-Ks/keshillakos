@@ -7,6 +7,7 @@ import { openConversation } from '../api/chat'
 import { useAuth } from '../auth/AuthContext'
 import { getDashboardPath } from '../utils/dashboardPath'
 import { getErrorMessage } from '../utils/errors'
+import { routePath } from '../routes/routeMap'
 
 type Props = {
   providerUid: string
@@ -51,7 +52,7 @@ export default function StartChatButton({
       return (
         <div className="chat-start">
           <Link
-            to="/login"
+            to={routePath('login')}
             className={className ? `${className} chat-start-btn` : 'ghost chat-start-btn'}
             aria-label={liveChatLabel}
           >
@@ -63,7 +64,7 @@ export default function StartChatButton({
     }
     return (
       <p className={`muted${compact ? ' chat-start-hint' : ''}`}>
-        <Trans i18nKey={loginHintKey} values={{ name: peerName }} components={{ login: <Link to="/login" /> }} />
+        <Trans i18nKey={loginHintKey} values={{ name: peerName }} components={{ login: <Link to={routePath('login')} /> }} />
       </p>
     )
   }

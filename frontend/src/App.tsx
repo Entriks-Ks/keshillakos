@@ -8,6 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './auth/ProtectedRoute'
 import ScrollToTop from './components/ScrollToTop'
+import { LegacyRedirect, LocaleSync } from './routes/LocaleRouting'
+import { localizedRoutes } from './routes/localizedRoutes'
+import { SeoProvider } from './routes/Seo'
 import HomePage from './pages/HomePage'
 import CompareDock from './components/CompareDock'
 import i18n from './i18n'
@@ -96,27 +99,32 @@ export default function App() {
         <CallProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <LocaleSync />
         <HeroRouterProvider>
+          <SeoProvider>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/rreth-nesh" element={<AboutPage />} />
-            <Route path="/planet" element={<PlansPage />} />
-            <Route path="/kushtet" element={<LegalPage kind="terms" />} />
-            <Route path="/privatesia" element={<LegalPage kind="privacy" />} />
-            <Route path="/cookies" element={<LegalPage kind="cookies" />} />
-            <Route path="/ofertat" element={<OffersPage />} />
-            <Route path="/krahaso" element={<CompareLawyersPage />} />
-            <Route path="/krahaso-avokatet" element={<CompareLawyersPage />} />
-            <Route path="/komuniteti" element={<CommunityPage />} />
-            <Route path="/ai-asistenti" element={<AiChatPage />} />
-            <Route path="/services/:id" element={<ServiceDetailPage />} />
-            <Route path="/providers/:uid" element={<ProviderProfilePage />} />
+            {/* Public pages: one route per language, built from src/routes/routeMap.ts. */}
+            {localizedRoutes('home', <HomePage />)}
+            {localizedRoutes('about', <AboutPage />)}
+            {localizedRoutes('plans', <PlansPage />)}
+            {localizedRoutes('terms', <LegalPage kind="terms" />)}
+            {localizedRoutes('privacy', <LegalPage kind="privacy" />)}
+            {localizedRoutes('cookies', <LegalPage kind="cookies" />)}
+            {localizedRoutes('services', <OffersPage tab="services" />)}
+            {localizedRoutes('experts', <OffersPage tab="experts" />)}
+            {localizedRoutes('companies', <OffersPage tab="companies" />)}
+            {localizedRoutes('compare', <CompareLawyersPage />)}
+            {localizedRoutes('community', <CommunityPage />)}
+            {localizedRoutes('aiAssistant', <AiChatPage />)}
+            {localizedRoutes('serviceDetail', <ServiceDetailPage />)}
+            {localizedRoutes('provider', <ProviderProfilePage />)}
 
             <Route element={<PublicOnlyRoute />}>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              {localizedRoutes('login', <LoginPage />)}
+              {localizedRoutes('register', <RegisterPage />)}
             </Route>
 
+            {/* Dashboards stay language-neutral (private, noindex, linked from backend notifications). */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<DashboardRedirect />} />
               <Route path="/dashboard/profile/edit" element={<DashboardShell />}>
@@ -188,8 +196,10 @@ export default function App() {
               </Route>
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Old URLs (/ofertat, /services/:id, /providers/:uid, /login, …) → localised page; unknown → home. */}
+            <Route path="*" element={<LegacyRedirect />} />
           </Routes>
+          </SeoProvider>
           <CompareDock />
           <AiChatWidget />
           <CallManagerUI />

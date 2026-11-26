@@ -35,6 +35,7 @@ import {
 } from '../utils/siteNavMenu'
 import ProfileAvatar from './ProfileAvatar'
 import NotificationBell from '../notifications/NotificationBell'
+import { routeKeyOf, routePath } from '../routes/routeMap'
 import './SiteNav.css'
 
 const ACCOUNT_ICONS: Record<AccountMenuId, LucideIcon> = {
@@ -173,7 +174,7 @@ export default function SiteNav() {
   const { listRef, indicator, listProps } = useLinkIndicator(
     `${location.pathname}${location.search}|${compareCount}|${i18n.language}`,
   )
-  const active = activeMarketplaceLink(location.pathname, location.search)
+  const active = activeMarketplaceLink(location.pathname)
   const accountItems = user ? getAccountMenu(user) : []
   const closeMenu = () => setMenuOpen(false)
 
@@ -187,7 +188,7 @@ export default function SiteNav() {
       <header className={scrolled ? 'kk-nav is-scrolled' : 'kk-nav'}>
         <span className="kk-nav-progress" aria-hidden="true" />
         <div className="tt-nav-inner kk-nav-inner">
-        <Link to="/" className="kk-nav-brand" aria-label={t('nav.home')}>
+        <Link to={routePath('home')} className="kk-nav-brand" aria-label={t('nav.home')}>
           <span className="kk-nav-brand-mark">
             <LogoMark size={34} />
           </span>
@@ -205,7 +206,7 @@ export default function SiteNav() {
             />
             <li>
               <Link
-                to="/ofertat"
+                to={routePath('services')}
                 className="kk-nav-link"
                 aria-current={active ? 'page' : undefined}
               >
@@ -214,9 +215,9 @@ export default function SiteNav() {
             </li>
             <li>
               <Link
-                to="/krahaso"
+                to={routePath('compare')}
                 className="kk-nav-link"
-                aria-current={location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet' ? 'page' : undefined}
+                aria-current={routeKeyOf(location.pathname) === 'compare' ? 'page' : undefined}
               >
                 <span>{t('nav.compare')}</span>
                 {compareCount > 0 ? <span className="kk-compare-nav-count">{compareCount}</span> : null}
@@ -224,37 +225,37 @@ export default function SiteNav() {
             </li>
             <li>
               <Link
-                to="/komuniteti"
+                to={routePath('community')}
                 className="kk-nav-link"
-                aria-current={location.pathname === '/komuniteti' ? 'page' : undefined}
+                aria-current={routeKeyOf(location.pathname) === 'community' ? 'page' : undefined}
               >
                 {t('nav.community')}
               </Link>
             </li>
             <li>
               <Link
-                to="/planet"
+                to={routePath('plans')}
                 className="kk-nav-link"
-                aria-current={location.pathname === '/planet' ? 'page' : undefined}
+                aria-current={routeKeyOf(location.pathname) === 'plans' ? 'page' : undefined}
               >
                 {t('nav.plans')}
               </Link>
             </li>
             <li>
               <Link
-                to="/rreth-nesh"
+                to={routePath('about')}
                 className="kk-nav-link"
-                aria-current={location.pathname === '/rreth-nesh' ? 'page' : undefined}
+                aria-current={routeKeyOf(location.pathname) === 'about' ? 'page' : undefined}
               >
                 {t('nav.about')}
               </Link>
             </li>
             <li className="kk-nav-ai-item">
               <Link
-                to="/ai-asistenti"
+                to={routePath('aiAssistant')}
                 className="kk-nav-link kk-nav-link-ai"
                 data-indicator="off"
-                aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
+                aria-current={routeKeyOf(location.pathname) === 'aiAssistant' ? 'page' : undefined}
               >
                 <MessageSquareText size={14} className="kk-nav-ai-icon" aria-hidden />
                 <span className="kk-nav-ai-label">Këshilla AI</span>
@@ -281,10 +282,10 @@ export default function SiteNav() {
             </>
           ) : (
             <div className="kk-nav-guest">
-              <Link to="/login" className="kk-nav-login">
+              <Link to={routePath('login')} className="kk-nav-login">
                 {t('nav.login')}
               </Link>
-              <Link to="/register" className="kk-nav-cta">
+              <Link to={routePath('register')} className="kk-nav-cta">
                 <span>{t('nav.register')}</span>
                 <ArrowRight size={15} aria-hidden className="kk-nav-cta-arrow" />
               </Link>
@@ -306,7 +307,7 @@ export default function SiteNav() {
               <Drawer.Content placement="right" className="kk-nav-drawer">
                 <Drawer.Dialog aria-label={t('nav.main')} className="kk-nav-drawer-dialog">
                   <Drawer.Header className="kk-nav-drawer-head">
-                    <Link to="/" className="kk-nav-brand" onClick={closeMenu}>
+                    <Link to={routePath('home')} className="kk-nav-brand" onClick={closeMenu}>
                       <span className="kk-nav-brand-mark">
                         <LogoMark size={34} />
                       </span>
@@ -330,7 +331,7 @@ export default function SiteNav() {
                       <ul className="kk-nav-drawer-list">
                         <li>
                           <Link
-                            to="/ofertat"
+                            to={routePath('services')}
                             className="kk-nav-drawer-link"
                             aria-current={active ? 'page' : undefined}
                             onClick={closeMenu}
@@ -340,9 +341,9 @@ export default function SiteNav() {
                         </li>
                         <li>
                           <Link
-                            to="/krahaso"
+                            to={routePath('compare')}
                             className="kk-nav-drawer-link"
-                            aria-current={location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet' ? 'page' : undefined}
+                            aria-current={routeKeyOf(location.pathname) === 'compare' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
                             <span>{t('nav.compare')}</span>
@@ -351,9 +352,9 @@ export default function SiteNav() {
                         </li>
                         <li>
                           <Link
-                            to="/komuniteti"
+                            to={routePath('community')}
                             className="kk-nav-drawer-link"
-                            aria-current={location.pathname === '/komuniteti' ? 'page' : undefined}
+                            aria-current={routeKeyOf(location.pathname) === 'community' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
                             {t('nav.community')}
@@ -361,9 +362,9 @@ export default function SiteNav() {
                         </li>
                         <li>
                           <Link
-                            to="/planet"
+                            to={routePath('plans')}
                             className="kk-nav-drawer-link"
-                            aria-current={location.pathname === '/planet' ? 'page' : undefined}
+                            aria-current={routeKeyOf(location.pathname) === 'plans' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
                             {t('nav.plans')}
@@ -371,9 +372,9 @@ export default function SiteNav() {
                         </li>
                         <li>
                           <Link
-                            to="/rreth-nesh"
+                            to={routePath('about')}
                             className="kk-nav-drawer-link"
-                            aria-current={location.pathname === '/rreth-nesh' ? 'page' : undefined}
+                            aria-current={routeKeyOf(location.pathname) === 'about' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
                             {t('nav.about')}
@@ -381,9 +382,9 @@ export default function SiteNav() {
                         </li>
                         <li>
                           <Link
-                            to="/ai-asistenti"
+                            to={routePath('aiAssistant')}
                             className="kk-nav-drawer-link kk-nav-drawer-link-ai"
-                            aria-current={location.pathname === '/ai-asistenti' ? 'page' : undefined}
+                            aria-current={routeKeyOf(location.pathname) === 'aiAssistant' ? 'page' : undefined}
                             onClick={closeMenu}
                           >
                             <MessageSquareText size={18} aria-hidden />
@@ -440,14 +441,14 @@ export default function SiteNav() {
                     ) : (
                       <>
                         <Link
-                          to="/login"
+                          to={routePath('login')}
                           className={buttonVariants({ variant: 'outline', fullWidth: true })}
                           onClick={closeMenu}
                         >
                           {t('nav.login')}
                         </Link>
                         <Link
-                          to="/register"
+                          to={routePath('register')}
                           className={buttonVariants({ variant: 'primary', fullWidth: true })}
                           onClick={closeMenu}
                         >

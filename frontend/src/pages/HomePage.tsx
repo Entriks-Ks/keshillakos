@@ -53,6 +53,7 @@ import { useSavedLocation } from '../hooks/useSavedLocation'
 import heroPlaceholder from '../assets/hero.png'
 import HomeHeroVisual from './HomeHeroVisual'
 import HomeArticlesSection from './HomeArticlesSection'
+import { routePath } from '../routes/routeMap'
 import './HomeCategories.css'
 
 const CATEGORY_LEADS: Record<string, string> = {
@@ -154,10 +155,6 @@ export default function HomePage() {
     () => categories.slice(0, POPULAR_CATEGORY_COUNT),
     [categories],
   )
-
-  useEffect(() => {
-    document.title = `KeshillaKos — ${t('home.title')}`
-  }, [t, i18n.language])
 
   useEffect(() => {
     setIntake((previous) => ({
@@ -265,7 +262,7 @@ export default function HomePage() {
       }
       const result = await runMatch(payload)
       if (!result.exact) {
-        navigate('/ofertat?approx=1')
+        navigate(routePath('services', { search: 'approx=1' }))
         return
       }
       setMatches(result.matches)
@@ -338,7 +335,7 @@ export default function HomePage() {
     if (query) params.set('q', query)
     if (context.categoryId) params.set('categoryId', context.categoryId)
     if (context.subcategoryId) params.set('subcategoryId', context.subcategoryId)
-    navigate(`/ofertat${params.toString() ? `?${params}` : ''}`)
+    navigate(routePath('services', { search: params }))
   }
 
   function onSearchSubmit(e: FormEvent) {

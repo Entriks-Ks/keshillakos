@@ -9,6 +9,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import ThemeToggle from '../components/ThemeToggle'
 import { LogoMark, LogoWordmark } from '../components/Logo'
 import { CONTEXT_LABELS, groupDashboardNav, NAV_GROUP_LABELS, type DashNavItem } from './nav'
+import { routePath } from '../routes/routeMap'
 
 export type ContextOption = { context: DashboardContext; available: boolean }
 
@@ -112,7 +113,7 @@ export default function DashboardSidebar({
     <div className={`dsb${inDrawer ? ' is-drawer' : ''}`}>
       <div className="dsb-head">
         {inDrawer ? null : (
-          <Link to="/" className="brand brand-link dsb-brand" aria-label={t('dash.homeAria')}>
+          <Link to={routePath('home')} className="brand brand-link dsb-brand" aria-label={t('dash.homeAria')}>
             <LogoMark size={28} />
             <LogoWordmark height={18} />
           </Link>

@@ -26,6 +26,7 @@ import ExpertProfilePage from './ExpertProfilePage'
 import { SectionHead } from './OverviewParts'
 import { EmptyNote, filledSocialLinks, SocialLinksList, UserProfile } from './UserProfilePage'
 import { AiTrustRecommendationsCard } from '../components/ai/AiTrustRecommendationsCard'
+import { providerPath } from '../utils/publicPaths'
 import './UserProfile.css'
 import './DashboardSections.css'
 import './ExpertProfile.css'
@@ -400,7 +401,7 @@ function CompanyProfileSection({ onSaved, completion }: { onSaved: () => Promise
           <h1>{t('dash.profile')}</h1>
           <p>{t('profile.company.lead')}</p>
         </div>
-        {user ? <Link to={`/providers/${user.uid}`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
+        {user ? <Link to={providerPath({ uid: user.uid })} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
           <ExternalLink size={16} aria-hidden /> {t('profile.viewPublic')}
         </Link> : null}
       </header>

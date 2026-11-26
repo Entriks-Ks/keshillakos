@@ -12,7 +12,13 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap"
       rel="stylesheet"
     />
-    <title>Këshillohu</title>
+    <title>KeshillaKos</title>
+    <meta name="description" content="Gjej ekspertë dhe kompani profesionale në Kosovë për ligj, kontabilitet, konsulencë dhe më shumë. Krahaso ofertat dhe merr këshillë në një vend." />
+    <meta property="og:site_name" content="KeshillaKos" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="KeshillaKos" />
+    <meta property="og:description" content="Gjej ekspertë dhe kompani profesionale në Kosovë për ligj, kontabilitet, konsulencë dhe më shumë. Krahaso ofertat dhe merr këshillë në një vend." />
+    <meta property="og:locale" content="sq_AL" />
     <script>
       try {
         var theme = localStorage.getItem("kk-theme");
@@ -20,8 +26,12 @@
           theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         }
         document.documentElement.dataset.theme = theme;
+        // The URL decides the language on public pages (/en/..., /de/..., otherwise Albanian); dashboards keep the saved one.
+        var prefix = /^\/(en|de)(\/|$)/.exec(location.pathname);
         var lang = localStorage.getItem("kk-lang");
         if (lang !== "sq" && lang !== "en" && lang !== "de") lang = "sq";
+        if (prefix) lang = prefix[1];
+        else if (!/^\/dashboard(\/|$)/.test(location.pathname)) lang = "sq";
         document.documentElement.lang = lang;
       } catch (e) {}
     </script>

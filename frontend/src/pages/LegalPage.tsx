@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { dateLocale, uiText } from '../i18n'
 import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
+import { routePath } from '../routes/routeMap'
 import './LegalPage.css'
 
 type LegalKind = 'terms' | 'privacy' | 'cookies'
@@ -121,10 +122,10 @@ const DOCUMENTS: Record<LegalKind, { kicker: string; title: string; lead: string
   },
 }
 
-const LINKS: { kind: LegalKind; to: string; label: string }[] = [
-  { kind: 'terms', to: '/kushtet', label: 'terms' },
-  { kind: 'privacy', to: '/privatesia', label: 'privacy' },
-  { kind: 'cookies', to: '/cookies', label: 'cookies' },
+const LINKS: { kind: LegalKind; label: string }[] = [
+  { kind: 'terms', label: 'terms' },
+  { kind: 'privacy', label: 'privacy' },
+  { kind: 'cookies', label: 'cookies' },
 ]
 
 const COPY: Record<string, [string, string]> = {
@@ -206,8 +207,8 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
             <nav className="tt-legal-switch" aria-label={uiText('Dokumentet ligjore', 'Legal documents', 'Rechtliche Dokumente')}>
               {LINKS.map((item) => (
                 <NavLink
-                  key={item.to}
-                  to={item.to}
+                  key={item.kind}
+                  to={routePath(item.kind)}
                   className={({ isActive }) => `tt-legal-tab${isActive ? ' is-active' : ''}`}
                 >
                   {linkLabel(item.label, cookies)}

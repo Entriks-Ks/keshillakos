@@ -5,6 +5,7 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import PlanBoxes, { type PlanBoxChoice } from '../components/PlanBoxes'
 import { useAuth } from '../auth/AuthContext'
+import { routePath } from '../routes/routeMap'
 import './PlansPage.css'
 
 /**
@@ -40,7 +41,7 @@ export default function PlansPage() {
     if (user?.activeContext === 'company' && canCompany) return '/dashboard/company/plans'
     if (canProvider) return '/dashboard/provider/plans'
     if (canCompany) return '/dashboard/company/plans'
-    return user ? '/dashboard' : '/register'
+    return user ? '/dashboard' : routePath('register')
   }
 
   function renderCell(value: boolean | string) {
@@ -98,9 +99,9 @@ export default function PlansPage() {
             <PlanBoxes hrefFor={hrefFor} />
             {!canProvider && !canCompany ? (
               <p className="pl-login">
-                {t('plans.login')} <Link to={user ? '/dashboard' : '/login'}>{user ? t('dash.board') : t('nav.login')}</Link>
+                {t('plans.login')} <Link to={user ? '/dashboard' : routePath('login')}>{user ? t('dash.board') : t('nav.login')}</Link>
                 {' · '}
-                <Link to="/register">{t('plans.register')}</Link>
+                <Link to={routePath('register')}>{t('plans.register')}</Link>
               </p>
             ) : null}
           </div>

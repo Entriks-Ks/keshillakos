@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   MessageSquareText,
 } from 'lucide-react'
+import { routePath } from '../routes/routeMap'
 
 export default function HomeArticlesSection() {
   const { t } = useTranslation()
@@ -20,7 +21,7 @@ export default function HomeArticlesSection() {
     desc: t('home.articleTermsDesc'),
     category: t('home.articleCatLegal'),
     readTime: t('home.articleReadTime', { minutes: 4 }),
-    to: '/kushtet',
+    to: routePath('terms'),
     highlights: [
       t('landing.articles.highlight1'),
       t('landing.articles.highlight2'),
@@ -35,7 +36,7 @@ export default function HomeArticlesSection() {
       desc: t('home.articlePrivacyDesc'),
       category: t('home.articleCatPrivacy'),
       readTime: t('home.articleReadTime', { minutes: 3 }),
-      to: '/privatesia',
+      to: routePath('privacy'),
       icon: ShieldCheck,
       iconClass: 'is-privacy',
     },
@@ -45,7 +46,7 @@ export default function HomeArticlesSection() {
       desc: t('home.articleAiDesc'),
       category: t('home.articleCatAi'),
       readTime: t('home.articleReadTime', { minutes: 2 }),
-      to: '/ai-asistenti',
+      to: routePath('aiAssistant'),
       icon: MessageSquareText,
       iconClass: 'is-ai',
     },
@@ -55,7 +56,7 @@ export default function HomeArticlesSection() {
       desc: t('home.articleCookiesDesc'),
       category: t('home.articleCatCookies'),
       readTime: t('home.articleReadTime', { minutes: 2 }),
-      to: '/cookies',
+      to: routePath('cookies'),
       icon: Cookie,
       iconClass: 'is-cookies',
     },
@@ -178,7 +179,7 @@ export default function HomeArticlesSection() {
               <p>{t('home.articlesAiBannerDesc')}</p>
             </div>
           </div>
-          <Link to="/ai-asistenti" className="hm-ai-bar-cta">
+          <Link to={routePath('aiAssistant')} className="hm-ai-bar-cta">
             <span>{t('home.articlesAiBannerBtn')}</span>
             <ArrowRight size={15} aria-hidden />
           </Link>

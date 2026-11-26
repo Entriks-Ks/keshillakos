@@ -44,6 +44,7 @@ import {
 } from '../api/aiChat'
 import { FormattedAiMessage } from '../components/ai/FormattedAiMessage'
 import { AiRecommendedCard } from '../components/ai/AiRecommendedCard'
+import { routePath } from '../routes/routeMap'
 import './AiChatPage.css'
 
 interface ChatMessageItem {
@@ -469,7 +470,7 @@ export default function AiChatPage() {
                   <span>{t('ai.page.why3')}</span>
                 </li>
               </ul>
-              <Link to="/ofertat" className="kk-aipage-info-cta">
+              <Link to={routePath('services')} className="kk-aipage-info-cta">
                 {t('ai.page.seeExperts')} <ArrowRight size={15} aria-hidden />
               </Link>
             </div>

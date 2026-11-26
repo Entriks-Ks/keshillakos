@@ -5,6 +5,7 @@ import { ArrowRight, Scale, X, Trash2, Plus } from 'lucide-react'
 import { toast } from '@heroui/react'
 import { MAX_COMPARE_LAWYERS, setCompareTranslator, useCompareLawyers } from '../hooks/useCompareLawyers'
 import ProfileAvatar from './ProfileAvatar'
+import { routeKeyOf, routePath } from '../routes/routeMap'
 import './CompareDock.css'
 
 export default function CompareDock() {
@@ -21,8 +22,7 @@ export default function CompareDock() {
   // composer is pinned to the bottom of the screen and the dock would cover it.
   const hidden =
     count === 0 ||
-    location.pathname === '/krahaso' ||
-    location.pathname === '/krahaso-avokatet' ||
+    routeKeyOf(location.pathname) === 'compare' ||
     /^\/dashboard\/[^/]+\/messages/.test(location.pathname)
 
   // While visible, reserve the dock's height at the bottom of the page so the last content
@@ -116,7 +116,7 @@ export default function CompareDock() {
         </button>
 
         <Link
-          to="/krahaso"
+          to={routePath('compare')}
           className={`kk-dock-cta-btn${count === 3 ? ' is-complete' : ''}`}
           aria-label={ctaLabel}
         >

@@ -55,6 +55,8 @@ import {
   type CommunityCategory,
   type CommunityPostStatus,
 } from '../api/community'
+import { routePath } from '../routes/routeMap'
+import { providerPath } from '../utils/publicPaths'
 import './CommunityPage.css'
 
 type CategoryItem = {
@@ -792,10 +794,10 @@ export default function CommunityPage() {
                     <p>{t('community.guest.text')}</p>
                   </div>
                   <div className="kk-comm-guest-actions">
-                    <Link to="/login" className="kk-comm-btn-login">
+                    <Link to={routePath('login')} className="kk-comm-btn-login">
                       {t('community.guest.login')}
                     </Link>
-                    <Link to="/register" className="kk-comm-btn-register">
+                    <Link to={routePath('register')} className="kk-comm-btn-register">
                       {t('community.guest.register')} <ArrowRight size={15} aria-hidden />
                     </Link>
                   </div>
@@ -945,7 +947,7 @@ export default function CommunityPage() {
                         <PenLine size={14} aria-hidden /> {t('community.hero.ask')}
                       </Button>
                     ) : (
-                      <Link to="/register" className="kk-comm-btn-register">
+                      <Link to={routePath('register')} className="kk-comm-btn-register">
                         {t('community.empty.registerAndAsk')} <ArrowRight size={15} aria-hidden />
                       </Link>
                     )}
@@ -1193,7 +1195,7 @@ export default function CommunityPage() {
                                                 </div>
                                                 {comm.suggestedProviderUid && (
                                                   <Link
-                                                    to={`/providers/${comm.suggestedProviderUid}`}
+                                                    to={providerPath({ uid: comm.suggestedProviderUid })}
                                                     className="kk-comm-view-profile-link"
                                                   >
                                                     {t('req.profile')} <ArrowRight size={13} aria-hidden />
@@ -1217,7 +1219,7 @@ export default function CommunityPage() {
 
                                           {isExpert && comm.authorUid && (
                                             <Link
-                                              to={`/providers/${comm.authorUid}`}
+                                              to={providerPath({ uid: comm.authorUid })}
                                               className="kk-comm-contact-expert-link"
                                             >
                                               {t('community.comments.contactExpert')} <ArrowRight size={13} aria-hidden />
@@ -1301,7 +1303,7 @@ export default function CommunityPage() {
                             ) : (
                               <div className="kk-comm-login-to-comment">
                                 <span>{t('community.comments.loginPrompt')}</span>
-                                <Link to="/login" className="kk-comm-login-link">
+                                <Link to={routePath('login')} className="kk-comm-login-link">
                                   {t('community.comments.loginLink')} <ArrowRight size={13} aria-hidden />
                                 </Link>
                               </div>
@@ -1348,7 +1350,7 @@ export default function CommunityPage() {
               </ol>
             </div>
 
-            <Link to="/krahaso" className="kk-comm-side-card kk-comm-feature-card">
+            <Link to={routePath('compare')} className="kk-comm-side-card kk-comm-feature-card">
               <span className="kk-comm-feature-icon">
                 <Scale size={22} aria-hidden />
               </span>
@@ -1359,7 +1361,7 @@ export default function CommunityPage() {
               </span>
             </Link>
 
-            <Link to="/ai-asistenti" className="kk-comm-side-card kk-comm-ai-widget">
+            <Link to={routePath('aiAssistant')} className="kk-comm-side-card kk-comm-ai-widget">
               <span className="kk-comm-ai-badge">
                 <MessageSquareText size={13} aria-hidden /> Këshilla AI · 24/7
               </span>

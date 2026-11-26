@@ -10,6 +10,7 @@ import ProfileAvatar from '../components/ProfileAvatar'
 import { formatReviewDate, ratingWord, StarRow } from '../components/ratingUi'
 import { getErrorMessage } from '../utils/errors'
 import { RowsSkeleton, SectionHead } from './OverviewParts'
+import { providerPath } from '../utils/publicPaths'
 import './UserRequests.css'
 import './DashboardSections.css'
 
@@ -99,7 +100,7 @@ export default function ProviderRatingsPanel({
               : t('ratings.leadProvider')}
           </p>
         </div>
-        <Link to={`/providers/${providerUid}#vleresimet`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
+        <Link to={`${providerPath({ uid: providerUid })}#vleresimet`} className={`${buttonVariants({ variant: 'outline' })} uo-primary`}>
           <ExternalLink size={16} aria-hidden />
           {t('ratings.viewPublic')}
         </Link>

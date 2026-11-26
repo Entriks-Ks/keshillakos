@@ -45,21 +45,25 @@ test('expert who switched to private context gets the private menu', () => {
   assert.deepEqual(labels(menu), ['menu.myProfile', 'menu.myDashboard'])
 })
 
-test('active marketplace link follows the ofertat tab', () => {
-  assert.equal(activeMarketplaceLink('/ofertat', ''), 'services')
-  assert.equal(activeMarketplaceLink('/ofertat/', '?sort=rating'), 'services')
-  assert.equal(activeMarketplaceLink('/ofertat', '?tab=experts&q=x'), 'experts')
-  assert.equal(activeMarketplaceLink('/ofertat', '?tab=companies'), 'companies')
-  assert.equal(activeMarketplaceLink('/services/abc', ''), 'services')
-  assert.equal(activeMarketplaceLink('/', ''), null)
-  assert.equal(activeMarketplaceLink('/rreth-nesh', '?tab=experts'), null)
+test('active marketplace link follows the localised marketplace path', () => {
+  assert.equal(activeMarketplaceLink('/sherbime'), 'services')
+  assert.equal(activeMarketplaceLink('/sherbime/'), 'services')
+  assert.equal(activeMarketplaceLink('/en/experts'), 'experts')
+  assert.equal(activeMarketplaceLink('/de/unternehmen'), 'companies')
+  assert.equal(activeMarketplaceLink('/kompani'), 'companies')
+  assert.equal(activeMarketplaceLink('/de/dienstleistungen/beratung-abc123'), 'services')
+  assert.equal(activeMarketplaceLink('/'), null)
+  assert.equal(activeMarketplaceLink('/rreth-nesh'), null)
+  assert.equal(activeMarketplaceLink('/dashboard/user'), null)
 })
 
-test('marketplace links expose i18n keys, not hardcoded labels', () => {
+test('marketplace links expose i18n keys and localised paths', () => {
   assert.equal(marketplaceLink('services').label, 'offers.services')
   assert.equal(marketplaceLink('experts').label, 'offers.experts')
-  assert.equal(marketplaceLink('companies').to, '/ofertat?tab=companies')
   assert.equal(marketplaceLink('companies').label, 'offers.companies')
+  assert.equal(marketplaceLink('companies', 'sq').to, '/kompani')
+  assert.equal(marketplaceLink('experts', 'en').to, '/en/experts')
+  assert.equal(marketplaceLink('services', 'de').to, '/de/dienstleistungen')
 })
 
 test('display name prefers first and last name', () => {

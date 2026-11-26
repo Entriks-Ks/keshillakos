@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -19,14 +18,11 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import AboutHeroVisual from './AboutHeroVisual'
 import AboutPlatformPreview from './AboutPlatformPreview'
+import { routePath } from '../routes/routeMap'
 import './AboutPage.css'
 
 export default function AboutPage() {
-  const { t, i18n } = useTranslation()
-
-  useEffect(() => {
-    document.title = t('about.metaTitle')
-  }, [t, i18n.language])
+  const { t } = useTranslation()
 
   return (
     <div className="tt-shell tt-home ab-shell">
@@ -50,15 +46,15 @@ export default function AboutPage() {
               <p className="ab-lead">{t('about.lead')}</p>
 
               <div className="ab-actions">
-                <Link to="/ofertat" className="ab-btn ab-btn-primary">
+                <Link to={routePath('services')} className="ab-btn ab-btn-primary">
                   <span>{t('about.ctaExplore')}</span>
                   <ArrowRight size={18} aria-hidden />
                 </Link>
-                <Link to="/ai-asistenti" className="ab-btn ab-btn-ai">
+                <Link to={routePath('aiAssistant')} className="ab-btn ab-btn-ai">
                   <MessageSquareText size={16} aria-hidden />
                   <span>{t('about.ctaAi')}</span>
                 </Link>
-                <Link to="/register" className="ab-btn ab-btn-ghost">
+                <Link to={routePath('register')} className="ab-btn ab-btn-ghost">
                   <span>{t('about.ctaBecome')}</span>
                 </Link>
               </div>
@@ -237,7 +233,7 @@ export default function AboutPage() {
                     <p>{t('about.ctaClientText')}</p>
                   </div>
                   <div className="ab-cta-card-action">
-                    <Link to="/ofertat" className="ab-cta-action-btn is-primary">
+                    <Link to={routePath('services')} className="ab-cta-action-btn is-primary">
                       <span>{t('about.ctaClientBtn')}</span>
                       <ArrowRight size={16} aria-hidden />
                     </Link>
@@ -254,11 +250,11 @@ export default function AboutPage() {
                     <p>{t('about.ctaProviderText')}</p>
                   </div>
                   <div className="ab-cta-card-action">
-                    <Link to="/register" className="ab-cta-action-btn is-accent">
+                    <Link to={routePath('register')} className="ab-cta-action-btn is-accent">
                       <span>{t('about.ctaProviderBtn')}</span>
                       <ArrowRight size={16} aria-hidden />
                     </Link>
-                    <Link to="/planet" className="ab-cta-ghost-link">
+                    <Link to={routePath('plans')} className="ab-cta-ghost-link">
                       {t('about.ctaProviderPlans')}
                     </Link>
                   </div>

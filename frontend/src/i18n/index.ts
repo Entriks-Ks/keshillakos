@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next'
 import de from './locales/de'
 import en from './locales/en'
 import sq from './locales/sq'
+import { initialLocale, setActiveLocale } from '../routes/routeMap'
 
 export const LANGUAGES = ['sq', 'en', 'de'] as const
 export type AppLanguage = (typeof LANGUAGES)[number]
@@ -40,6 +41,7 @@ export function dateLocale(language?: string) {
 }
 
 export function applyLanguage(language: AppLanguage) {
+  setActiveLocale(language)
   document.documentElement.lang = language
   try {
     localStorage.setItem(STORAGE_KEY, language)
@@ -49,19 +51,25 @@ export function applyLanguage(language: AppLanguage) {
   void i18n.changeLanguage(language)
 }
 
+/** A localised URL (/en/..., /de/..., Albanian slugs) decides the language; dashboards and old URLs keep the saved one. */
+const startLanguage: AppLanguage = typeof window === 'undefined' ? 'sq' : initialLocale(window.location.pathname, readLanguage())
+setActiveLocale(startLanguage)
+if (typeof document !== 'undefined') document.documentElement.lang = startLanguage
+
 void i18n.use(initReactI18next).init({
   resources: {
     sq: { translation: sq },
     en: { translation: en },
     de: { translation: de },
   },
-  lng: typeof document === 'undefined' ? 'sq' : document.documentElement.lang || readLanguage(),
+  lng: startLanguage,
   fallbackLng: 'sq',
   interpolation: { escapeValue: false },
 })
 
 i18n.on('languageChanged', (language) => {
   if (language === 'sq' || language === 'en' || language === 'de') {
+    setActiveLocale(language)
     document.documentElement.lang = language
   }
 })

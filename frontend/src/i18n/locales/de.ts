@@ -3027,6 +3027,26 @@ const de = {
       published: 'Veröffentlicht',
     },
   },
+  seo: {
+    pageTitle: "{{title}} | KeshillaKos",
+    default: { title: "KeshillaKos", description: "Finde Fachleute und Unternehmen im Kosovo für Recht, Buchhaltung, Beratung und mehr. Vergleiche Angebote und hol dir Rat an einem Ort." },
+    home: { title: "KeshillaKos — Fragen. Lernen. Lösung finden.", description: "Finde Fachleute und Unternehmen im Kosovo für Recht, Buchhaltung, Beratung und mehr. Vergleiche Angebote und hol dir Rat an einem Ort." },
+    services: { title: "Professionelle Dienstleistungen | KeshillaKos", description: "Entdecke Dienstleistungen von Fachleuten und Unternehmen: Recht, Buchhaltung, Beratung, IT und mehr. Filtere nach Kategorie, Stadt und Bewertung." },
+    experts: { title: "Expertinnen und Experten | KeshillaKos", description: "Finde Fachleute nach Fachgebiet, Sprache und Kundenbewertungen und sende ihnen direkt eine Anfrage." },
+    companies: { title: "Unternehmen und Kanzleien | KeshillaKos", description: "Sieh dir Unternehmen und Kanzleien an, ihre Teams und die Dienstleistungen, die sie anbieten." },
+    serviceDetail: { title: "Dienstleistung | KeshillaKos", description: "Details zur Dienstleistung: Preis, Verfügbarkeit und Anbieter." },
+    provider: { title: "Anbieterprofil | KeshillaKos", description: "Profil, Dienstleistungen und Bewertungen des Anbieters." },
+    compare: { title: "Anwälte vergleichen | KeshillaKos", description: "Vergleiche Anwälte nebeneinander: Erfahrung, Fachgebiete, Preise und Bewertungen – damit du sicher wählst." },
+    community: { title: "Community | KeshillaKos", description: "Stelle Fragen, lies Antworten von Fachleuten und teile deine Erfahrung mit der Community." },
+    aiAssistant: { title: "KI-Assistent | KeshillaKos", description: "Beschreibe dein Anliegen und der KI-Assistent führt dich zu den passenden Dienstleistungen und Fachleuten." },
+    plans: { title: "Tarife Basic und Pro | KeshillaKos", description: "Vergleiche die Tarife Basic und Pro für Fachleute und Unternehmen. Basic bleibt kostenlos." },
+    about: { title: "Über uns | KeshillaKos — Jede Frage verdient eine gute Antwort", description: "Wer wir sind, wie KeshillaKos funktioniert und wie es Menschen mit den richtigen Fachleuten verbindet." },
+    terms: { title: "Nutzungsbedingungen | KeshillaKos", description: "Die Bedingungen, die gelten, wenn du KeshillaKos nutzt, um Dienstleistungen zu finden oder zu veröffentlichen." },
+    privacy: { title: "Datenschutzerklärung | KeshillaKos", description: "Welche Daten wir erheben, warum wir sie nutzen und wer sie sieht." },
+    cookies: { title: "Cookies | KeshillaKos", description: "Was wir in deinem Browser speichern und warum wir keine Marketing-Cookies nutzen." },
+    login: { title: "Anmelden | KeshillaKos", description: "Melde dich bei deinem KeshillaKos-Konto an." },
+    register: { title: "Registrieren | KeshillaKos", description: "Erstelle ein kostenloses Konto, um Anfragen zu senden oder deine eigenen Dienstleistungen anzubieten." },
+  },
 }
 
 export default de

@@ -3027,6 +3027,26 @@ const en = {
       published: 'Published',
     },
   },
+  seo: {
+    pageTitle: "{{title}} | KeshillaKos",
+    default: { title: "KeshillaKos", description: "Find professional experts and companies in Kosovo for law, accounting, consulting and more. Compare offers and get advice in one place." },
+    home: { title: "KeshillaKos — Ask. Learn. Find the solution.", description: "Find professional experts and companies in Kosovo for law, accounting, consulting and more. Compare offers and get advice in one place." },
+    services: { title: "Professional services | KeshillaKos", description: "Browse services from experts and companies: law, accounting, consulting, IT and more. Filter by category, city and rating." },
+    experts: { title: "Experts and professionals | KeshillaKos", description: "Find experts by field, language and client ratings, and send them a request directly." },
+    companies: { title: "Companies and professional firms | KeshillaKos", description: "See professional companies and firms, their teams and the services they offer." },
+    serviceDetail: { title: "Service | KeshillaKos", description: "Service details: price, availability and provider." },
+    provider: { title: "Provider profile | KeshillaKos", description: "The provider's profile, services and ratings." },
+    compare: { title: "Compare lawyers | KeshillaKos", description: "Put lawyers side by side: experience, fields, prices and ratings, so you can choose with confidence." },
+    community: { title: "Community | KeshillaKos", description: "Ask questions, read answers from experts and share your experience with the community." },
+    aiAssistant: { title: "AI assistant | KeshillaKos", description: "Describe your problem and the AI assistant points you to the right services and experts." },
+    plans: { title: "Basic and Pro plans | KeshillaKos", description: "Compare the Basic and Pro plans for experts and companies. Basic stays free." },
+    about: { title: "About Us | KeshillaKos — Every question deserves a good answer", description: "Who we are, how KeshillaKos works and how it connects people with the right professionals." },
+    terms: { title: "Terms of use | KeshillaKos", description: "The terms that apply when you use KeshillaKos to find or publish services." },
+    privacy: { title: "Privacy policy | KeshillaKos", description: "What data we collect, why we use it and who sees it." },
+    cookies: { title: "Cookies | KeshillaKos", description: "What we store in your browser and why we use no marketing cookies." },
+    login: { title: "Log in | KeshillaKos", description: "Log in to your KeshillaKos account." },
+    register: { title: "Sign up | KeshillaKos", description: "Create a free account to send requests or offer your own services." },
+  },
 }
 
 export default en

@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
+import { robotsTxt, sitemapXml } from './src/routes/routeMap.ts'
 
 /*
  * Hover styles only on devices that can hover.
@@ -42,10 +43,31 @@ function hoverOnlyOnHoverDevices() {
 }
 hoverOnlyOnHoverDevices.postcss = true as const
 
+/*
+ * sitemap.xml + robots.txt from the localised route map (src/routes/routeMap.ts). Sitemap URLs must be absolute, so the
+ * public origin comes from VITE_SITE_URL (e.g. https://www.example.com). Without it only robots.txt is written.
+ */
+function seoFiles(): Plugin {
+  let origin: string | null = null
+  return {
+    name: 'kk-seo-files',
+    apply: 'build',
+    configResolved(config) {
+      const value = String(config.env.VITE_SITE_URL ?? '').trim().replace(/\/+$/, '')
+      origin = /^https?:\/\/[^/]+$/.test(value) ? value : null
+      if (!origin) config.logger.warn('[kk-seo-files] VITE_SITE_URL is not set to an origin; sitemap.xml was not generated.')
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robotsTxt(origin) })
+      if (origin) this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemapXml(origin) })
+    },
+  }
+}
+
 // https://vite.dev/config/
 // LiveKit WebRTC Cloud enabled: wss://keshillakos-zy51rpqv.livekit.cloud
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), seoFiles()],
   css: {
     postcss: { plugins: [hoverOnlyOnHoverDevices()] },
   },

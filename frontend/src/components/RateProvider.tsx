@@ -15,6 +15,7 @@ import {
 } from '../api/ratings'
 import { useAuth } from '../auth/AuthContext'
 import { getErrorMessage } from '../utils/errors'
+import { routePath } from '../routes/routeMap'
 
 type Props = {
   providerUid: string
@@ -163,7 +164,7 @@ export default function RateProvider({
 
       {!user && !quiet ? (
         <p className="muted">
-          <Link to="/login">{uiText('Hyr', 'Log in', 'Anmelden')}</Link> {uiText('për të lënë një vlerësim pasi ofruesi të përfundojë shërbimin.', 'to leave a rating after the provider finishes the service.', 'um eine Bewertung zu hinterlassen, nachdem der Anbieter den Dienst abschließt.')}
+          <Link to={routePath('login')}>{uiText('Hyr', 'Log in', 'Anmelden')}</Link> {uiText('për të lënë një vlerësim pasi ofruesi të përfundojë shërbimin.', 'to leave a rating after the provider finishes the service.', 'um eine Bewertung zu hinterlassen, nachdem der Anbieter den Dienst abschließt.')}
         </p>
       ) : null}
 

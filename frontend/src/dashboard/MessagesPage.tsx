@@ -46,6 +46,7 @@ import { REQUEST_STATUS } from './requestDisplay'
 import { getDashboardPath } from '../utils/dashboardPath'
 import MessageBubble from '../chat/MessageBubble'
 import MessageComposer from '../chat/MessageComposer'
+import { routePath } from '../routes/routeMap'
 
 /** Backend placeholder stored as the conversation preview after the latest message is deleted. */
 const DELETED_MESSAGE_PREVIEW = 'Mesazhi u fshi'
@@ -726,7 +727,7 @@ export default function MessagesPage() {
                 </span>
                 <strong>{t('inbox.emptyTitle')}</strong>
                 <p>{t('inbox.emptyText')}</p>
-                <Link to="/ofertat" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                <Link to={routePath('services')} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                   {t('home.seeOffers')}
                 </Link>
               </div>

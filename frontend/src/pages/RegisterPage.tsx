@@ -9,6 +9,7 @@ import AuthShowcase from '../components/AuthShowcase'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 import { LogoMark, LogoWordmark } from '../components/Logo'
 import { getErrorMessage } from '../utils/errors'
+import { routePath } from '../routes/routeMap'
 import './LoginPage.css'
 
 /** Messages are i18n keys, translated where they are displayed. */
@@ -100,7 +101,7 @@ export default function RegisterPage() {
       <div className="login-split">
         <AuthShowcase />
         <div className="auth-panel">
-        <Link to="/" className="brand brand-link" aria-label={t('nav.home')}>
+        <Link to={routePath('home')} className="brand brand-link" aria-label={t('nav.home')}>
           <LogoMark size={36} />
           <LogoWordmark height={23} />
         </Link>
@@ -240,7 +241,7 @@ export default function RegisterPage() {
               <span>
                 <Trans
                   i18nKey="register.terms"
-                  components={{ terms: <Link to="/kushtet" />, privacy: <Link to="/privatesia" /> }}
+                  components={{ terms: <Link to={routePath('terms')} />, privacy: <Link to={routePath('privacy')} /> }}
                 />
               </span>
             </label>
@@ -258,7 +259,7 @@ export default function RegisterPage() {
         {step === 1 ? <GoogleAuthButton disabled={submitting} /> : null}
 
         <p className="switch">
-          {t('register.haveAccount')} <Link to="/login">{t('nav.login')}</Link>
+          {t('register.haveAccount')} <Link to={routePath('login')}>{t('nav.login')}</Link>
         </p>
         </div>
       </div>

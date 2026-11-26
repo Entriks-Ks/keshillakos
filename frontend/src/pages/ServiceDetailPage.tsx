@@ -34,6 +34,8 @@ import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { getErrorMessage } from '../utils/errors'
 import { idFromPublicParam, providerPath as publicProviderPath, servicePath } from '../utils/publicPaths'
+import { localeOfPath, routePath } from '../routes/routeMap'
+import { usePageMeta } from '../routes/pageMeta'
 import { formatServicePrice, isVerified } from '../utils/serviceDiscovery'
 import { marketplaceLink } from '../utils/siteNavMenu'
 import { AiTrustBadge } from '../components/ai/AiTrustBadge'
@@ -76,14 +78,14 @@ function availabilityShort(mode: string) {
 
 const GALLERY_VISIBLE = 5
 
-function ofertatPath(filters: { categoryId?: string; subcategoryId?: string } = {}) {
+function servicesListPath(filters: { categoryId?: string; subcategoryId?: string } = {}) {
   const params = new URLSearchParams()
   const categoryId = filters.categoryId?.trim()
   const subcategoryId = filters.subcategoryId?.trim()
   if (categoryId) params.set('categoryId', categoryId)
   if (subcategoryId) params.set('subcategoryId', subcategoryId)
   const query = params.toString()
-  return query ? `/ofertat?${query}` : '/ofertat'
+  return routePath('services', { search: query })
 }
 
 function money(amount: number, currency?: string) {
@@ -253,7 +255,7 @@ function DetailSkeleton() {
 export default function ServiceDetailPage() {
   const { t, i18n } = useTranslation()
   void i18n.language
-  const { id: param } = useParams<{ id: string }>()
+  const { slug: param } = useParams<{ slug: string }>()
   const id = idFromPublicParam(param)
   const navigate = useNavigate()
   const location = useLocation()
@@ -304,11 +306,13 @@ export default function ServiceDetailPage() {
 
   useEffect(() => {
     if (!service || service.id !== id) return
-    const canonical = servicePath(service)
+    const canonical = servicePath(service, localeOfPath(location.pathname) ?? undefined)
     if (location.pathname !== canonical) {
       navigate({ pathname: canonical, search: location.search, hash: location.hash }, { replace: true })
     }
   }, [service, id, location.pathname, location.search, location.hash, navigate])
+
+  usePageMeta(service && service.id === id ? { title: service.title, description: service.description } : null)
 
   useEffect(() => {
     if (!service?.providerUid) {
@@ -341,10 +345,10 @@ export default function ServiceDetailPage() {
   const verified = isVerified(provider)
   const categoryLabel = (service?.categoryLabel || service?.category || '').trim()
   const subcategoryLabel = service?.subcategory?.trim() || ''
-  const categoryHref = service?.categoryId?.trim() ? ofertatPath({ categoryId: service.categoryId }) : undefined
+  const categoryHref = service?.categoryId?.trim() ? servicesListPath({ categoryId: service.categoryId }) : undefined
   const subcategoryHref =
     service?.categoryId?.trim() && service?.subcategoryId?.trim()
-      ? ofertatPath({ categoryId: service.categoryId, subcategoryId: service.subcategoryId })
+      ? servicesListPath({ categoryId: service.categoryId, subcategoryId: service.subcategoryId })
       : undefined
   const gallery = (details.photos || []).map((url) => mediaUrl(url)).filter(Boolean)
   const viewerPhoto = gallery[Math.min(activePhoto, gallery.length - 1)]
@@ -402,7 +406,7 @@ export default function ServiceDetailPage() {
                 </h1>
                 <p>{error}</p>
                 {notFound ? (
-                  <Link className={buttonVariants({ variant: 'primary', size: 'md' })} to="/ofertat">
+                  <Link className={buttonVariants({ variant: 'primary', size: 'md' })} to={routePath('services')}>
                     {uiText('Shiko shërbimet', 'View services', 'Dienste ansehen')}
                   </Link>
                 ) : (
