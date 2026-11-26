@@ -1,7 +1,7 @@
 import { collectionSummary, collectionTotal } from '../api/pagination'
 import KeshillaPagination from '../components/KeshillaPagination'
 import { usePagination } from '../hooks/usePagination'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { dateLocale } from '../i18n'
 import { Link, useLocation } from 'react-router-dom'
@@ -18,7 +18,7 @@ import {
   TextField,
   toast,
 } from '@heroui/react'
-import { Briefcase, CalendarDays, Inbox, Mail, MapPin, MessageCircle, Phone } from 'lucide-react'
+import { Briefcase, CalendarDays, Inbox, Mail, MapPin, MessageCircle, MessageSquareText, Phone } from 'lucide-react'
 import { fetchRequestInbox, updateRequestStatus, type RequestStatus, type ServiceRequestItem } from '../api/requests'
 import ProfileAvatar from '../components/ProfileAvatar'
 import StartChatButton from '../components/StartChatButton'
@@ -26,6 +26,7 @@ import { getErrorMessage } from '../utils/errors'
 import { formatAmount, formatWhen, REQUEST_STATUS, type ChipColor } from './requestDisplay'
 import './UserOverview.css'
 import './UserRequests.css'
+import './ProviderInbox.css'
 
 type FilterId = 'all' | 'waiting' | 'accepted' | 'completed' | 'rejected'
 
@@ -113,15 +114,33 @@ function Stats({ requests, now }: { requests: ServiceRequestItem[]; now: number 
 
 function Response({ label, amount, children }: { label: string; amount?: string; children?: ReactNode }) {
   return (
-    <div className="ur-response">
-      <div className="ur-response-head">
-        <span className="ur-response-label">{label}</span>
-        {amount ? <strong className="ur-response-amount">{amount}</strong> : null}
+    <div className="ri-response">
+      <div className="ri-response-head">
+        <span className="ri-response-label">{label}</span>
+        {amount ? <strong className="ri-response-amount">{amount}</strong> : null}
       </div>
       {children ? <p>{children}</p> : null}
     </div>
   )
 }
+
+/** Long requests stay three lines in the list; "Read more" appears only when the text is really cut off. */
+function useIsClamped<T extends HTMLElement>(text: string, clamped: boolean) {
+  const ref = useRef<T>(null)
+  const [overflowing, setOverflowing] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || !clamped) return
+    const measure = () => setOverflowing(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [text, clamped])
+  return [ref, overflowing] as const
+}
+
+type Busy = { id: string; status: RequestStatus } | null
 
 function RequestRow({
   item,
@@ -133,58 +152,102 @@ function RequestRow({
   item: ServiceRequestItem
   note: string
   onNote: (value: string) => void
-  busy: boolean
+  busy: RequestStatus | null
   onStatus: (status: RequestStatus) => void
 }) {
   const { t } = useTranslation()
+  const [replyOpen, setReplyOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const status = statusChip(item.status)
   const waiting = isAwaiting(item.status)
+  const accepted = item.status === 'accepted'
+  const tone = waiting ? 'waiting' : item.status
   const client = item.seekerName || t('req.client')
   const appointment = formatAppointment(item.requestedStartAt, item.requestedEndAt)
   const contact = CONTACT[item.contactMethod]
   const contactValue = item.contactPhone || (item.contactMethod === 'email' ? item.contactEmail || item.seekerEmail : '')
+  const contactHref = contactValue
+    ? item.contactPhone
+      ? `tel:${item.contactPhone.replace(/[^\d+]/g, '')}`
+      : `mailto:${contactValue}`
+    : ''
   const need = item.need?.trim() || item.message?.trim() || ''
+  const [needRef, needOverflowing] = useIsClamped<HTMLParagraphElement>(need, !expanded)
+  const longNeed = expanded || needOverflowing
+  const canReply = waiting || accepted
+  const showReply = canReply && (replyOpen || note.length > 0)
+  const isBusy = busy !== null
+  const chat = item.seekerUid ? (
+    <StartChatButton
+      providerUid={item.providerUid || ''}
+      seekerUid={item.seekerUid}
+      seekerName={item.seekerName}
+      serviceId={item.serviceId}
+      serviceTitle={item.serviceTitle}
+      className={`${buttonVariants({ variant: 'outline', size: 'sm' })} ri-chat`}
+      label={t('req.message')}
+      hideGuestHint
+    />
+  ) : null
 
   return (
-    <li className={`ur-item${waiting ? ' is-action' : ''}`}>
-      <div className="ur-main">
-        <div className="ur-top">
-          <ProfileAvatar seed={item.seekerUid || client} size={40} alt="" className="ur-avatar" />
-          <div className="ur-titles">
-            <h3 className="ur-title">{client}</h3>
-            <p className="ur-sub">
-              <span className="ur-service">{item.serviceTitle || t('req.serviceRequest')}</span>
-              <span aria-hidden>·</span>
-              <time dateTime={item.createdAt}>{formatWhen(item.createdAt)}</time>
+    <li className={`ri-item is-${tone}`}>
+      <ProfileAvatar seed={item.seekerUid || client} size={40} alt="" className="ri-avatar" />
+
+      <div className="ri-head">
+        <h3 className="ri-name" title={client}>
+          {client}
+        </h3>
+        <p className="ri-meta">
+          <span className="ri-service">{item.serviceTitle || t('req.serviceRequest')}</span>
+          <time dateTime={item.createdAt}>
+            {t('req.received')} {formatWhen(item.createdAt)}
+          </time>
+        </p>
+      </div>
+
+      <Chip size="sm" variant="soft" color={status.color} className="ri-status">
+        <Chip.Label>{t(status.label)}</Chip.Label>
+      </Chip>
+
+      <div className="ri-body">
+        {need ? (
+          <div className="ri-need-wrap">
+            <p ref={needRef} className={`ri-need${expanded ? '' : ' is-clamped'}`}>
+              {need}
             </p>
+            {longNeed ? (
+              <button type="button" className="ri-link" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+                {expanded ? t('cards.readLess') : t('cards.readMore')}
+              </button>
+            ) : null}
           </div>
-          <Chip size="sm" variant="soft" color={status.color} className="ur-status">
-            <Chip.Label>{t(status.label)}</Chip.Label>
-          </Chip>
-        </div>
+        ) : null}
 
-        {need ? <p className="ur-need">{need}</p> : null}
-
-        <ul className="ur-facts">
-          {appointment ? (
-            <li className="is-strong">
-              <CalendarDays size={14} aria-hidden />
-              {appointment}
-            </li>
-          ) : null}
-          {contactValue ? (
-            <li>
-              <contact.icon size={14} aria-hidden />
-              {contactValue}
-            </li>
-          ) : null}
-          {item.location ? (
-            <li>
-              <MapPin size={14} aria-hidden />
-              {item.location}
-            </li>
-          ) : null}
-        </ul>
+        {appointment || contactValue || item.location ? (
+          <ul className="ri-facts">
+            {appointment ? (
+              <li className="ri-fact is-appointment">
+                <CalendarDays size={14} aria-hidden />
+                <span>{appointment}</span>
+              </li>
+            ) : null}
+            {contactValue ? (
+              <li className="ri-fact">
+                <contact.icon size={14} aria-hidden />
+                <a href={contactHref} className="ri-fact-link" title={contactValue}>
+                  {contactValue}
+                </a>
+              </li>
+            ) : null}
+            {item.location ? (
+              <li className="ri-fact">
+                <MapPin size={14} aria-hidden />
+                <span>{item.location}</span>
+              </li>
+            ) : null}
+          </ul>
+        ) : null}
 
         {item.offer ? (
           <Response label={t('req.yourOffer')} amount={formatAmount(item.offer)}>
@@ -192,45 +255,58 @@ function RequestRow({
           </Response>
         ) : null}
         {item.providerNote && !waiting ? <Response label={t('req.yourNote')}>{item.providerNote}</Response> : null}
+      </div>
 
-        {waiting || item.status === 'accepted' ? (
-          <TextField fullWidth value={note} onChange={onNote} isDisabled={busy} className="ur-reply">
-            <Label className="sr-only">{t('req.reply')}</Label>
-            <TextArea rows={2} placeholder={t('req.replyPh')} />
-          </TextField>
+      <div className="ri-foot">
+        {canReply ? (
+          <div className="ri-reply-area">
+            {showReply ? (
+              <TextField fullWidth value={note} onChange={onNote} isDisabled={isBusy} className="ri-reply">
+                <Label className="sr-only">{t('req.reply')}</Label>
+                <TextArea rows={2} placeholder={t('req.replyPh')} autoFocus={replyOpen && note.length === 0} />
+              </TextField>
+            ) : (
+              <button type="button" className="ri-link ri-reply-toggle" onClick={() => setReplyOpen(true)}>
+                <MessageSquareText size={15} aria-hidden />
+                {t('req.addReply')}
+              </button>
+            )}
+          </div>
         ) : null}
 
-        <div className="ur-foot">
-          <div className="ur-actions is-wrap">
-            {item.seekerUid ? (
-              <StartChatButton
-                providerUid={item.providerUid || ''}
-                seekerUid={item.seekerUid}
-                seekerName={item.seekerName}
-                serviceId={item.serviceId}
-                serviceTitle={item.serviceTitle}
-                className={`${buttonVariants({ variant: 'outline', size: 'sm' })} ur-chat`}
-                label={t('req.message')}
-                hideGuestHint
-              />
-            ) : null}
+        {chat || waiting || accepted ? (
+          <div className={`ri-actions${waiting ? ' has-decision' : ''}${!waiting && !accepted ? ' is-single' : ''}`}>
+            {chat}
             {waiting ? (
               <>
-                <Button variant="outline" size="sm" className="ur-reject" isDisabled={busy} onPress={() => onStatus('rejected')}>
-                  {t('req.decline')}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ri-decline"
+                  isDisabled={isBusy && busy !== 'rejected'}
+                  isPending={busy === 'rejected'}
+                  onPress={() => onStatus('rejected')}
+                >
+                  {busy === 'rejected' ? t('req.saving') : t('req.decline')}
                 </Button>
-                <Button variant="primary" size="sm" isPending={busy} onPress={() => onStatus('accepted')}>
-                  {busy ? t('req.saving') : t('req.accept')}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  isDisabled={isBusy && busy !== 'accepted'}
+                  isPending={busy === 'accepted'}
+                  onPress={() => onStatus('accepted')}
+                >
+                  {busy === 'accepted' ? t('req.saving') : t('req.accept')}
                 </Button>
               </>
             ) : null}
-            {item.status === 'accepted' ? (
-              <Button variant="primary" size="sm" isPending={busy} onPress={() => onStatus('completed')}>
-                {busy ? t('req.finishing') : t('req.finish')}
+            {accepted ? (
+              <Button variant="primary" size="sm" isPending={busy === 'completed'} onPress={() => onStatus('completed')}>
+                {busy === 'completed' ? t('req.finishing') : t('req.finish')}
               </Button>
             ) : null}
           </div>
-        </div>
+        ) : null}
       </div>
     </li>
   )
@@ -238,14 +314,17 @@ function RequestRow({
 
 function ListSkeleton() {
   return (
-    <ul className="ur-list" aria-busy="true">
+    <ul className="ri-list" aria-busy="true">
       {Array.from({ length: 3 }).map((_, i) => (
-        <li key={i} className="ur-item">
-          <Skeleton className="ur-skel-avatar" />
-          <div className="ur-main">
+        <li key={i} className="ri-item ri-skel">
+          <Skeleton className="ri-avatar ri-skel-avatar" />
+          <div className="ri-head">
             <Skeleton className="ur-skel-line is-title" />
-            <Skeleton className="ur-skel-line is-wide" />
             <Skeleton className="ur-skel-line" />
+          </div>
+          <div className="ri-body">
+            <Skeleton className="ur-skel-line is-wide" />
+            <Skeleton className="ur-skel-line is-wide" />
           </div>
         </li>
       ))}
@@ -286,7 +365,8 @@ export function ProviderInboxPage() {
   const { page, setPage, pagination, receivePagination } = usePagination(filter)
   const requestParams = { page, limit: 20, statuses: FILTERS.find((item) => item.id === filter)?.statuses?.join(',') }
   const [notes, setNotes] = useState<Record<string, string>>({})
-  const [busyId, setBusyId] = useState<string | null>(null)
+  const [busy, setBusy] = useState<Busy>(null)
+  const hasLoaded = loadedAt > 0
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -317,18 +397,20 @@ export function ProviderInboxPage() {
   }, [reloadKey, page, filter])
 
   async function setStatus(id: string, status: RequestStatus) {
-    setBusyId(id)
+    setBusy({ id, status })
     try {
       await updateRequestStatus(id, { status, providerNote: notes[id]?.trim() || undefined })
       toast.success(t(STATUS_TOAST[status] || 'req.updated'))
+      // The note went out with this update; don't leave it in the box to be sent again.
+      setNotes(({ [id]: _sent, ...rest }) => rest)
       const data = await fetchRequestInbox(requestParams)
       setRequests(data.requests)
-        receivePagination(data.pagination)
+      receivePagination(data.pagination)
       setLoadedAt(Date.now())
     } catch (err) {
       toast.danger(getErrorMessage(err))
     } finally {
-      setBusyId(null)
+      setBusy(null)
     }
   }
 
@@ -339,32 +421,26 @@ export function ProviderInboxPage() {
       ),
     [requests],
   )
-  const filters = FILTERS.map((item) => ({
-    ...item,
-    items: item.id === filter ? sorted : [],
-  }))
-  const selected = filters.some((item) => item.id === filter) ? filter : 'all'
+  const summary = collectionSummary(requests)
+  // The summary covers every status, so tab counts stay the same whichever tab is open.
+  const countFor = (statuses?: RequestStatus[]) =>
+    statuses
+      ? statuses.reduce((sum, status) => sum + (summary.statusCounts?.[status] ?? 0), 0)
+      : summary.total ?? collectionTotal(requests)
+  const firstLoad = loading && !hasLoaded
+  const inboxEmpty = hasLoaded && !loading && filter === 'all' && requests.length === 0
 
   return (
-    <section className="uo ur ur-simple">
+    <section className="uo ur ri">
       <header className="uo-head">
         <div className="uo-head-copy">
           <h1>{t('dash.received')}</h1>
         </div>
       </header>
 
-      {error ? (
-        <Alert status="danger" className="uo-alert">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Title>{t('req.loadError')}</Alert.Title>
-            <Alert.Description>{error}</Alert.Description>
-          </Alert.Content>
-          <Button size="sm" variant="outline" onPress={reload}>
-            {t('page.retry')}
-          </Button>
-        </Alert>
-      ) : loading ? (
+      {error && !hasLoaded ? (
+        <InboxError message={error} onRetry={reload} />
+      ) : firstLoad ? (
         <>
           <Card className="uo-card">
             <ul className="ur-stats" aria-hidden>
@@ -376,54 +452,87 @@ export function ProviderInboxPage() {
               ))}
             </ul>
           </Card>
-          <Card className="uo-card ur-card">
+          <Card className="uo-card ri-card">
             <ListSkeleton />
           </Card>
         </>
-      ) : requests.length === 0 && filter === 'all' ? (
+      ) : inboxEmpty ? (
         <EmptyState servicesPath={servicesPath} />
       ) : (
         <>
           <Stats requests={requests} now={loadedAt} />
-          <Card className="uo-card ur-card">
+          <Card className="uo-card ri-card">
             <Tabs
               variant="secondary"
-              selectedKey={selected}
+              selectedKey={filter}
               onSelectionChange={(key) => setFilter(key as FilterId)}
-              className="ur-tabs"
+              className="ur-tabs ri-tabs"
             >
               <Tabs.ListContainer className="ur-tabs-bar">
                 <Tabs.List aria-label={t('req.filter')}>
-                  {filters.map((item) => (
-                    <Tabs.Tab key={item.id} id={item.id} className="ur-tab">
+                  {FILTERS.map((item) => (
+                    <Tabs.Tab key={item.id} id={item.id} className={`ur-tab ri-tab is-${item.id}`}>
                       {t(item.label)}
-                      <span className="ur-tab-count">{item.statuses ? item.statuses.reduce((sum, status) => sum + (collectionSummary(requests).statusCounts?.[status] ?? 0), 0) : collectionTotal(requests)}</span>
+                      <span className="ur-tab-count">{countFor(item.statuses)}</span>
                       <Tabs.Indicator />
                     </Tabs.Tab>
                   ))}
                 </Tabs.List>
               </Tabs.ListContainer>
-              {filters.map((item) => (
+              {FILTERS.map((item) => (
                 <Tabs.Panel key={item.id} id={item.id} className="ur-panel">
-                  <ul className="ur-list">
-                    {item.items.map((request) => (
-                      <RequestRow
-                        key={request.id}
-                        item={request}
-                        note={notes[request.id] || ''}
-                        onNote={(value) => setNotes((prev) => ({ ...prev, [request.id]: value }))}
-                        busy={busyId === request.id}
-                        onStatus={(status) => void setStatus(request.id, status)}
-                      />
-                    ))}
-                  </ul>
+                  {item.id !== filter ? null : error ? (
+                    <div className="ri-panel-state">
+                      <InboxError message={error} onRetry={reload} />
+                    </div>
+                  ) : loading ? (
+                    <ListSkeleton />
+                  ) : sorted.length === 0 ? (
+                    <div className="ri-panel-state ri-filter-empty">
+                      <p>{t('req.emptyFilter')}</p>
+                      <Button variant="outline" size="sm" onPress={() => setFilter('all')}>
+                        {t('req.showAll')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <ul className="ri-list" aria-busy={busy !== null}>
+                      {sorted.map((request) => (
+                        <RequestRow
+                          key={request.id}
+                          item={request}
+                          note={notes[request.id] || ''}
+                          onNote={(value) => setNotes((prev) => ({ ...prev, [request.id]: value }))}
+                          busy={busy?.id === request.id ? busy.status : null}
+                          onStatus={(status) => void setStatus(request.id, status)}
+                        />
+                      ))}
+                    </ul>
+                  )}
                 </Tabs.Panel>
               ))}
             </Tabs>
-            <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading} />
+            <div className="ri-pager">
+              <KeshillaPagination pagination={pagination} onPageChange={setPage} isDisabled={loading} />
+            </div>
           </Card>
         </>
       )}
     </section>
+  )
+}
+
+function InboxError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <Alert status="danger" className="uo-alert ri-alert">
+      <Alert.Indicator />
+      <Alert.Content>
+        <Alert.Title>{t('req.loadError')}</Alert.Title>
+        <Alert.Description>{message}</Alert.Description>
+      </Alert.Content>
+      <Button size="sm" variant="outline" onPress={onRetry}>
+        {t('page.retry')}
+      </Button>
+    </Alert>
   )
 }

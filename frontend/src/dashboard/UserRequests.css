@@ -55,8 +55,11 @@
   overflow: hidden;
 }
 
+/* The list card is a grid; without min-width: 0 the tab strip's full width sets the card's content width
+   and every row behind it is clipped on narrow screens. HeroUI's scroller then scrolls the strip itself. */
 .ur-tabs {
   gap: 0;
+  min-width: 0;
 }
 
 .ur-tabs .ur-tabs-bar {

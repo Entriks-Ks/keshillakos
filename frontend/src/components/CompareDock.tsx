@@ -118,8 +118,12 @@ export default function CompareDock() {
         <Link
           to="/krahaso"
           className={`kk-dock-cta-btn${count === 3 ? ' is-complete' : ''}`}
+          aria-label={ctaLabel}
         >
-          <span>{ctaLabel}</span>
+          <span className="kk-dock-cta-full">{ctaLabel}</span>
+          <span className="kk-dock-cta-short" aria-hidden="true">
+            {t('cards.compare')}
+          </span>
           <ArrowRight size={15} aria-hidden="true" className="kk-dock-cta-arrow" />
         </Link>
       </div>

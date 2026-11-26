@@ -1,0 +1,509 @@
+/*
+ * Received requests (provider and company inbox).
+ * Stats, tabs, empty state and skeleton lines come from UserRequests.css; this file owns the request rows.
+ *
+ * Rows respond to the width of the list card, not the window, so the same row works beside the full sidebar,
+ * beside the icon rail in a half-screen window, and on phones:
+ *   ≥ 700px card  desktop row: details on the left, status and actions in an aligned 200–240px column on the right
+ *   420–699px     tablet row: details full width, actions in one right-aligned row underneath
+ *   < 420px       phone card: status under the name, actions as full-width touch targets
+ */
+
+.ri-card {
+  overflow: hidden;
+  container: ri-card / inline-size;
+}
+
+.ri-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Row */
+
+.ri-item {
+  --ri-pad: 20px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'avatar head status'
+    '.      body body'
+    '.      foot foot';
+  align-items: start;
+  gap: 10px 14px;
+  padding: 18px var(--ri-pad);
+}
+
+.ri-item + .ri-item {
+  border-top: 1px solid var(--border);
+}
+
+/* Waiting for the expert: the one state that needs action gets a quiet accent edge and tint. */
+.ri-item.is-waiting {
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+}
+
+.ri-item.is-waiting::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  content: '';
+}
+
+.ri-avatar {
+  grid-area: avatar;
+}
+
+.ri-head {
+  display: grid;
+  grid-area: head;
+  gap: 2px;
+  min-width: 0;
+  align-self: center;
+}
+
+.ri-name {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--heading);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ri-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.ri-service {
+  min-width: 0;
+  color: var(--heading);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ri-meta time {
+  white-space: nowrap;
+}
+
+.ri-status {
+  grid-area: status;
+  flex: none;
+  justify-self: end;
+}
+
+.ri-body {
+  display: grid;
+  grid-area: body;
+  justify-items: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ri-body > * {
+  max-width: min(100%, 72ch);
+}
+
+.ri-need-wrap {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+
+.ri-need {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.93rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.ri-need.is-clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.ri-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ri-link:hover {
+  text-decoration: underline;
+}
+
+.ri-link:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Facts: appointment first and emphasised, then contact and place */
+
+.ri-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-secondary);
+  font-size: 0.83rem;
+}
+
+.ri-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ri-fact > span,
+.ri-fact-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ri-fact svg {
+  flex: none;
+  color: var(--ink-secondary);
+}
+
+.ri-fact.is-appointment {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--heading);
+  font-weight: 600;
+}
+
+.ri-fact.is-appointment svg {
+  color: var(--accent);
+}
+
+.ri-fact-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ri-fact-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Offer and note already sent */
+
+.ri-response {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.ri-response-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ri-response-label {
+  color: var(--ink-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.ri-response-amount {
+  color: var(--heading);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ri-response p {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+/* Tablet footer: "Add a reply" on the left, buttons on the right. An open reply box takes the whole line. */
+.ri-foot {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: foot;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  min-width: 0;
+}
+
+.ri-foot:empty {
+  display: none;
+}
+
+.ri-reply-area {
+  grid-area: reply;
+  min-width: 0;
+}
+
+.ri-reply-area:has(.ri-reply) {
+  flex-basis: 100%;
+}
+
+.ri-reply {
+  width: 100%;
+  max-width: 72ch;
+}
+
+.ri-reply textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+/* Actions */
+
+.ri-actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: actions;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ri-actions .chat-start {
+  display: inline-flex;
+}
+
+.ri-actions .ri-chat {
+  gap: 6px;
+  text-decoration: none;
+}
+
+.ri-actions button,
+.ri-actions .ri-chat {
+  min-height: 36px;
+}
+
+/* Desktop and half-screen desktop: details left, status and actions in a steady right column */
+@container ri-card (min-width: 700px) {
+  .ri-item {
+    grid-template-columns: 40px minmax(0, 1fr) 200px;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'avatar head  status'
+      '.      body  actions'
+      '.      reply actions';
+    column-gap: 16px;
+  }
+
+  /* The footer dissolves: reply stays under the details, buttons join the right column. */
+  .ri-foot {
+    display: contents;
+  }
+
+  .ri-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-self: start;
+    margin-left: 0;
+  }
+
+  .ri-actions > *,
+  .ri-actions .ri-chat {
+    width: 100%;
+  }
+
+  .ri-actions.has-decision > .chat-start,
+  .ri-actions.is-single > * {
+    grid-column: 1 / -1;
+  }
+}
+
+@container ri-card (min-width: 1000px) {
+  .ri-item {
+    --ri-pad: 24px;
+    grid-template-columns: 40px minmax(0, 1fr) 240px;
+    column-gap: 24px;
+  }
+}
+
+/* Phone card */
+@container ri-card (max-width: 419px) {
+  .ri-item {
+    --ri-pad: 16px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-areas:
+      'avatar  head'
+      'avatar  status'
+      'body    body'
+      'reply   reply'
+      'actions actions';
+    gap: 8px 12px;
+    padding-block: 16px;
+  }
+
+  .ri-name {
+    font-size: 0.97rem;
+  }
+
+  .ri-link {
+    min-height: 36px;
+  }
+
+  .ri-need-wrap .ri-link {
+    margin-bottom: -6px;
+  }
+
+  .ri-status {
+    justify-self: start;
+    margin-top: 2px;
+  }
+
+  .ri-foot {
+    display: contents;
+  }
+
+  .ri-body > * {
+    max-width: 100%;
+  }
+
+  .ri-facts {
+    display: grid;
+    gap: 6px;
+  }
+
+  .ri-fact.is-appointment {
+    justify-self: start;
+  }
+
+  .ri-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-left: 0;
+    padding-top: 2px;
+  }
+
+  .ri-actions > *,
+  .ri-actions .ri-chat {
+    width: 100%;
+  }
+
+  .ri-actions button,
+  .ri-actions .ri-chat {
+    min-height: 44px;
+  }
+
+  .ri-actions.has-decision > .chat-start,
+  .ri-actions.is-single > * {
+    grid-column: 1 / -1;
+  }
+
+  /* Decline and Accept sit together above the message button. */
+  .ri-actions.has-decision > .chat-start {
+    order: 1;
+  }
+}
+
+/* States inside the list card */
+
+.ri-panel-state {
+  padding: 20px;
+}
+
+.ri-filter-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 36px 20px;
+  text-align: center;
+}
+
+.ri-filter-empty p {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.92rem;
+}
+
+.ri-alert {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+/* Narrow screens: Retry goes under the message instead of squeezing it. */
+@media (max-width: 479px) {
+  .ri-alert {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ri-alert > .button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+.ri-pager:empty {
+  display: none;
+}
+
+.ri-pager {
+  padding: 0 16px;
+  border-top: 1px solid var(--border);
+}
+
+.ri-skel .ri-head,
+.ri-skel .ri-body {
+  gap: 8px;
+}
+
+.ri-skel-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.ri-skel .ri-body {
+  grid-column: 2 / -1;
+}

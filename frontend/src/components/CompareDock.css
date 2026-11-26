@@ -380,3 +380,38 @@ body.has-compare-dock:not(:has(.tt-footer)) #root {
     font-size: 0.78rem;
   }
 }
+
+.kk-dock-cta-short {
+  display: none;
+}
+
+/* Small phones (320–419px): the full bar is ~420px wide. Drop the decoration (icon, empty slots) and use the
+   short label; the count stays visible in the counter and the avatars. */
+@media (max-width: 419px) {
+  .kk-compare-dock {
+    gap: 0.4rem;
+  }
+
+  .kk-dock-left {
+    gap: 8px;
+  }
+
+  .kk-dock-items {
+    gap: 4px;
+  }
+
+  .kk-dock-cta-btn {
+    padding-inline: 0.75rem;
+  }
+
+  .kk-dock-icon-wrap,
+  .kk-dock-empty-slot,
+  .kk-dock-cta-arrow,
+  .kk-dock-cta-full {
+    display: none;
+  }
+
+  .kk-dock-cta-short {
+    display: inline;
+  }
+}

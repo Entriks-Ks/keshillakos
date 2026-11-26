@@ -748,6 +748,10 @@ const sq = {
     phone: 'Telefon',
     email: 'Email',
     statusLine: 'Statusi',
+    addReply: 'Shto një përgjigje',
+    emptyFilter: 'Nuk ka kërkesa me këtë status.',
+    showAll: 'Shiko të gjitha',
+    received: 'Marrë',
   },
   admin: {
     users: {

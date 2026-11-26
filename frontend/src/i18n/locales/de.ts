@@ -748,6 +748,10 @@ const de = {
     phone: 'Telefon',
     email: 'E-Mail',
     statusLine: 'Status',
+    addReply: 'Antwort hinzufügen',
+    emptyFilter: 'Keine Anfragen mit diesem Status.',
+    showAll: 'Alle anzeigen',
+    received: 'Erhalten',
   },
   admin: {
     users: {
