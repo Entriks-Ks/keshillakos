@@ -2238,6 +2238,16 @@ const de = {
       officeAt: 'Kanzleitermin vor Ort: {{location}}',
       chooseSub: 'Buche oder sende sofort eine Anfrage',
     },
+    cards: {
+      title: 'Detaillierter Vergleich',
+      lead: 'Wischen Sie oder wählen Sie einen Anwalt. Jedes Kriterium steht auf jeder Karte an derselben Stelle – so vergleichen Sie schnell.',
+      selector: 'Anwalt zur Ansicht wählen',
+      position: '{{index}} von {{total}}',
+      showMore: '+{{count}} weitere',
+      showLess: 'Weniger anzeigen',
+      chat: 'Chat',
+      book: 'Buchen',
+    },
     analysis: {
       generalSpec: 'Rechtsfragen',
       badge: {

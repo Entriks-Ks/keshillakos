@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft,
-  ArrowLeftRight,
   Award,
   BadgeCheck,
   Briefcase,
@@ -49,55 +48,35 @@ import SiteFooter from '../components/SiteFooter'
 import SiteNav from '../components/SiteNav'
 import StartChatButton from '../components/StartChatButton'
 import { MAX_COMPARE_LAWYERS, useCompareLawyers } from '../hooks/useCompareLawyers'
-import i18n, { dateLocale } from '../i18n/index.ts'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import i18n from '../i18n/index.ts'
 import {
   analyzeLawyers,
   translateText,
   type I18nText,
   type IntentType,
-  type LawyerVerdict,
 } from '../utils/compareAnalyzer'
 import { humanLabels } from '../utils/displayLabels'
-import { providerPath } from '../utils/publicPaths'
 import { formatServicePrice } from '../utils/serviceDiscovery'
+import BadgeIcon from './compare/BadgeIcon'
+import CompareLawyerCards, { CompareLawyerCardsSkeleton } from './compare/CompareLawyerCards'
+import {
+  LAWYER_COLORS,
+  firstName,
+  formatDateLocale,
+  intakeFor,
+  isVerifiedLawyer,
+  lawyerHasOnline,
+  minServicePrice,
+  profileUrlFor,
+  publishedLanguages,
+  sortedOpenSlots,
+  type CompareAdvantages,
+} from './compare/compareShared'
 import './CompareLawyersPage.css'
 
-function formatDateLocale(dateStr: string) {
-  try {
-    const d = new Date(dateStr)
-    return d.toLocaleDateString(dateLocale(), {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return dateStr
-  }
-}
-
-/** One identity colour per compared lawyer, shared by the scoreboard and the table columns. */
-const LAWYER_COLORS = ['#2563eb', '#0ea5e9', '#1e3a8a']
-
-function minServicePrice(item: ProviderComparisonItem): number | null {
-  const prices = item.services
-    .map((s) => s.priceFrom)
-    .filter((p): p is number => typeof p === 'number' && p > 0)
-  return prices.length ? Math.min(...prices) : null
-}
-
-/** Profile languages, or an empty list when none are published (render a translated fallback). */
-function publishedLanguages(item: ProviderComparisonItem): string[] {
-  if (item.profile?.languages?.length) return item.profile.languages
-  if (item.provider.languages?.length) return item.provider.languages
-  return []
-}
-
-function lawyerHasOnline(item: ProviderComparisonItem): boolean {
-  const modes = item.profile?.modes || item.provider.skills || []
-  return modes.includes('online') || item.services.some((s) => s.details?.deliveryModes?.includes('online'))
-}
+/** Below this width the page swaps the table for the swipeable lawyer-card comparison. */
+const COMPACT_QUERY = '(max-width: 1023px)'
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
 
@@ -250,22 +229,24 @@ export default function CompareLawyersPage() {
     return false
   }
 
-  function renderBadgeIcon(iconName: LawyerVerdict['badge']['iconName']) {
-    switch (iconName) {
-      case 'award':
-        return <Award size={14} aria-hidden />
-      case 'coins':
-        return <Coins size={14} aria-hidden />
-      case 'clock':
-        return <Clock size={14} aria-hidden />
-      case 'globe':
-        return <Globe size={14} aria-hidden />
-      case 'star':
-        return <Star size={14} aria-hidden />
-      default:
-        return <Scale size={14} aria-hidden />
-    }
-  }
+  const spotlightUid = items.find((item) => isSpotlighted(item.uid))?.uid || ''
+  const compact = useMediaQuery(COMPACT_QUERY)
+
+  // Desktop table: a slim lawyer header pins under the nav once the big header cards scroll away.
+  const tableHeadRef = useRef<HTMLDivElement>(null)
+  const [tableHeadPinned, setTableHeadPinned] = useState(false)
+  useEffect(() => {
+    const head = tableHeadRef.current
+    if (compact || !head || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setTableHeadPinned(!entry.isIntersecting && entry.boundingClientRect.top < 0)
+      },
+      { rootMargin: '-140px 0px 0px 0px' },
+    )
+    observer.observe(head)
+    return () => observer.disconnect()
+  }, [compact, items.length])
 
   // Directory of experts for autocomplete & suggestions
   const [allExperts, setAllExperts] = useState<MarketplaceProvider[]>([])
@@ -507,7 +488,7 @@ export default function CompareLawyersPage() {
   }, [allExperts, selectedUids])
 
   // Advantages calculation for highlight feature
-  const advantages = useMemo(() => {
+  const advantages = useMemo<CompareAdvantages>(() => {
     if (items.length < 2) return {}
 
     // Highest rating
@@ -680,6 +661,67 @@ export default function CompareLawyersPage() {
         </div>
       ) : null}
     </div>
+  )
+
+  // Intent pills ("what matters most to you"): shared by the desktop verdict section and the card view.
+  const intentFilter = (
+      <div className="kk-intent-filter">
+        <span className="kk-intent-filter-label">{t('compareUi.verdict.intentLabel')}</span>
+        <div className="kk-intent-pills">
+          <button
+            type="button"
+            className={`kk-intent-btn${activeIntent === 'all' ? ' is-active' : ''}`}
+            onClick={() => setActiveIntent('all')}
+          >
+            <Target size={14} aria-hidden /> {t('offers.all')}
+          </button>
+          {winnerUids.experience ? (
+            <button
+              type="button"
+              className={`kk-intent-btn${activeIntent === 'experience' ? ' is-active' : ''}`}
+              onClick={() => setActiveIntent('experience')}
+            >
+              <Award size={14} aria-hidden /> {t('compareUi.intent.experience')}
+            </button>
+          ) : null}
+          {winnerUids.budget ? (
+            <button
+              type="button"
+              className={`kk-intent-btn${activeIntent === 'budget' ? ' is-active' : ''}`}
+              onClick={() => setActiveIntent('budget')}
+            >
+              <Coins size={14} aria-hidden /> {t('compareUi.intent.budget')}
+            </button>
+          ) : null}
+          {winnerUids.urgency ? (
+            <button
+              type="button"
+              className={`kk-intent-btn${activeIntent === 'urgency' ? ' is-active' : ''}`}
+              onClick={() => setActiveIntent('urgency')}
+            >
+              <Clock size={14} aria-hidden /> {t('compareUi.intent.urgency')}
+            </button>
+          ) : null}
+          {winnerUids.diaspora ? (
+            <button
+              type="button"
+              className={`kk-intent-btn${activeIntent === 'diaspora' ? ' is-active' : ''}`}
+              onClick={() => setActiveIntent('diaspora')}
+            >
+              <Globe size={14} aria-hidden /> {t('compareUi.intent.diaspora')}
+            </button>
+          ) : null}
+          {winnerUids.reputation ? (
+            <button
+              type="button"
+              className={`kk-intent-btn${activeIntent === 'reputation' ? ' is-active' : ''}`}
+              onClick={() => setActiveIntent('reputation')}
+            >
+              <Star size={14} aria-hidden /> {t('compareUi.intent.reputation')}
+            </button>
+          ) : null}
+        </div>
+      </div>
   )
 
   return (
@@ -869,7 +911,9 @@ export default function CompareLawyersPage() {
             ) : null}
 
           {/* Loading Skeleton */}
-          {loading && selectedUids.length > 0 ? (
+          {loading && selectedUids.length > 0 && compact ? (
+            <CompareLawyerCardsSkeleton count={selectedUids.length} />
+          ) : loading && selectedUids.length > 0 ? (
             <div className="kk-compare-board">
               <div
                 className="kk-compare-grid"
@@ -1118,6 +1162,20 @@ export default function CompareLawyersPage() {
                 </section>
               ) : null}
 
+              {compact ? (
+                /* Phones & tablets: swipeable lawyer cards with aligned criteria */
+                <CompareLawyerCards
+                  items={items}
+                  verdicts={verdicts}
+                  tx={tx}
+                  spotlightUid={spotlightUid}
+                  highlightDiff={highlightDiff}
+                  advantages={advantages}
+                  intentFilter={intentFilter}
+                  onRemove={handleRemoveLawyer}
+                />
+              ) : (
+              <>
               {/* Verdict Section: Cili është më i mirë për çfarë */}
               <section className="kk-verdict-section" aria-labelledby="verdict-heading">
                 <div className="kk-verdict-head">
@@ -1130,73 +1188,18 @@ export default function CompareLawyersPage() {
                   </h2>
                   <p className="kk-verdict-subtitle">{t('compareUi.verdict.subtitle')}</p>
 
-                  <div className="kk-intent-filter">
-                    <span className="kk-intent-filter-label">{t('compareUi.verdict.intentLabel')}</span>
-                    <div className="kk-intent-pills">
-                      <button
-                        type="button"
-                        className={`kk-intent-btn${activeIntent === 'all' ? ' is-active' : ''}`}
-                        onClick={() => setActiveIntent('all')}
-                      >
-                        <Target size={14} aria-hidden /> {t('offers.all')}
-                      </button>
-                      {winnerUids.experience ? (
-                        <button
-                          type="button"
-                          className={`kk-intent-btn${activeIntent === 'experience' ? ' is-active' : ''}`}
-                          onClick={() => setActiveIntent('experience')}
-                        >
-                          <Award size={14} aria-hidden /> {t('compareUi.intent.experience')}
-                        </button>
-                      ) : null}
-                      {winnerUids.budget ? (
-                        <button
-                          type="button"
-                          className={`kk-intent-btn${activeIntent === 'budget' ? ' is-active' : ''}`}
-                          onClick={() => setActiveIntent('budget')}
-                        >
-                          <Coins size={14} aria-hidden /> {t('compareUi.intent.budget')}
-                        </button>
-                      ) : null}
-                      {winnerUids.urgency ? (
-                        <button
-                          type="button"
-                          className={`kk-intent-btn${activeIntent === 'urgency' ? ' is-active' : ''}`}
-                          onClick={() => setActiveIntent('urgency')}
-                        >
-                          <Clock size={14} aria-hidden /> {t('compareUi.intent.urgency')}
-                        </button>
-                      ) : null}
-                      {winnerUids.diaspora ? (
-                        <button
-                          type="button"
-                          className={`kk-intent-btn${activeIntent === 'diaspora' ? ' is-active' : ''}`}
-                          onClick={() => setActiveIntent('diaspora')}
-                        >
-                          <Globe size={14} aria-hidden /> {t('compareUi.intent.diaspora')}
-                        </button>
-                      ) : null}
-                      {winnerUids.reputation ? (
-                        <button
-                          type="button"
-                          className={`kk-intent-btn${activeIntent === 'reputation' ? ' is-active' : ''}`}
-                          onClick={() => setActiveIntent('reputation')}
-                        >
-                          <Star size={14} aria-hidden /> {t('compareUi.intent.reputation')}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
+                  {intentFilter}
                 </div>
 
-                <div className="kk-verdict-grid">
+                <div
+                  className="kk-verdict-grid"
+                  style={{ '--cols': Math.max(1, items.length) } as CSSProperties}
+                >
                   {items.map((item) => {
                     const v = verdicts[item.uid]
                     if (!v) return null
                     const isWinner = isSpotlighted(item.uid)
-                    const profileUrl = providerPath(
-                      item.profile || ({ uid: item.uid, name: item.provider.name, providerType: 'individual' } as MarketplaceProvider),
-                    )
+                    const profileUrl = profileUrlFor(item)
 
                     return (
                       <article
@@ -1212,14 +1215,17 @@ export default function CompareLawyersPage() {
                         >
                           <X size={14} aria-hidden />
                         </button>
-                        {isWinner ? (
-                          <span className="kk-verdict-crown">
-                            <Trophy size={13} aria-hidden /> {t('compareUi.verdict.bestMatch')}
-                          </span>
-                        ) : null}
-                        <div className={`kk-verdict-badge is-${v.badge.tone}`}>
-                          {renderBadgeIcon(v.badge.iconName)}
-                          <span>{tx(v.badge.label)}</span>
+                        {/* One wrapper per subgrid row keeps every card's sections aligned */}
+                        <div className="kk-verdict-tags">
+                          {isWinner ? (
+                            <span className="kk-verdict-crown">
+                              <Trophy size={13} aria-hidden /> {t('compareUi.verdict.bestMatch')}
+                            </span>
+                          ) : null}
+                          <div className={`kk-verdict-badge is-${v.badge.tone}`}>
+                            <BadgeIcon name={v.badge.iconName} />
+                            <span>{tx(v.badge.label)}</span>
+                          </div>
                         </div>
 
                         <div className="kk-verdict-profile">
@@ -1260,15 +1266,9 @@ export default function CompareLawyersPage() {
                           <SendRequestButton
                             providerUid={item.uid}
                             providerName={item.provider.name}
-                            intake={{
-                              need: item.provider.headline || t('compareUi.intakeNeed', { name: item.provider.name }),
-                              location: item.provider.location || 'Online',
-                              language: 'Albanian',
-                              urgency: 'flexible',
-                              contact: 'chat',
-                            }}
+                            intake={intakeFor(item, (key, params) => t(key, params))}
                             compact
-                            ctaLabel={t('compareUi.chooseNamed', { name: item.provider.name.split(' ')[0] })}
+                            ctaLabel={t('compareUi.chooseNamed', { name: firstName(item) })}
                           />
                         </div>
                       </article>
@@ -1277,20 +1277,40 @@ export default function CompareLawyersPage() {
                 </div>
               </section>
 
-              {/* Mobile swipe helper */}
-              <div className="kk-compare-mobile-hint">
-                <ArrowLeftRight size={14} aria-hidden />
-                <span>{t('compare.mobileSwipeHint', 'Rrëshqitni anash për të parë të gjithë avokatët')}</span>
-              </div>
-
               {/* Comparison Table / Matrix */}
               <div className="kk-compare-board" role="region" aria-label={t('compareUi.table.label')}>
+                {/* Slim header that pins under the nav while the long table scrolls (decorative copy of row 1) */}
+                <div className={`kk-compare-pin${tableHeadPinned ? ' is-visible' : ''}`} aria-hidden="true">
+                  <div
+                    className="kk-compare-pin-bar"
+                    style={{ '--cols': Math.max(1, items.length) } as CSSProperties}
+                  >
+                    <span className="kk-compare-pin-label">{t('compare.columnTitle', 'Avokatët')}</span>
+                    {items.map((item, idx) => (
+                      <span
+                        key={`pin-${item.uid}`}
+                        className="kk-compare-pin-lawyer"
+                        style={{ '--lawyer': LAWYER_COLORS[idx] } as CSSProperties}
+                      >
+                        <span className="kk-compare-pin-avatar">
+                          <ProfileAvatar
+                            src={item.profile?.photoUrl || item.provider.profilePhoto}
+                            seed={item.uid}
+                            size="fill"
+                            alt=""
+                          />
+                        </span>
+                        <span className="kk-compare-pin-name">{item.provider.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
                 <div
                   className="kk-compare-grid"
                   style={{ '--cols': Math.max(1, items.length) } as CSSProperties}
                 >
                   {/* 1. Header Row (Avatars, Names, Actions) */}
-                  <div className="kk-compare-cell is-label is-head">
+                  <div className="kk-compare-cell is-label is-head" ref={tableHeadRef}>
                     <span>{t('compare.columnTitle', 'Avokatët')}</span>
                     <span className="kk-compare-cell-sub">
                       {t('compare.dockCount', { count: items.length, defaultValue: '{{count}}/3 të zgjedhur' })}
@@ -1298,12 +1318,8 @@ export default function CompareLawyersPage() {
                   </div>
 
                   {items.map((item, idx) => {
-                    const verified = Boolean(
-                      item.profile?.verification?.qualification === 'verified' ||
-                      item.profile?.verification?.identity === 'verified',
-                    )
-                    const profileUrl = providerPath(item.profile || { uid: item.uid, name: item.provider.name, providerType: 'individual' } as MarketplaceProvider)
-                    const v = verdicts[item.uid]
+                    const verified = isVerifiedLawyer(item)
+                    const profileUrl = profileUrlFor(item)
 
                     return (
                       <div
@@ -1330,31 +1346,24 @@ export default function CompareLawyersPage() {
                           />
                         </Link>
 
-                        <div>
-                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                            <Link to={profileUrl} className="kk-compare-card-name">
-                              {item.provider.name}
-                            </Link>
-                            {verified ? (
+                        <div className="kk-compare-card-id">
+                          <Link to={profileUrl} className="kk-compare-card-name">
+                            {item.provider.name}
+                          </Link>
+                          <p className="kk-compare-card-title">
+                            {item.profile?.title || item.provider.headline || t('compareUi.lawyerFallback')}
+                          </p>
+                        </div>
+
+                        <ul className="kk-compare-card-meta">
+                          {verified ? (
+                            <li>
                               <Chip size="sm" variant="soft" color="success">
                                 <BadgeCheck size={13} aria-hidden />
                                 <Chip.Label>{t('compare.verified', 'I verifikuar')}</Chip.Label>
                               </Chip>
-                            ) : null}
-                          </div>
-                          <p className="kk-compare-card-title">
-                            {item.profile?.title || item.provider.headline || t('compareUi.lawyerFallback')}
-                          </p>
-
-                          {v ? (
-                            <div className={`kk-verdict-badge is-${v.badge.tone} mt-2`} style={{ alignSelf: 'center', marginInline: 'auto' }}>
-                              {renderBadgeIcon(v.badge.iconName)}
-                              <span>{tx(v.badge.label)}</span>
-                            </div>
+                            </li>
                           ) : null}
-                        </div>
-
-                        <ul className="kk-compare-card-meta">
                           {item.provider.location ? (
                             <li>
                               <MapPin size={13} aria-hidden />
@@ -1376,66 +1385,32 @@ export default function CompareLawyersPage() {
                           ) : null}
                         </ul>
 
-                        {/* Immediate CTAs */}
+                        {/* Immediate CTAs: pinned to the card bottom so they line up across columns */}
                         <div className="kk-compare-head-actions">
                           <SendRequestButton
                             providerUid={item.uid}
                             providerName={item.provider.name}
-                            intake={{
-                              need: item.provider.headline || t('compareUi.intakeNeed', { name: item.provider.name }),
-                              location: item.provider.location || 'Online',
-                              language: 'Albanian',
-                              urgency: 'flexible',
-                              contact: 'chat',
-                            }}
+                            intake={intakeFor(item, (key, params) => t(key, params))}
                             compact
                             ctaLabel={t('compare.bookSlot', 'Rezervo / Kërkesë')}
                           />
-                          <StartChatButton
-                            providerUid={item.uid}
-                            providerName={item.provider.name}
-                            hideGuestHint
-                            label={t('compare.sendMessage', 'Fillo Bisedën')}
-                            className="w-full"
-                          />
-                          <Link to={profileUrl} className="kk-compare-full-profile-btn">
-                            <span>{t('compare.viewProfile', 'Profili i Plotë')}</span>
-                            <ExternalLink size={13} aria-hidden />
-                          </Link>
+                          <div className="kk-compare-head-actions-row">
+                            <StartChatButton
+                              providerUid={item.uid}
+                              providerName={item.provider.name}
+                              hideGuestHint
+                              label={t('compare.sendMessage', 'Fillo Bisedën')}
+                              className="kk-compare-secondary-btn"
+                            />
+                            <Link to={profileUrl} className="kk-compare-secondary-btn">
+                              <span>{t('compare.viewProfile', 'Profili i Plotë')}</span>
+                              <ExternalLink size={13} aria-hidden />
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     )
                   })}
-
-                  {/* 1.1 Row: Verdikti kryesor / Më i miri për */}
-                  <div className="kk-compare-cell is-label">
-                    <div className="flex items-center gap-1.5">
-                      <BadgeCheck size={16} className="text-primary" aria-hidden />
-                      <span>{t('compareUi.table.standsOut')}</span>
-                    </div>
-                    <span className="kk-compare-cell-sub">{t('compareUi.table.standsOutSub')}</span>
-                  </div>
-
-                  {items.map((item) => {
-                    const v = verdicts[item.uid]
-                    if (!v) return <div key={`v-${item.uid}`} className="kk-compare-cell" />
-                    const isWinner = isSpotlighted(item.uid)
-
-                    return (
-                      <div
-                        key={`v-${item.uid}`}
-                        className={`kk-compare-cell${isWinner ? ' is-spotlight' : ''}`}
-                      >
-                        <div className={`kk-table-verdict-pill is-${v.badge.tone}`}>
-                          {renderBadgeIcon(v.badge.iconName)}
-                          <span>{tx(v.badge.label)}</span>
-                        </div>
-                        <p className="text-xs font-bold text-heading mt-1 mb-1">{tx(v.bestForSummary)}</p>
-                        <p className="text-xs text-muted leading-relaxed">{tx(v.scenarioDescription)}</p>
-                      </div>
-                    )
-                  })}
-
 
                 {/* 2. Row: Specializimi (Specialization) */}
                 <div className="kk-compare-cell is-label">
@@ -1605,9 +1580,7 @@ export default function CompareLawyersPage() {
                 </div>
 
                 {items.map((item) => {
-                  const sortedSlots = [...item.openSlots].sort(
-                    (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
-                  )
+                  const sortedSlots = sortedOpenSlots(item)
                   const slotCount = sortedSlots.length
                   const earliest = sortedSlots[0]
                   const isEarliest = highlightDiff && advantages.earliestSlotUid === item.uid
@@ -1724,20 +1697,16 @@ export default function CompareLawyersPage() {
                     <SendRequestButton
                       providerUid={item.uid}
                       providerName={item.provider.name}
-                      intake={{
-                        need: item.provider.headline || t('compareUi.intakeNeed', { name: item.provider.name }),
-                        location: item.provider.location || 'Online',
-                        language: 'Albanian',
-                        urgency: 'flexible',
-                        contact: 'chat',
-                      }}
-                      ctaLabel={t('compareUi.chooseNamed', { name: item.provider.name.split(' ')[0] })}
+                      intake={intakeFor(item, (key, params) => t(key, params))}
+                      ctaLabel={t('compareUi.chooseNamed', { name: firstName(item) })}
                     />
                   </div>
                 ))}
 
               </div>
             </div>
+              </>
+              )}
             </>
           )}
 

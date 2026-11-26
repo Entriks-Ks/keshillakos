@@ -2238,6 +2238,16 @@ const sq = {
       officeAt: 'Takim në Zyrë: {{location}}',
       chooseSub: 'Rezervoni ose dërgoni kërkesë të menjëhershme',
     },
+    cards: {
+      title: 'Krahasimi i detajuar',
+      lead: 'Rrëshqitni ose zgjidhni avokatin. Çdo kriter qëndron në të njëjtin vend në çdo kartelë, që krahasimi të jetë i shpejtë.',
+      selector: 'Zgjidhni avokatin që dëshironi të shihni',
+      position: '{{index}} nga {{total}}',
+      showMore: '+{{count}} të tjera',
+      showLess: 'Shfaq më pak',
+      chat: 'Bisedë',
+      book: 'Rezervo',
+    },
     analysis: {
       generalSpec: 'Çështje Ligjore',
       badge: {

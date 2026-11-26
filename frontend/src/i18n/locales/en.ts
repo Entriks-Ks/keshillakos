@@ -2238,6 +2238,16 @@ const en = {
       officeAt: 'In-Office Consultation: {{location}}',
       chooseSub: 'Book or send an instant request',
     },
+    cards: {
+      title: 'Detailed comparison',
+      lead: 'Swipe or pick a lawyer. Each criterion sits in the same place on every card, so comparing is quick.',
+      selector: 'Choose which lawyer to view',
+      position: '{{index}} of {{total}}',
+      showMore: '+{{count}} more',
+      showLess: 'Show less',
+      chat: 'Chat',
+      book: 'Book',
+    },
     analysis: {
       generalSpec: 'legal matters',
       badge: {

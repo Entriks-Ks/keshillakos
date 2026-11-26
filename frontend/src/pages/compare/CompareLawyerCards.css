@@ -1,0 +1,941 @@
+/* ==========================================================================
+   Lawyer-card comparison (phones & tablets, rendered below 1024px only)
+
+   Layout model
+   - The track is a single-row carousel of cards (scroll-snap).
+   - The track declares the eight section rows; every card spans them with
+     `grid-template-rows: subgrid`, so a criterion (fees, slots...) sits at
+     the same height in every card and swiping keeps the reader's place.
+   - Phone (< 640px): one card + a peek of the next, sticky selector on top,
+     sticky book/chat bar at the bottom.
+   - Tablet (640-1023px): two cards side by side; a third lawyer peeks in.
+   ========================================================================== */
+
+.kk-mcmp {
+  --mcmp-gap: 16px;
+  position: relative;
+  display: grid;
+  gap: 16px;
+}
+
+.kk-mcmp-head {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.kk-mcmp-head .kk-verdict-tag {
+  margin: 0;
+}
+
+.kk-mcmp-title {
+  margin: 0;
+  color: var(--heading);
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 4.6vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.kk-mcmp-lead {
+  max-width: 40rem;
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.kk-mcmp-head .kk-intent-filter {
+  justify-items: start;
+  margin-top: 6px;
+}
+
+.kk-mcmp-head .kk-intent-pills {
+  justify-content: flex-start;
+}
+
+.kk-mcmp-head .kk-intent-btn {
+  flex: none;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+/* Phones: intents become one swipeable row instead of four wrapped lines */
+@media (max-width: 639px) {
+  .kk-mcmp-head .kk-intent-filter {
+    min-width: 0;
+  }
+
+  .kk-mcmp-head .kk-intent-pills {
+    flex-wrap: nowrap;
+    width: calc(100% + 32px);
+    margin-inline: -16px;
+    padding: 2px 16px 4px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 28px), transparent);
+  }
+
+  .kk-mcmp-head .kk-intent-pills::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Selector: which lawyer(s) are on screen. Sticky under the fixed site nav.
+   -------------------------------------------------------------------------- */
+.kk-mcmp-selector {
+  position: sticky;
+  top: 68px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: 0 12px 28px -20px rgb(5 10 68 / 45%);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+}
+
+.kk-mcmp[data-cols='1'] .kk-mcmp-selector {
+  display: none;
+}
+
+.kk-mcmp-chip,
+.kk-mcard,
+.kk-mcmp-actionbar {
+  --lawyer-ink: var(--lawyer, var(--accent));
+}
+
+[data-theme='dark'] .kk-mcmp-chip,
+[data-theme='dark'] .kk-mcard,
+[data-theme='dark'] .kk-mcmp-actionbar {
+  --lawyer-ink: color-mix(in srgb, var(--lawyer, var(--accent)) 62%, #ffffff);
+}
+
+.kk-mcmp-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.kk-mcmp-chip::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  bottom: 3px;
+  left: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--lawyer-ink);
+  opacity: 0;
+  transform: scaleX(0.3);
+  transition: opacity 0.2s ease, transform 0.25s ease;
+}
+
+.kk-mcmp-chip:hover {
+  color: var(--heading);
+}
+
+.kk-mcmp-chip.is-visible {
+  background: color-mix(in srgb, var(--lawyer-ink) 12%, var(--surface));
+  color: var(--heading);
+}
+
+.kk-mcmp-chip.is-visible::after {
+  opacity: 1;
+  transform: none;
+}
+
+.kk-mcmp-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.kk-mcmp-chip-avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--lawyer-ink);
+}
+
+.kk-mcmp-chip-avatar > *,
+.kk-mcmp-actionbar-avatar > *,
+.kk-mcard-avatar > * {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+}
+
+.kk-mcmp-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.kk-mcmp-chip-trophy {
+  flex: none;
+  color: #f59e0b;
+}
+
+/* --------------------------------------------------------------------------
+   Track + cards
+   -------------------------------------------------------------------------- */
+.kk-mcmp-track {
+  --card-w: 100%;
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--card-w);
+  grid-template-rows: repeat(8, auto);
+  column-gap: var(--mcmp-gap);
+  row-gap: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.kk-mcmp-track::-webkit-scrollbar {
+  display: none;
+}
+
+.kk-mcmp-track:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 22px;
+}
+
+.kk-mcard {
+  position: relative;
+  display: grid;
+  grid-row: 1 / -1;
+  grid-template-rows: subgrid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(5 10 68 / 5%);
+  scroll-snap-align: start;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Identity stripe in the lawyer's colour (matches selector + scoreboard) */
+.kk-mcard::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--lawyer-ink);
+}
+
+.kk-mcard.is-spotlight {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+[data-theme='dark'] .kk-mcard {
+  border-color: rgb(255 255 255 / 9%);
+  box-shadow: none;
+}
+
+/* Identity */
+.kk-mcard-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 18px 46px 16px 16px;
+}
+
+.kk-mcard-avatar {
+  display: block;
+  width: 56px;
+  height: 56px;
+  padding: 2px;
+  border-radius: 999px;
+  background: conic-gradient(from 200deg, var(--lawyer-ink), #38bdf8, var(--lawyer-ink));
+}
+
+.kk-mcard-id {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kk-mcard-name {
+  color: var(--heading);
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color 0.15s ease;
+}
+
+.kk-mcard-name:hover {
+  color: var(--accent);
+}
+
+.kk-mcard-role {
+  color: var(--ink-secondary);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.kk-mcard-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-secondary);
+  font-size: 0.78rem;
+}
+
+.kk-mcard-meta > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kk-mcard-meta .pc-rating > svg {
+  color: #f59e0b;
+  fill: #f59e0b;
+}
+
+.kk-mcard-meta .pc-rating strong {
+  color: var(--heading);
+}
+
+.kk-mcard-meta .pc-rating a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.kk-mcard-meta .kk-advantage-badge {
+  margin-left: 0;
+}
+
+.kk-mcard-remove {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* 44px touch target without a bigger visual */
+.kk-mcard-remove::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.kk-mcard-remove:hover {
+  background: rgb(239 68 68 / 10%);
+  color: #dc2626;
+}
+
+.kk-mcard-remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Sections */
+.kk-mcard-sec {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+[data-theme='dark'] .kk-mcard-sec,
+[data-theme='dark'] .kk-mcard-actions {
+  border-top-color: rgb(255 255 255 / 7%);
+}
+
+.kk-mcard-verdict {
+  background: color-mix(in srgb, var(--lawyer-ink) 4%, transparent);
+}
+
+.kk-mcard-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.kk-mcard-label h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kk-mcard-label h3 svg {
+  flex: none;
+  color: var(--accent);
+}
+
+[data-theme='dark'] .kk-mcard-label h3 svg {
+  color: #93c5fd;
+}
+
+.kk-mcard-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 6px;
+  color: var(--heading);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.kk-mcard-value .is-price {
+  color: #15803d;
+}
+
+[data-theme='dark'] .kk-mcard-value .is-price {
+  color: #4ade80;
+}
+
+.kk-mcard-value .kk-advantage-badge {
+  margin-left: 0;
+}
+
+.kk-mcard-text,
+.kk-mcard-muted {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.kk-mcard-bio {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.kk-mcard-verdict-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kk-mcard-verdict-tags .kk-verdict-badge,
+.kk-mcard-verdict-tags .kk-verdict-crown {
+  max-width: 100%;
+  margin: 0;
+}
+
+.kk-mcard-bestfor {
+  margin: 0;
+  color: var(--heading);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.kk-mcard-bestfor span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--ink-secondary);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kk-mcard-checks,
+.kk-mcard-history,
+.kk-mcard-rows,
+.kk-mcard-modes {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kk-mcard-checks {
+  gap: 6px;
+}
+
+.kk-mcard-checks li,
+.kk-mcard-history li,
+.kk-mcard-modes li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.kk-mcard-checks li {
+  color: var(--foreground);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.kk-mcard-checks svg,
+.kk-mcard-history svg,
+.kk-mcard-modes svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.kk-mcard-checks svg {
+  color: #16a34a;
+}
+
+[data-theme='dark'] .kk-mcard-checks svg {
+  color: #4ade80;
+}
+
+.kk-mcard-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 3px 11px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .kk-mcard-more {
+  color: #93c5fd;
+}
+
+.kk-mcard-license {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: #15803d;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.kk-mcard-license svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+[data-theme='dark'] .kk-mcard-license {
+  color: #4ade80;
+}
+
+.kk-mcard-history {
+  gap: 6px;
+}
+
+.kk-mcard-history li {
+  color: var(--ink-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.kk-mcard-rows li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  font-size: 0.82rem;
+}
+
+.kk-mcard-rows li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.kk-mcard-rows li:last-child {
+  padding-bottom: 0;
+}
+
+.kk-mcard-row-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+
+.kk-mcard-row-name svg {
+  flex: none;
+  color: var(--ink-secondary);
+}
+
+.kk-mcard-row-value {
+  flex: none;
+  color: var(--heading);
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.kk-mcard-row-value.is-accent {
+  color: var(--accent);
+}
+
+[data-theme='dark'] .kk-mcard-row-value.is-accent {
+  color: #93c5fd;
+}
+
+.kk-mcard-rows .kk-mcard-row-more {
+  color: var(--ink-secondary);
+  font-size: 0.76rem;
+}
+
+.kk-mcard-modes {
+  gap: 8px;
+}
+
+.kk-mcard-modes li {
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.kk-mcard-modes .is-online svg { color: #0284c7; }
+.kk-mcard-modes .is-office svg { color: #d97706; }
+.kk-mcard-modes .is-languages svg { color: var(--accent); }
+.kk-mcard-modes .is-off { color: var(--ink-secondary); }
+
+[data-theme='dark'] .kk-mcard-modes .is-online svg { color: #38bdf8; }
+[data-theme='dark'] .kk-mcard-modes .is-office svg { color: #fbbf24; }
+[data-theme='dark'] .kk-mcard-modes .is-languages svg { color: #93c5fd; }
+
+/* Actions */
+.kk-mcard-actions {
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.kk-mcard-actions .send-request-hint,
+.kk-mcmp-actionbar .send-request-hint {
+  display: none;
+}
+
+.kk-mcard-actions .primary-btn {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+
+.kk-mcard-actions-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.kk-mcard-chat-btn,
+.kk-mcard-profile-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--heading);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.kk-mcard-chat-btn:hover,
+.kk-mcard-profile-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   Sticky action bar (phones only)
+   -------------------------------------------------------------------------- */
+.kk-mcmp-actionbar {
+  display: none;
+}
+
+.kk-mcmp-actionbar-who {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kk-mcmp-actionbar-avatar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--lawyer-ink);
+}
+
+.kk-mcmp-actionbar-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.kk-mcmp-actionbar-text strong {
+  overflow: hidden;
+  color: var(--heading);
+  font-size: 0.84rem;
+  font-weight: 750;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.kk-mcmp-actionbar-text small {
+  color: var(--ink-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.kk-mcmp-actionbar-btns {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.kk-mcmp-actionbar .send-request,
+.kk-mcmp-actionbar .chat-start {
+  width: auto;
+  margin: 0;
+}
+
+.kk-mcmp-actionbar .primary-btn {
+  width: auto;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+/* Chat collapses to an icon button; its label stays for screen readers */
+.kk-mcmp-actionbar .kk-mcmp-chat-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--heading);
+}
+
+.kk-mcmp-chat-btn .tt-dir-action-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Phone (< 640px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 639px) {
+  /* Bleed the carousel to the screen edges so the next card visibly peeks in */
+  .kk-mcmp-track {
+    --card-w: calc(100% - 20px);
+    column-gap: 12px;
+    margin-inline: -16px;
+    padding: 4px 16px 8px;
+    scroll-padding-inline: 16px;
+  }
+
+  .kk-mcmp[data-cols='1'] .kk-mcmp-track {
+    --card-w: 100%;
+  }
+
+  .kk-mcard-actions {
+    display: none;
+  }
+
+  .kk-mcmp-actionbar {
+    position: sticky;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    box-shadow: 0 18px 40px -16px rgb(5 10 68 / 45%);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  }
+
+  [data-theme='dark'] .kk-mcmp-actionbar,
+  [data-theme='dark'] .kk-mcmp-selector {
+    border-color: rgb(255 255 255 / 10%);
+    box-shadow: 0 18px 40px -16px rgb(0 0 0 / 80%);
+  }
+}
+
+@media (max-width: 359px) {
+  .kk-mcmp-chip {
+    gap: 6px;
+    padding-inline: 6px;
+    font-size: 0.8rem;
+  }
+
+  .kk-mcmp-chip-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .kk-mcmp-actionbar .primary-btn {
+    padding-inline: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tablet (640-1023px): two cards side by side; a third peeks in
+   -------------------------------------------------------------------------- */
+@media (min-width: 640px) {
+  .kk-mcmp {
+    gap: 18px;
+  }
+
+  .kk-mcmp-track {
+    --card-w: calc((100% - var(--mcmp-gap)) / 2);
+    margin-inline: -4px;
+    padding: 4px 4px 8px;
+    scroll-padding-inline: 4px;
+  }
+
+  .kk-mcmp[data-cols='3'] .kk-mcmp-track {
+    --card-w: calc((100% - var(--mcmp-gap)) / 2 - 28px);
+  }
+
+  .kk-mcmp[data-cols='1'] .kk-mcmp-track {
+    --card-w: 100%;
+  }
+
+  .kk-mcard-head {
+    grid-template-columns: 64px minmax(0, 1fr);
+    padding: 20px 48px 18px 18px;
+  }
+
+  .kk-mcard-avatar {
+    width: 64px;
+    height: 64px;
+  }
+
+  .kk-mcard-sec {
+    padding: 16px 18px;
+  }
+
+  .kk-mcard-actions {
+    padding: 16px 18px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kk-mcmp-chip,
+  .kk-mcmp-chip::after,
+  .kk-mcard {
+    transition: none;
+  }
+}
+
+@media print {
+  .kk-mcmp-selector,
+  .kk-mcmp-actionbar,
+  .kk-mcard-remove,
+  .kk-mcard-actions {
+    display: none !important;
+  }
+
+  .kk-mcmp-track {
+    display: block;
+    overflow: visible;
+  }
+
+  .kk-mcard {
+    display: block;
+    margin-bottom: 12px;
+    break-inside: avoid;
+  }
+}
