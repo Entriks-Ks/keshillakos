@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { toast } from '@heroui/react'
+import { Button, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { CalendarDays, Mail, X, type LucideIcon } from 'lucide-react'
@@ -267,15 +267,17 @@ export default function SendRequestButton({
                   <h2 id="booking-modal-title">{t('booking.title', { name: providerName })}</h2>
                   <p className="muted">{t('booking.lead')}</p>
                 </div>
-                <button
-                  type="button"
-                  className="ghost booking-modal-close"
-                  onClick={close}
-                  disabled={submitting}
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
+                  className="booking-modal-close"
+                  onPress={close}
+                  isDisabled={submitting}
                   aria-label={t('feedback.close')}
                 >
-                  <X size={18} />
-                </button>
+                  <X size={18} aria-hidden />
+                </Button>
               </header>
               {form}
             </div>

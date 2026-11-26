@@ -81,7 +81,7 @@ export function BottomSheetHeader({
         <Drawer.Title className="kk-sheet-title">{title}</Drawer.Title>
         {children}
       </div>
-      <Drawer.Close className="kk-sheet-close" aria-label={t('nav.close')} disabled={closeDisabled}>
+      <Drawer.Close className="kk-sheet-close" aria-label={t('feedback.close')} disabled={closeDisabled}>
         <X size={18} aria-hidden />
       </Drawer.Close>
     </div>

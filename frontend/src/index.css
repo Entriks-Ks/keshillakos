@@ -820,6 +820,11 @@ h1 {
   border-bottom: 1px solid var(--border);
 }
 
+/* Long names wrap instead of pushing the close button out of the corner. */
+.booking-modal-head > div {
+  min-width: 0;
+}
+
 .booking-modal-kicker {
   margin: 0 0 2px;
   font-size: 0.75rem;
@@ -835,6 +840,7 @@ h1 {
   font-size: 1.25rem;
   letter-spacing: -0.03em;
   color: var(--heading);
+  overflow-wrap: anywhere;
 }
 
 .booking-modal-head .muted {
@@ -842,13 +848,11 @@ h1 {
   font-size: 0.88rem;
 }
 
+/* HeroUI icon button: it sizes and centres itself, so only keep it from shrinking and line it up with the
+   kicker. (The old plain button also had the global .ghost class, whose padding pushed the X off-centre.) */
 .booking-modal-close {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  display: grid;
-  place-items: center;
   flex-shrink: 0;
+  margin: -6px -8px 0 0;
 }
 
 .booking-modal-body {
