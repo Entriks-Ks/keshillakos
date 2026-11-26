@@ -1736,7 +1736,12 @@
   font-size: 0.95rem;
   font-weight: 750;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--kk-btn-transition);
+}
+
+.tt-cta-button:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
 }
 
 .tt-cta-button[data-variant="primary"],
@@ -1750,16 +1755,27 @@
   background: #f1f5f9;
 }
 
+/* Secondary CTA on the dark band ("Search directly"). The only definition: text and icons stay white in every state
+   (they follow `color`), only the glass background and border brighten. Same in light and dark themes. */
 .tt-cta-button.tt-cta-register,
 .tt-cta-button[data-variant="outline"] {
   background: rgb(255 255 255 / 12%);
   border: 1px solid rgb(255 255 255 / 24%);
   color: #ffffff;
+  font-weight: 700;
 }
 
 .tt-cta-button.tt-cta-register:hover,
 .tt-cta-button[data-variant="outline"]:hover {
   background: rgb(255 255 255 / 20%);
+  border-color: rgb(255 255 255 / 40%);
+  color: #ffffff;
+}
+
+.tt-cta-button.tt-cta-register:active,
+.tt-cta-button[data-variant="outline"]:active {
+  background: rgb(255 255 255 / 26%);
+  color: #ffffff;
 }
 
 /* --------------------------------------------------------------------------
