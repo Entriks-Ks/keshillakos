@@ -5,9 +5,7 @@
   padding: 20px 0 72px;
 }
 
-.pp-page .tt-nav-inner,
-.pp-inner,
-.pp-page .tt-footer .tt-section-inner {
+.pp-inner {
   width: var(--tt-wide-content-width);
   max-width: none;
   margin-inline: auto;
@@ -289,7 +287,8 @@
   white-space: nowrap;
 }
 
-.pp-hero-actions > .button {
+/* Square icon-only actions (share). The compare button is also a HeroUI .button but has a label. */
+.pp-hero-actions > .button--icon-only {
   width: 42px;
   min-width: 42px;
   height: 42px;
@@ -830,9 +829,7 @@
 }
 
 @media (max-width: 900px) {
-  .pp-page .tt-nav-inner,
-  .pp-inner,
-  .pp-page .tt-footer .tt-section-inner {
+  .pp-inner {
     width: auto;
     margin-inline: 16px;
   }
@@ -883,7 +880,7 @@
     padding: 0 10px;
   }
 
-  .pp-hero-actions > .button {
+  .pp-hero-actions > .button--icon-only {
     width: 100%;
     min-width: 0;
     height: 44px;

@@ -232,8 +232,34 @@
     min-height: 220px;
   }
 
-  .register-names,
+  .register-names {
+    grid-template-columns: 1fr;
+  }
+
+  /* Three short role labels fit side by side; stacking made three 92px tiles */
+  .register-role-grid {
+    gap: 8px;
+  }
+
+  .register-form .register-role {
+    min-height: 74px;
+    padding: 12px 4px 10px;
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Very narrow phones: compact rows, icon beside the label */
+@media (max-width: 340px) {
   .register-role-grid {
     grid-template-columns: 1fr;
+  }
+
+  .register-form .register-role {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 48px;
+    padding: 10px 14px;
   }
 }

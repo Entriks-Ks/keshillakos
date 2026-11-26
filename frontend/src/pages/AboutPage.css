@@ -10,9 +10,7 @@
 }
 
 /* Match the wide width of OffersPage, CompareLawyersPage & AiChatPage (--tt-wide-content-width) */
-.tt-home.ab-shell .tt-nav-inner,
-.ab .tt-section-inner,
-.ab-shell .tt-footer .tt-section-inner {
+.ab .tt-section-inner {
   width: var(--tt-wide-content-width);
   max-width: none;
   margin-inline: auto;
@@ -20,9 +18,7 @@
 }
 
 @media (max-width: 900px) {
-  .tt-home.ab-shell .tt-nav-inner,
-  .ab .tt-section-inner,
-  .ab-shell .tt-footer .tt-section-inner {
+  .ab .tt-section-inner {
     width: auto;
     margin-inline: 16px;
   }

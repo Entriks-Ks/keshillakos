@@ -13,9 +13,7 @@
 }
 
 /* Match the exact width and margin alignment of OffersPage (--tt-wide-content-width) */
-.kk-compare-shell .tt-nav-inner,
-.kk-compare-container,
-.kk-compare-shell .tt-footer .tt-section-inner {
+.kk-compare-container {
   width: var(--tt-wide-content-width);
   max-width: none;
   margin: 0 auto;
@@ -2588,9 +2586,7 @@
 }
 
 @media (max-width: 900px) {
-  .kk-compare-shell .tt-nav-inner,
-  .kk-compare-container,
-  .kk-compare-shell .tt-footer .tt-section-inner {
+  .kk-compare-container {
     width: auto;
     margin-inline: 16px;
   }

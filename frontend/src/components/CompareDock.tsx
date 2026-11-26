@@ -17,8 +17,23 @@ export default function CompareDock() {
     setCompareTranslator((key, params) => t(key, params))
   }, [t])
 
-  // Hide dock if no lawyers selected or if already on the comparison page
-  if (count === 0 || location.pathname === '/krahaso' || location.pathname === '/krahaso-avokatet') {
+  // Hidden with no lawyers selected, on the comparison page itself, and in messaging, where the
+  // composer is pinned to the bottom of the screen and the dock would cover it.
+  const hidden =
+    count === 0 ||
+    location.pathname === '/krahaso' ||
+    location.pathname === '/krahaso-avokatet' ||
+    /^\/dashboard\/[^/]+\/messages/.test(location.pathname)
+
+  // While visible, reserve the dock's height at the bottom of the page so the last content
+  // (footer links, form buttons) can always scroll clear of it.
+  useEffect(() => {
+    if (hidden) return
+    document.body.classList.add('has-compare-dock')
+    return () => document.body.classList.remove('has-compare-dock')
+  }, [hidden])
+
+  if (hidden) {
     return null
   }
 

@@ -183,6 +183,16 @@
   box-sizing: border-box;
 }
 
+/* Touch devices: iOS zooms the whole page when a field under 16px gets focus.
+   16px text in form fields keeps forms usable without that jump; desktop sizes are unchanged. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
 html,
 body {
   overflow-x: clip;
@@ -791,6 +801,8 @@ h1 {
 .booking-modal {
   width: min(860px, 100%);
   max-height: min(92vh, 880px);
+  /* dvh: the visible viewport, so mobile browser toolbars never hide the submit button */
+  max-height: min(92dvh, 880px);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
@@ -894,6 +906,30 @@ h1 {
   .booking-modal-form {
     border-left: 0;
     border-top: 1px solid var(--border);
+  }
+}
+
+/* Phones: the booking form opens as a bottom sheet (thumb-reachable, full width) */
+@media (max-width: 640px) {
+  .booking-modal-backdrop {
+    place-items: end stretch;
+    padding: 0;
+  }
+
+  .booking-modal {
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 22px 22px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .booking-modal-head {
+    padding: 16px 16px 12px;
+  }
+
+  .booking-modal-cal,
+  .booking-modal-form {
+    padding: 14px 16px 18px;
   }
 }
 
@@ -4340,13 +4376,22 @@ h1 {
   color: var(--foreground);
 }
 
+/* Site nav container: same width and gutters as page content and the footer on every page */
 .tt-nav-inner {
-  max-width: 1120px;
+  width: var(--tt-wide-content-width, min(1680px, calc(100% - clamp(40px, 6vw, 96px))));
+  max-width: none;
   margin: 0 auto;
-  padding: 12px 20px;
+  padding: 12px 0;
   display: flex;
   align-items: center;
   gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .tt-nav-inner {
+    width: auto;
+    margin-inline: 16px;
+  }
 }
 
 .tt-btn-link {
@@ -5541,8 +5586,9 @@ h1 {
 }
 
 @media (max-width: 380px) {
+  /* Two short link columns still fit at 320px; one column made the footer ~900px tall */
   .tt-footer-columns {
-    grid-template-columns: 1fr;
+    gap: 26px 14px;
   }
 }
 

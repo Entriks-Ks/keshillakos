@@ -983,35 +983,89 @@
   text-decoration: none;
 }
 
-/* Responsive Breakpoints */
-@media (max-width: 1240px) {
-  .kk-nav-link {
-    padding: 0 11px;
-  }
+/* --------------------------------------------------------------------------
+   Responsive behaviour
+   The nav picks its layout from the room it actually has (a container query on
+   .kk-nav-inner), not from the viewport: page containers differ in width and
+   translated labels differ in length. Measured content widths:
+     full layout     sq 1196px · en 1152px · de 1269px
+     compact layout  sq 1124px · en 1080px · de 1197px
+   German gets its own, wider thresholds through :lang(de).
+   -------------------------------------------------------------------------- */
+.kk-nav .kk-nav-inner {
+  container: kk-nav / inline-size;
+}
 
-  .kk-nav-link-ai {
-    padding: 0 12px 0 10px;
-  }
+.kk-nav-toggle {
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--foreground) 3.5%, transparent);
+}
 
+/* Compact: tighter link padding, no CTA arrow / account name */
+@container kk-nav (max-width: 1199px) {
+  .kk-nav-link { padding: 0 11px; }
+  .kk-nav-link-ai { padding: 0 12px 0 10px; }
   .kk-nav-actions,
-  .kk-nav-actions-desktop {
-    gap: 6px;
-  }
-
-  .kk-nav .kk-lang button {
-    padding: 0 6px;
-  }
-
-  .kk-nav-cta {
-    padding: 0 16px;
-  }
-
+  .kk-nav-actions-desktop { gap: 6px; }
+  .kk-nav .kk-lang button { padding: 0 6px; }
+  .kk-nav-cta { padding: 0 16px; }
   .kk-nav-cta-arrow,
-  .kk-nav-account-name {
-    display: none;
+  .kk-nav-account-name { display: none; }
+}
+
+@container kk-nav (max-width: 1279px) {
+  :root:lang(de) .kk-nav-link { padding: 0 11px; }
+  :root:lang(de) .kk-nav-link-ai { padding: 0 12px 0 10px; }
+  :root:lang(de) .kk-nav-actions,
+  :root:lang(de) .kk-nav-actions-desktop { gap: 6px; }
+  :root:lang(de) .kk-nav .kk-lang button { padding: 0 6px; }
+  :root:lang(de) .kk-nav-cta { padding: 0 16px; }
+  :root:lang(de) .kk-nav-cta-arrow,
+  :root:lang(de) .kk-nav-account-name { display: none; }
+}
+
+/* Drawer: links, language/theme and account move into the slide-out menu */
+@container kk-nav (max-width: 1129px) {
+  .kk-nav-actions-desktop,
+  .kk-nav-center,
+  .kk-nav-guest,
+  .kk-nav-account,
+  .kk-nav-pending,
+  .kk-nav-divider { display: none; }
+  .kk-nav-toggle { display: inline-flex; }
+  .kk-nav-actions .kk-message-nav-button,
+  .kk-nav-actions .kk-notification-bell {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 12px;
   }
 }
 
+@container kk-nav (max-width: 1209px) {
+  :root:lang(de) .kk-nav-actions-desktop,
+  :root:lang(de) .kk-nav-center,
+  :root:lang(de) .kk-nav-guest,
+  :root:lang(de) .kk-nav-account,
+  :root:lang(de) .kk-nav-pending,
+  :root:lang(de) .kk-nav-divider { display: none; }
+  :root:lang(de) .kk-nav-toggle { display: inline-flex; }
+  :root:lang(de) .kk-nav-actions .kk-message-nav-button,
+  :root:lang(de) .kk-nav-actions .kk-notification-bell {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 12px;
+  }
+}
+
+/* Screen-dependent only: a slimmer bar on tablets and phones */
 @media (max-width: 1040px) {
   .kk-nav-wrapper {
     height: 60px;
@@ -1022,11 +1076,7 @@
   }
 
   .kk-nav .kk-nav-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     gap: 12px;
-    padding-inline: 16px;
   }
 
   .kk-nav-inner::before {
@@ -1035,43 +1085,6 @@
 
   .kk-nav-brand {
     flex-shrink: 0;
-  }
-
-  .kk-nav-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .kk-nav-actions-desktop,
-  .kk-nav-center,
-  .kk-nav-guest,
-  .kk-nav-account,
-  .kk-nav-pending,
-  .kk-nav-divider {
-    display: none;
-  }
-
-  .kk-nav-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
-    border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--foreground) 3.5%, transparent);
-  }
-
-  .kk-nav-actions .kk-message-nav-button,
-  .kk-nav-actions .kk-notification-bell {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
-    border-radius: 12px;
   }
 }
 

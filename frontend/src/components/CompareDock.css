@@ -48,6 +48,28 @@
   }
 }
 
+/* Space the dock occupies at the bottom of the screen (height + its offset) */
+body.has-compare-dock {
+  --kk-dock-space: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Pages with the site footer extend the footer itself (no off-colour band below it)... */
+body.has-compare-dock .tt-footer {
+  padding-bottom: calc(28px + var(--kk-dock-space));
+}
+
+/* ...pages without one (auth, dashboards) pad the app root instead */
+body.has-compare-dock:not(:has(.tt-footer)) #root {
+  padding-bottom: var(--kk-dock-space);
+}
+
+/* Dashboards on tablets/phones have a fixed bottom tab bar: float the dock above it */
+@media (max-width: 900px) {
+  body:has(.dash-bottom-nav) .kk-compare-dock {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* --------------------------------------------------------------------------
    Left Section: Badge & Avatar Slots
    -------------------------------------------------------------------------- */
@@ -177,6 +199,13 @@
   transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.12s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
   z-index: 5;
+}
+
+/* The badge stays small; its tap area is 34px */
+.kk-dock-remove::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
 }
 
 [data-theme='dark'] .kk-dock-remove {
@@ -315,6 +344,10 @@
    Responsive Adaptations
    -------------------------------------------------------------------------- */
 @media (max-width: 640px) {
+  body.has-compare-dock {
+    --kk-dock-space: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
   .kk-compare-dock {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     padding: 0.35rem 0.45rem 0.35rem 0.65rem;
@@ -335,11 +368,15 @@
   }
 
   .kk-dock-clear-btn {
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
     padding: 0.4rem;
   }
 
   .kk-dock-cta-btn {
-    padding: 0.4rem 0.75rem;
+    min-height: 40px;
+    padding: 0.4rem 0.85rem;
     font-size: 0.78rem;
   }
 }

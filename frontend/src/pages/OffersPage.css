@@ -10,9 +10,7 @@
   background: var(--background);
 }
 
-.of-marketplace .tt-nav-inner,
-.of-inner,
-.of-marketplace .tt-footer .tt-section-inner {
+.of-inner {
   width: var(--tt-wide-content-width);
   max-width: none;
   margin: 0 auto;
@@ -1878,10 +1876,8 @@
 }
 
 @media (max-width: 900px) {
-  .of-marketplace .tt-nav-inner,
   .of-inner,
-  .of-tabs > .of-body,
-  .of-marketplace .tt-footer .tt-section-inner {
+  .of-tabs > .of-body {
     width: auto;
     margin-inline: 16px;
   }

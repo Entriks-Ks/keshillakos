@@ -354,8 +354,8 @@ export default function AdminUsersPanel() {
                 ) : (
                   <>
                     <td><span className="ad-user-name"><ProfileAvatar seed={user.uid} size={32} alt="" />{user.name}</span></td>
-                    <td>{user.email}</td>
-                    <td>
+                    <td data-label={t('req.email')}>{user.email}</td>
+                    <td data-label={t('admin.users.role')}>
                       <Chip size="sm" variant="soft"><Chip.Label>{roleName(user.role)}</Chip.Label></Chip>
                       {user.requestedRole && user.requestedRole !== user.role ? (
                         <Chip size="sm" variant="soft" color="warning"><Chip.Label>{t('admin.users.pendingRole', { role: roleName(user.requestedRole) })}</Chip.Label></Chip>

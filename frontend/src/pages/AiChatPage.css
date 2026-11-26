@@ -30,10 +30,8 @@
 }
 
 /* Same wide width as Offers, Compare & Community */
-.kk-aipage-root .tt-nav-inner,
 .kk-aipage-hero-inner,
-.kk-aipage-main,
-.kk-aipage-root .tt-footer .tt-section-inner {
+.kk-aipage-main {
   width: var(--tt-wide-content-width);
   max-width: none;
   margin-inline: auto;
@@ -1699,10 +1697,8 @@
 }
 
 @media (max-width: 900px) {
-  .kk-aipage-root .tt-nav-inner,
   .kk-aipage-hero-inner,
-  .kk-aipage-main,
-  .kk-aipage-root .tt-footer .tt-section-inner {
+  .kk-aipage-main {
     width: auto;
     margin-inline: 16px;
   }

@@ -800,8 +800,10 @@
 
 .hm-subcategories-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 6px 24px;
   margin-bottom: 24px;
 }
 
@@ -1945,6 +1947,67 @@
 
   .hm-wizard-stepper-track {
     gap: 4px;
+  }
+}
+
+/* Phones: the four floating preview cards overlap in a 343px box, so they settle into
+   a 2x2 grid (same cards, same content) instead of absolute corner positions. */
+@media (max-width: 640px) {
+  .hm-visual-wrapper,
+  .hm-visual-scene {
+    min-height: 0;
+    border-radius: 26px;
+  }
+
+  .hm-visual-scene {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 14px;
+    transform: none !important;
+  }
+
+  .hm-visual-core {
+    display: none;
+  }
+
+  .hm-card-3d,
+  .hm-card-legal,
+  .hm-card-acc,
+  .hm-card-ai,
+  .hm-card-calendar {
+    position: relative;
+    inset: auto;
+    width: auto;
+    min-width: 0;
+    padding: 12px;
+    border-radius: 16px;
+    animation: none;
+  }
+
+  .hm-card-top {
+    align-items: flex-start;
+  }
+
+  .hm-card-info {
+    min-width: 0;
+  }
+
+  .hm-card-title,
+  .hm-card-sub {
+    overflow-wrap: anywhere;
+  }
+
+  .hm-card-bottom {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Section title above its hint instead of squeezed beside it */
+  .hm-subcategories-head {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 18px;
   }
 }
 
