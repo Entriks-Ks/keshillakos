@@ -468,7 +468,79 @@
   color: var(--muted);
 }
 
-@media (max-width: 900px) {
+/* Tablets and half-screen windows (720-959px): the sidebar stays, as a compact icon rail.
+   Labels are visually hidden (still the accessible names) and shown as hover tooltips. */
+@media (min-width: 720px) and (max-width: 959px) {
+  .dsb-rail .dsb {
+    gap: 14px;
+    padding: 14px 10px 16px;
+  }
+
+  .dsb-rail .dsb-brand {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .dsb-rail .dsb-brand .kk-logo-wordmark {
+    display: none !important;
+  }
+
+  .dsb-rail .dsb-context.is-static {
+    display: none;
+  }
+
+  .dsb-rail .dsb-context {
+    justify-content: center;
+    min-height: 44px;
+    padding: 6px;
+  }
+
+  .dsb-rail .dsb-context-meta,
+  .dsb-rail .dsb-link > span:not(.kk-message-badge) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* Group headings become quiet dividers */
+  .dsb-rail .dsb-group-label {
+    height: 1px;
+    margin: 10px 10px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--border);
+    font-size: 0;
+  }
+
+  .dsb-rail .dsb-link,
+  .dsb-rail .dsb-list.is-secondary .dsb-link {
+    justify-content: center;
+    gap: 0;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .dsb-rail .dsb-link .kk-message-badge {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    margin: 0;
+  }
+  /* Top bar keeps its desktop controls; the account button shows just the avatar */
+  .dtb {
+    padding: 0 12px 0 18px;
+  }
+
+  .dtb-account-name {
+    display: none;
+  }
+}
+
+/* Phones: the sidebar becomes the top-bar menu + bottom tab bar */
+@media (max-width: 719px) {
   .dsb-rail {
     display: none;
   }

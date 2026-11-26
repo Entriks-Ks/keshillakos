@@ -64,7 +64,7 @@ body.has-compare-dock:not(:has(.tt-footer)) #root {
 }
 
 /* Dashboards on tablets/phones have a fixed bottom tab bar: float the dock above it */
-@media (max-width: 900px) {
+@media (max-width: 719px) {
   body:has(.dash-bottom-nav) .kk-compare-dock {
     bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }

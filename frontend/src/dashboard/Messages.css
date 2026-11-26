@@ -1504,7 +1504,8 @@
 
 /* Tablets and phones: list first, an open conversation takes the whole screen */
 
-@media (max-width: 900px) {
+/* Phones: single-pane inbox sized to the visible viewport (tablets keep two panes beside the rail) */
+@media (max-width: 719px) {
   .dash-body:has(.msg-page) {
     height: var(--msg-viewport-h, 100dvh);
   }

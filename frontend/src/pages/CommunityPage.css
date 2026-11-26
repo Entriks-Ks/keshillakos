@@ -491,7 +491,14 @@
   align-items: start;
 }
 
+/* Sidebar narrows on half-screen windows and stacks under the feed below 800px */
 @media (max-width: 1080px) {
+  .kk-comm-grid {
+    grid-template-columns: minmax(0, 1fr) clamp(260px, 32%, 300px);
+  }
+}
+
+@media (max-width: 799px) {
   .kk-comm-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2668,7 +2675,7 @@ a.kk-comm-side-card:hover .kk-comm-ai-btn svg {
    Responsive
    ========================================================================== */
 
-@media (max-width: 1080px) {
+@media (max-width: 799px) {
   .kk-comm-sidebar {
     position: static;
     display: grid;

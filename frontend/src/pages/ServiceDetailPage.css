@@ -17,7 +17,8 @@
 
 .sd-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  /* Aside flexes 280-340px so half-screen windows keep the desktop two-column layout */
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 36%, 340px);
   grid-template-areas:
     "hero aside"
     "body aside";
@@ -882,7 +883,7 @@
 
 /* Responsive */
 
-@media (max-width: 960px) {
+@media (max-width: 799px) {
   .sd-layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:

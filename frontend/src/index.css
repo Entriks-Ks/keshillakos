@@ -3702,14 +3702,27 @@ h1 {
   }
 }
 
-@media (max-width: 900px) {
+/* Dashboard frame. Desktop: labelled sidebar (256px, 232px below 1200px).
+   Tablets and half-screen windows (720-959px): compact icon rail, so the dashboard keeps
+   its desktop structure. Phones (<720px): top-bar menu + bottom tab bar. */
+@media (max-width: 1199px) {
+  .dash-layout {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 959px) {
+  .dash-layout {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 719px) {
   .dash-layout {
     grid-template-columns: 1fr;
   }
 
   .dash-main {
-    padding-left: 18px;
-    padding-right: 18px;
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -3757,6 +3770,14 @@ h1 {
   .dash-bottom-link.is-active {
     color: var(--accent);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+
+}
+
+@media (max-width: 900px) {
+  .dash-main {
+    padding-left: 18px;
+    padding-right: 18px;
   }
 
   .dash-stat-grid,

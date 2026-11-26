@@ -39,6 +39,7 @@ function SidebarLink({ item, onNavigate }: { item: DashNavItem; onNavigate?: () 
         to={item.to}
         end={item.end}
         className={({ isActive }) => `dsb-link${isActive || isPrivateEdit ? ' is-active' : ''}${hasUnread ? ' has-unread' : ''}`}
+        title={t(item.label)}
         onClick={onNavigate}
       >
         <Icon size={18} strokeWidth={2} aria-hidden />

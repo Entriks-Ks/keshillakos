@@ -299,7 +299,8 @@
 
 .pp-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  /* Sidebar flexes 260-320px so half-screen windows keep the two-column desktop profile */
+  grid-template-columns: minmax(0, 1fr) clamp(260px, 30%, 320px);
   gap: 20px;
   align-items: start;
 }
@@ -818,7 +819,10 @@
     grid-column: 1 / -1;
     justify-content: flex-start;
   }
+}
 
+/* Main + sidebar stack only on tablets and phones */
+@media (max-width: 799px) {
   .pp-grid {
     grid-template-columns: minmax(0, 1fr);
   }

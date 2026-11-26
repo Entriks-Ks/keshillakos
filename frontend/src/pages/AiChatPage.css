@@ -1687,6 +1687,10 @@
 }
 
 @media (max-width: 960px) {
+  .kk-aipage-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
   .kk-aipage-hero-inner {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1703,6 +1707,20 @@
     margin-inline: 16px;
   }
 
+
+  .kk-aipage-root .kk-ai-cards-container,
+  .kk-aipage-root .kk-ai-actions-row,
+  .kk-aipage-root .kk-ai-msg-actions {
+    padding-left: 0;
+  }
+
+  .kk-aipage-root .kk-ai-msg-actions.is-user {
+    padding-right: 0;
+  }
+}
+
+/* Chat first, topics underneath: tablets and phones only */
+@media (max-width: 799px) {
   .kk-aipage-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
@@ -1716,16 +1734,6 @@
   .kk-aipage-chat-panel {
     order: 1;
     height: 660px;
-  }
-
-  .kk-aipage-root .kk-ai-cards-container,
-  .kk-aipage-root .kk-ai-actions-row,
-  .kk-aipage-root .kk-ai-msg-actions {
-    padding-left: 0;
-  }
-
-  .kk-aipage-root .kk-ai-msg-actions.is-user {
-    padding-right: 0;
   }
 }
 

@@ -990,6 +990,9 @@
    translated labels differ in length. Measured content widths:
      full layout     sq 1196px · en 1152px · de 1269px
      compact layout  sq 1124px · en 1080px · de 1197px
+     dense layout    sq  968px · en  926px · de 1035px
+     densest layout  sq  892px · en  852px · de  957px  (every element still shown)
+   Below the densest width the bar switches to the drawer; it never hides single items.
    German gets its own, wider thresholds through :lang(de).
    -------------------------------------------------------------------------- */
 .kk-nav .kk-nav-inner {
@@ -1030,8 +1033,63 @@
   :root:lang(de) .kk-nav-account-name { display: none; }
 }
 
-/* Drawer: links, language/theme and account move into the slide-out menu */
+/* Dense: half-screen windows keep the whole desktop bar (wordmark, all links, AI label,
+   language, theme, account) with tighter spacing and slightly smaller text */
 @container kk-nav (max-width: 1129px) {
+  .kk-nav-brand { gap: 6px; }
+  /* the wordmark SVG sizes itself inline, hence !important */
+  .kk-nav-brand-text { height: 18px !important; width: 100px !important; }
+  .kk-nav-links { gap: 0; padding: 3px; }
+  .kk-nav-link { gap: 4px; padding: 0 8px; font-size: 0.82rem; }
+  .kk-nav-link-ai { gap: 5px; padding: 0 10px 0 8px; }
+  .kk-nav-actions,
+  .kk-nav-actions-desktop,
+  .kk-nav-guest { gap: 4px; }
+  .kk-nav .kk-lang button { padding: 0 5px; }
+  .kk-nav .kk-theme-toggle { width: 32px; height: 32px; min-width: 32px; }
+  .kk-nav-login { padding: 0 8px; font-size: 0.82rem; }
+  .kk-nav-cta { padding: 0 12px; font-size: 0.82rem; }
+  .kk-nav-account { padding: 3px 6px 3px 3px; }
+}
+
+@container kk-nav (max-width: 1209px) {
+  :root:lang(de) .kk-nav-brand { gap: 6px; }
+  /* the wordmark SVG sizes itself inline, hence !important */
+  :root:lang(de) .kk-nav-brand-text { height: 18px !important; width: 100px !important; }
+  :root:lang(de) .kk-nav-links { gap: 0; padding: 3px; }
+  :root:lang(de) .kk-nav-link { gap: 4px; padding: 0 8px; font-size: 0.82rem; }
+  :root:lang(de) .kk-nav-link-ai { gap: 5px; padding: 0 10px 0 8px; }
+  :root:lang(de) .kk-nav-actions,
+  :root:lang(de) .kk-nav-actions-desktop,
+  :root:lang(de) .kk-nav-guest { gap: 4px; }
+  :root:lang(de) .kk-nav .kk-lang button { padding: 0 5px; }
+  :root:lang(de) .kk-nav .kk-theme-toggle { width: 32px; height: 32px; min-width: 32px; }
+  :root:lang(de) .kk-nav-login { padding: 0 8px; font-size: 0.82rem; }
+  :root:lang(de) .kk-nav-cta { padding: 0 12px; font-size: 0.82rem; }
+  :root:lang(de) .kk-nav-account { padding: 3px 6px 3px 3px; }
+}
+
+/* Densest (still every element): link text 12.5px is the floor for readability */
+@container kk-nav (max-width: 967px) {
+  .kk-nav-brand-text { height: 16px !important; width: 89px !important; }
+  .kk-nav-link { padding: 0 6px; font-size: 0.78rem; }
+  .kk-nav-link-ai { padding: 0 8px 0 6px; }
+  .kk-nav .kk-lang button { padding: 0 4px; font-size: 0.68rem; }
+  .kk-nav-login { padding: 0 6px; font-size: 0.78rem; }
+  .kk-nav-cta { padding: 0 10px; font-size: 0.78rem; }
+}
+
+@container kk-nav (max-width: 1034px) {
+  :root:lang(de) .kk-nav-brand-text { height: 16px !important; width: 89px !important; }
+  :root:lang(de) .kk-nav-link { padding: 0 6px; font-size: 0.78rem; }
+  :root:lang(de) .kk-nav-link-ai { padding: 0 8px 0 6px; }
+  :root:lang(de) .kk-nav .kk-lang button { padding: 0 4px; font-size: 0.68rem; }
+  :root:lang(de) .kk-nav-login { padding: 0 6px; font-size: 0.78rem; }
+  :root:lang(de) .kk-nav-cta { padding: 0 10px; font-size: 0.78rem; }
+}
+
+/* Drawer: only once even the dense bar cannot fit (measured per language) */
+@container kk-nav (max-width: 899px) {
   .kk-nav-actions-desktop,
   .kk-nav-center,
   .kk-nav-guest,
@@ -1048,7 +1106,7 @@
   }
 }
 
-@container kk-nav (max-width: 1209px) {
+@container kk-nav (max-width: 964px) {
   :root:lang(de) .kk-nav-actions-desktop,
   :root:lang(de) .kk-nav-center,
   :root:lang(de) .kk-nav-guest,

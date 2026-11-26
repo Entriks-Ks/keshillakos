@@ -75,8 +75,13 @@ import {
 } from './compare/compareShared'
 import './CompareLawyersPage.css'
 
-/** Below this width the page swaps the table for the swipeable lawyer-card comparison. */
-const COMPACT_QUERY = '(max-width: 1023px)'
+/**
+ * Below these widths the page swaps the table for the swipeable lawyer-card comparison.
+ * Two columns fit the desktop table down to 800px (half-screen laptops keep it); three
+ * would be squeezed below 1024px, so they switch earlier.
+ */
+const COMPACT_QUERY_THREE = '(max-width: 1023px)'
+const COMPACT_QUERY_TWO = '(max-width: 799px)'
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
 
@@ -230,7 +235,10 @@ export default function CompareLawyersPage() {
   }
 
   const spotlightUid = items.find((item) => isSpotlighted(item.uid))?.uid || ''
-  const compact = useMediaQuery(COMPACT_QUERY)
+  const compactForThree = useMediaQuery(COMPACT_QUERY_THREE)
+  const compactForTwo = useMediaQuery(COMPACT_QUERY_TWO)
+  // selectedUids is known before the data loads, so the skeleton already matches the final layout
+  const compact = selectedUids.length >= 3 ? compactForThree : compactForTwo
 
   // Desktop table: a slim lawyer header pins under the nav once the big header cards scroll away.
   const tableHeadRef = useRef<HTMLDivElement>(null)
